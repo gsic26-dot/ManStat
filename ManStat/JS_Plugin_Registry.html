@@ -1,0 +1,363 @@
+<script>
+  // =========================================================================
+  // MANSTAT PLUGIN: PROFESSIONAL REGISTRY & PORTFOLIO PRINT (JS_Plugin_Registry.html) — PHASE 4
+  // =========================================================================
+  var g_ExpandedLicEmpId = null;
+  var g_CurrentLicenseViewTab = 'ALL_DOCS';
+
+  function openPersonnelPortfolioPrint(empId, event) {
+    if (event) event.stopPropagation();
+    startLoadingBar('กำลังจัดเตรียมแบบสรุปทะเบียนประวัติ (ก.พ. 7 ย่อ A4)...');
+    google.script.run
+      .withSuccessHandler(html => {
+        stopLoadingBar(() => {
+          document.getElementById('printPreviewBody').innerHTML = html;
+          document.getElementById('officialPrintContainer').innerHTML = html;
+          document.getElementById('modalPrintPreview').style.display = 'flex';
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('สร้างเอกสาร ก.พ. 7 ย่อ ไม่สำเร็จ: ' + (err.message || err))))
+      .getPersonnelPortfolioPrintHtml(empId);
+  }
+
+  function switchLicenseViewTab(tabName) {
+    g_CurrentLicenseViewTab = tabName;
+    document.querySelectorAll('.lic-tab-btn').forEach(b => b.classList.remove('active'));
+    if (tabName === 'ALL_DOCS') {
+      const b1 = document.getElementById('btnLicTab_allDocs'); if (b1) b1.classList.add('active');
+    } else if (tabName === 'PERSONNEL') {
+      const b2 = document.getElementById('btnLicTab_personnel'); if (b2) b2.classList.add('active');
+    } else if (tabName === 'AUDIT') {
+      const b3 = document.getElementById('btnLicTab_audit'); if (b3) b3.classList.add('active');
+    }
+    filterLicenseDirectoryTable();
+  }
+
+  function resetLicenseFilters() {
+    const s = document.getElementById('searchLicenseInput'); if (s) s.value = '';
+    const f = document.getElementById('filterLicenseField'); if (f) f.value = 'ALL';
+    const st = document.getElementById('filterLicenseStatus'); if (st) st.value = 'ALL';
+    const cat = document.getElementById('filterLicenseCategory'); if (cat) cat.value = 'ALL';
+    filterLicenseDirectoryTable();
+  }
+
+  function filterLicenseDirectoryTable() {
+    renderStrictLicenseDirectory();
+  }
+
+  function renderStrictLicenseDirectory() {
+    const container = document.getElementById('employeeLicenseRibbonContainer');
+    const alertBanner = document.getElementById('licenseAuditAlertBanner');
+    if (!container) return;
+
+    const q = (document.getElementById('searchLicenseInput') ? document.getElementById('searchLicenseInput').value : '').trim().toLowerCase();
+    const searchField = document.getElementById('filterLicenseField') ? document.getElementById('filterLicenseField').value : 'ALL';
+    const statusFilter = document.getElementById('filterLicenseStatus') ? document.getElementById('filterLicenseStatus').value : 'ALL';
+    const catFilter = document.getElementById('filterLicenseCategory') ? document.getElementById('filterLicenseCategory').value : 'ALL';
+
+    let dupLicWarnings = [];
+    let orphanLicWarnings = [];
+    let unverifiedPosWarnings = [];
+
+    g_UsersSummary.forEach(u => {
+      if (u.IsPositionUnverified) {
+        unverifiedPosWarnings.push({ empId: u.EmpID, name: u.FullName, rawPos: u.RawPositionNo });
+      }
+      if (u.LicenseAuditWarnings) {
+        if (Array.isArray(u.LicenseAuditWarnings.duplicateNumbers)) {
+          u.LicenseAuditWarnings.duplicateNumbers.forEach(d => {
+            if (!dupLicWarnings.some(x => x.licenseNumber === d.licenseNumber)) dupLicWarnings.push(d);
+          });
+        }
+        if (Array.isArray(u.LicenseAuditWarnings.orphanRecords)) {
+          u.LicenseAuditWarnings.orphanRecords.forEach(o => {
+            if (!orphanLicWarnings.some(x => x.recordId === o.recordId)) orphanLicWarnings.push(o);
+          });
+        }
+      }
+    });
+
+    if (alertBanner) {
+      let issues = [];
+      if (unverifiedPosWarnings.length > 0) issues.push(`พบเลขที่ตำแหน่งคล้ายรหัสบุคลากร <b>${unverifiedPosWarnings.length} รายการ</b>`);
+      if (dupLicWarnings.length > 0) issues.push(`พบเลขที่ใบอนุญาตซ้ำซ้อน <b>${dupLicWarnings.length} เลขที่</b>`);
+      if (orphanLicWarnings.length > 0) issues.push(`พบระเบียนใบอนุญาตไม่มีเจ้าของ <b>${orphanLicWarnings.length} รายการ</b>`);
+
+      if (issues.length > 0) {
+        alertBanner.style.display = 'block';
+        alertBanner.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <b style="color:var(--orange);">รายการรอตรวจสอบความถูกต้อง (Audit Issues):</b>
+              <div style="font-size:12px; margin-top:2px;">• ${issues.join(' &nbsp;•&nbsp; ')}</div>
+            </div>
+            <button type="button" class="btn-save-sm" style="white-space:nowrap;" onclick="switchLicenseViewTab('AUDIT')">ตรวจสอบ</button>
+          </div>
+        `;
+      } else {
+        alertBanner.style.display = 'none';
+      }
+    }
+
+    if (g_CurrentLicenseViewTab === 'AUDIT') {
+      if (unverifiedPosWarnings.length === 0 && dupLicWarnings.length === 0 && orphanLicWarnings.length === 0) {
+        container.innerHTML = `<div class="emp-empty-state" style="color:var(--steam-green); display:inline-flex; align-items:center; gap:6px;"><svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>ไม่พบรายการข้อมูลที่ขัดแย้งหรือต้องตรวจสอบ</span></div>`;
+        return;
+      }
+      let auditHtml = '';
+      unverifiedPosWarnings.forEach(w => {
+        auditHtml += `<div class="lic-sub-item" style="border-left:3px solid var(--orange);"><div><b>${escapeHtml(w.name)} (${escapeHtml(w.empId)})</b>: เลขที่ตำแหน่งคล้ายรหัสบุคลากร (${escapeHtml(w.rawPos)})</div><button type="button" class="btn-save-sm" onclick="goToAdminPage(event, 'tab2')">แก้ไข</button></div>`;
+      });
+      dupLicWarnings.forEach(d => {
+        auditHtml += `<div class="lic-sub-item" style="border-left:3px solid var(--red);"><div><b>เลขที่ใบอนุญาตซ้ำ: ${escapeHtml(d.licenseNumber)}</b> (ผูกกับ: ${escapeHtml(d.records.map(r => r.empId).join(', '))})</div><button type="button" class="btn-save-sm" onclick="goToAdminPage(event, 'tab2')">ตรวจสอบ</button></div>`;
+      });
+      orphanLicWarnings.forEach(o => {
+        auditHtml += `<div class="lic-sub-item" style="border-left:3px solid var(--red);"><div><b>ระเบียนใบอนุญาตไม่พบเจ้าของ (${escapeHtml(o.recordId)})</b>: เลขที่ ${escapeHtml(o.licenseNumber)} (อ้างอิง EmpID: ${escapeHtml(o.empId)})</div></div>`;
+      });
+      container.innerHTML = auditHtml;
+      return;
+    }
+
+    const filteredUsers = g_UsersSummary.filter(u => {
+      if (u.status === 'ย้าย/เกษียณ') return false;
+      if (catFilter !== 'ALL' && getStaffCategoryCode(u) !== catFilter) return false;
+
+      const lics = u.ActiveLicenses || [];
+      const hasActive = lics.some(l => l.status === 'ปกติ');
+      const hasExpiring = lics.some(l => l.status === 'ใกล้หมดอายุ');
+      const hasExpired = lics.some(l => l.status === 'หมดอายุ');
+
+      if (statusFilter === 'ACTIVE' && !hasActive) return false;
+      if (statusFilter === 'EXPIRING' && !hasExpiring) return false;
+      if (statusFilter === 'EXPIRED' && !hasExpired) return false;
+      if (statusFilter === 'NO_DOC' && u.LicenseDocStatus !== 'ยังไม่พบหลักฐานในระบบ') return false;
+      if (statusFilter === 'EXEMPT' && u.LicenseDocStatus !== 'ได้รับการยกเว้นตามตำแหน่ง') return false;
+
+      if (q) {
+        const empMatch = u.EmpID.toLowerCase().includes(q);
+        const nameMatch = u.FullName.toLowerCase().includes(q);
+        const posNoMatch = String(u.PositionNo || '').toLowerCase().includes(q);
+        const memMatch = String(u.MemberID || '').toLowerCase().includes(q);
+        const licMatch = lics.some(l => String(l.number || '').toLowerCase().includes(q) || String(l.type || '').toLowerCase().includes(q));
+
+        if (searchField === 'EMPID' && !empMatch) return false;
+        if (searchField === 'NAME' && !nameMatch) return false;
+        if (searchField === 'POSNO' && !posNoMatch) return false;
+        if (searchField === 'MEMBERID' && !memMatch) return false;
+        if (searchField === 'LICNO' && !licMatch) return false;
+        if (searchField === 'ALL' && !empMatch && !nameMatch && !posNoMatch && !memMatch && !licMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredUsers.length === 0) {
+      container.innerHTML = `<div class="emp-empty-state">ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไขการค้นหา</div>`;
+      return;
+    }
+
+    const icoBriefcase = `<svg class="ui-ico-sm" style="color:var(--steam-cyan); vertical-align:middle; margin-right:4px;" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`;
+    const icoIdCard = `<svg class="ui-ico-sm" style="color:var(--steam-green); vertical-align:middle; margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`;
+    const icoShieldOk = `<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>`;
+    const icoShieldWarn = `<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    const icoShieldExp = `<svg class="ui-ico-sm" style="color:var(--red);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+
+    container.innerHTML = filteredUsers.map(u => {
+      const empId = u.EmpID || u.id;
+      const isExpanded = (g_ExpandedLicEmpId === empId);
+      const identitySubtitleHtml = buildStaffIdentitySubtitle(u);
+      const lics = u.ActiveLicenses || [];
+
+      const posTxt = u.PositionNo ? escapeHtml(u.PositionNo) : (u.IsPositionUnverified ? `<span class="id-unverified-badge">รอตรวจสอบ</span>` : `<span style="color:var(--text-muted);">ไม่มีข้อมูล</span>`);
+      const memTxt = u.MemberID ? escapeHtml(u.MemberID) : `<span style="color:var(--text-muted);">ไม่มีข้อมูล</span>`;
+
+      let primaryLicHtml = '';
+      if (lics.length === 0) {
+        if (u.LicenseDocStatus === 'ได้รับการยกเว้นตามตำแหน่ง') {
+          primaryLicHtml = `<span class="exp-days-badge exp-days-exempt">ยกเว้นตามตำแหน่ง</span>`;
+        } else {
+          primaryLicHtml = `<span class="exp-days-badge exp-days-warn">${icoShieldWarn} ยังไม่พบหลักฐาน</span>`;
+        }
+      } else {
+        const topLic = lics[0];
+        let badgeClass = 'exp-days-ok';
+        let statusIco = icoShieldOk;
+        if (topLic.status === 'ใกล้หมดอายุ') { badgeClass = 'exp-days-warn'; statusIco = icoShieldWarn; }
+        else if (topLic.status === 'หมดอายุ') { badgeClass = 'exp-days-expired'; statusIco = icoShieldExp; }
+
+        let extraCountTxt = lics.length > 1 ? `<span style="background:rgba(102,192,244,0.16); border:1px solid var(--steam-cyan); color:var(--steam-cyan); padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">+ อีก ${lics.length - 1} ฉบับ</span>` : '';
+        primaryLicHtml = `
+          <div style="font-weight:bold; color:#fff; display:flex; align-items:center; gap:5px;">
+            ${icoIdCard}
+            <span>${escapeHtml(shortLicType(topLic.type))}</span>
+            <span style="color:var(--steam-cyan); font-family:monospace;">#${escapeHtml(topLic.number)}</span>
+          </div>
+          <div style="margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="exp-days-badge ${badgeClass}">${statusIco} ${escapeHtml(topLic.status)} (${escapeHtml(topLic.daysText)} วัน)</span>
+            ${extraCountTxt}
+          </div>
+        `;
+      }
+
+      const arrowIcon = isExpanded
+        ? `<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>`
+        : `<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+      return `
+        <div class="lic-ribbon-card ${isExpanded ? 'expanded' : ''}" id="licRibbonCard_${escapeHtml(empId)}">
+          <div class="lic-ribbon-main" onclick="toggleLicenseRibbonExpand('${escapeHtml(empId)}', event)">
+            
+            <div class="lic-ident-zone">
+              <div class="lic-name-line">${escapeHtml(u.FullName)}</div>
+              <div class="lic-meta-line">${identitySubtitleHtml}</div>
+            </div>
+
+            <div class="lic-refs-zone">
+              <div>${icoBriefcase} เลขที่ตำแหน่ง: <b style="color:#fff;">${posTxt}</b></div>
+              <div>${icoIdCard} สมาชิกประเภทสามัญ เลขที่: <b style="color:var(--steam-cyan); font-family:monospace;">${memTxt}</b></div>
+            </div>
+
+            <div class="lic-status-zone">
+              ${primaryLicHtml}
+            </div>
+
+            <button type="button" class="emp-expand-btn" title="${isExpanded ? 'ซ่อนรายละเอียด' : 'ดูใบอนุญาตและ Timeline'}" onclick="toggleLicenseRibbonExpand('${escapeHtml(empId)}', event)">
+              ${arrowIcon}
+            </button>
+          </div>
+
+          <div class="lic-detail-panel" id="licDetailPanel_${escapeHtml(empId)}">
+            ${isExpanded ? buildLicenseExpandedDetailHtml(u, lics) : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleLicenseRibbonExpand(empId, event) {
+    if (event) event.stopPropagation();
+    g_ExpandedLicEmpId = (g_ExpandedLicEmpId === empId) ? null : empId;
+    renderStrictLicenseDirectory();
+  }
+
+  function buildLicenseExpandedDetailHtml(u, lics) {
+    const empId = u.EmpID || u.id;
+    const ret = u.RetirementInfo || {};
+    let retireStripHtml = '';
+    if (ret.hasBirthDate) {
+      retireStripHtml = `
+        <div style="background:rgba(102,192,244,0.08); border:1px dashed #2a475e; border-radius:4px; padding:8px 12px; margin-bottom:10px; font-size:12px; display:flex; flex-wrap:wrap; gap:14px; align-items:center;">
+          <span><b>วันเกิด:</b> ${escapeHtml(ret.birthDateFormatted)}</span>
+          <span><b>อายุปัจจุบัน:</b> <b style="color:var(--steam-cyan);">${escapeHtml(ret.ageText)}</b></span>
+          <span><b>วันเกษียณ:</b> <b style="color:var(--orange);">${escapeHtml(ret.retireDateFormatted)}</b> ${ret.isOctToDecRuleApplied ? '<span style="color:var(--steam-green);">(เลื่อน +1 ปี ตามเกณฑ์ 1 ต.ค.–31 ธ.ค.)</span>' : ''}</span>
+          <span><b>อายุวันเกษียณ:</b> ${escapeHtml(ret.ageAtRetirementText)}</span>
+          <span><b>เวลาคงเหลือ:</b> <b style="color:var(--steam-green);">${escapeHtml(ret.remainingToRetireText)}</b></span>
+        </div>
+      `;
+    }
+
+    let licsHtml = '';
+    if (lics.length === 0) {
+      licsHtml = `<div style="color:var(--orange); font-size:12.5px; padding:4px 0;">บุคลากรท่านนี้ยังไม่มีระเบียนใบอนุญาตในระบบ (สถานะ: ${escapeHtml(u.LicenseDocStatus)})</div>`;
+    } else {
+      licsHtml = lics.map((l, idx) => {
+        let badgeClass = 'exp-days-ok';
+        if (l.status === 'ใกล้หมดอายุ') badgeClass = 'exp-days-warn';
+        else if (l.status === 'หมดอายุ') badgeClass = 'exp-days-expired';
+
+        return `
+          <div class="lic-sub-item">
+            <div>
+              <div style="font-weight:bold; color:#fff;">ฉบับที่ ${idx + 1}: ${escapeHtml(l.type)} <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(รหัสระเบียน: ${escapeHtml(l.recordId)})</span></div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                เลขที่ใบอนุญาต: <b style="color:var(--steam-cyan); font-family:monospace;">${escapeHtml(l.number)}</b> · วันออกเอกสาร: ${escapeHtml(l.issueDate)} · วันหมดอายุ: <b style="color:#fff;">${escapeHtml(l.expiryDate)}</b>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="exp-days-badge ${badgeClass}">${escapeHtml(l.status)} (คงเหลือ ${escapeHtml(l.daysText)} วัน)</span>
+              <button type="button" class="btn-save-sm" style="font-size:11px; padding:3px 10px;" onclick="goToAdminPage(event, 'tab2')">แก้ไขในตั้งค่า</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    const tlEvents = u.TimelineEvents || [];
+    let tlHtml = '';
+    if (tlEvents.length > 0) {
+      tlHtml = `
+        <div style="margin-top:12px; border-top:1px dashed #2a475e; padding-top:10px;">
+          <div style="font-weight:bold; color:var(--steam-green); font-size:12.5px; margin-bottom:8px;">Timeline ประวัติและพัฒนาการวิชาชีพ (เรียงจาก เก่าสุด → ล่าสุด)</div>
+          <div style="border-left:2px solid #2a475e; margin-left:8px; padding-left:14px; display:flex; flex-direction:column; gap:8px;">
+            ${tlEvents.map(ev => `
+              <div style="position:relative; font-size:12px;">
+                <span style="position:absolute; left:-20px; top:4px; width:9px; height:9px; border-radius:50%; background:${ev.badgeColor || 'var(--steam-cyan)'}; display:inline-block;"></span>
+                <div>
+                  <span style="color:var(--steam-cyan); font-weight:bold;">[${escapeHtml(ev.displayDate)}]</span>
+                  <span style="background:rgba(255,255,255,0.06); border:1px solid #2a475e; padding:1px 6px; border-radius:3px; font-size:11px; margin:0 5px;">${escapeHtml(ev.category)}</span>
+                  <b style="color:#fff;">${escapeHtml(ev.title)}</b>
+                </div>
+                <div style="color:var(--text-muted); font-size:11.5px; margin-top:1px;">${escapeHtml(ev.subtitle)} (${escapeHtml(ev.refNo)})</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      ${retireStripHtml}
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #2a475e; padding-bottom:6px; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+        <span style="font-weight:bold; color:var(--steam-cyan); font-size:13px;">ทะเบียนประวัติเอกสารใบอนุญาตทั้งหมดของ ${escapeHtml(u.FullName)} (${lics.length} ฉบับ)</span>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; font-size:11.5px; font-weight:bold;" onclick="openPersonnelPortfolioPrint('${escapeHtml(empId)}', event)">พิมพ์ ก.พ. 7 ย่อ (A4)</button>
+          <button type="button" class="btn-save-sm" style="font-size:11.5px;" onclick="goToAdminPage(event, 'tab2')">+ เพิ่ม/แก้ไขประวัติ</button>
+        </div>
+      </div>
+      ${licsHtml}
+      ${tlHtml}
+    `;
+  }
+
+  function renderSeparateDirectories() {
+    const stdBody = document.getElementById('dirStandingBody');
+    if (stdBody) {
+      stdBody.innerHTML = g_UsersSummary.map(u => {
+        const sStartDate = formatSlashDateBE(u.StartDate || u.RawStartDate);
+        const hist = u.StandingsHistory || [];
+        let colStanding = `<span style="color:var(--steam-cyan); font-weight:bold;">${escapeHtml(shortRole(u.HighestStanding))}</span>`;
+        let colEffDate = escapeHtml(formatSlashDateBE(u.StandingDate));
+        let colOrderNo = escapeHtml(u.StandingOrder || '-');
+        if (hist.length > 1) {
+          colStanding = hist.map(s => `<div class="std-sub-line"><b style="color:var(--steam-cyan);">${escapeHtml(shortRole(s.StandingLevel))}</b></div>`).join('');
+          colEffDate = hist.map(s => `<div class="std-sub-line">${escapeHtml(formatSlashDateBE(s.FormattedDate || s.EffectiveDate))}</div>`).join('');
+          colOrderNo = hist.map(s => `<div class="std-sub-line">${escapeHtml(s.OrderNumber || '-')}</div>`).join('');
+        }
+        return `
+          <tr>
+            <td style="color:var(--steam-cyan); font-weight:bold; font-family:monospace;">${escapeHtml(u.EmpID)}</td>
+            <td style="text-align:left; padding-left:12px; font-weight:bold;">${escapeHtml(u.FullName)}</td>
+            <td>${escapeHtml(sStartDate)}</td>
+            <td>${colStanding}</td>
+            <td>${colEffDate}</td>
+            <td>${colOrderNo}</td>
+            <td><button type="button" class="btn-save-sm" style="font-size:11px; padding:3px 8px; border-color:var(--steam-green); color:var(--steam-green);" onclick="openPersonnelPortfolioPrint('${escapeHtml(u.EmpID)}', event)">พิมพ์ A4</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const sctBody = document.getElementById('dirScoutBody');
+    if (sctBody) {
+      sctBody.innerHTML = g_UsersSummary.map(u => `
+        <tr>
+          <td style="color:var(--steam-cyan); font-weight:bold; font-family:monospace;">${escapeHtml(u.EmpID)}</td>
+          <td style="text-align:left; padding-left:12px; font-weight:bold;">${escapeHtml(u.FullName)}</td>
+          <td><span style="color:var(--orange); font-weight:bold;">${escapeHtml(shortScout(u.HighestScout))}</span></td>
+          <td>${escapeHtml(u.ScoutType || '-')}</td>
+          <td>${escapeHtml(u.ScoutCert || '-')}</td>
+          <td>${escapeHtml(formatSlashDateBE(u.ScoutDate))}</td>
+        </tr>
+      `).join('');
+    }
+  }
+</script>

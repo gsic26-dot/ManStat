@@ -1,0 +1,152 @@
+<style>
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background-color: #f1f5f9;
+    color: #1e293b;
+    margin: 0;
+    overflow-x: hidden;
+  }
+
+  /* ดอกจันสีแดงสำหรับฟิลด์สำคัญ */
+  .req-star {
+    color: #dc2626;
+    font-weight: bold;
+    margin-left: 3px;
+  }
+
+  /* Login Overlay */
+  .login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    padding: 20px;
+  }
+  .login-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 440px;
+  }
+  .edustat-logo-badge {
+    width: 64px;
+    height: 64px;
+    background: #1e3a8a;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-online { background-color: #10b981; box-shadow: 0 0 6px #10b981; }
+  .dot-error { background-color: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+  /* โครงสร้าง EduStat Sidebar Layout */
+  .edustat-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .edustat-sidebar {
+    width: 270px;
+    background-color: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .sidebar-brand {
+    padding: 20px 24px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .sidebar-menu {
+    padding: 16px 12px;
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+  .menu-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    padding: 8px 12px 4px;
+    letter-spacing: 0.05em;
+  }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    color: #cbd5e1;
+    text-decoration: none;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    font-size: 0.92rem;
+    transition: all 0.2s;
+  }
+  .sidebar-link:hover {
+    background-color: #1e293b;
+    color: #ffffff;
+  }
+  .sidebar-link.active {
+    background-color: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+  }
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid #1e293b;
+  }
+  .edustat-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .edustat-topbar {
+    height: 64px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .card {
+    border: none;
+    border-radius: 12px;
+  }
+
+  @media (max-width: 991px) {
+    .edustat-layout {
+      flex-direction: column;
+    }
+    .edustat-sidebar {
+      width: 100%;
+    }
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    body * {
+      visibility: hidden;
+    }
+    .no-print, .modal, .modal-backdrop {
+      display: none !important;
+    }
+    #officialPrintContainer, #officialPrintContainer * {
+      visibility: visible;
+    }
+    #officialPrintContainer {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+</style>

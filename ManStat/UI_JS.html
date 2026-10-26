@@ -1,0 +1,627 @@
+<script>
+  let CURRENT_USER = null;
+  let ALL_USERS_CACHE = [];
+  let SCHOOL_SETTINGS_CACHE = {};
+  let printModalInstance = null;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // จำกัดขนาดไฟล์ 5 MB
+
+  document.addEventListener('DOMContentLoaded', function() {
+    printModalInstance = new bootstrap.Modal(document.getElementById('printModal'));
+    handleTestDbConnection(true);
+  });
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > MAX_FILE_SIZE) {
+        reject(new Error('ขนาดไฟล์ต้องไม่เกิน 5 MB'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  }
+
+  // ทดลองเชื่อมต่อฐานข้อมูลจากหน้า Login
+  function handleTestDbConnection(silent = false) {
+    const dot = document.getElementById('dbStatusDot');
+    const txt = document.getElementById('dbStatusText');
+    txt.innerText = 'กำลังตรวจสอบฐานข้อมูล...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status === 'success') {
+          dot.className = 'status-dot dot-online';
+          txt.innerText = `เชื่อมต่อแล้ว (${res.latencyMs} ms | สมาชิก ${res.totalUsers} คน)`;
+          document.getElementById('loginSchoolTitle').innerText = res.schoolName;
+          if (!silent) alert(res.message);
+        } else {
+          dot.className = 'status-dot dot-error';
+          txt.innerText = 'การเชื่อมต่อขัดข้อง';
+          if (!silent) alert(res.message);
+        }
+      })
+      .withFailureHandler(err => {
+        dot.className = 'status-dot dot-error';
+        txt.innerText = 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้';
+        if (!silent) alert('Error: ' + err.message);
+      })
+      .testDatabaseConnection();
+  }
+
+  // จัดการการ Login
+  function handleLoginSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnLoginSubmit');
+    const u = document.getElementById('loginUsername').value;
+    const p = document.getElementById('loginPassword').value;
+
+    btn.disabled = true;
+    btn.innerText = 'กำลังตรวจสอบสิทธิ์และความปลอดภัย...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> เข้าสู่ระบบอย่างปลอดภัย';
+        if (res.status === 'success' && res.user) {
+          CURRENT_USER = res.user;
+          enterApplication();
+        } else {
+          alert(res.message);
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i> เข้าสู่ระบบอย่างปลอดภัย';
+        alert('เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ' + err.message);
+      })
+      .authenticateUser(u, p);
+  }
+
+  function enterApplication() {
+    document.getElementById('loginOverlay').classList.add('d-none');
+    document.getElementById('appShell').classList.remove('d-none');
+
+    document.getElementById('userInfoDisplay').innerText = 
+      `${CURRENT_USER.Prefix || ''}${CURRENT_USER.FirstName} ${CURRENT_USER.LastName} [${CURRENT_USER.Role}]`;
+
+    const isAdmin = (CURRENT_USER.Role === 'SUPER USER' || CURRENT_USER.Role === 'ADMIN');
+    if (isAdmin) {
+      document.getElementById('adminSidebarSection').classList.remove('d-none');
+      document.getElementById('btnFiscalReset').classList.remove('d-none');
+    } else {
+      document.getElementById('adminSidebarSection').classList.add('d-none');
+      document.getElementById('btnFiscalReset').classList.add('d-none');
+    }
+
+    loadDashboard();
+  }
+
+  function handleLogout() {
+    if (!confirm('ต้องการออกจากระบบใช่หรือไม่?')) return;
+    CURRENT_USER = null;
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('appShell').classList.add('d-none');
+    document.getElementById('loginOverlay').classList.remove('d-none');
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('d-none'));
+    document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-' + tabName).classList.remove('d-none');
+    const navEl = document.getElementById('nav-' + tabName);
+    if (navEl) navEl.classList.add('active');
+  }
+
+  function openAdminModule(subTabId) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('d-none'));
+    document.getElementById('view-admin').classList.remove('d-none');
+    switchAdminSubTab(subTabId);
+  }
+
+  function switchAdminSubTab(subTabId) {
+    document.querySelectorAll('.admin-sub-section').forEach(el => el.classList.add('d-none'));
+    document.getElementById(subTabId).classList.remove('d-none');
+
+    document.querySelectorAll('#view-admin .nav-link').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+
+    if (subTabId === 'tab-add-user') {
+      document.getElementById('pill-add-user').classList.add('active');
+      document.getElementById('nav-admin-add').classList.add('active');
+    } else if (subTabId === 'tab-manage-member') {
+      document.getElementById('pill-manage-member').classList.add('active');
+      document.getElementById('nav-admin-manage').classList.add('active');
+      populateMemberSelectDropdown();
+    } else if (subTabId === 'tab-school-settings') {
+      document.getElementById('pill-school-settings').classList.add('active');
+      document.getElementById('nav-admin-school').classList.add('active');
+      populateSchoolSettingsForm();
+    }
+  }
+
+  function loadDashboard() {
+    google.script.run
+      .withSuccessHandler(renderDashboard)
+      .withFailureHandler(err => alert('โหลดข้อมูลไม่สำเร็จ: ' + err.message))
+      .getDashboardData();
+  }
+
+  function renderDashboard(data) {
+    const users = data.usersSummary || [];
+    const logs = data.logs || [];
+    const settings = data.schoolSettings || {};
+
+    ALL_USERS_CACHE = users;
+    SCHOOL_SETTINGS_CACHE = settings;
+
+    // อัปเดตข้อมูลพื้นฐานโรงเรียนบนหน้าแรกและ Topbar
+    document.getElementById('topSchoolName').innerText = settings.SchoolName || 'ManStat School';
+    document.getElementById('topSchoolSub').innerText = `ปีการศึกษา ${settings.AcademicYear || '-'} | ปีงบประมาณ ${settings.FiscalYear || '-'}`;
+    document.getElementById('bannerSchoolName').innerText = settings.SchoolName || '-';
+    document.getElementById('bannerAffiliation').innerText = settings.Affiliation || '-';
+    document.getElementById('bannerDirectorName').innerText = settings.DirectorName || '-';
+    document.getElementById('bannerAcadYear').innerText = settings.AcademicYear || '-';
+    document.getElementById('bannerFiscalYear').innerText = settings.FiscalYear || '-';
+    document.getElementById('bannerAnnouncement').innerText = settings.Announcement || '-';
+
+    document.getElementById('stat-total-users').innerText = users.length + ' คน';
+    document.getElementById('stat-pending-leaves').innerText = logs.filter(l => l.Status && l.Status.includes('รอ')).length + ' รายการ';
+    document.getElementById('stat-approved-leaves').innerText = logs.filter(l => l.Status === 'อนุมัติเรียบร้อย').length + ' รายการ';
+    document.getElementById('stat-expiring-lic').innerText = users.filter(u => u.LicenseStatus && u.LicenseStatus.includes('หมดอายุ')).length + ' คน';
+
+    const userTbody = document.getElementById('allUsersSummaryBody');
+    if (users.length === 0) {
+      userTbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">ไม่พบข้อมูลบุคลากร</td></tr>';
+    } else {
+      userTbody.innerHTML = users.map(u => {
+        let licBadge = 'bg-success';
+        if (u.LicenseStatus.includes('ใกล้หมดอายุ')) licBadge = 'bg-warning text-dark';
+        if (u.LicenseStatus.includes('หมดอายุแล้ว')) licBadge = 'bg-danger';
+        if (u.LicenseStatus === 'ยังไม่ระบุ') licBadge = 'bg-secondary';
+
+        return `
+          <tr>
+            <td><span class="badge bg-secondary">${escapeHtml(u.EmpID)}</span></td>
+            <td class="fw-bold">${escapeHtml(u.Prefix)}${escapeHtml(u.FirstName)} ${escapeHtml(u.LastName)}</td>
+            <td>${escapeHtml(u.Position)}<br><small class="text-muted">${escapeHtml(u.Department)}</small></td>
+            <td>${escapeHtml(u.StartDate)}</td>
+            <td><span class="badge bg-primary">${escapeHtml(u.HighestStanding)}</span><br><small>รับเมื่อ: ${escapeHtml(u.StandingDate)}</small></td>
+            <td>${escapeHtml(u.HighestEducation)}</td>
+            <td>${escapeHtml(u.HighestScout)}</td>
+            <td><span class="badge ${licBadge}">${escapeHtml(u.LicenseStatus)}</span><br><small>หมด: ${escapeHtml(u.LicenseExpDate)}</small></td>
+            <td><span class="fw-bold text-danger">${escapeHtml(u.Quota.Sick_Used)}</span> / ${escapeHtml(u.Quota.Sick_Max)}</td>
+            <td><span class="fw-bold text-warning">${escapeHtml(u.Quota.Personal_Used)}</span> / ${escapeHtml(u.Quota.Personal_Max)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const logTbody = document.getElementById('leaveLogsBody');
+    if (logs.length === 0) {
+      logTbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">ยังไม่มีรายการยื่นลา</td></tr>';
+      return;
+    }
+
+    const canApprove = CURRENT_USER && (CURRENT_USER.Role === 'ADMIN' || CURRENT_USER.Role === 'SUPER USER');
+
+    logTbody.innerHTML = logs.map(l => {
+      const isRejected = l.Status === 'ไม่อนุมัติ';
+      let amountText = l.LeaveType.includes('3 ชม.') 
+        ? `${escapeHtml(l.TotalHours)} ชม. (${escapeHtml(l.StartTime)}-${escapeHtml(l.EndTime)})` 
+        : `${escapeHtml(l.TotalDays)} วันทำการ`;
+      
+      let fileLink = (l.AttachUrl && l.AttachUrl.startsWith('http')) 
+        ? `<br><a href="${escapeHtml(l.AttachUrl)}" target="_blank" class="badge bg-secondary text-decoration-none">เปิดดูไฟล์แนบ</a>` 
+        : '';
+
+      let btnStep1 = `<span class="text-muted small">${escapeHtml(l.Step1_HR)}</span>`;
+      if (!isRejected && l.Step1_HR === 'รอดำเนินการ' && canApprove) {
+        btnStep1 = `<button class="btn btn-sm btn-outline-primary" onclick="approveLeave('${escapeHtml(l.LeaveID)}', 'HR', 'APPROVE')">ตรวจผ่าน</button>`;
+      }
+
+      let btnStep2 = `<span class="text-muted small">${escapeHtml(l.Step2_Academic)}</span>`;
+      if (!isRejected && l.Step1_HR !== 'รอดำเนินการ' && l.Step2_Academic === 'รอดำเนินการ' && canApprove) {
+        btnStep2 = `<button class="btn btn-sm btn-outline-info text-dark" onclick="approveLeave('${escapeHtml(l.LeaveID)}', 'ACADEMIC', 'APPROVE')">ตรวจผ่าน</button>`;
+      }
+
+      let btnStep3 = `<span class="text-success fw-bold small">${escapeHtml(l.Step3_Director)}</span>`;
+      if (!isRejected && l.Step2_Academic !== 'รอดำเนินการ' && l.Step3_Director === 'รอดำเนินการ' && canApprove) {
+        btnStep3 = `
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-success" onclick="approveLeave('${escapeHtml(l.LeaveID)}', 'DIRECTOR', 'APPROVE')">อนุมัติ</button>
+            <button class="btn btn-danger" onclick="approveLeave('${escapeHtml(l.LeaveID)}', 'DIRECTOR', 'REJECT')">ไม่อนุมัติ</button>
+          </div>`;
+      }
+
+      let statusBadge = 'bg-info text-dark';
+      if (l.Status === 'อนุมัติเรียบร้อย') statusBadge = 'bg-success';
+      if (isRejected) statusBadge = 'bg-danger';
+
+      return `
+        <tr>
+          <td><small>${escapeHtml(l.LeaveID)}</small></td>
+          <td class="fw-bold">${escapeHtml(l.FullName)}</td>
+          <td>${escapeHtml(l.LeaveType)}</td>
+          <td>${escapeHtml(l.StartDate)} ถึง ${escapeHtml(l.EndDate)}</td>
+          <td>${amountText}</td>
+          <td><small>${escapeHtml(l.SubstituteInfo)}</small>${fileLink}</td>
+          <td><span class="badge ${statusBadge}">${escapeHtml(l.Status)}</span></td>
+          <td>${btnStep1}</td>
+          <td>${btnStep2}</td>
+          <td>${btnStep3}</td>
+          <td>
+            <button class="btn btn-sm btn-dark" onclick="openOfficialPrintModal('${escapeHtml(l.LeaveID)}')">ดูใบลา / พิมพ์</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    populateMemberSelectDropdown();
+  }
+
+  function filterUsersTable() {
+    const q = document.getElementById('searchUserInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#allUsersSummaryBody tr');
+    rows.forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  function toggleLeaveTimeFields() {
+    const type = document.getElementById('leaveType').value;
+    const timeGroup = document.getElementById('timeGroup');
+    const endDateGroup = document.getElementById('endDateGroup');
+    if (type === 'ขออนุญาต (ไม่เกิน 3 ชม.)') {
+      timeGroup.classList.remove('d-none');
+      endDateGroup.classList.add('d-none');
+    } else {
+      timeGroup.classList.add('d-none');
+      endDateGroup.classList.remove('d-none');
+    }
+  }
+
+  async function handleLeaveSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitLeave');
+    btn.disabled = true;
+    btn.innerText = 'กำลังตรวจสอบวันทำการและบันทึกข้อมูล...';
+
+    try {
+      const fileInput = document.getElementById('leaveAttachFile');
+      let fileData = null, fileName = null;
+      if (fileInput.files.length > 0) {
+        fileName = fileInput.files[0].name;
+        fileData = await fileToBase64(fileInput.files[0]);
+      }
+
+      const form = {
+        empId: CURRENT_USER.EmpID,
+        fullName: `${CURRENT_USER.Prefix}${CURRENT_USER.FirstName} ${CURRENT_USER.LastName}`,
+        leaveType: document.getElementById('leaveType').value,
+        startDate: document.getElementById('leaveStartDate').value,
+        endDate: document.getElementById('leaveEndDate').value || document.getElementById('leaveStartDate').value,
+        startTime: document.getElementById('leaveStartTime').value,
+        endTime: document.getElementById('leaveEndTime').value,
+        reason: document.getElementById('leaveReason').value,
+        substituteInfo: document.getElementById('leaveSubInfo').value,
+        fileData: fileData,
+        fileName: fileName
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send-check-fill me-1"></i> ส่งคำขออนุมัติตามสายงาน';
+          alert(res.message);
+          if (res.status === 'success') {
+            document.getElementById('leaveForm').reset();
+            toggleLeaveTimeFields();
+            loadDashboard();
+            switchTab('dashboard');
+          }
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send-check-fill me-1"></i> ส่งคำขออนุมัติตามสายงาน';
+          alert('เกิดข้อผิดพลาด: ' + err.message);
+        })
+        .submitLeaveRequest(form);
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send-check-fill me-1"></i> ส่งคำขออนุมัติตามสายงาน';
+      alert(err.message);
+    }
+  }
+
+  function approveLeave(leaveId, step, action) {
+    let remark = '';
+    if (action === 'REJECT') {
+      remark = prompt('โปรดระบุเหตุผลที่ไม่อนุมัติ:');
+      if (remark === null) return;
+    } else {
+      if (!confirm('ยืนยันการดำเนินการตามสายอนุมัติ?')) return;
+    }
+    google.script.run
+      .withSuccessHandler(res => {
+        alert(res.message);
+        loadDashboard();
+      })
+      .withFailureHandler(err => alert('เกิดข้อผิดพลาด: ' + err.message))
+      .processApproval(leaveId, step, action, remark);
+  }
+
+  async function handleSaveHistory(e, type) {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'กำลังบันทึก...';
+
+    try {
+      let payload = { empId: CURRENT_USER.EmpID };
+
+      if (type === 'STANDING') {
+        payload.standingLevel = document.getElementById('std_level').value;
+        payload.effectiveDate = document.getElementById('std_date').value;
+        payload.orderNumber = document.getElementById('std_order').value;
+        const f = document.getElementById('std_file');
+        if (f.files.length > 0) {
+          payload.fileName = f.files[0].name;
+          payload.fileData = await fileToBase64(f.files[0]);
+        }
+      } else if (type === 'EDUCATION') {
+        payload.degreeLevel = document.getElementById('edu_level').value;
+        payload.degreeShort = document.getElementById('edu_short').value;
+        payload.major = document.getElementById('edu_major').value;
+        payload.institute = document.getElementById('edu_inst').value;
+        payload.gradYear = document.getElementById('edu_year').value;
+      } else if (type === 'SCOUT') {
+        payload.scoutQual = document.getElementById('sct_qual').value;
+        payload.scoutType = document.getElementById('sct_type').value;
+        payload.scoutPos = 'ผู้กำกับลูกเสือ';
+        payload.certNum = document.getElementById('sct_cert').value;
+        payload.approvedYear = '-';
+      } else if (type === 'LICENSE') {
+        payload.licenseType = document.getElementById('lic_type').value;
+        payload.licenseNum = document.getElementById('lic_num').value;
+        payload.issueDate = document.getElementById('lic_issue').value;
+        payload.expiryDate = document.getElementById('lic_exp').value;
+      }
+
+      google.script.run
+        .withSuccessHandler(res => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = originalText;
+          alert(res.message);
+          e.target.reset();
+          loadDashboard();
+        })
+        .withFailureHandler(err => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = originalText;
+          alert('บันทึกไม่สำเร็จ: ' + err.message);
+        })
+        .saveHistoryRecord(type, payload);
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
+      alert(err.message);
+    }
+  }
+
+  // =========================================================
+  // ฟังก์ชันฝั่ง Admin Modules (2.1, 2.2, 2.3)
+  // =========================================================
+
+  function handleQuickAddUser(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnQuickAdd');
+    btn.disabled = true;
+    btn.innerText = 'กำลังสร้างบัญชี...';
+
+    const payload = {
+      empId: document.getElementById('qa_empId').value,
+      idCard: document.getElementById('qa_idCard').value,
+      initialPassword: document.getElementById('qa_password').value,
+      prefix: document.getElementById('qa_prefix').value,
+      firstName: document.getElementById('qa_firstName').value,
+      lastName: document.getElementById('qa_lastName').value,
+      position: document.getElementById('qa_position').value,
+      department: document.getElementById('qa_department').value,
+      startDate: document.getElementById('qa_startDate').value,
+      role: document.getElementById('qa_role').value
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-circle-fill me-1"></i> บันทึกสร้างบัญชีบุคลากรใหม่';
+        alert(res.message);
+        if (res.status === 'success') {
+          document.getElementById('quickAddUserForm').reset();
+          loadDashboard();
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-circle-fill me-1"></i> บันทึกสร้างบัญชีบุคลากรใหม่';
+        alert('Error: ' + err.message);
+      })
+      .adminQuickCreateUser(payload);
+  }
+
+  function populateMemberSelectDropdown() {
+    const sel = document.getElementById('adminSelectMember');
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">-- เลือกบุคลากรที่ต้องการจัดการข้อมูล --</option>';
+    ALL_USERS_CACHE.forEach(u => {
+      sel.innerHTML += `<option value="${escapeHtml(u.EmpID)}">[${escapeHtml(u.EmpID)}] ${escapeHtml(u.Prefix)}${escapeHtml(u.FirstName)} ${escapeHtml(u.LastName)} (${escapeHtml(u.Position)})</option>`;
+    });
+    if (currentVal) sel.value = currentVal;
+  }
+
+  function loadSelectedMemberToForm() {
+    const empId = document.getElementById('adminSelectMember').value;
+    if (!empId) return;
+    const u = ALL_USERS_CACHE.find(x => x.EmpID === empId);
+    if (!u) return;
+
+    document.getElementById('ed_empId').value = u.EmpID || '';
+    document.getElementById('ed_newPassword').value = '';
+    document.getElementById('ed_role').value = u.Role || 'USER';
+    document.getElementById('ed_status').value = u.AccountStatus || 'ปกติ';
+    document.getElementById('ed_prefix').value = u.Prefix || 'นาย';
+    document.getElementById('ed_firstName').value = u.FirstName || '';
+    document.getElementById('ed_lastName').value = u.LastName || '';
+    document.getElementById('ed_idCard').value = u.IDCard || '';
+    document.getElementById('ed_birthDate').value = u.BirthDate || '';
+    document.getElementById('ed_startDate').value = u.StartDate || '';
+    document.getElementById('ed_position').value = u.Position || 'ครู';
+    document.getElementById('ed_empType').value = u.EmpType || 'ข้าราชการครูและบุคลากรทางการศึกษา';
+    document.getElementById('ed_department').value = u.Department || 'วิชาการ';
+    document.getElementById('ed_phone').value = u.Phone || '';
+    document.getElementById('ed_email').value = u.Email || '';
+    document.getElementById('ed_emergName').value = u.EmergencyContact || '';
+    document.getElementById('ed_emergPhone').value = u.EmergencyPhone || '';
+
+    if (u.Quota) {
+      document.getElementById('ed_sickMax').value = u.Quota.Sick_Max || 60;
+      document.getElementById('ed_personalMax').value = u.Quota.Personal_Max || 45;
+      document.getElementById('ed_vacationMax').value = u.Quota.Vacation_Max || 10;
+    }
+  }
+
+  function handleUpdateFullMember(e) {
+    e.preventDefault();
+    const empId = document.getElementById('ed_empId').value;
+    if (!empId) {
+      alert('กรุณาเลือกบุคลากรจากดรอปดาวน์ด้านบนก่อน');
+      return;
+    }
+
+    const btn = document.getElementById('btnSaveFullMember');
+    btn.disabled = true;
+    btn.innerText = 'กำลังบันทึกข้อมูล...';
+
+    const payload = {
+      empId: empId,
+      newPassword: document.getElementById('ed_newPassword').value,
+      role: document.getElementById('ed_role').value,
+      accountStatus: document.getElementById('ed_status').value,
+      prefix: document.getElementById('ed_prefix').value,
+      firstName: document.getElementById('ed_firstName').value,
+      lastName: document.getElementById('ed_lastName').value,
+      idCard: document.getElementById('ed_idCard').value,
+      birthDate: document.getElementById('ed_birthDate').value,
+      startDate: document.getElementById('ed_startDate').value,
+      position: document.getElementById('ed_position').value,
+      empType: document.getElementById('ed_empType').value,
+      department: document.getElementById('ed_department').value,
+      phone: document.getElementById('ed_phone').value,
+      email: document.getElementById('ed_email').value,
+      emergencyContact: document.getElementById('ed_emergName').value,
+      emergencyPhone: document.getElementById('ed_emergPhone').value,
+      sickMax: document.getElementById('ed_sickMax').value,
+      personalMax: document.getElementById('ed_personalMax').value,
+      vacationMax: document.getElementById('ed_vacationMax').value
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i> บันทึกอัปเดตข้อมูลสมาชิก';
+        alert(res.message);
+        loadDashboard();
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i> บันทึกอัปเดตข้อมูลสมาชิก';
+        alert('Error: ' + err.message);
+      })
+      .adminUpdateFullMember(payload);
+  }
+
+  function populateSchoolSettingsForm() {
+    document.getElementById('sch_name').value = SCHOOL_SETTINGS_CACHE.SchoolName || '';
+    document.getElementById('sch_affiliation').value = SCHOOL_SETTINGS_CACHE.Affiliation || '';
+    document.getElementById('sch_director').value = SCHOOL_SETTINGS_CACHE.DirectorName || '';
+    document.getElementById('sch_acadYear').value = SCHOOL_SETTINGS_CACHE.AcademicYear || '';
+    document.getElementById('sch_fiscalYear').value = SCHOOL_SETTINGS_CACHE.FiscalYear || '';
+    document.getElementById('sch_address').value = SCHOOL_SETTINGS_CACHE.SchoolAddress || '';
+    document.getElementById('sch_announce').value = SCHOOL_SETTINGS_CACHE.Announcement || '';
+  }
+
+  function handleSaveSchoolSettings(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveSchool');
+    btn.disabled = true;
+    btn.innerText = 'กำลังบันทึก...';
+
+    const payload = {
+      SchoolName: document.getElementById('sch_name').value,
+      Affiliation: document.getElementById('sch_affiliation').value,
+      DirectorName: document.getElementById('sch_director').value,
+      AcademicYear: document.getElementById('sch_acadYear').value,
+      FiscalYear: document.getElementById('sch_fiscalYear').value,
+      SchoolAddress: document.getElementById('sch_address').value,
+      Announcement: document.getElementById('sch_announce').value
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> บันทึกข้อมูลพื้นฐานโรงเรียน';
+        alert(res.message);
+        loadDashboard();
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> บันทึกข้อมูลพื้นฐานโรงเรียน';
+        alert('Error: ' + err.message);
+      })
+      .adminSaveSchoolSettings(payload);
+  }
+
+  function openOfficialPrintModal(leaveId) {
+    document.getElementById('printModalBody').innerHTML = '<div class="text-center py-4">กำลังจัดหน้าเอกสารราชการ...</div>';
+    printModalInstance.show();
+    google.script.run
+      .withSuccessHandler(html => {
+        document.getElementById('printModalBody').innerHTML = html;
+        document.getElementById('officialPrintContainer').innerHTML = html;
+      })
+      .withFailureHandler(err => {
+        document.getElementById('printModalBody').innerHTML = '<div class="text-danger">สร้างเอกสารไม่สำเร็จ: ' + escapeHtml(err.message) + '</div>';
+      })
+      .getOfficialLeaveFormHtml(leaveId);
+  }
+
+  function triggerOfficialPrint() {
+    window.print();
+  }
+
+  function handleFiscalReset() {
+    const newYear = prompt('กรุณาระบุปีงบประมาณใหม่ (พ.ศ.) เพื่อรีเซ็ตวันลาที่ใช้ไปเป็น 0:', '2570');
+    if (!newYear) return;
+    google.script.run
+      .withSuccessHandler(res => {
+        alert(res.message);
+        loadDashboard();
+      })
+      .withFailureHandler(err => alert('เกิดข้อผิดพลาด: ' + err.message))
+      .resetFiscalYearQuota(newYear);
+  }
+</script>

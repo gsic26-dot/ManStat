@@ -1,0 +1,196 @@
+<!-- =========================================================================
+     VIEW: ยื่นใบลา / ขออนุญาตออกนอกสถานศึกษา (ตัดลาพักผ่อนออกสำหรับครู)
+========================================================================== -->
+<div id="view_leave" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+    <h3 style="color:var(--steam-green); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      แบบฟอร์มยื่นใบลาออนไลน์ / ขออนุญาตออกนอกสถานศึกษา (ไม่เกิน 3 ชั่วโมง)
+    </h3>
+    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">สำหรับข้าราชการครูและบุคลากรทางการศึกษา (คำนวณเฉพาะวันทำการ ตัดเสาร์-อาทิตย์และวันหยุดราชการอัตโนมัติ)</div>
+  </div>
+
+  <div style="background: rgba(0,0,0,0.24); padding: 20px; border-radius: 6px; border: 1px solid #2a475e; max-width: 780px;">
+    <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+      <div class="input-group">
+        <label>เลือกประเภทการลา / ขออนุญาต <span class="req-star">*</span></label>
+        <select id="leaveType" class="steam-input" onchange="toggleLeaveTimeFields()" required>
+          <option value="ลาป่วย">ลาป่วย (นับจำนวนครั้งและวันทำการ)</option>
+          <option value="ลากิจ">ลากิจส่วนตัว (นับจำนวนครั้งและวันทำการ)</option>
+          <option value="ขออนุญาต (ไม่เกิน 3 ชม.)">ขออนุญาตออกนอกบริเวณสถานศึกษา (ไม่เกิน 3 ชั่วโมง)</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <div class="input-group">
+          <label>ตั้งแต่วันที่ <span class="req-star">*</span></label>
+          <input type="date" id="leaveStartDate" class="steam-input" required>
+        </div>
+        <div class="input-group" id="endDateGroup">
+          <label>ถึงวันที่ <span class="req-star">*</span></label>
+          <input type="date" id="leaveEndDate" class="steam-input">
+        </div>
+      </div>
+
+      <div id="timeGroup" style="display:none; background:rgba(210,153,34,0.12); border:1px dashed var(--orange); padding:12px; border-radius:6px; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--orange); font-weight:bold; margin-bottom:8px;">* การขออนุญาตออกนอกสถานศึกษา ระบบจำกัดเวลาไม่เกิน 3 ชั่วโมง</div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>เวลาเริ่มต้น <span class="req-star">*</span></label>
+            <input type="time" id="leaveStartTime" class="steam-input" style="margin-bottom:0;">
+          </div>
+          <div class="input-group">
+            <label>เวลาสิ้นสุด <span class="req-star">*</span></label>
+            <input type="time" id="leaveEndTime" class="steam-input" style="margin-bottom:0;">
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>สาเหตุการลา / ขออนุญาต <span class="req-star">*</span></label>
+        <input type="text" id="leaveReason" class="steam-input" placeholder="ระบุเหตุผลการลา..." required>
+      </div>
+
+      <div class="input-group">
+        <label style="color:var(--steam-cyan);">การมอบหมายงานสอน / ครูสอนแทนระหว่างลา (สำหรับฝ่ายวิชาการตรวจสอบ) <span class="req-star">*</span></label>
+        <input type="text" id="leaveSubInfo" class="steam-input" placeholder="เช่น มอบหมายใบงาน ม.1/1 หรือ ครูสมชายสอนแทน / ไม่มีคาบสอน" required>
+      </div>
+
+      <div class="input-group">
+        <label>แนบไฟล์ใบรับรองแพทย์ หรือเอกสารอ้างอิง (ถ้ามี - ไม่เกิน 5 MB)</label>
+        <input type="file" id="leaveAttachFile" class="steam-input" accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+
+      <div style="text-align:right; margin-top:10px;">
+        <button type="submit" id="btnSubmitLeave" class="btn-steam" style="width:auto; padding:10px 28px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          ส่งคำขออนุมัติตามสายงาน
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     VIEW: ข้อมูลวิทยฐานะและวุฒิการศึกษา (ดึงจากทะเบียนประวัติบุคลากร)
+========================================================================== -->
+<div id="view_dir_standing" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        ทำเนียบข้อมูลวิทยฐานะและวุฒิการศึกษาสูงสุด
+      </h3>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ดึงข้อมูลอัตโนมัติจากทะเบียนประวัติบุคลากร (แสดงระดับวิทยฐานะสูงสุดแยกจากวันที่บรรจุ)</div>
+    </div>
+    <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange);" onclick="openSystemSettings('sys_registry')">+ เพิ่ม/แก้ไขในทะเบียนประวัติ</button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:8%;">รหัส</th>
+          <th style="width:20%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+          <th style="width:12%;">วันที่บรรจุ</th>
+          <th style="width:18%;">วิทยฐานะสูงสุด</th>
+          <th style="width:12%;">วันที่รับวิทยฐานะ</th>
+          <th style="width:16%;">วุฒิการศึกษาสูงสุด</th>
+          <th style="width:14%;">สถาบัน / ปีที่จบ</th>
+        </tr>
+      </thead>
+      <tbody id="dirStandingBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- =========================================================================
+     VIEW: ข้อมูลวุฒิทางลูกเสือ (ดึงจากทะเบียนประวัติบุคลากร)
+========================================================================== -->
+<div id="view_dir_scout" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--orange); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ทำเนียบข้อมูลวุฒิทางลูกเสือของบุคลากร
+      </h3>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ดึงข้อมูลจากทะเบียนประวัติบุคลากร (B.T.C. / A.T.C. / W.B. 2 ท่อน / A.L.T. 3 ท่อน / L.T. 4 ท่อน)</div>
+    </div>
+    <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange);" onclick="openSystemSettings('sys_registry')">+ เพิ่ม/แก้ไขวุฒิลูกเสือ</button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:9%;">รหัส</th>
+          <th style="width:24%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+          <th style="width:18%;">ตำแหน่ง / กลุ่มสาระ</th>
+          <th style="width:20%;">วุฒิทางลูกเสือสูงสุด</th>
+          <th style="width:15%;">ประเภทกองลูกเสือ</th>
+          <th style="width:14%;">เลขที่วุฒิบัตร / ปี พ.ศ.</th>
+        </tr>
+      </thead>
+      <tbody id="dirScoutBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- =========================================================================
+     VIEW: ข้อมูลใบอนุญาตประกอบวิชาชีพ (ดึงจากทะเบียนประวัติบุคลากร)
+========================================================================== -->
+<div id="view_dir_license" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-green); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+        ทำเนียบข้อมูลใบอนุญาตประกอบวิชาชีพทางการศึกษา
+      </h3>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ระบบตรวจสอบวันหมดอายุอัตโนมัติ (แจ้งเตือนสีส้มเมื่อเหลือน้อยกว่า 90 วัน และสีแดงเมื่อหมดอายุ)</div>
+    </div>
+    <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange);" onclick="openSystemSettings('sys_registry')">+ เพิ่ม/ต่ออายุใบอนุญาต</button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:8%;">รหัส</th>
+          <th style="width:22%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+          <th style="width:20%;">ประเภทใบอนุญาต</th>
+          <th style="width:16%;">เลขที่ใบอนุญาต</th>
+          <th style="width:11%;">วันออกใบอนุญาต</th>
+          <th style="width:11%;">วันหมดอายุ</th>
+          <th style="width:12%;">สถานะ</th>
+        </tr>
+      </thead>
+      <tbody id="dirLicenseBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- =========================================================================
+     VIEW: กราฟวิเคราะห์สถิติการลา (ตัดลาพักผ่อนออก)
+========================================================================== -->
+<div id="view_analytics" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #2a475e; padding-bottom:12px; margin-bottom:15px;">
+    <div>
+      <div style="font-size:18px; color:#fff; font-weight:bold; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        EXECUTIVE LEAVE ANALYTICS
+      </div>
+      <div style="color:var(--text-muted); font-size:13px;">วิเคราะห์สัดส่วนการลาป่วย ลากิจ และการขออนุญาตออกนอกสถานศึกษา</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:15px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-cyan); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px;">สัดส่วนจำนวนครั้งการลาแยกตามประเภท</div>
+      <canvas id="leavePieChart" height="180"></canvas>
+    </div>
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:15px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-green); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px;">สถิติวันลาป่วย/ลากิจสะสมรายบุคคล (สูงสุด 10 อันดับแรก)</div>
+      <canvas id="leaveBarChart" height="180"></canvas>
+    </div>
+  </div>
+</div>

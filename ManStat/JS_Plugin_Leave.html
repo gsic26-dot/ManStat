@@ -1,0 +1,1577 @@
+<script>
+  // =========================================================================
+  // MANSTAT PLUGIN: LEAVE SYSTEM, UNIFIED ICONS & AUTO-RECOVERY (JS_Plugin_Leave.html)
+  // =========================================================================
+  var _vacationClickCount = 0;
+  var g_ExpandedRibbonEmpId = null;
+  var g_ShowAllLogsEmpIds = {};
+  var _autoRecoveryAttempted = false;
+
+  // มาตรฐานไอคอน SVG เดียวกันทั้งระบบ (Unified Stroke SVG Icons)
+  var UI_SVG = {
+    check: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    checkDark: '<svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    clock: '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    chevDown: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>',
+    chevUp: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>',
+    user: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    sick: '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+    personal: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+    permit: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    trash: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    print: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+    lock: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    xCircle: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+  };
+
+  var LEAVE_REGULATIONS_DETAIL = {
+    'ลาป่วย': {
+      title: 'ระเบียบการลาป่วย',
+      quota: 'ลาได้ไม่เกิน 60 วันทำการ/ปีงบประมาณ',
+      rule: 'ให้ส่งใบลาในวันที่ลา หรือภายใน <b>3 วันทำการ</b> นับแต่วันที่มาปฏิบัติราชการตามปกติ (กรณีลาป่วยตั้งแต่ 30 วันขึ้นไป ต้องมีใบรับรองแพทย์แนบประกอบ)',
+      color: 'var(--steam-cyan)'
+    },
+    'ลากิจ': {
+      title: 'ระเบียบการลากิจส่วนตัว',
+      quota: 'ลาได้ไม่เกิน 45 วันทำการ/ปีงบประมาณ (ปีแรกที่บรรจุไม่เกิน 15 วันทำการ)',
+      rule: 'ต้องยื่นใบลาล่วงหน้าอย่างน้อย <b>3 วันทำการ</b> และเมื่อได้รับอนุญาตจากผู้บังคับบัญชาแล้วจึงจะหยุดราชการได้ เว้นแต่มีเหตุจำเป็นเร่งด่วน',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาคลอดบุตร': {
+      title: 'ระเบียบการลาคลอดบุตร',
+      quota: 'ลาได้ไม่เกิน 90 วัน/ครั้ง (นับรวมวันหยุดราชการ)',
+      rule: 'มีสิทธิลาคลอดบุตรโดยได้รับเงินเดือนครั้งหนึ่งได้ <b>90 วัน</b> โดยไม่ต้องมีใบรับรองแพทย์ และสามารถลาต่อด้วยลากิจส่วนตัวเพื่อเลี้ยงดูบุตรได้อีกไม่เกิน 150 วันทำการ (โดยไม่รับเงินเดือน)',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาไปช่วยเหลือภริยาที่คลอดบุตร': {
+      title: 'ระเบียบการลาไปช่วยเหลือภริยาที่คลอดบุตร',
+      quota: 'ลาติดต่อกันได้ไม่เกิน 15 วันทำการ',
+      rule: 'ต้องยื่นใบลาภายใน <b>90 วัน</b> นับแต่วันที่ภริยาโดยชอบด้วยกฎหมายคลอดบุตร และมีสิทธิลาติดต่อกันได้ไม่เกิน 15 วันทำการ',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์': {
+      title: 'ระเบียบการลาอุปสมบท หรือลาไปประกอบพิธีฮัจย์',
+      quota: 'ลาได้ไม่เกิน 120 วัน (ต้องรับราชการมาแล้วไม่น้อยกว่า 12 เดือน)',
+      rule: 'ต้องยื่นใบลาล่วงหน้าก่อนวันอุปสมบทหรือเดินทางไปประกอบพิธีฮัจย์ไม่น้อยกว่า <b>60 วัน</b>',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล': {
+      title: 'ระเบียบการลาเข้ารับการตรวจเลือก หรือเข้ารับการเตรียมพล',
+      quota: 'ลาได้ตามระยะเวลาที่ระบุในหมายเรียก',
+      rule: 'ให้รายงานลาต่อผู้บังคับบัญชาก่อนวันเข้ารับการตรวจเลือกไม่น้อยกว่า <b>48 ชั่วโมง</b> และให้มารายงานตัวกลับเข้าปฏิบัติราชการภายใน 7 วัน',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน': {
+      title: 'ระเบียบการลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน',
+      quota: 'ลาได้ตามหลักสูตร (ไม่เกิน 4 ปี)',
+      rule: 'ต้องได้รับอนุมัติจากผู้มีอำนาจตามระเบียบก่อนเดินทางไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาไปปฏิบัติงานในองค์การระหว่างประเทศ': {
+      title: 'ระเบียบการลาไปปฏิบัติงานในองค์การระหว่างประเทศ',
+      quota: 'ลาได้ไม่เกิน 1 - 4 ปี ตามหลักเกณฑ์',
+      rule: 'ต้องได้รับอนุมัติจากรัฐมนตรีเจ้าสังกัดตามหลักเกณฑ์ที่กำหนด และเมื่อเสร็จสิ้นต้องรายงานตัวกลับเข้าปฏิบัติราชการภายใน 15 วัน',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาติดตามคู่สมรส': {
+      title: 'ระเบียบการลาติดตามคู่สมรส',
+      quota: 'ลาได้ไม่เกิน 2 ปี (ต่อได้อีก 2 ปี รวมไม่เกิน 4 ปี)',
+      rule: 'ใช้สำหรับกรณีคู่สมรสเป็นข้าราชการซึ่งไปปฏิบัติหน้าที่ในต่างประเทศหรือต่างท้องที่ติดต่อกัน โดยเป็นการลาแบบไม่รับเงินเดือนในระหว่างลา',
+      color: 'var(--steam-cyan)'
+    },
+    'ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ': {
+      title: 'ระเบียบการลาไปฟื้นฟูสมรรถภาพด้านอาชีพ',
+      quota: 'ลาได้ตามหลักสูตร (ครั้งหนึ่งไม่เกิน 12 เดือน)',
+      rule: 'สำหรับข้าราชการที่ได้รับอันตรายหรือการป่วยเจ็บเพราะเหตุปฏิบัติราชการในหน้าที่ จนตกเป็นผู้ทุพพลภาพหรือพิการ',
+      color: 'var(--steam-cyan)'
+    },
+    'ขออนุญาต (ไม่เกิน 3 ชม.)': {
+      title: 'ระเบียบการขออนุญาตออกนอกบริเวณสถานศึกษาในเวลาราชการ',
+      quota: 'ครั้งละไม่เกิน 3 ชั่วโมง',
+      rule: 'ใช้สำหรับขออนุญาตออกนอกบริเวณโรงเรียนเพื่อไปทำธุระจำเป็นในเวลาราชการ ต้องระบุเวลาไป-กลับ สถานที่ไป และมอบหมายภาระงานสอน (ถ้ามี) ให้เรียบร้อย',
+      color: 'var(--steam-green)'
+    }
+  };
+
+  var LEAVE_TYPE_SVG_OPTIONS = [
+    {
+      group: "ประเภทการลาของข้าราชการครูและบุคลากรทางการศึกษา",
+      items: [
+        { value: "ลาป่วย", label: "ลาป่วย", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
+        { value: "ลากิจ", label: "ลากิจส่วนตัว", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>' },
+        { value: "ลาคลอดบุตร", label: "ลาคลอดบุตร", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' },
+        { value: "ลาไปช่วยเหลือภริยาที่คลอดบุตร", label: "ลาไปช่วยเหลือภริยาที่คลอดบุตร", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+        { value: "ลาพักผ่อน", label: "ลาพักผ่อน", locked: true, color: "var(--orange)", svg: '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' },
+        { value: "ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์", label: "ลาอุปสมบท หรือลาไปประกอบพิธีฮัจย์", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
+        { value: "ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล", label: "ลาเข้ารับการตรวจเลือก หรือเข้ารับการเตรียมพล", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
+        { value: "ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน", label: "ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>' },
+        { value: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ", label: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
+        { value: "ลาติดตามคู่สมรส", label: "ลาติดตามคู่สมรส", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>' },
+        { value: "ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ", label: "ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' }
+      ]
+    },
+    {
+      divider: true,
+      group: "การขออนุญาตออกนอกบริเวณสถานศึกษา",
+      items: [
+        { value: "ขออนุญาต (ไม่เกิน 3 ชม.)", label: "ขออนุญาตออกนอกบริเวณโรงเรียน (ไม่เกิน 3 ชั่วโมง)", color: "var(--steam-green)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
+      ]
+    }
+  ];
+
+  function _getLeaveTypeSvgByVal(val) {
+    let foundSvg = '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+    LEAVE_TYPE_SVG_OPTIONS.forEach(g => {
+      g.items.forEach(it => {
+        if (it.value === val) foundSvg = it.svg;
+      });
+    });
+    return foundSvg;
+  }
+
+  function initCustomLeaveTypeSvgDropdown() {
+    if (!document.getElementById('customSvgDropdownStyles')) {
+      const st = document.createElement('style');
+      st.id = 'customSvgDropdownStyles';
+      st.innerHTML = `
+        .c-svg-dd-wrap { position: relative; width: 100%; margin-bottom: 12px; user-select: none; }
+        .c-svg-dd-btn { width: 100%; background: #101822; border: 1px solid #2a475e; color: #fff; padding: 9px 12px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-family: 'Sarabun', sans-serif; font-size: 13.5px; box-sizing: border-box; transition: 0.2s; }
+        .c-svg-dd-btn:hover, .c-svg-dd-btn.open { border-color: var(--steam-cyan); box-shadow: 0 0 10px rgba(102,192,244,0.28); }
+        .c-svg-dd-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #171a21; border: 1px solid var(--steam-cyan); border-radius: 6px; max-height: 320px; overflow-y: auto; z-index: 2200; box-shadow: 0 12px 30px rgba(0,0,0,0.92); padding: 6px 0; }
+        .c-svg-dd-menu.show { display: block; }
+        .c-svg-dd-group { padding: 6px 12px 4px 12px; font-size: 11px; font-weight: bold; color: var(--steam-cyan); text-transform: uppercase; letter-spacing: 0.3px; background: rgba(102,192,244,0.06); }
+        .c-svg-dd-divider { height: 1px; background: #2a475e; margin: 6px 10px; border: none; }
+        .c-svg-dd-item { padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #e6edf3; cursor: pointer; transition: 0.15s; }
+        .c-svg-dd-item:hover { background: rgba(102,192,244,0.16); color: #fff; }
+        .c-svg-dd-item.active { background: rgba(102,192,244,0.22); color: var(--steam-cyan); font-weight: bold; border-left: 3px solid var(--steam-cyan); }
+        .c-svg-dd-item.locked-opt { color: var(--orange); opacity: 0.85; }
+        .c-svg-dd-item.locked-opt:hover { background: rgba(210,153,34,0.15); }
+      `;
+      document.head.appendChild(st);
+    }
+
+    const nativeSel = document.getElementById('leaveType');
+    if (nativeSel && !document.getElementById('customLeaveTypeDropdownWrap')) {
+      nativeSel.style.display = 'none';
+      const wrap = document.createElement('div');
+      wrap.id = 'customLeaveTypeDropdownWrap';
+      wrap.className = 'c-svg-dd-wrap';
+
+      let menuHtml = '';
+      LEAVE_TYPE_SVG_OPTIONS.forEach(grp => {
+        if (grp.divider) menuHtml += `<hr class="c-svg-dd-divider">`;
+        menuHtml += `<div class="c-svg-dd-group">${escapeHtml(grp.group)}</div>`;
+        grp.items.forEach(it => {
+          menuHtml += `
+            <div class="c-svg-dd-item ${it.locked ? 'locked-opt' : ''} ${it.value === 'ลาป่วย' ? 'active' : ''}" data-val="${escapeHtml(it.value)}" onclick="onSelectCustomLeaveType('${escapeHtml(it.value)}', event)">
+              ${it.svg}&nbsp;<span>${escapeHtml(it.label)}</span>
+            </div>
+          `;
+        });
+      });
+
+      wrap.innerHTML = `
+        <button type="button" class="c-svg-dd-btn" id="customLeaveTypeBtn" onclick="toggleCustomLeaveTypeMenu(event)">
+          <span id="customLeaveTypeSelectedContent" style="display:inline-flex; align-items:center; gap:6px;">
+            ${LEAVE_TYPE_SVG_OPTIONS[0].items[0].svg}&nbsp;<span>${LEAVE_TYPE_SVG_OPTIONS[0].items[0].label}</span>
+          </span>
+          ${UI_SVG.chevDown}
+        </button>
+        <div class="c-svg-dd-menu" id="customLeaveTypeMenu">${menuHtml}</div>
+      `;
+      nativeSel.parentNode.insertBefore(wrap, nativeSel.nextSibling);
+    }
+
+    evaluateLeavePolicyNotice();
+  }
+
+  function toggleCustomLeaveTypeMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('customLeaveTypeMenu');
+    const btn = document.getElementById('customLeaveTypeBtn');
+    const subMenu = document.getElementById('customSubTeacherMenu');
+    if (subMenu) subMenu.classList.remove('show');
+    if (!menu) return;
+    const isShow = menu.classList.toggle('show');
+    if (btn) btn.classList.toggle('open', isShow);
+  }
+
+  function onSelectCustomLeaveType(val, e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('customLeaveTypeMenu');
+    const btn = document.getElementById('customLeaveTypeBtn');
+
+    if (val === 'ลาพักผ่อน') {
+      triggerVacationLockClick();
+      return;
+    }
+    if (menu) menu.classList.remove('show');
+    if (btn) btn.classList.remove('open');
+    setCustomLeaveTypeValue(val);
+    toggleLeaveTimeFields();
+    evaluateLeavePolicyNotice();
+  }
+
+  function setCustomLeaveTypeValue(val) {
+    const nativeSel = document.getElementById('leaveType');
+    if (nativeSel) nativeSel.value = val;
+
+    let foundItem = null;
+    LEAVE_TYPE_SVG_OPTIONS.forEach(g => {
+      g.items.forEach(it => { if (it.value === val) foundItem = it; });
+    });
+
+    if (foundItem) {
+      const disp = document.getElementById('customLeaveTypeSelectedContent');
+      if (disp) {
+        disp.innerHTML = `${foundItem.svg}&nbsp;<span>${escapeHtml(foundItem.label)}</span>`;
+      }
+      document.querySelectorAll('#customLeaveTypeMenu .c-svg-dd-item').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-val') === val);
+      });
+    }
+  }
+
+  function renderCustomSubTeacherSvgDropdown(onLeaveIds) {
+    const nativeSubSel = document.getElementById('leaveSubTeacherSelect');
+    if (!nativeSubSel) return;
+
+    nativeSubSel.style.display = 'none';
+    let wrap = document.getElementById('customSubTeacherDropdownWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'customSubTeacherDropdownWrap';
+      wrap.className = 'c-svg-dd-wrap';
+      nativeSubSel.parentNode.insertBefore(wrap, nativeSubSel.nextSibling);
+    }
+
+    const myId = g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : '';
+    const icoCheck = `<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`;
+    const icoUserOk = `<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    const icoUserBusy = `<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>`;
+
+    let itemsHtml = `
+      <div class="c-svg-dd-group">กรณีไม่มีคาบสอน</div>
+      <div class="c-svg-dd-item" onclick="onSelectCustomSubTeacher('ไม่มีคาบสอนในวันที่ลา', 'ไม่มีคาบสอนในวันที่ลา', event)">
+        ${icoCheck}&nbsp;<span>ไม่มีคาบสอนในวันที่ลา</span>
+      </div>
+      <hr class="c-svg-dd-divider">
+      <div class="c-svg-dd-group">รายชื่อบุคลากรในโรงเรียน (เลือกผู้สอนแทน)</div>
+    `;
+
+    g_UsersSummary.forEach(u => {
+      if (u.EmpID === myId || u.status === 'ย้าย/เกษียณ' || String(u.Position || '').indexOf('ผู้อำนวยการสถานศึกษา') !== -1) return;
+      const isBusy = onLeaveIds && onLeaveIds.has(u.EmpID);
+      const val = `มอบหมายให้ ${u.FullName} สอนแทน`;
+      const label = `${u.FullName} (${shortRole(u.Position)})` + (isBusy ? ' — ติดลาวันนี้' : '');
+      itemsHtml += `
+        <div class="c-svg-dd-item ${isBusy ? 'locked-opt' : ''}" onclick="onSelectCustomSubTeacher('${escapeHtml(val)}', '${escapeHtml(label)}', event)">
+          ${isBusy ? icoUserBusy : icoUserOk}&nbsp;<span>${escapeHtml(label)}</span>
+        </div>
+      `;
+    });
+
+    const curVal = nativeSubSel.value || 'ไม่มีคาบสอนในวันที่ลา';
+    nativeSubSel.value = curVal;
+
+    wrap.innerHTML = `
+      <button type="button" class="c-svg-dd-btn" id="customSubTeacherBtn" onclick="toggleCustomSubTeacherMenu(event)">
+        <span id="customSubTeacherSelectedContent" style="display:inline-flex; align-items:center; gap:6px;">
+          ${icoUserOk}&nbsp;<span>${escapeHtml(curVal)}</span>
+        </span>
+        ${UI_SVG.chevDown}
+      </button>
+      <div class="c-svg-dd-menu" id="customSubTeacherMenu">${itemsHtml}</div>
+    `;
+  }
+
+  function toggleCustomSubTeacherMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('customSubTeacherMenu');
+    const btn = document.getElementById('customSubTeacherBtn');
+    const typeMenu = document.getElementById('customLeaveTypeMenu');
+    if (typeMenu) typeMenu.classList.remove('show');
+    if (!menu) return;
+    const isShow = menu.classList.toggle('show');
+    if (btn) btn.classList.toggle('open', isShow);
+  }
+
+  function onSelectCustomSubTeacher(val, label, e) {
+    if (e) e.stopPropagation();
+    const nativeSubSel = document.getElementById('leaveSubTeacherSelect');
+    if (nativeSubSel) nativeSubSel.value = val;
+    const disp = document.getElementById('customSubTeacherSelectedContent');
+    if (disp) {
+      disp.innerHTML = `<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>&nbsp;<span>${escapeHtml(label)}</span>`;
+    }
+    const menu = document.getElementById('customSubTeacherMenu');
+    const btn = document.getElementById('customSubTeacherBtn');
+    if (menu) menu.classList.remove('show');
+    if (btn) btn.classList.remove('open');
+  }
+
+  document.addEventListener('click', (e) => {
+    const subMenu = document.getElementById('customSubTeacherMenu');
+    if (subMenu && subMenu.classList.contains('show')) {
+      if (!e.target.closest('#customSubTeacherDropdownWrap')) {
+        subMenu.classList.remove('show');
+        const b = document.getElementById('customSubTeacherBtn');
+        if (b) b.classList.remove('open');
+      }
+    }
+  });
+
+  function getActualLatestLeaveForUser(empId) {
+    const userLogs = g_LeaveLogs.filter(l => l.EmpID === empId);
+    if (userLogs.length === 0) return null;
+
+    const sorted = userLogs.slice().sort((a, b) => {
+      const dA = _dateStrToComparableNum(a.StartDate);
+      const dB = _dateStrToComparableNum(b.StartDate);
+      if (dB !== dA) return dB - dA;
+      return String(b.LeaveID || '').localeCompare(String(a.LeaveID || ''));
+    });
+    return sorted[0];
+  }
+
+  function checkDirectorLeaveRestrictionOnView() {
+    const notice = document.getElementById('directorCannotLeaveNotice');
+    const btnSubmit = document.getElementById('btnSubmitLeave');
+    if (!notice || !btnSubmit || !g_CurrentUser) return;
+
+    const isSchoolDirector = (String(g_CurrentUser.role || '').indexOf('ผู้อำนวยการสถานศึกษา') !== -1 && g_CurrentUser.email !== 'superuser');
+    if (isSchoolDirector) {
+      notice.style.display = 'block';
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = `${UI_SVG.lock}&nbsp;<span>ผอ.รร. ยื่นลาต่อ ผอ.สพป. เท่านั้น</span>`;
+    } else {
+      notice.style.display = 'none';
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = `<svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกและยื่นคำร้อง</span>`;
+    }
+  }
+
+  function triggerVacationLockClick() {
+    _vacationClickCount++;
+    if (_vacationClickCount >= 3) {
+      _vacationClickCount = 0;
+      const menu = document.getElementById('customLeaveTypeMenu');
+      const btn = document.getElementById('customLeaveTypeBtn');
+      if (menu) menu.classList.remove('show');
+      if (btn) btn.classList.remove('open');
+      steamAlert(
+        `<div style="text-align:left; line-height:1.65;">
+          <b style="color:var(--orange);">ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ (หมวดการลาพักผ่อนของข้าราชการครู):</b><br><br>
+          ข้าราชการครูและบุคลากรทางการศึกษาซึ่งมีหน้าที่สอนประจำในสถานศึกษา <b>ไม่มีสิทธิลาพักผ่อนประจำปีในระหว่างเปิดภาคเรียน</b> เนื่องจากมีวันหยุดปิดภาคเรียนตามระเบียบของทางราชการอยู่แล้ว<br><br>
+          <span style="color:var(--steam-cyan);">* กรณีมีกิจธุระจำเป็นในระหว่างเปิดภาคเรียน ให้เลือกยื่นคำร้องประเภท <b>"ลากิจส่วนตัว"</b> แทน</span>
+        </div>`,
+        'แจ้งระเบียบการลาพักผ่อนของข้าราชการครู'
+      );
+    } else {
+      steamAlert(
+        `ตัวเลือก <b>"ลาพักผ่อน"</b> ถูกล็อกไว้ตามระเบียบข้าราชการครู (กดซ้ำอีก ${3 - _vacationClickCount} ครั้งเพื่อดูรายละเอียดระเบียบฉบับเต็ม)`,
+        'ล็อกการลาพักผ่อน'
+      );
+    }
+  }
+
+  function toggleLeaveTimeFields() {
+    const selEl = document.getElementById('leaveType');
+    if (!selEl) return;
+    let type = selEl.value;
+
+    if (type === 'ลาพักผ่อน') {
+      setCustomLeaveTypeValue('ลากิจ');
+      type = 'ลากิจ';
+      triggerVacationLockClick();
+    }
+
+    const isPermit = (type === 'ขออนุญาต (ไม่เกิน 3 ชม.)');
+    const f11 = document.getElementById('form1_1_zone');
+    const f12 = document.getElementById('form1_2_zone');
+    const endGrp = document.getElementById('endDateGroup');
+
+    if (f11) f11.style.display = isPermit ? 'none' : 'block';
+    if (f12) f12.style.display = isPermit ? 'block' : 'none';
+    if (endGrp) endGrp.style.display = isPermit ? 'none' : 'block';
+
+    evaluateLeavePolicyNotice();
+    populateSubstituteDropdown();
+  }
+
+  function onLeaveDatesChange() {
+    evaluateLeavePolicyNotice();
+    populateSubstituteDropdown();
+  }
+
+  function evaluateLeavePolicyNotice() {
+    const banner = document.getElementById('leavePolicyAlertBanner');
+    if (!banner) return;
+
+    const selEl = document.getElementById('leaveType');
+    const type = selEl ? selEl.value : 'ลาป่วย';
+    const startEl = document.getElementById('leaveStartDate');
+    const endEl = document.getElementById('leaveEndDate');
+    const startStr = startEl ? startEl.value : '';
+    const endStr = (endEl && endEl.value) ? endEl.value : startStr;
+
+    const regInfo = LEAVE_REGULATIONS_DETAIL[type] || {
+      title: `ระเบียบการลา (${type})`,
+      quota: 'ตามหลักเกณฑ์ที่ทางราชการกำหนด',
+      rule: 'กรุณาระบุช่วงวันที่ลา สาเหตุ และสถานที่ติดต่อระหว่างลาให้ครบถ้วน',
+      color: 'var(--steam-cyan)'
+    };
+
+    const typeIconSvg = _getLeaveTypeSvgByVal(type);
+    const icoWarn = `<svg class="ui-ico-sm" style="color:var(--red);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+
+    let extraWarningHtml = '';
+    let borderColor = regInfo.color || 'var(--steam-cyan)';
+    let bgColor = 'rgba(102, 192, 244, 0.1)';
+    if (type === 'ขออนุญาต (ไม่เกิน 3 ชม.)') {
+      bgColor = 'rgba(164, 208, 7, 0.1)';
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (type === 'ลากิจ' && startStr) {
+      const p = startStr.split('-');
+      if (p.length === 3) {
+        const startDate = new Date(normalizeYearToCEClient(p[0]), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+        const diffDays = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+        if (diffDays < 3) {
+          borderColor = 'var(--red)';
+          bgColor = 'rgba(248, 81, 73, 0.14)';
+          extraWarningHtml = `
+            <div style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(248,81,73,0.45); color:#ff7b72; font-size:12px; display:flex; align-items:center; gap:6px;">
+              ${icoWarn}&nbsp;<span><b>แจ้งเตือนการลากิจกะทันหัน:</b> ท่านยื่นลากิจล่วงหน้าเพียง <b>${Math.max(0, diffDays)} วัน</b> (น้อยกว่าเกณฑ์ 3 วันทำการ) กรุณาระบุเหตุผลความจำเป็นเร่งด่วน</span>
+            </div>
+          `;
+        }
+      }
+    } else if (type === 'ลาป่วย' && endStr) {
+      const p = endStr.split('-');
+      if (p.length === 3) {
+        const endDate = new Date(normalizeYearToCEClient(p[0]), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+        const daysAfterReturn = Math.floor((today - endDate) / (1000 * 60 * 60 * 24));
+        if (daysAfterReturn > 3) {
+          borderColor = 'var(--orange)';
+          bgColor = 'rgba(210, 153, 34, 0.14)';
+          extraWarningHtml = `
+            <div style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(210,153,34,0.45); color:var(--orange); font-size:12px; display:flex; align-items:center; gap:6px;">
+              ${icoWarn}&nbsp;<span><b>แจ้งเตือนการส่งใบลาป่วยย้อนหลัง:</b> วันสิ้นสุดการลาผ่านมาแล้ว <b>${daysAfterReturn} วัน</b> (ควรส่งภายใน 3 วันทำการหลังกลับมาทำงาน)</span>
+            </div>
+          `;
+        }
+      }
+    }
+
+    banner.style.display = 'block';
+    banner.style.background = bgColor;
+    banner.style.borderColor = borderColor;
+    banner.style.borderLeft = `4px solid ${borderColor}`;
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px dashed rgba(255,255,255,0.14); padding-bottom:6px; margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:6px; font-weight:bold; font-size:13.5px; color:#fff;">
+          ${typeIconSvg}&nbsp;<span>${escapeHtml(regInfo.title)}</span>
+        </div>
+        <span style="background:rgba(0,0,0,0.35); border:1px solid #2a475e; padding:2px 10px; border-radius:12px; font-size:11.5px; color:var(--steam-green); font-weight:bold; display:inline-flex; align-items:center; gap:5px;">
+          ${UI_SVG.check}&nbsp;<span>สิทธิ์การลา: ${escapeHtml(regInfo.quota)}</span>
+        </span>
+      </div>
+      <div style="font-size:12.5px; color:#d0d7de; line-height:1.6;">
+        • <b>หลักเกณฑ์การปฏิบัติ:</b> ${regInfo.rule}
+      </div>
+      ${extraWarningHtml}
+    `;
+  }
+
+  function calcPermitHoursPreview() {
+    const st = document.getElementById('leaveStartTime').value;
+    const et = document.getElementById('leaveEndTime').value;
+    const box = document.getElementById('permitHoursPreviewText');
+    if (!st || !et || !box) return;
+    const sParts = st.split(':');
+    const eParts = et.split(':');
+    const mins = (parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10)) - (parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10));
+    const hrs = Number((mins / 60).toFixed(2));
+    if (hrs <= 0) {
+      box.style.color = 'var(--red)';
+      box.innerText = 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
+    } else if (hrs > 3) {
+      box.style.color = 'var(--red)';
+      box.innerText = `รวมเวลา ${hrs} ชั่วโมง (เกินเกณฑ์ 3 ชั่วโมง)`;
+    } else {
+      box.style.color = 'var(--steam-green)';
+      box.innerHTML = `${UI_SVG.check}&nbsp;<span>รวมเวลาขออนุญาต: ${hrs} ชั่วโมง</span>`;
+    }
+  }
+
+  function togglePermitWorkloadTable() {
+    const sel = document.querySelector('input[name="permitWorkloadRadio"]:checked');
+    const wrap = document.getElementById('permitWorkloadTableWrap');
+    if (!wrap) return;
+    wrap.style.display = (sel && sel.value === 'มี') ? 'block' : 'none';
+  }
+
+  function populateSubstituteDropdown() {
+    const startVal = document.getElementById('leaveStartDate') ? document.getElementById('leaveStartDate').value : '';
+    const endVal = (document.getElementById('leaveEndDate') && document.getElementById('leaveEndDate').value) ? document.getElementById('leaveEndDate').value : startVal;
+
+    const onLeaveIds = new Set();
+    if (startVal) {
+      g_LeaveLogs.forEach(l => {
+        if (l.Status !== 'ไม่อนุมัติ') {
+          let lStart = l.StartDate || '';
+          let lEnd = l.EndDate || lStart;
+          if (lStart <= endVal && lEnd >= startVal) onLeaveIds.add(l.EmpID);
+        }
+      });
+    }
+
+    const myId = g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : '';
+    let teacherOptsOnly = `<option value="">-- เลือกผู้สอนแทน --</option>`;
+    let fullSubOpts = `
+      <option value="ไม่มีคาบสอนในวันที่ลา">ไม่มีคาบสอนในวันที่ลา</option>
+      <optgroup label="รายชื่อบุคลากรในโรงเรียน">
+    `;
+
+    g_UsersSummary.forEach(u => {
+      if (u.EmpID === myId || u.status === 'ย้าย/เกษียณ' || String(u.Position || '').indexOf('ผู้อำนวยการสถานศึกษา') !== -1) return;
+      const isBusy = onLeaveIds.has(u.EmpID);
+      const busyTag = isBusy ? ' (ติดลาวันนี้)' : '';
+      fullSubOpts += `<option value="มอบหมายให้ ${escapeHtml(u.FullName)} สอนแทน">${escapeHtml(u.FullName)}${busyTag}</option>`;
+      teacherOptsOnly += `<option value="${escapeHtml(u.FullName)}">${escapeHtml(u.FullName)}${busyTag}</option>`;
+    });
+    fullSubOpts += `</optgroup>`;
+
+    const sel11 = document.getElementById('leaveSubTeacherSelect');
+    if (sel11) {
+      const cur = sel11.value;
+      sel11.innerHTML = fullSubOpts;
+      if (cur) sel11.value = cur;
+    }
+
+    renderCustomSubTeacherSvgDropdown(onLeaveIds);
+
+    let clsOpts = `<option value="">-- เลือกชั้น --</option>` + g_ActiveClasses.map(c => `<option value="${escapeHtml(shortClass(c))}">${escapeHtml(shortClass(c))}</option>`).join('');
+    [1, 2, 3].forEach(i => {
+      let cEl = document.getElementById('pw_cls_' + i);
+      if (cEl && !cEl.innerHTML) cEl.innerHTML = clsOpts;
+      let sEl = document.getElementById('pw_sub_' + i);
+      if (sEl) {
+        let curS = sEl.value;
+        sEl.innerHTML = teacherOptsOnly;
+        if (curS) sEl.value = curS;
+      }
+    });
+  }
+
+  function populateDashboardDeptFilterOptions() {
+    const deptSel = document.getElementById('filterStaffDept');
+    if (!deptSel) return;
+    const prevVal = deptSel.value || 'ALL';
+
+    const deptSet = new Set();
+    const divSet = new Set();
+
+    g_UsersSummary.forEach(u => {
+      const d = String(u.Department || '').trim();
+      if (d && d !== '-') deptSet.add(d);
+      const dv = String(u.Division || '').trim();
+      if (dv && dv !== '-') {
+        dv.split(',').forEach(part => {
+          let cl = part.trim();
+          if (cl) divSet.add(cl);
+        });
+      }
+    });
+
+    let html = `<option value="ALL">กลุ่มสาระ / งาน: ทั้งหมด</option>`;
+    if (deptSet.size > 0) {
+      html += `<optgroup label="กลุ่มสาระการเรียนรู้">`;
+      Array.from(deptSet).forEach(d => {
+        html += `<option value="DEPT:${escapeHtml(d)}">${escapeHtml(d)}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+    if (divSet.size > 0) {
+      html += `<optgroup label="ฝ่ายงาน / หน้าที่รับผิดชอบ">`;
+      Array.from(divSet).forEach(dv => {
+        html += `<option value="DIV:${escapeHtml(dv)}">${escapeHtml(dv)}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+
+    deptSel.innerHTML = html;
+    if (Array.from(deptSel.options).some(o => o.value === prevVal)) {
+      deptSel.value = prevVal;
+    }
+  }
+
+  function _ensureDashboardRibbonContainerExists() {
+    let container = document.getElementById('employeeRibbonListContainer');
+    if (container) return container;
+
+    const legacyTbody = document.getElementById('userSummaryBody');
+    if (legacyTbody) {
+      const parentTableWrap = legacyTbody.closest('.table-container') || legacyTbody.closest('table');
+      if (parentTableWrap && parentTableWrap.parentNode) {
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.innerHTML = `
+          <div class="emp-filter-bar" style="background:rgba(0,0,0,0.22); border:1px solid #2a475e; border-radius:4px; padding:8px 10px; margin-bottom:10px; display:grid; grid-template-columns:1.4fr 1fr 1.1fr 1fr auto; gap:8px; align-items:center;">
+            <input type="text" id="searchStaffInput" class="steam-input" style="margin:0; height:34px;" placeholder="ค้นหาชื่อ-สกุล, รหัสบุคลากร, เลขที่ตำแหน่ง..." oninput="filterDashboardUsers()">
+            <select id="filterStaffCategory" class="steam-input" style="margin:0; height:34px;" onchange="filterDashboardUsers()">
+              <option value="ALL">ประเภทบุคลากร: ทั้งหมด</option>
+              <option value="EXE">ผู้บริหารสถานศึกษา</option>
+              <option value="TCH">ข้าราชการครู</option>
+              <option value="STF">บุคลากรสายสนับสนุน</option>
+            </select>
+            <select id="filterStaffDept" class="steam-input" style="margin:0; height:34px;" onchange="filterDashboardUsers()">
+              <option value="ALL">กลุ่มสาระ / งาน: ทั้งหมด</option>
+            </select>
+            <select id="filterLeaveStatus" class="steam-input" style="margin:0; height:34px;" onchange="filterDashboardUsers()">
+              <option value="ALL">ประวัติการลา: ทั้งหมด</option>
+              <option value="HAS_LEAVE">มีประวัติการลา</option>
+              <option value="PENDING">มีคำร้องรออนุมัติ</option>
+              <option value="NEVER">ยังไม่เคยลา</option>
+            </select>
+            <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px;" onclick="resetDashboardFilters()">ล้างตัวกรอง</button>
+          </div>
+          <div id="employeeRibbonListContainer" class="emp-ribbon-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+        `;
+        parentTableWrap.parentNode.insertBefore(wrapperDiv, parentTableWrap);
+        parentTableWrap.style.display = 'none';
+        return document.getElementById('employeeRibbonListContainer');
+      }
+    }
+
+    const viewDash = document.getElementById('view_dashboard');
+    if (viewDash) {
+      const fallbackDiv = document.createElement('div');
+      fallbackDiv.id = 'employeeRibbonListContainer';
+      fallbackDiv.className = 'emp-ribbon-list';
+      fallbackDiv.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-top:10px;';
+      viewDash.appendChild(fallbackDiv);
+      return fallbackDiv;
+    }
+    return null;
+  }
+
+  function renderMainDashboard() {
+    // Auto-Recovery: หากพบว่า g_UsersSummary ว่าง (0 คน) ให้สั่งดึงข้อมูลและซ่อมแซมฐานข้อมูลอัตโนมัติทันที
+    if ((!g_UsersSummary || g_UsersSummary.length === 0) && !_autoRecoveryAttempted) {
+      _autoRecoveryAttempted = true;
+      google.script.run
+        .withSuccessHandler(resBundle => {
+          _autoRecoveryAttempted = false;
+          if (resBundle && resBundle.status === 'success' && Array.isArray(resBundle.usersSummary) && resBundle.usersSummary.length > 0) {
+            _applyBundleToStateAndRender(resBundle);
+          }
+        })
+        .withFailureHandler(err => {
+          console.error('Auto recovery failed:', err);
+          _autoRecoveryAttempted = false;
+        })
+        .forceRepairAndLoadStaff();
+    } else if (g_UsersSummary && g_UsersSummary.length > 0) {
+      _autoRecoveryAttempted = false;
+    }
+
+    let elSch = document.getElementById('lblHeaderSchoolName');
+    if (elSch) elSch.innerText = g_SchoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ';
+    let elAff = document.getElementById('lblHeaderSchoolAff');
+    if (elAff) elAff.innerText = g_SchoolInfo.affiliation || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3';
+    let elAcad = document.getElementById('lblAcadYear');
+    if (elAcad) elAcad.innerText = g_SchoolInfo.academicYear || '2569';
+
+    let dirName = g_SchoolInfo.directorName || '-';
+    if (dirName === '-' && g_UsersSummary.length > 0) {
+      const foundDir = g_UsersSummary.find(u => String(u.Position || '').indexOf('ผู้อำนวยการสถานศึกษา') !== -1);
+      if (foundDir) dirName = foundDir.FullName;
+    }
+    let elDir = document.getElementById('lblDirectorHeader');
+    if (elDir) elDir.innerText = dirName;
+
+    applyDelegationBanner();
+
+    const pendingCount = g_LeaveLogs.filter(l => l.Status !== 'อนุมัติ' && l.Status !== 'อนุมัติเรียบร้อย' && l.Status !== 'ไม่อนุมัติ').length;
+    const approvedCount = g_LeaveLogs.filter(l => l.Status === 'อนุมัติ' || l.Status === 'อนุมัติเรียบร้อย').length;
+
+    let elTot = document.getElementById('cardTotalUsers'); if (elTot) elTot.innerText = g_UsersSummary.length;
+    let elPend = document.getElementById('cardPendingLeaves'); if (elPend) elPend.innerText = pendingCount;
+    let elApp = document.getElementById('cardApprovedLeaves'); if (elApp) elApp.innerText = approvedCount;
+
+    ['badgePendingCount', 'badgeTrackingCount'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) {
+        b.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+        b.innerText = pendingCount;
+      }
+    });
+
+    _ensureDashboardRibbonContainerExists();
+    populateDashboardDeptFilterOptions();
+    renderEmployeeRibbonList();
+    renderRequestsListOnlyTable();
+    renderTrackingStepByStepTable();
+  }
+
+  function buildEmployeeExpandedDetailHtml(u) {
+    const empId = u.EmpID || u.id;
+    const isSchoolDirector = (String(u.Position || '').indexOf('ผู้อำนวยการสถานศึกษา') !== -1);
+    const userLogsAll = g_LeaveLogs.filter(l => l.EmpID === empId);
+
+    const sortedLogs = userLogsAll.slice().sort((a, b) => {
+      const dA = _dateStrToComparableNum(a.StartDate);
+      const dB = _dateStrToComparableNum(b.StartDate);
+      if (dB !== dA) return dB - dA;
+      return String(b.LeaveID || '').localeCompare(String(a.LeaveID || ''));
+    });
+
+    const approvedByType = {};
+    let pendingItemsCount = 0;
+    let rejectedItemsCount = 0;
+
+    sortedLogs.forEach(l => {
+      const isApp = (l.Status === 'อนุมัติ' || l.Status === 'อนุมัติเรียบร้อย');
+      const isRej = (l.Status === 'ไม่อนุมัติ');
+      if (isApp) {
+        const tName = l.LeaveType || 'ไม่ระบุประเภท';
+        if (!approvedByType[tName]) {
+          approvedByType[tName] = { count: 0, days: 0, hours: 0, isPermit: tName.includes('3 ชม.') };
+        }
+        approvedByType[tName].count++;
+        approvedByType[tName].days += (parseFloat(l.TotalDays) || 0);
+        approvedByType[tName].hours = Number((approvedByType[tName].hours + (parseFloat(l.TotalHours) || 0)).toFixed(2));
+      } else if (isRej) {
+        rejectedItemsCount++;
+      } else {
+        pendingItemsCount++;
+      }
+    });
+
+    const typeKeys = Object.keys(approvedByType);
+    let breakdownHtml = '';
+    if (typeKeys.length === 0) {
+      breakdownHtml = `<span style="color:var(--text-muted); font-size:12px;">ยังไม่มีรายการลาที่ได้รับอนุมัติในปีงบประมาณนี้</span>`;
+    } else {
+      breakdownHtml = typeKeys.map(k => {
+        const obj = approvedByType[k];
+        const unitTxt = obj.isPermit ? `${obj.hours} ชั่วโมง` : `${obj.days} วัน`;
+        return `<span class="emp-type-chip"><b style="color:var(--steam-cyan);">${escapeHtml(k)}:</b> ${obj.count} ครั้ง (${unitTxt})</span>`;
+      }).join('');
+    }
+
+    const posNoTxt = u.PositionNo || (u.IsPositionUnverified ? `รอตรวจสอบ (${u.RawPositionNo})` : '—');
+    const memberIdTxt = u.MemberID || '—';
+    const divFullTxt = u.Division || u.division || '—';
+    const deptFullTxt = u.Department || u.department || '—';
+    const clsFullTxt = u.classLevel || '—';
+
+    let quotaOrPolicyHtml = '';
+    if (isSchoolDirector) {
+      quotaOrPolicyHtml = `<div style="margin-top:6px; color:var(--steam-cyan); font-size:12px;">
+        <b>แนวทางการยื่นลา:</b> ผู้อำนวยการสถานศึกษายื่นใบลาต่อผู้อำนวยการสำนักงานเขตพื้นที่การศึกษา (สพป.) ตามระเบียบ
+      </div>`;
+    } else {
+      const sickQuotaTxt = (u.SickMax !== undefined && u.SickMax !== null) ? `${u.SickDays || 0} / ${u.SickMax} วัน` : `${u.SickDays || 0} วัน`;
+      const persQuotaTxt = (u.PersonalMax !== undefined && u.PersonalMax !== null) ? `${u.PersonalDays || 0} / ${u.PersonalMax} วัน` : `${u.PersonalDays || 0} วัน`;
+      quotaOrPolicyHtml = `
+        <div style="margin-top:6px; font-size:12px; color:var(--text-muted);">
+          ยอดใช้สิทธิ์สะสม (อนุมัติแล้ว): 
+          <span style="color:#e6edf3;">ลาป่วย <b>${escapeHtml(sickQuotaTxt)}</b></span> · 
+          <span style="color:#e6edf3;">ลากิจส่วนตัว <b>${escapeHtml(persQuotaTxt)}</b></span>
+        </div>
+      `;
+    }
+
+    const showAll = !!g_ShowAllLogsEmpIds[empId];
+    const logsToRender = showAll ? sortedLogs : sortedLogs.slice(0, 5);
+
+    let historyListHtml = '';
+    if (sortedLogs.length === 0) {
+      historyListHtml = `<div style="color:var(--text-muted); font-size:12.5px; padding:6px 0;">ยังไม่มีประวัติการยื่นคำร้องในระบบ</div>`;
+    } else {
+      historyListHtml = logsToRender.map(l => {
+        const isPermit = (l.LeaveType && l.LeaveType.includes('3 ชม.'));
+        const periodTxt = formatThaiRangeDisplay(l.StartDate, l.EndDate, isPermit, l.StartTime, l.EndTime);
+        const amountTxt = isPermit ? `${escapeHtml(l.TotalHours)} ชั่วโมง` : `${escapeHtml(l.TotalDays)} วัน`;
+        const submitDateTxt = l.Timestamp ? formatSlashDateBE(l.Timestamp) : '—';
+
+        const isApp = (l.Status === 'อนุมัติ' || l.Status === 'อนุมัติเรียบร้อย');
+        const isRej = (l.Status === 'ไม่อนุมัติ');
+        let stClass = 'emp-status-pending';
+        let stLabel = l.Status || 'รออนุมัติ';
+        if (isApp) { stClass = 'emp-status-approved'; stLabel = 'อนุมัติแล้ว'; }
+        else if (isRej) { stClass = 'emp-status-rejected'; stLabel = 'ไม่อนุมัติ'; }
+
+        return `
+          <div class="emp-hist-row">
+            <div style="font-weight:700; color:#fff;">${escapeHtml(l.LeaveType)}</div>
+            <div style="color:var(--steam-cyan); font-weight:600;">${periodTxt}</div>
+            <div style="color:var(--orange); font-weight:700;">${amountTxt}</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">
+              ยื่น: ${escapeHtml(submitDateTxt)} · แทน: ${escapeHtml(shortSubInfo(l.SubstituteInfo))}
+            </div>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+              <span class="emp-status-pill ${stClass}" style="margin:0;">${escapeHtml(stLabel)}</span>
+              <button type="button" class="btn-save-sm" style="font-size:11px; padding:2px 8px;" onclick="event.stopPropagation(); switchView('tracking');">ติดตามคำร้อง</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (sortedLogs.length > 5 && !showAll) {
+        historyListHtml += `
+          <div style="text-align:center; margin-top:8px;">
+            <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:5px;" onclick="showAllRibbonLogs('${escapeHtml(empId)}', event)">
+              ${UI_SVG.chevDown}&nbsp;<span>แสดงประวัติการลาทั้งหมด (${sortedLogs.length} รายการ)</span>
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    return `
+      <div class="emp-detail-summary-bar">
+        <div>
+          <div class="emp-detail-sec-head">
+            <span>ข้อมูลทะเบียนและงานที่รับผิดชอบ</span>
+            <span style="color:var(--text-muted); font-weight:normal;">เลขที่ตำแหน่ง: <b style="color:#fff;">${escapeHtml(posNoTxt)}</b></span>
+          </div>
+          <div><span style="color:var(--text-muted);">สมาชิกประเภทสามัญ เลขที่:</span> <b style="color:var(--steam-cyan); font-family:monospace;">${escapeHtml(memberIdTxt)}</b></div>
+          <div><span style="color:var(--text-muted);">ตำแหน่ง:</span> <b style="color:#fff;">${escapeHtml(u.Position || '—')}</b> ${u.HighestStanding && u.HighestStanding !== u.Position ? `(${escapeHtml(u.HighestStanding)})` : ''}</div>
+          <div><span style="color:var(--text-muted);">กลุ่มสาระ:</span> ${escapeHtml(deptFullTxt)} · <span style="color:var(--text-muted);">ชั้นที่ปรึกษา:</span> ${escapeHtml(clsFullTxt)}</div>
+          <div><span style="color:var(--text-muted);">ฝ่ายงาน/หน้าที่พิเศษ:</span> ${escapeHtml(divFullTxt)}</div>
+        </div>
+
+        <div>
+          <div class="emp-detail-sec-head">
+            <span>สรุปสถิติแยกตามประเภทการลา (ปีงบประมาณ ${escapeHtml(g_SchoolInfo.fiscalYear || '2570')})</span>
+            <span style="color:var(--text-muted); font-weight:normal;">รออนุมัติ ${pendingItemsCount} · ไม่อนุมัติ ${rejectedItemsCount}</span>
+          </div>
+          <div>${breakdownHtml}</div>
+          ${quotaOrPolicyHtml}
+        </div>
+      </div>
+
+      <div>
+        <div class="emp-detail-sec-head">
+          <span>ประวัติการลาของ ${escapeHtml(u.FullName)} (${sortedLogs.length} รายการ)</span>
+        </div>
+        ${historyListHtml}
+      </div>
+    `;
+  }
+
+  function renderEmployeeRibbonList() {
+    const container = _ensureDashboardRibbonContainerExists();
+    if (!container) return;
+
+    const q = (document.getElementById('searchStaffInput') ? document.getElementById('searchStaffInput').value : '').trim().toLowerCase();
+    const catFilter = document.getElementById('filterStaffCategory') ? document.getElementById('filterStaffCategory').value : 'ALL';
+    const deptFilter = document.getElementById('filterStaffDept') ? document.getElementById('filterStaffDept').value : 'ALL';
+    const statusFilter = document.getElementById('filterLeaveStatus') ? document.getElementById('filterLeaveStatus').value : 'ALL';
+
+    const filteredUsers = g_UsersSummary.filter(u => {
+      const empId = String(u.EmpID || u.id || '');
+      const userLogs = g_LeaveLogs.filter(l => l.EmpID === empId);
+      const hasPending = userLogs.some(l => l.Status && l.Status !== 'อนุมัติ' && l.Status !== 'อนุมัติเรียบร้อย' && l.Status !== 'ไม่อนุมัติ');
+      const hasAnyLeave = userLogs.length > 0 || (u.SickCount || 0) > 0 || (u.PersonalCount || 0) > 0 || (u.PermitCount || 0) > 0;
+
+      if (q) {
+        const hay = `${u.FullName || ''} ${empId} ${u.PositionNo || ''} ${u.MemberID || ''} ${u.Position || ''} ${u.HighestStanding || ''} ${u.Department || ''} ${u.Division || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (catFilter !== 'ALL' && getStaffCategoryCode(u) !== catFilter) return false;
+      if (deptFilter !== 'ALL') {
+        if (deptFilter.indexOf('DEPT:') === 0 && String(u.Department || '').trim() !== deptFilter.substring(5)) return false;
+        if (deptFilter.indexOf('DIV:') === 0) {
+          const userDivs = String(u.Division || '').split(',').map(s => s.trim());
+          if (!userDivs.includes(deptFilter.substring(4))) return false;
+        }
+      }
+      if (statusFilter === 'HAS_LEAVE' && !hasAnyLeave) return false;
+      if (statusFilter === 'PENDING' && !hasPending) return false;
+      if (statusFilter === 'NEVER' && hasAnyLeave) return false;
+
+      return true;
+    });
+
+    if (!g_UsersSummary || g_UsersSummary.length === 0) {
+      container.innerHTML = `
+        <div class="emp-empty-state" style="background:rgba(0,0,0,0.25); border:1px dashed #66c0f4; border-radius:6px; padding:32px 20px; text-align:center;">
+          <div style="font-weight:bold; color:var(--steam-cyan); font-size:15px; margin-bottom:6px; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>&nbsp;<span>ยังไม่พบข้อมูลสรุปสถิติบุคลากรในฐานข้อมูล</span>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">หากท่านมีไฟล์ Google Sheets ฐานข้อมูลเดิม กรุณากดปุ่ม <b>"เชื่อมโยงชีตฐานข้อมูล"</b> เพื่อระบุลิงก์ หรือกดปุ่ม <b>"รีเฟรชข้อมูล"</b> เพื่อลองดึงข้อมูลใหม่อีกครั้ง</div>
+          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-save-sm" onclick="promptLinkSpreadsheetManual()" style="border-color:var(--orange); color:var(--orange); padding:7px 18px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>&nbsp;<span>เชื่อมโยงชีตฐานข้อมูล</span>
+            </button>
+            <button type="button" class="btn-save-sm" onclick="refreshAllData()" style="padding:7px 18px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชข้อมูล</span>
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (filteredUsers.length === 0) {
+      container.innerHTML = `
+        <div class="emp-empty-state" style="background:rgba(0,0,0,0.2); border:1px dashed #2a475e; border-radius:4px; padding:24px; text-align:center;">
+          <div style="font-weight:bold; color:#fff; font-size:14.5px; margin-bottom:4px;">ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไขการค้นหา</div>
+          <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">กรุณาตรวจสอบคำค้นหาหรือกดปุ่มแสดงบุคลากรทั้งหมด</div>
+          <button type="button" class="btn-save-sm" onclick="resetDashboardFilters()" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>&nbsp;<span>แสดงบุคลากรทั้งหมด</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+    container.innerHTML = filteredUsers.map(u => {
+      const empId = u.EmpID || u.id;
+      const isExpanded = (g_ExpandedRibbonEmpId === empId);
+      const identitySubtitleHtml = buildStaffIdentitySubtitle(u);
+
+      const sickCount = Number(u.SickCount) || 0;
+      const sickDays = Number(u.SickDays) || 0;
+      const persCount = Number(u.PersonalCount) || 0;
+      const persDays = Number(u.PersonalDays) || 0;
+      const permCount = Number(u.PermitCount) || 0;
+      const permHours = Number(u.PermitHours) || 0;
+
+      const isSickZero = (sickCount === 0 && sickDays === 0);
+      const isPersZero = (persCount === 0 && persDays === 0);
+      const isPermZero = (permCount === 0 && permHours === 0);
+
+      const latestLog = getActualLatestLeaveForUser(empId);
+      let latestHtml = '';
+      if (!latestLog) {
+        latestHtml = `
+          <div class="emp-latest-caption">การลาครั้งล่าสุด</div>
+          <div class="emp-latest-row"><span style="color:var(--text-muted); font-size:12.5px;">ยังไม่เคยลา</span></div>
+        `;
+      } else {
+        const isPermit = (latestLog.LeaveType && latestLog.LeaveType.includes('3 ชม.'));
+        const dateRangeStr = formatThaiRangeDisplay(latestLog.StartDate, latestLog.EndDate, isPermit, latestLog.StartTime, latestLog.EndTime);
+        const isApp = (latestLog.Status === 'อนุมัติ' || latestLog.Status === 'อนุมัติเรียบร้อย');
+        const isRej = (latestLog.Status === 'ไม่อนุมัติ');
+
+        let statusClass = 'emp-status-pending';
+        let statusText = latestLog.Status || 'รออนุมัติ';
+        if (isApp) { statusClass = 'emp-status-approved'; statusText = 'อนุมัติแล้ว'; }
+        else if (isRej) { statusClass = 'emp-status-rejected'; statusText = 'ไม่อนุมัติ'; }
+
+        latestHtml = `
+          <div class="emp-latest-caption">การลาครั้งล่าสุด</div>
+          <div class="emp-latest-row">
+            <span class="emp-latest-value">${escapeHtml(shortLeaveType(latestLog.LeaveType))} · ${dateRangeStr}</span>
+            <span class="emp-status-pill ${statusClass}">${escapeHtml(statusText)}</span>
+          </div>
+        `;
+      }
+
+      const arrowIcon = isExpanded ? UI_SVG.chevUp : UI_SVG.chevDown;
+
+      return `
+        <div class="emp-ribbon-card ${isExpanded ? 'expanded' : ''}" id="empRibbonCard_${escapeHtml(empId)}">
+          <div class="emp-ribbon-main" onclick="toggleEmployeeRibbonExpand('${escapeHtml(empId)}', event)">
+            <div class="emp-identity-zone">
+              <div class="emp-name-line" style="display:flex; align-items:center; gap:5px;">
+                ${UI_SVG.user}&nbsp;<span>${escapeHtml(u.FullName)}</span>
+              </div>
+              <div class="emp-meta-line">${identitySubtitleHtml}</div>
+            </div>
+
+            <div class="emp-stats-ribbon">
+              <div class="emp-stat-col ${isSickZero ? 'is-zero' : ''}">
+                <div class="emp-stat-label" style="display:inline-flex; align-items:center; gap:4px;">${UI_SVG.sick}&nbsp;<span>ลาป่วย</span></div>
+                <div class="emp-stat-values">
+                  <span>${sickCount} ครั้ง</span>
+                  <span class="val-unit" style="${isSickZero ? '' : 'color:var(--orange);'}">(${sickDays} วัน)</span>
+                </div>
+              </div>
+              <div class="emp-stat-col ${isPersZero ? 'is-zero' : ''}">
+                <div class="emp-stat-label" style="display:inline-flex; align-items:center; gap:4px;">${UI_SVG.personal}&nbsp;<span>ลากิจส่วนตัว</span></div>
+                <div class="emp-stat-values">
+                  <span>${persCount} ครั้ง</span>
+                  <span class="val-unit" style="${isPersZero ? '' : 'color:var(--steam-cyan);'}">(${persDays} วัน)</span>
+                </div>
+              </div>
+              <div class="emp-stat-col ${isPermZero ? 'is-zero' : ''}">
+                <div class="emp-stat-label" style="display:inline-flex; align-items:center; gap:4px;">${UI_SVG.permit}&nbsp;<span>ขออนุญาต</span></div>
+                <div class="emp-stat-values">
+                  <span>${permCount} ครั้ง</span>
+                  <span class="val-unit" style="${isPermZero ? '' : 'color:var(--steam-green);'}">(${permHours} ชม.)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="emp-latest-zone">
+              ${latestHtml}
+            </div>
+
+            <button type="button" class="emp-expand-btn" title="${isExpanded ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}" onclick="toggleEmployeeRibbonExpand('${escapeHtml(empId)}', event)">
+              ${arrowIcon}
+            </button>
+          </div>
+
+          <div class="emp-detail-panel" id="empDetailPanel_${escapeHtml(empId)}">
+            ${isExpanded ? buildEmployeeExpandedDetailHtml(u) : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleEmployeeRibbonExpand(empId, event) {
+    if (event) event.stopPropagation();
+    g_ExpandedRibbonEmpId = (g_ExpandedRibbonEmpId === empId) ? null : empId;
+    renderEmployeeRibbonList();
+  }
+
+  function showAllRibbonLogs(empId, event) {
+    if (event) event.stopPropagation();
+    g_ShowAllLogsEmpIds[empId] = true;
+    renderEmployeeRibbonList();
+  }
+
+  function filterDashboardUsers() {
+    renderEmployeeRibbonList();
+  }
+
+  function resetDashboardFilters() {
+    const s = document.getElementById('searchStaffInput'); if (s) s.value = '';
+    const c = document.getElementById('filterStaffCategory'); if (c) c.value = 'ALL';
+    const d = document.getElementById('filterStaffDept'); if (d) d.value = 'ALL';
+    const st = document.getElementById('filterLeaveStatus'); if (st) st.value = 'ALL';
+    renderEmployeeRibbonList();
+  }
+
+  function renderRequestsListOnlyTable() {
+    const logTbody = document.getElementById('leaveLogsBody');
+    if (!logTbody) return;
+    if (g_LeaveLogs.length === 0) {
+      logTbody.innerHTML = `<tr><td colspan="7" style="padding:20px; color:var(--text-muted);">ยังไม่มีรายการคำร้องในระบบ</td></tr>`;
+      return;
+    }
+    const myId = g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : '';
+    const myName = g_CurrentUser ? (g_CurrentUser.name || '') : '';
+    const isAdminOrSuper = isSuperuserOrAdmin(g_CurrentUser);
+
+    logTbody.innerHTML = g_LeaveLogs.map(l => {
+      const isPermit = (l.LeaveType && l.LeaveType.includes('3 ชม.'));
+      const thaiDateRange = formatThaiRangeDisplay(l.StartDate, l.EndDate, isPermit, l.StartTime, l.EndTime);
+      const amountTxt = isPermit ? `${escapeHtml(l.TotalHours)} ชม.` : `${escapeHtml(l.TotalDays)} วัน`;
+      const attachLink = (l.AttachUrl && l.AttachUrl.startsWith('http')) ? ` <a href="${escapeHtml(l.AttachUrl)}" target="_blank" style="color:var(--steam-cyan); font-size:11.5px;">[ไฟล์]</a>` : '';
+      const canDelete = (l.EmpID === myId || l.FullName === myName || isAdminOrSuper);
+      const statusCellHtml = canDelete ? `<button class="btn-save-sm btn-del-sm" style="display:inline-flex; align-items:center; gap:4px;" onclick="handleDeleteLeave('${escapeHtml(l.LeaveID)}')">${UI_SVG.trash}&nbsp;<span>ลบคำขอ</span></button>` : `<span style="color:var(--text-muted); font-size:12px;">-</span>`;
+
+      return `
+        <tr>
+          <td style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(l.LeaveID)}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold;">${escapeHtml(l.FullName)}</td>
+          <td>${escapeHtml(shortLeaveType(l.LeaveType))}</td>
+          <td style="font-size:12.5px; color:var(--steam-cyan); font-weight:bold;">${thaiDateRange}</td>
+          <td style="font-weight:bold; color:var(--orange);">${amountTxt}</td>
+          <td style="font-size:12px;">${escapeHtml(shortSubInfo(l.SubstituteInfo))}${attachLink}</td>
+          <td>${statusCellHtml}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderTrackingStepByStepTable() {
+    const trackBody = document.getElementById('trackingLogsBody');
+    if (!trackBody) return;
+    if (g_LeaveLogs.length === 0) {
+      trackBody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--text-muted);">ยังไม่มีรายการคำร้องให้ติดตาม</td></tr>`;
+      return;
+    }
+
+    const myName = g_CurrentUser ? String(g_CurrentUser.name || '').trim() : '';
+    const myEmail = g_CurrentUser ? String(g_CurrentUser.email || '').trim().toLowerCase() : '';
+    const myAccess = g_CurrentUser ? normalizeRolePermission(g_CurrentUser.accessLevel) : 'User';
+    const myDiv = g_CurrentUser ? String(g_CurrentUser.division || g_CurrentUser.Division || '') : '';
+    const myRole = g_CurrentUser ? String(g_CurrentUser.role || '') : '';
+
+    const isSuperOverride = (myEmail === 'superuser' || myAccess === 'Superuser');
+    const isHRHead = isSuperOverride || myName.includes('ทัชชกร') || myDiv.includes('หัวหน้าฝ่ายบริหารงานบุคคล') || myDiv.includes('บุคคล');
+    const isAcadHead = isSuperOverride || myName.includes('พันธ์ธนัต') || myDiv.includes('หัวหน้าฝ่ายบริหารวิชาการ') || myDiv.includes('วิชาการ');
+    const dep1 = g_SchoolInfo.deputy1 || localStorage.getItem('steam_dep1') || '';
+    const dep2 = g_SchoolInfo.deputy2 || localStorage.getItem('steam_dep2') || '';
+    const isDirectorOrDeputy = isSuperOverride || myRole.includes('ผู้อำนวยการ') || myName === g_SchoolInfo.directorName || (dep1 && myName === dep1) || (dep2 && myName === dep2);
+
+    trackBody.innerHTML = g_LeaveLogs.map(l => {
+      const isPermit = (l.LeaveType && l.LeaveType.includes('3 ชม.'));
+      const thaiDateRange = formatThaiRangeDisplay(l.StartDate, l.EndDate, isPermit, l.StartTime, l.EndTime);
+      const durTxt = isPermit ? `${escapeHtml(l.TotalHours)} ชม.` : `${escapeHtml(l.TotalDays)} วัน`;
+
+      const hrDone = (l.Step1_HR && l.Step1_HR !== 'รอดำเนินการ');
+      const acadDone = (l.Step2_Academic && l.Step2_Academic !== 'รอดำเนินการ');
+      const dirDone = (l.Step3_Director && l.Step3_Director !== 'รอดำเนินการ') || l.Status === 'อนุมัติ';
+      const all3Approved = (hrDone && acadDone && dirDone);
+
+      let btnHR = hrDone ? (isHRHead ? `<button class="btn-save-sm btn-del-sm" style="padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'HR', 'UNAPPROVE')">ยกเลิก</button>` : `<span style="color:var(--steam-green); font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:4px;">${UI_SVG.check}&nbsp;<span>อนุมัติแล้ว</span></span>`) : (isHRHead ? `<button class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'HR', 'APPROVE')">อนุมัติ</button>` : `<span style="color:var(--text-muted); font-size:11.5px;">รออนุมัติ</span>`);
+      let btnAcad = acadDone ? (isAcadHead ? `<button class="btn-save-sm btn-del-sm" style="padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'ACADEMIC', 'UNAPPROVE')">ยกเลิก</button>` : `<span style="color:var(--steam-green); font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:4px;">${UI_SVG.check}&nbsp;<span>อนุมัติแล้ว</span></span>`) : (isAcadHead ? `<button class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'ACADEMIC', 'APPROVE')">อนุมัติ</button>` : `<span style="color:var(--text-muted); font-size:11.5px;">รออนุมัติ</span>`);
+      let btnDir = dirDone ? (isDirectorOrDeputy ? `<button class="btn-save-sm btn-del-sm" style="padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'DIRECTOR', 'UNAPPROVE')">ยกเลิก</button>` : `<span style="color:var(--steam-green); font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:4px;">${UI_SVG.check}&nbsp;<span>อนุมัติแล้ว</span></span>`) : (isDirectorOrDeputy ? `<button class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; padding:2px 10px; font-size:11.5px;" onclick="toggleApprovalStep('${escapeHtml(l.LeaveID)}', 'DIRECTOR', 'APPROVE')">อนุมัติ</button>` : `<span style="color:var(--text-muted); font-size:11.5px;">รออนุมัติ</span>`);
+
+      const approval3RowsHtml = `
+        <div class="approval-3rows-box">
+          <div class="approval-row-item ${hrDone ? 'done' : ''}"><span class="approval-row-label">หัวหน้างานบุคคล</span>${btnHR}</div>
+          <div class="approval-row-item ${acadDone ? 'done' : ''}"><span class="approval-row-label">หัวหน้างานวิชาการ</span>${btnAcad}</div>
+          <div class="approval-row-item ${dirDone ? 'done' : ''}"><span class="approval-row-label">ผู้อำนวยการ</span>${btnDir}</div>
+        </div>
+      `;
+
+      const printBtnHtml = all3Approved
+        ? `<button class="btn-steam" style="width:auto; padding:7px 14px; font-size:12.5px;" onclick="openPrintPreview('${escapeHtml(l.LeaveID)}')">${UI_SVG.print}&nbsp;<span>พิมพ์เอกสาร</span></button>`
+        : `<button class="btn-save-sm" style="opacity:0.45; cursor:not-allowed; display:inline-flex; align-items:center; gap:5px;" disabled>${UI_SVG.lock}&nbsp;<span>พิมพ์เอกสาร</span></button><div style="font-size:10.5px; color:var(--orange); margin-top:3px;">รออนุมัติให้ครบ</div>`;
+
+      return `
+        <tr>
+          <td style="font-size:11.5px; color:var(--text-muted); border-bottom:none;">${escapeHtml(l.LeaveID)}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold; border-bottom:none;">${escapeHtml(l.FullName)}</td>
+          <td style="border-bottom:none;">${escapeHtml(shortLeaveType(l.LeaveType))}</td>
+          <td style="font-size:12.5px; color:var(--steam-cyan); font-weight:bold; border-bottom:none;">${thaiDateRange}<div style="font-size:11px; color:var(--orange);">รวม ${durTxt}</div></td>
+          <td style="border-bottom:none;">${approval3RowsHtml}</td>
+          <td style="border-bottom:none;">${printBtnHtml}</td>
+        </tr>
+        <tr class="timeline-attached-row">
+          <td colspan="6">
+            <div class="tl-bar-wrap">
+              <div class="tl-line ${hrDone ? 'done' : ''}"></div>
+              <div class="tl-node ${hrDone ? 'done' : ''}">${hrDone ? UI_SVG.check : UI_SVG.clock}&nbsp;<span>หัวหน้างานบุคคล</span></div>
+              <div class="tl-line ${acadDone ? 'done' : ''}"></div>
+              <div class="tl-node ${acadDone ? 'done' : ''}">${acadDone ? UI_SVG.check : UI_SVG.clock}&nbsp;<span>หัวหน้างานวิชาการ</span></div>
+              <div class="tl-line ${dirDone ? 'done' : ''}"></div>
+              <div class="tl-node ${dirDone ? 'done' : ''}">${dirDone ? UI_SVG.check : UI_SVG.clock}&nbsp;<span>ผู้อำนวยการ</span></div>
+              <div class="tl-final-badge ${all3Approved ? 'done' : ''}">${all3Approved ? UI_SVG.checkDark : UI_SVG.clock}&nbsp;<span>${all3Approved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}</span></div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function toggleApprovalStep(leaveId, step, action) {
+    startLoadingBar(action === 'UNAPPROVE' ? 'กำลังยกเลิกการอนุมัติ...' : 'กำลังบันทึกการอนุมัติ...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (res && res.fullyApproved && action === 'APPROVE') {
+            steamAlert(`<div style="line-height:1.6;"><b style="color:var(--steam-green); font-size:15px;">อนุมัติครบทุกขั้นตอนแล้ว</b><br><button type="button" class="btn-steam" onclick="closeSteamAlert(); openPrintPreview('${escapeHtml(leaveId)}')">${UI_SVG.print}&nbsp;<span>เปิดหน้าพิมพ์เอกสารทันที</span></button></div>`, 'อนุมัติคำร้องสมบูรณ์');
+          } else {
+            steamAlert(res.message);
+          }
+          refreshAllData();
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('ดำเนินการไม่สำเร็จ: ' + (err.message || err))))
+      .processApproval(leaveId, step, action, '', getActiveSignerName());
+  }
+
+  function handleDeleteLeave(leaveId) {
+    steamConfirm('ยืนยันการลบคำขอนี้ใช่หรือไม่?', () => {
+      startLoadingBar('กำลังลบคำขอ...');
+      const actor = g_CurrentUser ? g_CurrentUser.name : 'ผู้ใช้งาน';
+      google.script.run
+        .withSuccessHandler(res => { stopLoadingBar(() => { steamAlert(res.message); refreshAllData(); }); })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('ลบคำขอไม่สำเร็จ: ' + (err.message || err))))
+        .deleteLeaveRequest(leaveId, actor);
+    });
+  }
+
+  async function handleLeaveSubmit(e) {
+    e.preventDefault();
+    try {
+      const fileInput = document.getElementById('leaveAttachFile');
+      let fileData = null, fileName = null;
+      if (fileInput.files.length > 0) {
+        fileName = fileInput.files[0].name;
+        fileData = await fileToBase64(fileInput.files[0]);
+      }
+
+      const leaveType = document.getElementById('leaveType').value;
+      const isPermit = (leaveType === 'ขออนุญาต (ไม่เกิน 3 ชม.)');
+
+      let combinedSubInfo = '';
+      let formMetaObj = {};
+
+      if (isPermit) {
+        const place = document.getElementById('permitPlace').value.trim();
+        const wlRadio = document.querySelector('input[name="permitWorkloadRadio"]:checked');
+        const hasWorkload = wlRadio ? wlRadio.value : 'ไม่มี';
+        const workloads = [];
+        let subNamesSummary = [];
+
+        if (hasWorkload === 'มี') {
+          [1, 2, 3].forEach(i => {
+            const cls = document.getElementById('pw_cls_' + i).value;
+            const period = document.getElementById('pw_per_' + i).value.trim();
+            const task = document.getElementById('pw_task_' + i).value.trim();
+            const sub = document.getElementById('pw_sub_' + i).value;
+            workloads.push({ cls, period, task, sub });
+            if (sub) subNamesSummary.push(`${sub} (${cls || '-'})`);
+          });
+        }
+        combinedSubInfo = hasWorkload === 'มี' && subNamesSummary.length > 0 ? `${subNamesSummary.join(', ')}` : `ไม่มีภาระงาน (ไป: ${place || '-'})`;
+        formMetaObj = { place, hasWorkload, workloads };
+      } else {
+        const subTeacher = document.getElementById('leaveSubTeacherSelect').value || 'ไม่มีคาบสอนในวันที่ลา';
+        const subNote = document.getElementById('leaveSubNote').value.trim();
+        const contactAddress = document.getElementById('leaveContactAddr').value.trim();
+        combinedSubInfo = subNote ? `${subTeacher} (${subNote})` : subTeacher;
+        formMetaObj = { contactAddress };
+      }
+
+      const form = {
+        empId: g_CurrentUser.EmpID || g_CurrentUser.id,
+        fullName: g_CurrentUser.name,
+        leaveType: leaveType,
+        startDate: document.getElementById('leaveStartDate').value,
+        endDate: document.getElementById('leaveEndDate').value || document.getElementById('leaveStartDate').value,
+        startTime: document.getElementById('leaveStartTime').value,
+        endTime: document.getElementById('leaveEndTime').value,
+        reason: document.getElementById('leaveReason').value.trim(),
+        substituteInfo: combinedSubInfo,
+        signerName: getActiveSignerName(),
+        formMetaJson: JSON.stringify(formMetaObj),
+        fileData: fileData,
+        fileName: fileName
+      };
+
+      startLoadingBar('กำลังบันทึกคำร้อง...');
+      google.script.run
+        .withSuccessHandler(res => {
+          stopLoadingBar(() => {
+            steamAlert(res.message);
+            if (res.status === 'success') {
+              document.getElementById('leaveForm').reset();
+              setCustomLeaveTypeValue('ลาป่วย');
+              toggleLeaveTimeFields();
+              refreshAllData();
+              switchView('tracking');
+            }
+          });
+        })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('ยื่นคำร้องไม่สำเร็จ: ' + (err.message || err))))
+        .submitLeaveRequest(form);
+    } catch (err) {
+      steamAlert(err.message);
+    }
+  }
+
+  function openPrintPreview(leaveId) {
+    startLoadingBar('กำลังจัดเตรียมเอกสารราชการ A4...');
+    google.script.run
+      .withSuccessHandler(html => {
+        stopLoadingBar(() => {
+          document.getElementById('printPreviewBody').innerHTML = html;
+          document.getElementById('officialPrintContainer').innerHTML = html;
+          document.getElementById('modalPrintPreview').style.display = 'flex';
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('สร้างเอกสารไม่สำเร็จ: ' + (err.message || err))))
+      .getOfficialLeaveFormHtml(leaveId);
+  }
+
+  function openSchoolLeaveSummaryPrint(periodMode) {
+    startLoadingBar('กำลังจัดเตรียมรายงานสรุปสถิติการลาราชการ A4...');
+    google.script.run
+      .withSuccessHandler(html => {
+        stopLoadingBar(() => {
+          document.getElementById('printPreviewBody').innerHTML = html;
+          document.getElementById('officialPrintContainer').innerHTML = html;
+          document.getElementById('modalPrintPreview').style.display = 'flex';
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('สร้างรายงานไม่สำเร็จ: ' + (err.message || err))))
+      .getSchoolLeaveSummaryPrintHtml(periodMode || 'ALL');
+  }
+
+  function renderRetirementForecastTable() {
+    const tbody = document.getElementById('retirementForecastBody');
+    if (!tbody) return;
+
+    const activeUsers = g_UsersSummary.filter(u => u.status !== 'ย้าย/เกษียณ');
+    if (activeUsers.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:18px; color:var(--text-muted);">ยังไม่มีข้อมูลบุคลากร</td></tr>`;
+      return;
+    }
+
+    const sorted = activeUsers.slice().sort((a, b) => {
+      const rA = (a.RetirementInfo && a.RetirementInfo.hasBirthDate) ? parseInt(a.RetirementInfo.retireYearBE, 10) : 9999;
+      const rB = (b.RetirementInfo && b.RetirementInfo.hasBirthDate) ? parseInt(b.RetirementInfo.retireYearBE, 10) : 9999;
+      return rA - rB;
+    });
+
+    tbody.innerHTML = sorted.map(u => {
+      const ret = u.RetirementInfo || {};
+      const birthTxt = ret.hasBirthDate ? escapeHtml(ret.birthDateFormatted) : `<span style="color:var(--text-muted);">ยังไม่ระบุ</span>`;
+      const ageTxt = ret.hasBirthDate ? escapeHtml(ret.ageText) : '-';
+      const retDateTxt = ret.hasBirthDate ? `<b style="color:var(--orange);">${escapeHtml(ret.retireDateFormatted)}</b>` : '-';
+      const remainTxt = ret.hasBirthDate ? `<b style="color:var(--steam-green);">${escapeHtml(ret.remainingToRetireText)}</b>` : '-';
+
+      return `
+        <tr>
+          <td style="font-family:monospace; color:var(--steam-cyan); font-weight:bold;">${escapeHtml(u.EmpID)}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold;">${escapeHtml(u.FullName)}</td>
+          <td>${escapeHtml(shortRole(u.Position))}</td>
+          <td>${birthTxt}</td>
+          <td>${ageTxt}</td>
+          <td>${retDateTxt}</td>
+          <td>${remainTxt}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function exportFullSystemToExcel5Sheets() {
+    if (typeof XLSX === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => exportFullSystemToExcel5Sheets();
+      document.head.appendChild(s);
+      return;
+    }
+
+    const personnelRows = [];
+    const eduRows = [];
+    const standingRows = [];
+    const scoutRows = [];
+    const licenseRows = [];
+
+    g_UsersSummary.forEach(u => {
+      personnelRows.push({
+        "EmpID": u.EmpID || u.id,
+        "PositionNo": u.PositionNo || '',
+        "สมาชิกประเภทสามัญ เลขที่": u.MemberID || '',
+        "Name": u.FullName,
+        "BirthDate": u.RawBirthDate || '',
+        "Role": u.Position || '',
+        "Division": u.Division || '',
+        "Department": u.Department || '',
+        "Class_Level": u.classLevel || '',
+        "StartDate": u.RawStartDate || '',
+        "Email": u.email || '',
+        "Phone": u.phone || '',
+        "Access_Level": normalizeRolePermission(u.accessLevel),
+        "Status": u.status || 'ปกติ'
+      });
+
+      (u.EducationsHistory || []).forEach(e => {
+        eduRows.push({
+          "RecordID": e.RecordID || '',
+          "EmpID": u.EmpID,
+          "DegreeLevel": e.DegreeLevel || '',
+          "DegreeShort": e.DegreeShort || '',
+          "Major": e.Major || '',
+          "Institute": e.Institute || '',
+          "GradYear": e.GradYear || ''
+        });
+      });
+
+      (u.StandingsHistory || []).forEach(st => {
+        standingRows.push({
+          "RecordID": st.RecordID || '',
+          "EmpID": u.EmpID,
+          "StandingLevel": st.StandingLevel || '',
+          "EffectiveDate": st.RawEffectiveDate || st.EffectiveDate || '',
+          "OrderNumber": st.OrderNumber || ''
+        });
+      });
+
+      (u.ScoutsHistory || []).forEach(sc => {
+        scoutRows.push({
+          "RecordID": sc.RecordID || '',
+          "EmpID": u.EmpID,
+          "ScoutQualification": sc.ScoutQualification || '',
+          "ScoutType": sc.ScoutType || '',
+          "CertNumber": sc.CertNumber || '',
+          "ApprovedDate": sc.RawApprovedDate || sc.ApprovedDate || ''
+        });
+      });
+
+      (u.ActiveLicenses || []).forEach(lc => {
+        licenseRows.push({
+          "RecordID": lc.recordId || '',
+          "EmpID": u.EmpID,
+          "LicenseType": lc.type || '',
+          "LicenseNumber": lc.number || '',
+          "IssueDate": lc.rawIssueDate || '',
+          "ExpiryDate": lc.rawExpiryDate || ''
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(personnelRows), "Personnel");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eduRows), "Education");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standingRows), "Standing");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(scoutRows), "Scout");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(licenseRows), "License");
+
+    XLSX.writeFile(wb, "ManStat_Database_Export_5Sheets.xlsx");
+  }
+
+  function renderAnalyticsCharts() {
+    renderRetirementForecastTable();
+
+    if (typeof Chart === 'undefined') {
+      if (!document.getElementById('chartJsAutoLoader')) {
+        const scriptEl = document.createElement('script');
+        scriptEl.id = 'chartJsAutoLoader';
+        scriptEl.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        scriptEl.onload = () => renderAnalyticsCharts();
+        document.head.appendChild(scriptEl);
+      }
+      return;
+    }
+
+    try {
+      Chart.defaults.color = '#8f98a0';
+      Chart.defaults.font.family = "'Sarabun', sans-serif";
+
+      const pieCanvas = document.getElementById('leavePieChart');
+      const barCanvas = document.getElementById('leaveBarChart');
+      if (!pieCanvas || !barCanvas) return;
+
+      const sickCount = g_LeaveLogs.filter(l => l.LeaveType && l.LeaveType.indexOf('ลาป่วย') !== -1).length;
+      const personalCount = g_LeaveLogs.filter(l => l.LeaveType && l.LeaveType.indexOf('ลากิจ') !== -1).length;
+      const permitCount = g_LeaveLogs.filter(l => l.LeaveType && (l.LeaveType.indexOf('3 ชม.') !== -1 || l.LeaveType.indexOf('ขออนุญาต') !== -1)).length;
+      const otherCount = g_LeaveLogs.filter(l => {
+        const lt = l.LeaveType || '';
+        return lt.indexOf('ลาป่วย') === -1 && lt.indexOf('ลากิจ') === -1 && lt.indexOf('3 ชม.') === -1 && lt.indexOf('ขออนุญาต') === -1;
+      }).length;
+
+      const totalPie = sickCount + personalCount + permitCount + otherCount;
+      const pieData = totalPie > 0 ? [sickCount, personalCount, permitCount, otherCount] : [1, 0, 0, 0];
+      const pieLabels = totalPie > 0 ? ['ลาป่วย', 'ลากิจส่วนตัว', 'ขออนุญาต (3 ชม.)', 'ลาอื่นๆ'] : ['ยังไม่มีรายการลา', 'ลากิจส่วนตัว', 'ขออนุญาต', 'อื่นๆ'];
+      const pieColors = totalPie > 0 ? ['#f85149', '#66c0f4', '#a4d007', '#d29922'] : ['#2a475e', '#66c0f4', '#a4d007', '#d29922'];
+
+      if (g_PieChart) g_PieChart.destroy();
+      g_PieChart = new Chart(pieCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: pieLabels,
+          datasets: [{ data: pieData, backgroundColor: pieColors, borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+
+      const sortedUsers = [...g_UsersSummary]
+        .filter(u => String(u.Position || '').indexOf('ผู้อำนวยการสถานศึกษา') === -1)
+        .sort((a, b) => ((b.SickDays || 0) + (b.PersonalDays || 0)) - ((a.SickDays || 0) + (a.PersonalDays || 0)))
+        .slice(0, 10);
+
+      if (g_BarChart) g_BarChart.destroy();
+      g_BarChart = new Chart(barCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: sortedUsers.map(u => u.FullName),
+          datasets: [
+            { label: 'ลาป่วย (วัน)', data: sortedUsers.map(u => u.SickDays || 0), backgroundColor: '#d29922' },
+            { label: 'ลากิจ (วัน)', data: sortedUsers.map(u => u.PersonalDays || 0), backgroundColor: '#66c0f4' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+      });
+    } catch (chartErr) {
+      console.error('Chart Render Error:', chartErr);
+    }
+  }
+
+  function renderFeedbackSection() {
+    const pendingFbCount = g_Feedbacks.filter(f => f.Status === 'รอดำเนินการ').length;
+    const badgeFb = document.getElementById('badgeFeedbackCount');
+    if (badgeFb) {
+      badgeFb.style.display = pendingFbCount > 0 ? 'inline-block' : 'none';
+      badgeFb.innerText = pendingFbCount;
+    }
+
+    const tbody = document.getElementById('feedbackTableBody');
+    if (!tbody) return;
+    if (g_Feedbacks.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; color:var(--text-muted);">ยังไม่มีรายการคำขอปรับปรุงระบบ</td></tr>`;
+      return;
+    }
+
+    const isAdmin = isSuperuserOrAdmin(g_CurrentUser);
+    tbody.innerHTML = g_Feedbacks.map(f => {
+      let stBadge = `<span style="color:var(--orange); font-weight:bold; display:inline-flex; align-items:center; gap:4px;">${UI_SVG.clock}&nbsp;<span>รอดำเนินการ</span></span>`;
+      if (f.Status === 'แก้ไขแล้ว') stBadge = `<span class="exp-days-badge exp-days-ok">${UI_SVG.check}&nbsp;<span>แก้ไขแล้ว</span></span>`;
+      else if (f.Status === 'เพิ่มฟีเจอร์แล้ว') stBadge = `<span class="exp-days-badge exp-days-ok" style="border-color:var(--steam-cyan); color:var(--steam-cyan);">${UI_SVG.check}&nbsp;<span>เพิ่มฟีเจอร์แล้ว</span></span>`;
+
+      let actionZone = `<div style="font-size:12px; color:var(--steam-green);">${escapeHtml(f.AdminReply || '-')}</div>`;
+      if (isAdmin && f.Status === 'รอดำเนินการ') {
+        actionZone = `
+          <div style="display:flex; gap:5px; justify-content:center; flex-wrap:wrap;">
+            <button type="button" class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none;" onclick="markFeedbackResolved('${escapeHtml(f.FeedbackID)}', 'แก้ไขแล้ว')">แก้ไขแล้ว</button>
+            <button type="button" class="btn-save-sm" style="background:var(--steam-cyan); color:#000; border:none;" onclick="markFeedbackResolved('${escapeHtml(f.FeedbackID)}', 'เพิ่มฟีเจอร์แล้ว')">เพิ่มฟีเจอร์แล้ว</button>
+          </div>
+        `;
+      } else if (f.UpdatedBy && f.UpdatedBy !== '-') {
+        actionZone += `<div style="font-size:11px; color:var(--text-muted);">โดย: ${escapeHtml(f.UpdatedBy)}</div>`;
+      }
+
+      return `
+        <tr>
+          <td style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(f.Timestamp)}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold;">${escapeHtml(f.FullName)}</td>
+          <td><span style="color:var(--steam-cyan); font-size:12.5px;">${escapeHtml(f.Category)}</span></td>
+          <td style="text-align:left; padding-left:10px;">
+            <div style="font-weight:bold; color:#fff;">${escapeHtml(f.Topic)}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(f.Detail)}</div>
+          </td>
+          <td>${stBadge}</td>
+          <td>${actionZone}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function handleFeedbackSubmit(e) {
+    e.preventDefault();
+    const payload = {
+      empId: g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : '-',
+      fullName: g_CurrentUser ? g_CurrentUser.name : 'ผู้ใช้งานทั่วไป',
+      category: document.getElementById('fb_category').value,
+      topic: document.getElementById('fb_topic').value.trim(),
+      detail: document.getElementById('fb_detail').value.trim()
+    };
+
+    startLoadingBar('กำลังบันทึกคำขอปรับปรุงระบบ...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          steamAlert(res.message);
+          document.getElementById('feedbackForm').reset();
+          refreshAllData();
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('ส่งข้อมูลไม่สำเร็จ: ' + (err.message || err))))
+      .submitSystemFeedback(payload);
+  }
+
+  function markFeedbackResolved(fbId, statusLabel) {
+    steamPrompt(`ระบุข้อความแจ้งผลการดำเนินการ (${statusLabel}) ให้ผู้ใช้งานทราบ:`, replyMsg => {
+      if (replyMsg === null) return;
+      startLoadingBar('กำลังอัปเดตสถานะและแจ้งผู้ใช้งาน...');
+      const adminName = g_CurrentUser ? g_CurrentUser.name : 'Superuser';
+      google.script.run
+        .withSuccessHandler(res => {
+          stopLoadingBar(() => {
+            steamAlert(res.message);
+            refreshAllData();
+          });
+        })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('อัปเดตไม่สำเร็จ: ' + (err.message || err))))
+        .resolveSystemFeedback(fbId, statusLabel, replyMsg, adminName);
+    }, `ยืนยันสถานะ: ${statusLabel}`);
+  }
+</script>

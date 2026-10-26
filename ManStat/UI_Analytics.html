@@ -1,0 +1,22 @@
+<div id="view_analytics" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #2a475e; padding-bottom:12px; margin-bottom:15px; flex-wrap: wrap;">
+    <div>
+      <div style="font-size:18px; color:#fff; font-weight:bold; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        EXECUTIVE LEAVE ANALYTICS
+      </div>
+      <div style="color:var(--text-muted); font-size:13px;">ระบบวิเคราะห์ข้อมูลสถิติการลาและสัดส่วนการปฏิบัติงานของบุคลากร</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:15px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-cyan); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px;">สัดส่วนการแยกตามประเภทใบลา</div>
+      <canvas id="leavePieChart" height="180"></canvas>
+    </div>
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:15px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-green); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px;">สถิติวันลาสะสมรายบุคคล (สูงสุด 10 อันดับแรก)</div>
+      <canvas id="leaveBarChart" height="180"></canvas>
+    </div>
+  </div>
+</div>

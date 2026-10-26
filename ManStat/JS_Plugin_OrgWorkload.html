@@ -1,0 +1,540 @@
+<script>
+  // =========================================================================
+  // MANSTAT PLUGIN: ORGANIZATION CHART & WORKLOAD (JS_Plugin_OrgWorkload.html)
+  // หน้าที่: แผนผังการบริหารงาน 4 ระดับ และระบบบริหารภาระงานบุคลากร 4 หมวด
+  // =========================================================================
+  var g_ExpandedWlEmpId = null;
+  var g_OrgZoomLevel = 1.0;
+
+  // =========================================================
+  // 1. แผนผังการบริหารงาน (ORGANIZATION CHART)
+  // =========================================================
+  function zoomOrgTree(delta) {
+    g_OrgZoomLevel = Math.max(0.6, Math.min(1.4, g_OrgZoomLevel + delta));
+    const container = document.getElementById('orgTreeContainer');
+    if (container) container.style.transform = `scale(${g_OrgZoomLevel})`;
+  }
+
+  function resetOrgTreeZoom() {
+    g_OrgZoomLevel = 1.0;
+    const container = document.getElementById('orgTreeContainer');
+    if (container) container.style.transform = `scale(1)`;
+  }
+
+  function populateOrgChartDeptFilters(deptNames) {
+    const sel = document.getElementById('orgFilterDept');
+    if (!sel) return;
+    const curVal = sel.value || 'ALL';
+    let html = `<option value="ALL">ฝ่ายบริหารงาน: ทั้งหมด</option>`;
+    deptNames.forEach(d => { html += `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`; });
+    sel.innerHTML = html;
+    if (deptNames.includes(curVal)) sel.value = curVal;
+  }
+
+  function resetOrgFilters() {
+    const s = document.getElementById('orgSearchInput'); if (s) s.value = '';
+    const c = document.getElementById('orgFilterCategory'); if (c) c.value = 'ALL';
+    const d = document.getElementById('orgFilterDept'); if (d) d.value = 'ALL';
+    const m = document.getElementById('orgFilterViewMode'); if (m) m.value = 'ALL';
+    renderOrgChartTree();
+  }
+
+  function filterOrgChartTree() {
+    renderOrgChartTree();
+  }
+
+  function renderOrgChartTree() {
+    const container = document.getElementById('orgTreeContainer');
+    if (!container) return;
+
+    const schEl = document.getElementById('orgHeaderSchoolName'); if (schEl) schEl.innerText = g_SchoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ';
+    const acadEl = document.getElementById('orgHeaderAcadYear'); if (acadEl) acadEl.innerText = g_SchoolInfo.academicYear || '2569';
+
+    const q = (document.getElementById('orgSearchInput') ? document.getElementById('orgSearchInput').value : '').trim().toLowerCase();
+    const catFilter = document.getElementById('orgFilterCategory') ? document.getElementById('orgFilterCategory').value : 'ALL';
+    const deptFilter = document.getElementById('orgFilterDept') ? document.getElementById('orgFilterDept').value : 'ALL';
+    const viewMode = document.getElementById('orgFilterViewMode') ? document.getElementById('orgFilterViewMode').value : 'ALL';
+
+    let directorUser = g_UsersSummary.find(u =>
+      (u.Position && u.Position.indexOf('ผู้อำนวยการสถานศึกษา') !== -1) ||
+      (u.FullName && u.FullName === g_SchoolInfo.directorName)
+    );
+    if (!directorUser && g_SchoolInfo.directorName) {
+      directorUser = {
+        EmpID: 'EXE-001',
+        FullName: g_SchoolInfo.directorName,
+        Position: g_SchoolInfo.directorPosition || 'ผู้อำนวยการสถานศึกษา',
+        HighestStanding: '',
+        Department: 'บริหารสถานศึกษา',
+        Division: 'ผู้บริหารสถานศึกษา'
+      };
+    }
+
+    let deputies = g_UsersSummary.filter(u =>
+      u.Position && u.Position.indexOf('รองผู้อำนวยการ') !== -1 && u.status !== 'ย้าย/เกษียณ'
+    );
+    if (deputies.length === 0) {
+      const dep1Name = g_SchoolInfo.deputy1 || localStorage.getItem('steam_dep1');
+      const dep2Name = g_SchoolInfo.deputy2 || localStorage.getItem('steam_dep2');
+      if (dep1Name) {
+        const u1 = g_UsersSummary.find(u => u.FullName === dep1Name);
+        if (u1) deputies.push({ ...u1, specialRole: 'รักษาราชการแทนคนที่ 1' });
+      }
+      if (dep2Name && dep2Name !== dep1Name) {
+        const u2 = g_UsersSummary.find(u => u.FullName === dep2Name);
+        if (u2) deputies.push({ ...u2, specialRole: 'รักษาราชการแทนคนที่ 2' });
+      }
+    }
+
+    const STANDARD_DEPTS = [
+      { name: 'ฝ่ายบริหารวิชาการ', headKeyword: 'หัวหน้าฝ่ายบริหารวิชาการ', color: 'var(--steam-cyan)' },
+      { name: 'ฝ่ายบริหารงบประมาณและแผนงาน', headKeyword: 'หัวหน้าฝ่ายบริหารงบประมาณ', color: 'var(--orange)' },
+      { name: 'ฝ่ายบริหารงานบุคคล', headKeyword: 'หัวหน้าฝ่ายบริหารงานบุคคล', color: 'var(--steam-green)' },
+      { name: 'ฝ่ายบริหารทั่วไปและกิจการนักเรียน', headKeyword: 'หัวหน้าฝ่ายบริหารทั่วไป', color: '#b8c7d6' }
+    ];
+
+    populateOrgChartDeptFilters(STANDARD_DEPTS.map(d => d.name));
+
+    let orgHtml = '';
+    const dirName = directorUser ? escapeHtml(directorUser.FullName) : 'ยังไม่มีผู้ดำรงตำแหน่ง';
+    const dirPos = directorUser ? escapeHtml(directorUser.Position) : 'ผู้อำนวยการสถานศึกษา';
+    const dirEmpId = directorUser ? escapeHtml(directorUser.EmpID) : '-';
+
+    orgHtml += `
+      <div class="org-node director" onclick="showOrgStaffModal('${escapeHtml(dirEmpId)}')">
+        <div class="org-node-role">ผู้บริหารสูงสุดของสถานศึกษา</div>
+        <div class="org-node-name">${dirName}</div>
+        <div class="org-node-pos">${dirPos}</div>
+      </div>
+      <div class="org-connector-v"></div>
+    `;
+
+    if (deputies.length > 0) {
+      orgHtml += `<div class="org-level-row">`;
+      deputies.forEach(dep => {
+        const roleLabel = dep.specialRole || 'รองผู้อำนวยการสถานศึกษา';
+        orgHtml += `
+          <div class="org-node deputy" onclick="showOrgStaffModal('${escapeHtml(dep.EmpID)}')">
+            <div class="org-node-role">${escapeHtml(roleLabel)}</div>
+            <div class="org-node-name">${escapeHtml(dep.FullName)}</div>
+            <div class="org-node-pos">${escapeHtml(shortRole(dep.Position))}</div>
+          </div>
+        `;
+      });
+      orgHtml += `</div><div class="org-connector-v"></div>`;
+    }
+
+    orgHtml += `<div class="org-dept-container">`;
+
+    STANDARD_DEPTS.forEach(dept => {
+      if (deptFilter !== 'ALL' && deptFilter !== dept.name) return;
+
+      const headUser = g_UsersSummary.find(u =>
+        u.Division && u.Division.includes(dept.headKeyword) && u.status !== 'ย้าย/เกษียณ'
+      );
+
+      const staffInDept = g_UsersSummary.filter(u => {
+        if (u.status === 'ย้าย/เกษียณ') return false;
+        if (headUser && u.EmpID === headUser.EmpID) return false;
+        if (catFilter !== 'ALL' && getStaffCategoryCode(u) !== catFilter) return false;
+        return (u.Division && u.Division.includes(dept.name.replace('และกิจการนักเรียน', ''))) ||
+               (dept.name.includes('วิชาการ') && u.Division && (u.Division.includes('วิชาการ') || u.Division.includes('วัดผล') || u.Division.includes('หลักสูตร'))) ||
+               (dept.name.includes('งบประมาณ') && u.Division && (u.Division.includes('งบประมาณ') || u.Division.includes('การเงิน') || u.Division.includes('พัสดุ'))) ||
+               (dept.name.includes('บุคคล') && u.Division && (u.Division.includes('บุคคล') || u.Division.includes('ทะเบียนประวัติ') || u.Division.includes('วินัย'))) ||
+               (dept.name.includes('ทั่วไป') && u.Division && (u.Division.includes('ทั่วไป') || u.Division.includes('ธุรการ') || u.Division.includes('อาคาร') || u.Division.includes('อาหารกลางวัน')));
+      });
+
+      let showBranch = true;
+      if (viewMode === 'VACANT' && headUser) showBranch = false;
+      if (q) {
+        const matchHead = headUser && (headUser.FullName.toLowerCase().includes(q) || headUser.EmpID.toLowerCase().includes(q));
+        const matchStaff = staffInDept.some(s => s.FullName.toLowerCase().includes(q) || s.EmpID.toLowerCase().includes(q));
+        if (!matchHead && !matchStaff && !dept.name.toLowerCase().includes(q)) showBranch = false;
+      }
+      if (!showBranch) return;
+
+      let headHtml = '';
+      if (headUser) {
+        headHtml = `
+          <div class="org-node dept-head" onclick="showOrgStaffModal('${escapeHtml(headUser.EmpID)}')">
+            <div class="org-node-role" style="color:${dept.color};">หัวหน้าฝ่าย</div>
+            <div class="org-node-name">${escapeHtml(headUser.FullName)}</div>
+            <div class="org-node-pos">${escapeHtml(shortRole(headUser.Position))}</div>
+          </div>
+        `;
+      } else {
+        headHtml = `
+          <div class="org-node vacant">
+            <div class="org-node-role" style="color:var(--red);">ตำแหน่งว่าง</div>
+            <div class="org-node-name" style="color:var(--text-muted); font-size:12px;">ยังไม่มีผู้รับผิดชอบหลัก</div>
+          </div>
+        `;
+      }
+
+      let staffHtml = '';
+      if (viewMode !== 'HEAD_ONLY' && staffInDept.length > 0) {
+        staffHtml = `<div class="org-staff-grid">` + staffInDept.map(st => {
+          if (q && !st.FullName.toLowerCase().includes(q) && !st.EmpID.toLowerCase().includes(q)) return '';
+          return `
+            <div class="org-node staff" onclick="showOrgStaffModal('${escapeHtml(st.EmpID)}')">
+              <div class="org-node-name" style="font-size:12.5px;">${escapeHtml(st.FullName)}</div>
+              <div class="org-node-task">${escapeHtml(shortDiv(st.Division))}</div>
+            </div>
+          `;
+        }).join('') + `</div>`;
+      }
+
+      orgHtml += `
+        <div class="org-dept-branch">
+          <div style="font-size:13px; font-weight:bold; color:#fff; margin-bottom:8px; border-bottom:1px solid #2a475e; padding-bottom:4px; width:100%;">${escapeHtml(dept.name)}</div>
+          ${headHtml}
+          ${staffHtml}
+        </div>
+      `;
+    });
+
+    orgHtml += `</div>`;
+    container.innerHTML = orgHtml;
+  }
+
+  function showOrgStaffModal(empId) {
+    const u = g_UsersSummary.find(item => item.EmpID === empId);
+    if (!u) return;
+
+    const modal = document.getElementById('modalOrgStaffDetail');
+    const titleEl = document.getElementById('orgModalStaffName');
+    const bodyEl = document.getElementById('orgModalStaffBody');
+    if (!modal || !bodyEl) return;
+
+    if (titleEl) titleEl.innerText = `${u.FullName} (${u.EmpID})`;
+
+    const wlList = g_Workloads.filter(w => w.EmpID === empId);
+    let wlSummaryHtml = '';
+    if (wlList.length > 0) {
+      wlSummaryHtml = `<div style="margin-top:8px; border-top:1px dashed #2a475e; padding-top:6px;"><b style="color:var(--steam-green);">ภาระงานที่มอบหมาย (${wlList.length} รายการ):</b><ul style="margin:4px 0 0 16px; padding:0;">` +
+        wlList.map(w => `<li>${escapeHtml(w.Title)} <span style="color:var(--text-muted); font-size:11.5px;">(${escapeHtml(w.Category)} - ${escapeHtml(w.Status)})</span></li>`).join('') +
+        `</ul></div>`;
+    }
+
+    bodyEl.innerHTML = `
+      <div>• <b>รหัสบุคลากร (EmpID):</b> <span class="wl-meta-code">${escapeHtml(u.EmpID)}</span> (เลขที่ตำแหน่ง: <b>${escapeHtml(u.PositionNo || 'ไม่มีข้อมูล')}</b>)</div>
+      <div>• <b>รหัสสมาชิกคุรุสภา (MemberID):</b> <b>${escapeHtml(u.MemberID || 'ไม่มีข้อมูล')}</b></div>
+      <div>• <b>ตำแหน่ง / วิทยฐานะ:</b> ${escapeHtml(u.Position || '-')} ${u.HighestStanding && u.HighestStanding !== u.Position ? `(${escapeHtml(u.HighestStanding)})` : ''}</div>
+      <div>• <b>กลุ่มสาระการเรียนรู้:</b> ${escapeHtml(u.Department || '-')}</div>
+      <div>• <b>ฝ่ายงาน / หน้าที่พิเศษ:</b> ${escapeHtml(u.Division || '-')}</div>
+      <div>• <b>ชั้นที่ปรึกษา:</b> ${escapeHtml(u.classLevel || '-')}</div>
+      <div>• <b>เบอร์โทรศัพท์:</b> ${escapeHtml(u.phone || '-')}</div>
+      ${wlSummaryHtml}
+    `;
+    modal.style.display = 'flex';
+  }
+
+  // =========================================================
+  // 2. ภาระงานของบุคลากร (STAFF WORKLOAD MANAGEMENT)
+  // =========================================================
+  function renderStaffWorkloadModule() {
+    populateWorkloadDeptFilters();
+    renderStaffWorkloadList();
+
+    const isAdmin = g_CurrentUser && (g_CurrentUser.accessLevel === 'Admin' || g_CurrentUser.accessLevel === 'Super Admin');
+    const addBtn = document.getElementById('btnAdminAddWorkload');
+    if (addBtn) addBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  }
+
+  function populateWorkloadDeptFilters() {
+    const sel = document.getElementById('wlFilterDept');
+    if (!sel) return;
+    const curVal = sel.value || 'ALL';
+
+    const divSet = new Set();
+    g_UsersSummary.forEach(u => {
+      if (u.Division && u.Division !== '-') {
+        u.Division.split(',').forEach(p => {
+          let c = p.trim();
+          if (c) divSet.add(c);
+        });
+      }
+    });
+
+    let html = `<option value="ALL">ฝ่ายงาน / กลุ่มสาระ: ทั้งหมด</option>`;
+    divSet.forEach(d => { html += `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`; });
+    sel.innerHTML = html;
+    if (divSet.has(curVal)) sel.value = curVal;
+  }
+
+  function resetWorkloadFilters() {
+    const s = document.getElementById('wlSearchInput'); if (s) s.value = '';
+    const c = document.getElementById('wlFilterCategory'); if (c) c.value = 'ALL';
+    const d = document.getElementById('wlFilterDept'); if (d) d.value = 'ALL';
+    const sc = document.getElementById('wlFilterTaskScope'); if (sc) sc.value = 'ALL';
+    renderStaffWorkloadList();
+  }
+
+  function filterStaffWorkloadList() {
+    renderStaffWorkloadList();
+  }
+
+  function renderStaffWorkloadList() {
+    const container = document.getElementById('staffWorkloadRibbonContainer');
+    if (!container) return;
+
+    const q = (document.getElementById('wlSearchInput') ? document.getElementById('wlSearchInput').value : '').trim().toLowerCase();
+    const catFilter = document.getElementById('wlFilterCategory') ? document.getElementById('wlFilterCategory').value : 'ALL';
+    const deptFilter = document.getElementById('wlFilterDept') ? document.getElementById('wlFilterDept').value : 'ALL';
+    const scopeFilter = document.getElementById('wlFilterTaskScope') ? document.getElementById('wlFilterTaskScope').value : 'ALL';
+
+    const filteredUsers = g_UsersSummary.filter(u => {
+      if (u.status === 'ย้าย/เกษียณ') return false;
+      const empId = u.EmpID || u.id;
+      const uWorkloads = g_Workloads.filter(w => w.EmpID === empId);
+
+      if (q) {
+        const hay = `${u.FullName || ''} ${empId} ${u.Position || ''} ${u.Department || ''} ${u.Division || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (catFilter !== 'ALL' && getStaffCategoryCode(u) !== catFilter) return false;
+      if (deptFilter !== 'ALL') {
+        const divs = String(u.Division || '').split(',').map(s => s.trim());
+        if (!divs.includes(deptFilter) && String(u.Department || '') !== deptFilter) return false;
+      }
+      if (scopeFilter === 'HAS_ADVISOR' && (!u.classLevel || u.classLevel === '-')) return false;
+      if (scopeFilter === 'HEAD_ONLY' && (!u.Division || !u.Division.includes('หัวหน้า'))) return false;
+      if (scopeFilter === 'HAS_EXTRA' && uWorkloads.length === 0) return false;
+
+      return true;
+    });
+
+    const totalStaffCount = g_UsersSummary.filter(u => u.status !== 'ย้าย/เกษียณ').length;
+    const totalTasksCount = g_Workloads.length;
+    let vacantCount = 0;
+    const STANDARD_DIV_ROLES = ['หัวหน้าฝ่ายบริหารวิชาการ', 'หัวหน้าฝ่ายบริหารงบประมาณ', 'หัวหน้าฝ่ายบริหารงานบุคคล', 'หัวหน้าฝ่ายบริหารทั่วไป'];
+    STANDARD_DIV_ROLES.forEach(r => {
+      if (!g_UsersSummary.some(u => u.Division && u.Division.includes(r))) vacantCount++;
+    });
+
+    const elTotStaff = document.getElementById('wlTotalStaffCount'); if (elTotStaff) elTotStaff.innerText = totalStaffCount;
+    const elTotTasks = document.getElementById('wlTotalTasksCount'); if (elTotTasks) elTotTasks.innerText = totalTasksCount;
+    const elVacant = document.getElementById('wlVacantTasksCount'); if (elVacant) elVacant.innerText = vacantCount;
+
+    if (filteredUsers.length === 0) {
+      container.innerHTML = `
+        <div class="emp-empty-state">
+          <div style="font-weight:bold; color:#fff; font-size:14.5px; margin-bottom:4px;">ไม่พบข้อมูลภาระงานในเงื่อนไขที่เลือก</div>
+          <button type="button" class="btn-save-sm" onclick="resetWorkloadFilters()">แสดงบุคลากรทั้งหมด</button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filteredUsers.map(u => {
+      const empId = u.EmpID || u.id;
+      const isExpanded = (g_ExpandedWlEmpId === empId);
+      const identitySubtitleHtml = buildStaffIdentitySubtitle(u);
+
+      const customWls = g_Workloads.filter(w => w.EmpID === empId);
+      const divCount = u.Division && u.Division !== '-' ? u.Division.split(',').length : 0;
+      const advisorTxt = u.classLevel && u.classLevel !== '-' ? shortClass(u.classLevel) : null;
+
+      let tagsHtml = '';
+      if (advisorTxt) tagsHtml += `<span class="wl-task-tag">ที่ปรึกษา ${advisorTxt}</span> `;
+      if (divCount > 0) tagsHtml += `<span class="wl-task-tag" style="border-color:var(--orange); color:#fff;">งานฝ่าย ${divCount} หน้าที่</span> `;
+      if (customWls.length > 0) tagsHtml += `<span class="wl-task-tag" style="border-color:var(--steam-green); color:var(--steam-green);">มอบหมายพิเศษ ${customWls.length} รายการ</span>`;
+      if (!tagsHtml) tagsHtml = `<span style="color:var(--text-muted); font-size:12px;">ภาระงานทั่วไปตามตำแหน่ง</span>`;
+
+      const arrowIcon = isExpanded
+        ? `<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>`
+        : `<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+      return `
+        <div class="wl-ribbon-card ${isExpanded ? 'expanded' : ''}" id="wlRibbonCard_${escapeHtml(empId)}">
+          <div class="wl-ribbon-main" onclick="toggleWorkloadRibbonExpand('${escapeHtml(empId)}', event)">
+            <div>
+              <div style="font-size:15px; font-weight:bold; color:#fff;">${escapeHtml(u.FullName)}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${identitySubtitleHtml}</div>
+            </div>
+            <div>${tagsHtml}</div>
+            <div style="text-align:right; font-size:12px; color:var(--steam-cyan);">คลิกเพื่อดูรายละเอียด 4 หมวด</div>
+            <button type="button" class="emp-expand-btn" onclick="toggleWorkloadRibbonExpand('${escapeHtml(empId)}', event)">${arrowIcon}</button>
+          </div>
+
+          <div class="wl-detail-panel" id="wlDetailPanel_${escapeHtml(empId)}">
+            ${isExpanded ? buildStaffWorkloadDetailHtml(u, customWls) : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleWorkloadRibbonExpand(empId, event) {
+    if (event) event.stopPropagation();
+    g_ExpandedWlEmpId = (g_ExpandedWlEmpId === empId) ? null : empId;
+    renderStaffWorkloadList();
+  }
+
+  function buildStaffWorkloadDetailHtml(u, customWls) {
+    const empId = u.EmpID || u.id;
+    const isAdmin = g_CurrentUser && (g_CurrentUser.accessLevel === 'Admin' || g_CurrentUser.accessLevel === 'Super Admin');
+
+    const teachingTasks = customWls.filter(w => w.Category === 'งานสอน');
+    let m1Html = '';
+    if (teachingTasks.length > 0) {
+      m1Html = teachingTasks.map(w => `
+        <div class="wl-item-row">
+          <div><b>${escapeHtml(w.Title)}</b> <span style="color:var(--steam-cyan);">(${escapeHtml(w.SubGroupOrLevel || '-')})</span></div>
+          <div>จำนวน ${escapeHtml(w.HoursPerWeek)} ชม./สัปดาห์</div>
+          <div>บทบาท: ${escapeHtml(w.RoleInTask)}</div>
+          <div style="color:var(--text-muted);">ภาคเรียน/ปี: ${escapeHtml(w.AcademicTerm)}</div>
+          <div>${isAdmin ? `<button class="btn-save-sm btn-del-sm" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')">ลบ</button>` : ''}</div>
+        </div>
+      `).join('');
+    } else {
+      m1Html = `<div style="color:var(--text-muted); font-size:12px;">กลุ่มสาระ: <b>${escapeHtml(u.Department || '-')}</b> (ยังไม่มีการบันทึกรายวิชาและชั่วโมงสอนรายสัปดาห์)</div>`;
+    }
+
+    const divisionTasks = u.Division && u.Division !== '-' ? u.Division.split(',').map(s => s.trim()) : [];
+    let m2Html = '';
+    if (divisionTasks.length > 0) {
+      m2Html = divisionTasks.map(tName => {
+        const coStaff = g_UsersSummary.filter(other => other.EmpID !== empId && other.Division && other.Division.includes(tName)).map(o => o.FullName);
+        const coStaffTxt = coStaff.length > 0 ? `ผู้ร่วมรับผิดชอบ: ${coStaff.join(', ')}` : 'ผู้รับผิดชอบหลัก';
+        return `
+          <div class="wl-item-row">
+            <div><b style="color:#fff;">${escapeHtml(tName)}</b></div>
+            <div style="color:var(--steam-cyan);">${escapeHtml(shortDiv(tName))}</div>
+            <div>งานประจำต่อเนื่อง</div>
+            <div style="color:var(--text-muted); font-size:11.5px;">${escapeHtml(coStaffTxt)}</div>
+            <div></div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      m2Html = `<div style="color:var(--text-muted); font-size:12px;">ไม่มีงานประจำฝ่ายที่ระบุ</div>`;
+    }
+
+    const extraTasks = customWls.filter(w => w.Category === 'งานที่ได้รับมอบหมาย' || w.Category === 'งานประจำฝ่าย');
+    let m3Html = '';
+    if (extraTasks.length > 0) {
+      m3Html = extraTasks.map(w => `
+        <div class="wl-item-row">
+          <div><b>${escapeHtml(w.Title)}</b></div>
+          <div style="color:var(--orange);">คำสั่ง: ${escapeHtml(w.OrderOrRef)}</div>
+          <div>สถานะ: ${escapeHtml(w.Status)}</div>
+          <div style="color:var(--text-muted); font-size:11.5px;">ผู้ร่วมงาน: ${escapeHtml(w.CoEmpIDs || '-')}</div>
+          <div>${isAdmin ? `<button class="btn-save-sm btn-del-sm" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')">ลบ</button>` : ''}</div>
+        </div>
+      `).join('');
+    } else {
+      m3Html = `<div style="color:var(--text-muted); font-size:12px;">ยังไม่มีรายการโครงการหรืองานมอบหมายพิเศษเพิ่มเติม</div>`;
+    }
+
+    const advisorClass = u.classLevel && u.classLevel !== '-' ? u.classLevel : 'ไม่มีชั้นที่ปรึกษา';
+    const dutyDayTxt = u.dutyDay && u.dutyDay !== '-' ? u.dutyDay : 'ตามคำสั่งโรงเรียน';
+
+    return `
+      <div class="wl-cat-section">
+        <div class="wl-cat-head">หมวดที่ 1: งานสอนและกลุ่มสาระการเรียนรู้</div>
+        ${m1Html}
+      </div>
+      <div class="wl-cat-section">
+        <div class="wl-cat-head">หมวดที่ 2: งานประจำฝ่ายและหน้าที่ในสายการบริหาร</div>
+        ${m2Html}
+      </div>
+      <div class="wl-cat-section">
+        <div class="wl-cat-head">หมวดที่ 3: งานโครงการ / หน้าที่พิเศษที่ได้รับมอบหมาย</div>
+        ${m3Html}
+      </div>
+      <div class="wl-cat-section" style="margin-bottom:0;">
+        <div class="wl-cat-head">หมวดที่ 4: งานครูที่ปรึกษาและเวรประจำวัน</div>
+        <div style="font-size:12px; line-height:1.6;">
+          <div>• <b>ชั้นที่ปรึกษา:</b> ${escapeHtml(advisorClass)}</div>
+          <div>• <b>เวรปฏิบัติหน้าที่:</b> ${escapeHtml(dutyDayTxt)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function openWorkloadModal(workloadObj) {
+    const modal = document.getElementById('modalWorkloadForm');
+    const selEmp = document.getElementById('wlForm_empId');
+    if (!modal || !selEmp) return;
+
+    let opts = `<option value="">-- เลือกบุคลากรผู้รับผิดชอบหลัก --</option>` +
+      g_UsersSummary.filter(u => u.status !== 'ย้าย/เกษียณ').map(u =>
+        `<option value="${escapeHtml(u.EmpID)}">${escapeHtml(u.FullName)} (${escapeHtml(u.EmpID)})</option>`
+      ).join('');
+    selEmp.innerHTML = opts;
+
+    if (workloadObj) {
+      document.getElementById('wlModalFormTitle').innerText = 'แก้ไขรายการภาระงาน';
+      document.getElementById('wlForm_workloadId').value = workloadObj.WorkloadID || '';
+      selEmp.value = workloadObj.EmpID || '';
+      document.getElementById('wlForm_category').value = workloadObj.Category || 'งานประจำฝ่าย';
+      document.getElementById('wlForm_title').value = workloadObj.Title || '';
+      document.getElementById('wlForm_subGroup').value = workloadObj.SubGroupOrLevel || '';
+      document.getElementById('wlForm_hours').value = workloadObj.HoursPerWeek || '';
+      document.getElementById('wlForm_role').value = workloadObj.RoleInTask || 'ผู้รับผิดชอบหลัก';
+      document.getElementById('wlForm_orderRef').value = workloadObj.OrderOrRef || '';
+      document.getElementById('wlForm_status').value = workloadObj.Status || 'กำลังดำเนินการ';
+      document.getElementById('wlForm_coEmp').value = workloadObj.CoEmpIDs || '';
+    } else {
+      document.getElementById('wlModalFormTitle').innerText = '+ เพิ่มรายการภาระงาน';
+      document.getElementById('workloadDataForm').reset();
+      document.getElementById('wlForm_workloadId').value = '';
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeWorkloadModal() {
+    const modal = document.getElementById('modalWorkloadForm');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function handleWorkloadFormSubmit(e) {
+    e.preventDefault();
+    const payload = {
+      workloadId: document.getElementById('wlForm_workloadId').value,
+      empId: document.getElementById('wlForm_empId').value,
+      category: document.getElementById('wlForm_category').value,
+      title: document.getElementById('wlForm_title').value.trim(),
+      subGroupOrLevel: document.getElementById('wlForm_subGroup').value.trim(),
+      hoursPerWeek: document.getElementById('wlForm_hours').value.trim(),
+      roleInTask: document.getElementById('wlForm_role').value,
+      academicTerm: g_SchoolInfo.academicYear || '2569',
+      orderOrRef: document.getElementById('wlForm_orderRef').value.trim(),
+      status: document.getElementById('wlForm_status').value,
+      coEmpIds: document.getElementById('wlForm_coEmp').value.trim(),
+      assignedBy: g_CurrentUser ? g_CurrentUser.name : 'Admin'
+    };
+
+    startLoadingBar('กำลังบันทึกรายการภาระงาน...');
+    const actor = g_CurrentUser ? (g_CurrentUser.email || g_CurrentUser.name) : 'Admin';
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          steamAlert(res.message);
+          if (res.status === 'success') {
+            closeWorkloadModal();
+            refreshAllData();
+          }
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('บันทึกไม่สำเร็จ: ' + (err.message || err))))
+      .saveStaffWorkloadRecord(payload, actor);
+  }
+
+  function handleDeleteWorkloadItem(wlId) {
+    steamConfirm('ยืนยันการลบรายการภาระงานนี้ใช่หรือไม่?', () => {
+      startLoadingBar('กำลังลบรายการภาระงาน...');
+      const actor = g_CurrentUser ? (g_CurrentUser.email || g_CurrentUser.name) : 'Admin';
+      google.script.run
+        .withSuccessHandler(res => {
+          stopLoadingBar(() => {
+            steamAlert(res.message);
+            refreshAllData();
+          });
+        })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('ลบไม่สำเร็จ: ' + (err.message || err))))
+        .deleteStaffWorkloadRecord(wlId, actor);
+    });
+  }
+</script>

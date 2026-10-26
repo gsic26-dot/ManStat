@@ -1,0 +1,233 @@
+<!-- VIEW 2: ยื่นใบลา / ขออนุญาตออกนอกสถานศึกษา (ไม่เกิน 3 ชม.) -->
+<div id="view_leave" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+    <h3 style="color:var(--steam-green); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      แบบฟอร์มยื่นใบลาออนไลน์ / ขออนุญาตออกนอกสถานศึกษา (ไม่เกิน 3 ชั่วโมง)
+    </h3>
+    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ระบบคำนวณเฉพาะวันทำการ (ตัดวันเสาร์-อาทิตย์ และวันหยุดราชการที่ประกาศไว้โดยอัตโนมัติ)</div>
+  </div>
+
+  <div style="background: rgba(0,0,0,0.24); padding: 20px; border-radius: 6px; border: 1px solid #2a475e; max-width: 780px;">
+    <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+      <div class="input-group">
+        <label>เลือกประเภทการลา / ขออนุญาต <span class="req-star">*</span></label>
+        <select id="leaveType" class="steam-input" onchange="toggleLeaveTimeFields()" required>
+          <option value="ลาป่วย">ลาป่วย (หักโควตาเฉพาะวันทำการ)</option>
+          <option value="ลากิจ">ลากิจ (หักโควตาเฉพาะวันทำการ)</option>
+          <option value="ลาพักผ่อน">ลาพักผ่อนสะสม</option>
+          <option value="ขออนุญาต (ไม่เกิน 3 ชม.)">ขออนุญาตออกนอกบริเวณสถานศึกษา (ไม่เกิน 3 ชั่วโมง)</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <div class="input-group">
+          <label>ตั้งแต่วันที่ <span class="req-star">*</span></label>
+          <input type="date" id="leaveStartDate" class="steam-input" required>
+        </div>
+        <div class="input-group" id="endDateGroup">
+          <label>ถึงวันที่ <span class="req-star">*</span></label>
+          <input type="date" id="leaveEndDate" class="steam-input">
+        </div>
+      </div>
+
+      <div id="timeGroup" style="display:none; background:rgba(210,153,34,0.12); border:1px dashed var(--orange); padding:12px; border-radius:6px; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--orange); font-weight:bold; margin-bottom:8px;">* การขออนุญาตออกนอกสถานศึกษา ระบบจำกัดเวลาไม่เกิน 3 ชั่วโมง</div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>เวลาเริ่มต้น <span class="req-star">*</span></label>
+            <input type="time" id="leaveStartTime" class="steam-input" style="margin-bottom:0;">
+          </div>
+          <div class="input-group">
+            <label>เวลาสิ้นสุด <span class="req-star">*</span></label>
+            <input type="time" id="leaveEndTime" class="steam-input" style="margin-bottom:0;">
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>สาเหตุการลา / ขออนุญาต <span class="req-star">*</span></label>
+        <input type="text" id="leaveReason" class="steam-input" placeholder="ระบุเหตุผลการลา..." required>
+      </div>
+
+      <div class="input-group">
+        <label style="color:var(--steam-cyan);">การมอบหมายงานสอน / ครูสอนแทนระหว่างลา (สำหรับฝ่ายวิชาการตรวจสอบ) <span class="req-star">*</span></label>
+        <input type="text" id="leaveSubInfo" class="steam-input" placeholder="เช่น มอบหมายใบงาน ม.1/1 หรือ ครูสมชายสอนแทน / ไม่มีคาบสอน" required>
+      </div>
+
+      <div class="input-group">
+        <label>แนบไฟล์ใบรับรองแพทย์ หรือเอกสารอ้างอิง (ถ้ามี - ไม่เกิน 5 MB)</label>
+        <input type="file" id="leaveAttachFile" class="steam-input" accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+
+      <div style="text-align:right; margin-top:10px;">
+        <button type="submit" id="btnSubmitLeave" class="btn-steam" style="width:auto; padding:10px 28px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          ส่งคำขออนุมัติตามสายงาน
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- VIEW 3: ทะเบียนประวัติ (วิทยฐานะ, การศึกษา, ลูกเสือ, ใบอนุญาต) -->
+<div id="view_profile" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      ทะเบียนประวัติบุคลากร (บันทึกแยกทุกรายการ และคำนวณรายการสูงสุดอัตโนมัติ)
+    </h3>
+    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">วันที่บรรจุและวันที่ได้รับวิทยฐานะแยกออกจากกัน โดยระบบจะดึงระดับสูงสุดไปแสดงบนหน้าหลัก</div>
+  </div>
+
+  <div class="grid-2" style="align-items:start;">
+    <!-- กล่องที่ 1: ประวัติวิทยฐานะ -->
+    <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+      <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">1. เพิ่มประวัติการได้รับวิทยฐานะ</h4>
+      <form onsubmit="handleSaveHistory(event, 'STANDING')">
+        <div class="input-group">
+          <label>ระดับวิทยฐานะ <span class="req-star">*</span></label>
+          <select id="std_level" class="steam-input" required>
+            <option value="ไม่มีวิทยฐานะ (ครูผู้ช่วย)">ไม่มีวิทยฐานะ (ครูผู้ช่วย)</option>
+            <option value="ครู คศ. 1">ครู คศ. 1</option>
+            <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+            <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+            <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+            <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+            <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+            <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>วันที่ได้รับวิทยฐานะ <span class="req-star">*</span></label>
+            <input type="date" id="std_date" class="steam-input" required>
+          </div>
+          <div class="input-group">
+            <label>เลขที่คำสั่ง <span class="req-star">*</span></label>
+            <input type="text" id="std_order" class="steam-input" placeholder="ศธ 04009/..." required>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>แนบไฟล์คำสั่งแต่งตั้ง (PDF/JPG)</label>
+          <input type="file" id="std_file" class="steam-input" accept=".pdf,.jpg,.png">
+        </div>
+        <button type="submit" class="btn-steam">บันทึกประวัติวิทยฐานะ</button>
+      </form>
+    </div>
+
+    <!-- กล่องที่ 2: ประวัติวุฒิการศึกษา -->
+    <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+      <h4 style="color:var(--steam-green); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">2. เพิ่มประวัติวุฒิการศึกษา</h4>
+      <form onsubmit="handleSaveHistory(event, 'EDUCATION')">
+        <div class="grid-2">
+          <div class="input-group">
+            <label>ระดับการศึกษา <span class="req-star">*</span></label>
+            <select id="edu_level" class="steam-input" required>
+              <option value="ปริญญาตรี">ปริญญาตรี</option>
+              <option value="ป.บัณฑิต">ป.บัณฑิต</option>
+              <option value="ปริญญาโท">ปริญญาโท</option>
+              <option value="ปริญญาเอก">ปริญญาเอก</option>
+              <option value="ต่ำกว่าปริญญาตรี">ต่ำกว่าปริญญาตรี</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>อักษรย่อวุฒิ <span class="req-star">*</span></label>
+            <select id="edu_short" class="steam-input" required>
+              <option value="ค.บ.">ค.บ.</option>
+              <option value="ศษ.บ.">ศษ.บ.</option>
+              <option value="กศ.บ.">กศ.บ.</option>
+              <option value="วท.บ.">วท.บ.</option>
+              <option value="ศศ.บ.">ศศ.บ.</option>
+              <option value="ป.บัณฑิต">ป.บัณฑิต</option>
+              <option value="ค.ม.">ค.ม.</option>
+              <option value="ศษ.ม.">ศษ.ม.</option>
+              <option value="กศ.ม.">กศ.ม.</option>
+              <option value="ปร.ด.">ปร.ด.</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>วิชาเอก / สาขาวิชา <span class="req-star">*</span></label>
+          <input type="text" id="edu_major" class="steam-input" placeholder="เช่น ภาษาไทย, บริหารการศึกษา" required>
+        </div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>สถาบันการศึกษา <span class="req-star">*</span></label>
+            <input type="text" id="edu_inst" class="steam-input" required>
+          </div>
+          <div class="input-group">
+            <label>ปี พ.ศ. ที่สำเร็จการศึกษา <span class="req-star">*</span></label>
+            <input type="number" id="edu_year" class="steam-input" placeholder="2566" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-steam">บันทึกวุฒิการศึกษา</button>
+      </form>
+    </div>
+
+    <!-- กล่องที่ 3: วุฒิทางลูกเสือ -->
+    <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+      <h4 style="color:var(--orange); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">3. เพิ่มประวัติวุฒิทางลูกเสือ</h4>
+      <form onsubmit="handleSaveHistory(event, 'SCOUT')">
+        <div class="input-group">
+          <label>วุฒิทางลูกเสือสูงสุด <span class="req-star">*</span></label>
+          <select id="sct_qual" class="steam-input" required>
+            <option value="B.T.C. (ขั้นความรู้เบื้องต้น)">B.T.C. (ขั้นความรู้เบื้องต้น)</option>
+            <option value="A.T.C. (ขั้นความรู้ชั้นสูง)">A.T.C. (ขั้นความรู้ชั้นสูง)</option>
+            <option value="W.B. (วูดแบดจ์ 2 ท่อน)">W.B. (วูดแบดจ์ 2 ท่อน)</option>
+            <option value="A.L.T. (3 ท่อน)">A.L.T. (ผู้ช่วยผู้ให้การฝึกอบรม 3 ท่อน)</option>
+            <option value="L.T. (4 ท่อน)">L.T. (ผู้ให้การฝึกอบรม 4 ท่อน)</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>ประเภทลูกเสือ <span class="req-star">*</span></label>
+            <select id="sct_type" class="steam-input">
+              <option value="ลูกเสือสำรอง">ลูกเสือสำรอง</option>
+              <option value="ลูกเสือสามัญ">ลูกเสือสามัญ</option>
+              <option value="ลูกเสือสามัญรุ่นใหญ่">ลูกเสือสามัญรุ่นใหญ่</option>
+              <option value="ลูกเสือวิสามัญ">ลูกเสือวิสามัญ</option>
+              <option value="ยุวกาชาด / เนตรนารี">ยุวกาชาด / เนตรนารี</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>เลขที่วุฒิบัตร / ปี พ.ศ. <span class="req-star">*</span></label>
+            <input type="text" id="sct_cert" class="steam-input" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-steam" style="background:var(--orange); color:#000;">บันทึกวุฒิลูกเสือ</button>
+      </form>
+    </div>
+
+    <!-- กล่องที่ 4: ใบอนุญาตประกอบวิชาชีพ -->
+    <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+      <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">4. เพิ่มข้อมูลใบอนุญาตประกอบวิชาชีพ</h4>
+      <form onsubmit="handleSaveHistory(event, 'LICENSE')">
+        <div class="input-group">
+          <label>ประเภทใบอนุญาต <span class="req-star">*</span></label>
+          <select id="lic_type" class="steam-input" required>
+            <option value="ใบอนุญาตประกอบวิชาชีพครู">ใบอนุญาตประกอบวิชาชีพครู</option>
+            <option value="ใบอนุญาตผู้บริหารสถานศึกษา">ใบอนุญาตผู้บริหารสถานศึกษา</option>
+            <option value="ใบอนุญาตศึกษานิเทศก์">ใบอนุญาตศึกษานิเทศก์</option>
+            <option value="ใบอนุญาตปฏิบัติการสอนชั่วคราว">ใบอนุญาตปฏิบัติการสอนชั่วคราว</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>เลขที่ใบอนุญาต <span class="req-star">*</span></label>
+          <input type="text" id="lic_num" class="steam-input" required>
+        </div>
+        <div class="grid-2">
+          <div class="input-group">
+            <label>วันที่ออกให้ <span class="req-star">*</span></label>
+            <input type="date" id="lic_issue" class="steam-input" required>
+          </div>
+          <div class="input-group">
+            <label>วันหมดอายุ <span class="req-star">*</span></label>
+            <input type="date" id="lic_exp" class="steam-input" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-steam">บันทึกใบอนุญาตประกอบวิชาชีพ</button>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,97 @@
+<!-- MODAL: ตั้งค่าบัญชีส่วนตัว -->
+<div class="modal-overlay" id="modalSettings" style="display:none;">
+  <div class="modal-box">
+    <h3 style="color:var(--steam-cyan); margin-top:0; display:flex; align-items:center; gap:8px;">
+      <svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82"/></svg>
+      ตั้งค่าข้อมูลส่วนตัว
+    </h3>
+    <label style="font-size:13px; color:var(--text-muted);">เบอร์โทรศัพท์ติดต่อ</label>
+    <input type="text" id="setPhone" class="steam-input">
+    <hr style="border:none; border-top:1px solid #2a475e; margin: 15px 0;">
+    <label style="font-size:13px; color:var(--text-muted);">รหัสผ่านเดิม</label>
+    <input type="password" id="setOldPass" class="steam-input">
+    <label style="font-size:13px; color:var(--text-muted);">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label>
+    <input type="password" id="setNewPass" class="steam-input">
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSettingsModal()">ยกเลิก</button>
+      <button type="button" class="btn-steam" onclick="savePersonalSettings()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: พรีวิวแบบฟอร์มใบลาราชการ A4 -->
+<div class="modal-overlay" id="modalPrintPreview" style="display:none;">
+  <div class="modal-box" style="max-width:760px; max-height:90vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:12px;">
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:16px;">พรีวิวแบบฟอร์มใบลาราชการ (A4)</h3>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-save-sm" onclick="document.getElementById('modalPrintPreview').style.display='none'">ปิดหน้าต่าง</button>
+        <button type="button" class="btn-steam" style="width:auto; padding:6px 18px;" onclick="window.print()">สั่งพิมพ์ / บันทึก PDF</button>
+      </div>
+    </div>
+    <div id="printPreviewBody" style="background:#fff; border-radius:4px; overflow:hidden;"></div>
+  </div>
+</div>
+
+<!-- 1. STEAM ALERT -->
+<div class="modal-overlay" id="steamAlertModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 340px; padding: 25px;">
+    <h3 id="steamAlertTitle" style="color:var(--steam-cyan); margin-top:0; font-size:18px;">ระบบ ManStat</h3>
+    <p style="color:#fff; font-size:14px; margin-bottom:25px; word-break: break-word;" id="steamAlertMessage"></p>
+    <button type="button" class="btn-steam" onclick="closeSteamAlert()">ตกลง (OK)</button>
+  </div>
+</div>
+
+<!-- 2. STEAM CONFIRM -->
+<div class="modal-overlay" id="steamConfirmModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 360px; padding: 25px;">
+    <h3 style="color:var(--orange); margin-top:0; font-size:18px;">ยืนยันการดำเนินการ</h3>
+    <p style="color:#fff; font-size:14px; margin-bottom:25px;" id="steamConfirmMessage"></p>
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSteamConfirm()">ยกเลิก</button>
+      <button type="button" class="btn-steam" style="background:var(--orange); color:#fff;" onclick="executeSteamConfirm()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. STEAM PROMPT -->
+<div class="modal-overlay" id="steamPromptModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 360px; padding: 25px;">
+    <h3 id="steamPromptTitle" style="color:var(--steam-cyan); margin-top:0; font-size:18px;">ระบุข้อมูล</h3>
+    <p style="color:#fff; font-size:14px; margin-bottom:15px;" id="steamPromptMessage"></p>
+    <input type="text" id="steamPromptInput" class="steam-input" style="margin-bottom:20px; text-align:center;">
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSteamPrompt()">ยกเลิก</button>
+      <button type="button" class="btn-steam" style="background:var(--steam-cyan); color:#000;" onclick="executeSteamPrompt()">ตกลง</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR DRAWER ด้านขวา: เปลี่ยนผู้ลงนาม -->
+<div class="sidebar" id="sidebar">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:14px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:16px;" id="sbTitle">เปลี่ยนผู้ลงนาม</h3>
+    <button onclick="closeSidebar()" style="background:none; border:none; color:var(--text-muted); font-size:26px; cursor:pointer;">×</button>
+  </div>
+
+  <div id="sbContentDelegate">
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 15px 0;">เลือกผู้มีอำนาจลงนามอนุมัติใบลาในวันนี้</p>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:10px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="director" checked>
+      <b style="color:#fff; margin-left:6px;">ผู้อำนวยการสถานศึกษา</b>
+      <div style="color:var(--steam-cyan); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Director">-</div>
+    </label>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:10px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="deputy1">
+      <b style="color:#fff; margin-left:6px;">รักษาการคนที่ 1</b>
+      <div style="color:var(--orange); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Dep1">- ยังไม่ได้กำหนด -</div>
+    </label>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:14px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="deputy2">
+      <b style="color:#fff; margin-left:6px;">รักษาการคนที่ 2</b>
+      <div style="color:var(--orange); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Dep2">- ยังไม่ได้กำหนด -</div>
+    </label>
+    <button type="button" class="btn-steam" onclick="saveDelegationFromSidebar()">ยืนยันผู้ลงนาม</button>
+  </div>
+</div>
+<div class="modal-overlay" id="sbOverlay" style="display:none; z-index:2750;" onclick="closeSidebar()"></div>

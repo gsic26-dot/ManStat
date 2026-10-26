@@ -1,0 +1,66 @@
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-file-earmark-medical me-2"></i>แบบฟอร์มยื่นการลา / ขออนุญาตออกนอกสถานศึกษา (ไม่เกิน 3 ชม.)</h5>
+      </div>
+      <div class="card-body p-4">
+        <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold">ประเภทการลา <span class="req-star">*</span></label>
+            <select class="form-select" id="leaveType" required onchange="toggleLeaveTimeFields()">
+              <option value="ลาป่วย">ลาป่วย (คำนวณเฉพาะวันทำการ)</option>
+              <option value="ลากิจ">ลากิจ (คำนวณเฉพาะวันทำการ)</option>
+              <option value="ลาพักผ่อน">ลาพักผ่อน</option>
+              <option value="ขออนุญาต (ไม่เกิน 3 ชม.)">ขออนุญาตออกนอกสถานศึกษา (ไม่เกิน 3 ชั่วโมง)</option>
+            </select>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">ตั้งแต่วันที่ <span class="req-star">*</span></label>
+              <input type="date" class="form-control" id="leaveStartDate" required>
+            </div>
+            <div class="col-md-6" id="endDateGroup">
+              <label class="form-label fw-bold">ถึงวันที่ <span class="req-star">*</span></label>
+              <input type="date" class="form-control" id="leaveEndDate">
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3 d-none bg-light p-3 rounded border" id="timeGroup">
+            <div class="col-12">
+              <small class="text-danger fw-bold">* ระบบตรวจสอบเวลาอัตโนมัติ การขออนุญาตต้องไม่เกิน 3 ชั่วโมง</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">เวลาเริ่มต้น <span class="req-star">*</span></label>
+              <input type="time" class="form-control" id="leaveStartTime">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">เวลาสิ้นสุด <span class="req-star">*</span></label>
+              <input type="time" class="form-control" id="leaveEndTime">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">เหตุผลการลา / ขออนุญาต <span class="req-star">*</span></label>
+            <textarea class="form-control" id="leaveReason" rows="2" required></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold text-primary">การมอบหมายงานสอน / ครูสอนแทน (สำหรับฝ่ายวิชาการตรวจสอบ) <span class="req-star">*</span></label>
+            <input type="text" class="form-control" id="leaveSubInfo" placeholder="เช่น คาบที่ 2 ม.1/1 มอบหมายครูสมชายสอนแทน / ไม่มีคาบสอน" required>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-bold">แนบไฟล์เอกสาร เช่น ใบรับรองแพทย์ (ขนาดไม่เกิน 5 MB)</label>
+            <input type="file" class="form-control" id="leaveAttachFile" accept=".pdf,.jpg,.jpeg,.png">
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnSubmitLeave">
+            <i class="bi bi-send-check-fill me-1"></i> ส่งคำขออนุมัติตามสายงาน
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,386 @@
+<div id="view_admin" class="main-view" style="display:none;">
+  <!-- แถบสลับแท็บย่อยของแอดมิน -->
+  <div style="display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+    <button type="button" class="btn-save-sm" id="admTabBtn_tab1" onclick="openAdminTab('tab1')" style="border-color:var(--steam-cyan); color:var(--steam-cyan);">2.1 เพิ่มบุคลากรใหม่ (*)</button>
+    <button type="button" class="btn-save-sm" id="admTabBtn_tab2" onclick="openAdminTab('tab2')">2.2 จัดการสมาชิก (ละเอียด) & ตั้งค่ารักษาการ</button>
+    <button type="button" class="btn-save-sm" id="admTabBtn_tab4" onclick="openAdminTab('tab4')">2.3 ข้อมูลพื้นฐานโรงเรียน (School Profile)</button>
+    <button type="button" class="btn-save-sm" id="admTabBtn_tab5" onclick="openAdminTab('tab5')">2.4 ประกาศวันหยุดราชการ</button>
+  </div>
+
+  <!-- =========================================================================
+       TAB 1 (2.1): เพิ่มบุคลากรใหม่ (ดอกจันสีแดงในฟิลด์สำคัญ + สร้างรหัส EXE/TCH/STF อัตโนมัติ)
+  ========================================================================== -->
+  <div id="tab1" class="tab-content active">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:15.5px;">2.1 เพิ่มบัญชีผู้ใช้งานระบบ (สร้างรหัส EXE / TCH / STF ตามสายงานอัตโนมัติ)</h3>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.24); padding: 18px; border-radius: 6px; border: 1px solid #2a475e; max-width: 860px;">
+      <form id="quickAddStaffForm" onsubmit="handleQuickAddStaff(event)">
+        <div class="grid-3">
+          <div class="input-group">
+            <label>คำนำหน้า <span class="req-star">*</span></label>
+            <select id="new_prefix" class="steam-input" required>
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+              <option value="ว่าที่ร้อยตรี">ว่าที่ร้อยตรี</option>
+              <option value="ดร.">ดร.</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>ชื่อจริง <span class="req-star">*</span></label>
+            <input type="text" id="new_firstName" class="steam-input" required>
+          </div>
+          <div class="input-group">
+            <label>นามสกุล <span class="req-star">*</span></label>
+            <input type="text" id="new_lastName" class="steam-input" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="input-group">
+            <label>เลขประจำตัวประชาชน (13 หลัก) <span class="req-star">*</span></label>
+            <input type="text" id="new_idCard" class="steam-input" maxlength="13" placeholder="ใช้เป็นรหัสผ่านเริ่มต้นหากไม่ระบุรหัสผ่าน" required>
+          </div>
+          <div class="input-group">
+            <label>วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></label>
+            <input type="date" id="new_startDate" class="steam-input" required>
+          </div>
+          <div class="input-group">
+            <label>ตำแหน่ง / วิทยฐานะ <span class="req-star">*</span></label>
+            <select id="new_role" class="steam-input" required>
+              <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+              <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+              <option value="ครู คศ. 1" selected>ครู คศ. 1</option>
+              <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+              <option value="ครู">ครู</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="เจ้าหน้าที่ธุรการโรงเรียน">เจ้าหน้าที่ธุรการโรงเรียน</option>
+              <option value="เจ้าหน้าที่การเงินและพัสดุ">เจ้าหน้าที่การเงินและพัสดุ</option>
+              <option value="นักการภารโรง">นักการภารโรง</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>กลุ่มสาระการเรียนรู้ / ฝ่ายงาน <span class="req-star">*</span></label>
+            <select id="new_dept" class="steam-input" required>
+              <option value="ภาษาไทย">กลุ่มสาระฯ ภาษาไทย</option>
+              <option value="คณิตศาสตร์">กลุ่มสาระฯ คณิตศาสตร์</option>
+              <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี</option>
+              <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระฯ สังคมศึกษาฯ</option>
+              <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระฯ สุขศึกษาและพลศึกษา</option>
+              <option value="ศิลปะ">กลุ่มสาระฯ ศิลปะ</option>
+              <option value="การงานอาชีพ">กลุ่มสาระฯ การงานอาชีพ</option>
+              <option value="ภาษาต่างประเทศ">กลุ่มสาระฯ ภาษาต่างประเทศ</option>
+              <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+              <option value="บริหารทั่วไป">บริหารทั่วไป</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Email (สำหรับล็อกอินและรับแจ้งเตือน)</label>
+            <input type="email" id="new_email" class="steam-input">
+          </div>
+          <div class="input-group">
+            <label>เบอร์โทรศัพท์</label>
+            <input type="text" id="new_phone" class="steam-input">
+          </div>
+          <div class="input-group">
+            <label>รหัสผ่านเริ่มต้น <span class="req-star">*</span></label>
+            <input type="text" id="new_pass" class="steam-input" value="123456" required>
+          </div>
+          <div class="input-group">
+            <label>สิทธิ์ระบบ <span class="req-star">*</span></label>
+            <select id="new_access" class="steam-input" required>
+              <option value="User" selected>User (บุคลากรทั่วไป)</option>
+              <option value="Admin">Admin (หน.บุคคล / วิชาการ / ผู้อนุมัติ)</option>
+              <option value="Super Admin">Super Admin (ผู้ดูแลระบบสูงสุด)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px; text-align:right;">
+          <button type="submit" id="btnAddNew" class="btn-steam" style="width:220px;">
+            <svg class="ui-ico" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            บันทึกข้อมูลบุคลากร
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       TAB 2 (2.2): จัดการสมาชิกแบบละเอียด + กำหนดผู้รักษาราชการแทน
+  ========================================================================== -->
+  <div id="tab2" class="tab-content">
+    <!-- กล่องกำหนดผู้รักษาราชการแทน (ตาม UI_Admin_Staff.html) -->
+    <div style="background: rgba(0,0,0,0.24); border: 1px solid var(--steam-cyan); border-radius: 6px; padding: 12px 15px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+        <div>
+          <h3 style="color: var(--steam-cyan); margin: 0; font-size: 15px;">กำหนดผู้รักษาราชการแทน (สายอนุมัติขั้นที่ 3)</h3>
+          <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">มีสิทธิ์กดอนุมัติใบลาและปรากฏชื่อในแบบฟอร์มราชการ A4 เมื่อเปลี่ยนผู้ลงนาม</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+        <div>
+          <label style="color: #fff; font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block;">รักษาการคนที่ 1</label>
+          <select id="adminSettingDep1" class="steam-input" style="width: 190px; padding: 5px 8px; font-size: 13px; margin:0;"></select>
+        </div>
+        <div>
+          <label style="color: #fff; font-size: 12px; font-weight: bold; margin-bottom: 4px; display: block;">รักษาการคนที่ 2</label>
+          <select id="adminSettingDep2" class="steam-input" style="width: 190px; padding: 5px 8px; font-size: 13px; margin:0;"></select>
+        </div>
+        <button type="button" class="btn-steam" style="background: var(--steam-green); color: #000; width: auto; padding: 6px 16px; font-size: 13px; height: 32px;" onclick="saveAdminDelegation()">บันทึกผู้รักษาการ</button>
+      </div>
+    </div>
+
+    <!-- กล่องเลือกสมาชิกและแก้ไขข้อมูลครบทุกฟิลด์ -->
+    <div style="background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #2a475e; padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <h4 style="color:var(--steam-cyan); margin:0; font-size:15px;">2.2 เลือกบุคลากรเพื่อแก้ไขข้อมูลละเอียด / โควตาวันลา</h4>
+        <select id="adminSelectMember" class="steam-input" style="width:320px; margin:0; border-color:var(--steam-cyan);" onchange="loadSelectedMemberToForm()">
+          <option value="">-- คลิกเลือกบุคลากรที่ต้องการจัดการ --</option>
+        </select>
+      </div>
+
+      <form id="fullMemberEditForm" onsubmit="handleUpdateFullMember(event)">
+        <div class="grid-3">
+          <div class="input-group"><label>รหัสบุคลากร</label><input type="text" id="ed_empId" class="steam-input" readonly style="background:#101822; color:var(--steam-cyan); font-weight:bold;"></div>
+          <div class="input-group"><label>ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label><input type="text" id="ed_newPassword" class="steam-input" placeholder="พิมพ์รหัสใหม่เพื่อรีเซ็ต..."></div>
+          <div class="input-group">
+            <label>สิทธิ์ระบบ <span class="req-star">*</span></label>
+            <select id="ed_role" class="steam-input">
+              <option value="User">User</option>
+              <option value="Admin">Admin</option>
+              <option value="Super Admin">Super Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="input-group">
+            <label>คำนำหน้า <span class="req-star">*</span></label>
+            <select id="ed_prefix" class="steam-input">
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+              <option value="ว่าที่ร้อยตรี">ว่าที่ร้อยตรี</option>
+              <option value="ดร.">ดร.</option>
+            </select>
+          </div>
+          <div class="input-group"><label>ชื่อจริง <span class="req-star">*</span></label><input type="text" id="ed_firstName" class="steam-input" required></div>
+          <div class="input-group"><label>นามสกุล <span class="req-star">*</span></label><input type="text" id="ed_lastName" class="steam-input" required></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="input-group"><label>เลขประจำตัวประชาชน <span class="req-star">*</span></label><input type="text" id="ed_idCard" class="steam-input" maxlength="13" required></div>
+          <div class="input-group"><label>วันเดือนปีเกิด</label><input type="date" id="ed_birthDate" class="steam-input"></div>
+          <div class="input-group"><label>วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></label><input type="date" id="ed_startDate" class="steam-input" required></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="input-group">
+            <label>ตำแหน่ง / วิทยฐานะ <span class="req-star">*</span></label>
+            <select id="ed_position" class="steam-input">
+              <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+              <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+              <option value="ครู คศ. 1">ครู คศ. 1</option>
+              <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+              <option value="ครู">ครู</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="เจ้าหน้าที่ธุรการโรงเรียน">เจ้าหน้าที่ธุรการโรงเรียน</option>
+              <option value="นักการภารโรง">นักการภารโรง</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>ประเภทบุคลากร <span class="req-star">*</span></label>
+            <select id="ed_empType" class="steam-input">
+              <option value="ข้าราชการครูและบุคลากรทางการศึกษา">ข้าราชการครูและบุคลากรทางการศึกษา</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+              <option value="ลูกจ้างชั่วคราว">ลูกจ้างชั่วคราว</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>กลุ่มสาระ / ฝ่ายงาน <span class="req-star">*</span></label>
+            <select id="ed_department" class="steam-input">
+              <option value="ภาษาไทย">กลุ่มสาระฯ ภาษาไทย</option>
+              <option value="คณิตศาสตร์">กลุ่มสาระฯ คณิตศาสตร์</option>
+              <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี</option>
+              <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระฯ สังคมศึกษาฯ</option>
+              <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระฯ สุขศึกษาและพลศึกษา</option>
+              <option value="ศิลปะ">กลุ่มสาระฯ ศิลปะ</option>
+              <option value="การงานอาชีพ">กลุ่มสาระฯ การงานอาชีพ</option>
+              <option value="ภาษาต่างประเทศ">กลุ่มสาระฯ ภาษาต่างประเทศ</option>
+              <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+              <option value="บริหารทั่วไป">บริหารทั่วไป</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="input-group"><label>เบอร์โทรศัพท์</label><input type="text" id="ed_phone" class="steam-input"></div>
+          <div class="input-group"><label>Email</label><input type="email" id="ed_email" class="steam-input"></div>
+          <div class="input-group">
+            <label>สถานะการปฏิบัติงาน</label>
+            <select id="ed_status" class="steam-input">
+              <option value="ปกติ">ปกติ</option>
+              <option value="ช่วยราชการ">ช่วยราชการ</option>
+              <option value="ลาศึกษาต่อ">ลาศึกษาต่อ</option>
+              <option value="ระงับสิทธิ์">ระงับสิทธิ์</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="input-group"><label>ผู้ติดต่อฉุกเฉิน</label><input type="text" id="ed_emergName" class="steam-input"></div>
+          <div class="input-group"><label>เบอร์โทรฉุกเฉิน</label><input type="text" id="ed_emergPhone" class="steam-input"></div>
+          <div class="input-group"><label>ชั้นเรียนที่ปรึกษา</label><input type="text" id="ed_advisorClass" class="steam-input" placeholder="เช่น ป.1, ม.2/1"></div>
+        </div>
+
+        <div style="border-top:1px dashed #2a475e; padding-top:10px; margin-top:6px;">
+          <div style="color:var(--orange); font-size:13px; font-weight:bold; margin-bottom:8px;">โควตาวันลาสูงสุดประจำปีงบประมาณ (วัน)</div>
+          <div class="grid-3">
+            <div class="input-group"><label>สิทธิ์ลาป่วย (วัน)</label><input type="number" id="ed_sickMax" class="steam-input" value="60"></div>
+            <div class="input-group"><label>สิทธิ์ลากิจ (วัน)</label><input type="number" id="ed_personalMax" class="steam-input" value="45"></div>
+            <div class="input-group"><label>สิทธิ์ลาพักผ่อนสะสม (วัน)</label><input type="number" id="ed_vacationMax" class="steam-input" value="10"></div>
+          </div>
+        </div>
+
+        <div style="text-align:right;">
+          <button type="submit" id="btnSaveFullMember" class="btn-steam" style="width:auto; padding:9px 24px;">บันทึกอัปเดตข้อมูลสมาชิก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       TAB 4 (2.3): ข้อมูลพื้นฐานโรงเรียน (จาก UI_Admin_School.html ของคุณ)
+  ========================================================================== -->
+  <div id="tab4" class="tab-content">
+    <style>
+      .sch-top-grid { display: grid; grid-template-columns: 260px 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+      @media screen and (max-width: 820px) { .sch-top-grid { grid-template-columns: 1fr; } }
+      .sch-card { background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 6px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+      .sch-card-head { font-size: 14px; font-weight: bold; color: var(--steam-cyan); border-bottom: 1px dashed #2a475e; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    </style>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h3 style="color:var(--steam-cyan); margin:0; font-size:16px; display:flex; align-items:center; gap:8px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          2.3 ตั้งค่าข้อมูลสถานศึกษา (School Profile)
+        </h3>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ข้อมูลส่วนนี้จะถูกนำไปแสดงบนหัวตารางแดชบอร์ดและเอกสารรายงานใบลา A4 อัตโนมัติ</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-save-sm" style="border-color:var(--red); color:var(--red);" onclick="promptFiscalReset()">ตัดรอบปีงบประมาณใหม่</button>
+        <button type="button" class="btn-steam" style="width:auto; padding:8px 24px; font-size:14px;" id="btnSaveSchool" onclick="saveSchoolData()">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          บันทึกข้อมูลสถานศึกษา
+        </button>
+      </div>
+    </div>
+
+    <div class="sch-top-grid">
+      <div class="sch-card" style="text-align:center; align-items:center;">
+        <div class="sch-card-head" style="width:100%; justify-content:center;">ตราสัญลักษณ์โรงเรียน</div>
+        <div style="width:125px; height:125px; border:2px dashed #2a475e; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#101822; overflow:hidden; margin: 6px auto 12px auto;">
+          <img id="logoPreview" src="" style="max-width:100%; max-height:100%; display:none; object-fit:contain;">
+          <span id="logoPlaceholder" style="color:var(--text-muted); font-size:12px;">ไม่มีรูปภาพ</span>
+        </div>
+        <div style="width:100%;">
+          <input type="file" id="logoFileInput" accept="image/png, image/jpeg" style="display:none;" onchange="previewLogo(event)">
+          <button type="button" class="btn-save-sm" style="background:#323e4c; width:100%; margin-bottom:8px; padding:7px 12px;" onclick="document.getElementById('logoFileInput').click()">เลือกไฟล์โลโก้</button>
+        </div>
+      </div>
+
+      <div class="sch-card">
+        <div>
+          <div class="sch-card-head">ข้อมูลพื้นฐานสถานศึกษาและผู้บริหาร</div>
+          <div class="grid-2">
+            <div class="input-group"><label>ชื่อสถานศึกษา <span class="req-star">*</span></label><input type="text" id="sch_schoolName" class="steam-input"></div>
+            <div class="input-group"><label>หน่วยงานต้นสังกัด <span class="req-star">*</span></label><input type="text" id="sch_affiliation" class="steam-input"></div>
+            <div class="input-group"><label>รหัสสถานศึกษา (10 หลัก)</label><input type="text" id="sch_schoolCode10" class="steam-input"></div>
+            <div class="input-group"><label>รหัส SMIS (8 หลัก)</label><input type="text" id="sch_schoolCode8" class="steam-input"></div>
+            <div class="input-group"><label>ชื่อ-นามสกุล ผู้อำนวยการ <span class="req-star">*</span></label><input type="text" id="sch_directorName" class="steam-input"></div>
+            <div class="input-group"><label>ตำแหน่งที่ระบุในเอกสารราชการ</label><input type="text" id="sch_directorPosition" class="steam-input"></div>
+            <div class="input-group"><label>ปีการศึกษาปัจจุบัน</label><input type="text" id="sch_academicYear" class="steam-input"></div>
+            <div class="input-group"><label>ปีงบประมาณปัจจุบัน</label><input type="text" id="sch_fiscalYear" class="steam-input"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sch-card">
+      <div class="sch-card-head">ข้อมูลการติดต่อและพิกัดภูมิศาสตร์ (GPS)</div>
+      <div class="grid-2">
+        <div class="input-group"><label>เบอร์โทรศัพท์ติดต่อ</label><input type="text" id="sch_contactPhone" class="steam-input"></div>
+        <div class="input-group"><label>อีเมลโรงเรียน</label><input type="text" id="sch_contactEmail" class="steam-input"></div>
+        <div class="input-group" style="grid-column: 1 / -1;"><label>ที่อยู่สถานศึกษา</label><input type="text" id="sch_address" class="steam-input"></div>
+        <div class="input-group"><label>ละติจูด (Latitude)</label><input type="text" id="sch_lat" class="steam-input"></div>
+        <div class="input-group">
+          <label>ลองจิจูด (Longitude)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="sch_lng" class="steam-input" style="flex:1; margin:0;">
+            <button type="button" class="btn-save-sm" onclick="getLocationGPS()">ดึงพิกัดปัจจุบัน</button>
+          </div>
+          <span id="gpsStatus" style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       TAB 5 (2.4): ประกาศวันหยุดราชการ (จาก UI_Admin_Holiday.html ของคุณ)
+  ========================================================================== -->
+  <div id="tab5" class="tab-content">
+    <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:16px; display:flex; align-items:center; gap:8px;">
+        <svg class="ui-ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        2.4 ระบบประกาศวันหยุดราชการ / วันหยุดพิเศษ
+      </h3>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">วันหยุดที่ประกาศในหน้านี้จะถูกนำไปตัดออกจากจำนวนวันทำการเวลาบุคลากรยื่นใบลาให้อัตโนมัติ</div>
+    </div>
+
+    <div class="grid-2" style="align-items: start; gap: 16px;">
+      <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e;">
+        <h4 style="color:var(--orange); margin-top:0; font-size:14px; border-bottom:1px dashed #2a475e; padding-bottom:8px; margin-bottom:12px;">สร้างประกาศวันหยุดใหม่</h4>
+        <div class="input-group">
+          <label>เลือกวันที่หยุดจากปฏิทิน <span class="req-star">*</span></label>
+          <input type="date" id="hol_date_picker" class="steam-input">
+        </div>
+        <div class="input-group">
+          <label>ประเภท / สาเหตุวันหยุด</label>
+          <select id="hol_reason_select" class="steam-input">
+            <option value="วันหยุดนักขัตฤกษ์ (ตามปฏิทินหลวง)" selected>วันหยุดนักขัตฤกษ์ (ตามปฏิทินหลวง)</option>
+            <option value="วันหยุดชดเชยวันสำคัญ">วันหยุดชดเชยวันสำคัญ</option>
+            <option value="วันหยุดราชการกรณีพิเศษ (ตามมติ ครม.)">วันหยุดราชการกรณีพิเศษ (ตามมติ ครม.)</option>
+            <option value="เหตุสุดวิสัย (ภัยธรรมชาติ / เหตุฉุกเฉิน)">เหตุสุดวิสัย (ภัยธรรมชาติ / เหตุฉุกเฉิน)</option>
+            <option value="ปิดภาคเรียน">ปิดภาคเรียน</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>รายละเอียด / ชื่อวันสำคัญ (หมายเหตุ) <span class="req-star">*</span></label>
+          <input type="text" id="hol_note" class="steam-input" placeholder="เช่น วันปิยมหาราช, วันแม่แห่งชาติ">
+        </div>
+        <button type="button" class="btn-steam" onclick="submitHolidayAdmin()">บันทึกและประกาศวันหยุด</button>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e;">
+        <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14px; border-bottom:1px dashed var(--steam-cyan); padding-bottom:8px; margin-bottom:12px;">รายการวันหยุดที่ประกาศในระบบ</h4>
+        <div id="holidayDashboardContainer" style="max-height: 340px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>

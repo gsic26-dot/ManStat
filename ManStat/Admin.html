@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <?!= include('CSS_Steam'); ?>
+  <style>
+    .container { max-width: 1180px; margin: 0 auto; background: var(--bg-panel); border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #2a475e; overflow: hidden; display:flex; flex-direction:column; min-height: 88vh;}
+    .admin-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #101822; border-bottom: 1px solid #2a475e; flex-wrap: wrap; gap:10px; }
+    .admin-title { font-size: 18px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .btn-back { background: transparent; color: var(--text-muted); text-decoration: none; font-size: 13px; border: 1px solid #2a475e; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor:pointer; display:inline-flex; align-items:center; gap:6px;}
+    .btn-back:hover { color: #fff; border-color: var(--steam-cyan); background: rgba(102,192,244,0.1); }
+    .steam-ribbon { display: flex; background: #171a21; border-bottom: 1px solid #2a475e; padding: 0 10px; flex-wrap: wrap;}
+    .ribbon-tab { padding: 11px 18px; color: var(--text-muted); cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 6px; }
+    .ribbon-tab:hover { color: #fff; background: rgba(255,255,255,0.03); }
+    .ribbon-tab.active { color: var(--steam-cyan); border-bottom: 3px solid var(--steam-cyan); background: var(--bg-main); }
+    .tab-content { display: none; padding: 18px 20px; background: var(--bg-main); flex-grow: 1; box-sizing: border-box; width: 100%;}
+    .tab-content.active { display: block; }
+    
+    .modal-sub-ribbon { display: flex; background: #101822; border: 1px solid #2a475e; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+    .modal-sub-tab { flex: 1; text-align: center; padding: 10px 12px; font-size: 13.5px; font-weight: bold; color: var(--text-muted); cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .modal-sub-tab:hover { color: #fff; background: rgba(255,255,255,0.04); }
+    .modal-sub-tab.active { color: var(--steam-cyan); background: rgba(102,192,244,0.12); border-bottom: 3px solid var(--steam-cyan); }
+
+    .perm-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: bold; }
+    .perm-super { background: rgba(210, 153, 34, 0.2); color: var(--orange); border: 1px solid var(--orange); }
+    .perm-admin { background: rgba(102, 192, 244, 0.18); color: var(--steam-cyan); border: 1px solid var(--steam-cyan); }
+    .perm-user-cls { background: rgba(164, 208, 7, 0.14); color: var(--steam-green); border: 1px solid rgba(164, 208, 7, 0.4); }
+
+    /* ตั้งค่าชั้นเรียนที่เปิดสอนในโรงเรียน แถวเดียวกัน (Single Row) */
+    .cls-header-single-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: nowrap; width: 100%; }
+    .cls-header-left { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--steam-cyan); font-weight: bold; font-size: 14px; }
+    .cls-header-right { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0; }
+    .cls-status-pill { background: rgba(164,208,7,0.16); color: var(--steam-green); border: 1px solid var(--steam-green); padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+    .cls-config-row { display: grid; grid-template-columns: 155px 1fr 120px; align-items: center; gap: 12px; background: rgba(0,0,0,0.25); padding: 10px 14px; border-radius: 6px; border: 1px solid #2a475e; }
+    .cls-pills-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .cls-toggle-pill { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; user-select: none; transition: 0.18s; border: 1px solid #2a475e; background: #101822; color: var(--text-muted); }
+    .cls-toggle-pill:hover { border-color: var(--steam-cyan); color: #fff; }
+    .cls-toggle-pill.active { background: rgba(164, 208, 7, 0.16); border-color: var(--steam-green); color: #fff; }
+
+    .deputy-card-modern { background: linear-gradient(135deg, rgba(16,24,34,0.92), rgba(23,26,33,0.95)); border: 1px solid #2a475e; border-left: 4px solid var(--orange); border-radius: 6px; padding: 14px 18px; margin-bottom: 14px; display: grid; grid-template-columns: 260px 1fr auto; gap: 16px; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+    .deputy-selectors-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .deputy-box-item { background: rgba(0,0,0,0.28); border: 1px solid #2a475e; border-radius: 5px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+    .deputy-num-badge { background: rgba(210,153,34,0.2); color: var(--orange); border: 1px solid var(--orange); font-size: 11.5px; font-weight: bold; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+
+    .div-tags-box { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; padding: 6px 8px; background: #101822; border: 1px solid #2a475e; border-radius: 4px; margin-bottom: 6px; align-items: center; }
+    .div-tag-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(102,192,244,0.16); border: 1px solid var(--steam-cyan); color: #fff; padding: 2px 9px; border-radius: 14px; font-size: 12px; font-weight: bold; }
+    .div-tag-chip .del-tag { color: var(--red); cursor: pointer; display: inline-flex; align-items: center; }
+    .div-tag-chip .del-tag:hover { color: #ff7b72; }
+
+    .switch { position: relative; display: inline-block; width: 36px; height: 18px; margin: 0;}
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .3s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--steam-green); }
+    input:checked + .slider:before { transform: translateX(18px); }
+    #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.78); backdrop-filter: blur(4px); z-index: 9998; display: none; justify-content: center; align-items: center; }
+
+    .sch-top-grid { display: grid; grid-template-columns: 260px 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+    .sch-card { background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 6px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .sch-card-head { font-size: 14px; font-weight: bold; color: var(--steam-cyan); border-bottom: 1px dashed #2a475e; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .flatpickr-calendar { font-family: 'Sarabun', sans-serif !important; background: #171a21 !important; border: 1px solid #2a475e !important; box-shadow: 0 10px 25px rgba(0,0,0,0.85) !important; z-index: 99999 !important; }
+    .flatpickr-day.selected { background: var(--steam-cyan) !important; border-color: var(--steam-cyan) !important; color: #000 !important; font-weight: bold; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-weekdays, span.flatpickr-weekday { background: #101822 !important; color: var(--steam-cyan) !important; font-weight: bold !important; }
+    
+    .id-unverified-badge { background: rgba(210, 153, 34, 0.2); border: 1px solid var(--orange); color: var(--orange); font-size: 10.5px; padding: 1px 6px; border-radius: 3px; font-weight: bold; margin-left: 4px; display: inline-block; }
+
+    .ico-lbl { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: #d0d7de; margin-bottom: 5px; font-size: 13px; }
+    .adm-sec-card { background: rgba(0, 0, 0, 0.26); border: 1px solid #2a475e; border-left: 3px solid var(--steam-cyan); border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; }
+    .adm-sec-title { font-size: 13.5px; font-weight: bold; color: var(--steam-cyan); border-bottom: 1px dashed #2a475e; padding-bottom: 6px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+    .adm-single-row-toolbar { background: rgba(0,0,0,0.22); padding: 9px 12px; border-radius: 6px; border: 1px dashed var(--steam-cyan); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: nowrap; overflow-x: auto; }
+    .adm-toolbar-btns { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+    .adm-toolbar-btn { padding: 6px 11px !important; font-size: 12.5px !important; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; border-radius: 4px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-weight: 600; transition: 0.15s; }
+
+    .adm-filter-bar { background: rgba(0, 0, 0, 0.22); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
+    .adm-filter-bar .steam-input { margin: 0; padding: 6px 10px; font-size: 13px; height: 34px; box-sizing: border-box; }
+
+    .adm-user-ribbon-list { display: flex; flex-direction: column; gap: 6px; }
+    .adm-user-ribbon-card { background: rgba(0, 0, 0, 0.24); border: 1px solid #2a475e; border-radius: 4px; transition: border-color 0.15s, background 0.15s; overflow: hidden; }
+    .adm-user-ribbon-card:hover { border-color: #3d6482; background: rgba(102, 192, 244, 0.04); }
+    .adm-user-ribbon-card.expanded { border-color: var(--steam-cyan); background: rgba(16, 24, 34, 0.92); }
+
+    .adm-user-ribbon-main { display: grid; grid-template-columns: minmax(230px, 1.35fr) minmax(260px, 1.45fr) minmax(230px, 1.25fr) 34px; gap: 12px; align-items: center; padding: 10px 14px; cursor: pointer; }
+    .adm-user-ident-zone { text-align: left; min-width: 0; }
+    .adm-user-name-line { font-size: 15px; font-weight: 700; color: #ffffff; line-height: 1.35; word-break: break-word; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .adm-user-meta-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; word-break: break-word; }
+    .emp-meta-code { font-family: monospace; font-weight: 700; color: var(--steam-cyan); font-size: 12px; }
+    .emp-meta-sep { color: #4b6278; margin: 0 5px; }
+
+    .adm-user-mid-zone { border-left: 1px solid rgba(42, 71, 94, 0.65); border-right: 1px solid rgba(42, 71, 94, 0.65); padding: 0 12px; text-align: left; font-size: 12.5px; color: #d0d7de; line-height: 1.55; }
+    .adm-user-action-zone { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 4px; flex-wrap: nowrap; }
+
+    .emp-expand-btn { width: 30px; height: 30px; border-radius: 4px; border: 1px solid #2a475e; background: transparent; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; flex-shrink: 0; }
+    .adm-user-ribbon-card:hover .emp-expand-btn { color: var(--steam-cyan); border-color: #3d6482; }
+    .adm-user-ribbon-card.expanded .emp-expand-btn { background: rgba(102, 192, 244, 0.18); color: var(--steam-cyan); border-color: var(--steam-cyan); }
+
+    .adm-user-detail-panel { display: none; border-top: 1px solid #2a475e; background: rgba(16, 24, 34, 0.68); padding: 14px 16px; text-align: left; }
+    .adm-user-ribbon-card.expanded .adm-user-detail-panel { display: block; }
+    .adm-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 12.5px; color: #d0d7de; line-height: 1.65; }
+    .adm-detail-box { background: rgba(0, 0, 0, 0.28); border: 1px solid #23384c; border-radius: 4px; padding: 10px 12px; }
+    .adm-detail-head { font-size: 12px; font-weight: bold; color: var(--steam-cyan); border-bottom: 1px dashed #2a475e; padding-bottom: 4px; margin-bottom: 6px; display:flex; align-items:center; gap:5px; }
+
+    .retire-calc-card { background: rgba(102, 192, 244, 0.08); border: 1px solid #2a475e; border-left: 4px solid var(--steam-cyan); border-radius: 6px; padding: 10px 14px; margin-top: 4px; font-size: 12.5px; line-height: 1.6; color: #e6edf3; }
+    .hist-item-card { background: #101822; border: 1px solid #2a475e; border-radius: 5px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+    .hist-item-card:hover { border-color: var(--steam-cyan); }
+    .hist-edit-banner { background: rgba(210, 153, 34, 0.16); border: 1px dashed var(--orange); color: var(--orange); padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; font-size: 12px; font-weight: bold; display: none; justify-content: space-between; align-items: center; }
+
+    .p2-timeline-wrap { border-left: 2px solid #2a475e; margin-left: 10px; padding-left: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .p2-tl-item { position: relative; background: rgba(0,0,0,0.28); border: 1px solid #23384c; border-radius: 5px; padding: 8px 12px; font-size: 12.5px; }
+    .p2-tl-dot { position: absolute; left: -22px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--steam-cyan); border: 2px solid #101822; }
+
+    .wiz-steps-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px; }
+    .wiz-step-pill { background: #101822; border: 1px solid #2a475e; border-radius: 5px; padding: 8px 6px; text-align: center; font-size: 12px; color: var(--text-muted); font-weight: bold; transition: 0.2s; }
+    .wiz-step-pill.active { border-color: var(--steam-cyan); background: rgba(102, 192, 244, 0.16); color: #fff; }
+    .wiz-step-pill.done { border-color: var(--steam-green); background: rgba(164, 208, 7, 0.14); color: var(--steam-green); }
+
+    @media screen and (max-width: 960px) {
+      .sch-top-grid, .cls-config-row, .deputy-card-modern, .deputy-selectors-grid { grid-template-columns: 1fr; }
+      .cls-header-single-row { flex-wrap: wrap; }
+      .cls-pills-grid { grid-template-columns: repeat(2, 1fr); }
+      .adm-filter-bar { grid-template-columns: 1fr 1fr; }
+      .adm-filter-bar #admSearchUserInput { grid-column: 1 / -1; }
+      .adm-user-ribbon-main { grid-template-columns: 1fr auto; gap: 8px; }
+      .adm-user-mid-zone { grid-column: 1 / -1; border-left: none; border-right: none; border-top: 1px dashed rgba(42,71,94,0.55); border-bottom: 1px dashed rgba(42,71,94,0.55); padding: 6px 0; }
+      .adm-user-action-zone { grid-column: 1 / -1; padding-left: 0; }
+      .adm-detail-grid { grid-template-columns: 1fr; }
+      .wiz-steps-bar { grid-template-columns: 1fr; }
+    }
+    @media screen and (max-width: 640px) {
+      .adm-filter-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SYSTEM MODALS -->
+  <div class="modal-overlay" id="steamAlertModal" style="z-index: 9999;"><div class="modal-box" style="text-align: center; max-width: 420px; padding: 20px;"><h3 style="color:var(--steam-cyan); margin-top:0; font-size:16px;" id="steamAlertTitle">ข้อความระบบ</h3><div style="color:#fff; font-size:13px; margin-bottom:20px; word-break: break-word; text-align:left; line-height:1.6;" id="steamAlertMessage"></div><button class="btn-steam" onclick="closeSteamAlert()">ตกลง (OK)</button></div></div>
+  <div class="modal-overlay" id="steamConfirmModal" style="z-index: 9999;"><div class="modal-box" style="text-align: center; max-width: 380px; padding: 22px;"><h3 style="color:var(--orange); margin-top:0; font-size:16.5px;">ยืนยันการดำเนินการ</h3><p style="color:#fff; font-size:13.5px; margin-bottom:20px; white-space: pre-line;" id="steamConfirmMessage"></p><div style="display:flex; gap:10px;"><button class="btn-steam-secondary" style="flex:1;" onclick="closeSteamConfirm()">ยกเลิก</button><button class="btn-steam-danger" style="flex:1;" onclick="executeSteamConfirm()">ยืนยัน</button></div></div></div>
+  <div class="modal-overlay" id="steamPromptModal" style="z-index: 9999;"><div class="modal-box" style="text-align: center; max-width: 380px; padding: 22px;"><h3 style="color:var(--steam-cyan); margin-top:0; font-size:16.5px;" id="steamPromptTitle">ระบุข้อมูล</h3><p style="color:#fff; font-size:13.5px; margin-bottom:15px; white-space: pre-line;" id="steamPromptMessage"></p><input type="text" id="steamPromptInput" class="steam-input" style="text-align:center; font-size:15px; font-weight:bold;"><div style="display:flex; gap:10px; margin-top:15px;"><button class="btn-steam-secondary" style="flex:1;" onclick="closeSteamPrompt()">ยกเลิก</button><button class="btn-steam" style="flex:1; background:var(--steam-cyan); color:#000;" onclick="executeSteamPrompt()">ยืนยัน</button></div></div></div>
+
+  <!-- MODAL บันทึกสำเร็จ [ปิด] / [แก้ไขต่อ] -->
+  <div class="modal-overlay" id="modalSaveSuccessUX" style="z-index: 9995; display:none;">
+    <div class="modal-box" style="text-align: center; max-width: 380px; padding: 24px;">
+      <div style="margin-bottom: 10px;">
+        <svg style="width:44px; height:44px; color:var(--steam-green); stroke:currentColor; fill:none; stroke-width:2;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <h3 style="color:var(--steam-green); margin:0 0 8px 0; font-size:18px;">บันทึกสำเร็จ</h3>
+      <div id="saveSuccessUXMessage" style="color:#e6edf3; font-size:13.5px; margin-bottom:22px; line-height:1.6;">บันทึกข้อมูลบุคลากรเรียบร้อยแล้ว</div>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="onSaveSuccessCloseClick()">ปิด</button>
+        <button type="button" class="btn-steam" style="background:var(--steam-cyan); color:#000;" onclick="onSaveSuccessContinueEditClick()">แก้ไขต่อ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5-STEP EXCEL UPLOAD WIZARD MODAL -->
+  <div class="modal-overlay" id="modalExcelUploadWizard" style="z-index: 2000; display:none;">
+    <div class="modal-box" style="max-width: 820px; padding: 22px; width:100%; text-align:left;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:14px;">
+        <h3 style="color:var(--steam-cyan); margin:0; font-size:16.5px; display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>&nbsp;<span>นำเข้าข้อมูล Excel (5 ขั้นตอน: Personnel / Education / Standing / Scout / License)</span>
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeExcelUploadWizard()" title="ปิดหน้าต่าง">
+          <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="wiz-steps-bar">
+        <div class="wiz-step-pill active" id="wizStepIndicator_1">1. โหลดไฟล์ต้นแบบ</div>
+        <div class="wiz-step-pill" id="wizStepIndicator_2">2. เลือกไฟล์ Excel</div>
+        <div class="wiz-step-pill" id="wizStepIndicator_3">3. ตรวจสอบข้อมูล</div>
+        <div class="wiz-step-pill" id="wizStepIndicator_4">4. พรีวิวรายการ</div>
+        <div class="wiz-step-pill" id="wizStepIndicator_5">5. นำเข้าสำเร็จ</div>
+      </div>
+
+      <div id="wizBodyContent" style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; border-radius:6px; padding:16px; min-height:220px; font-size:13px; line-height:1.65;">
+        <div style="margin-bottom:12px;">
+          <b style="color:var(--steam-green); font-size:14px;">ขั้นตอนที่ 1 & 2: ดาวน์โหลดไฟล์ต้นแบบ 5 แผ่นงาน และเลือกไฟล์ Excel</b>
+          <div style="color:var(--text-muted); font-size:12.5px; margin-top:4px;">
+            ไฟล์ <code>ManStat_Import_Template.xlsx</code> ประกอบด้วย 5 ชีตมาตรฐาน: <b>Personnel, Education, Standing, Scout, License</b> พร้อมข้อมูลตัวอย่าง
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+          <button type="button" class="btn-save-sm" style="background:rgba(102,192,244,0.18); border-color:var(--steam-cyan); color:var(--steam-cyan); padding:8px 16px; display:inline-flex; align-items:center; gap:5px;" onclick="downloadMultiSheetTemplate()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>&nbsp;<span>1. โหลดไฟล์ต้นแบบ (5 Sheets)</span>
+          </button>
+          <button type="button" class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; padding:8px 16px; font-weight:bold; display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('wizExcelFileInput').click()">
+            <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>&nbsp;<span>2. เลือกไฟล์ Excel เพื่อตรวจสอบ</span>
+          </button>
+          <input type="file" id="wizExcelFileInput" accept=".xlsx, .xls" style="display:none;" onchange="handleWizardExcelFileSelect(event)">
+        </div>
+
+        <div id="wizValidationAndPreviewZone" style="border-top:1px dashed #2a475e; padding-top:12px; color:var(--text-muted);">
+          กรุณาเลือกไฟล์ Excel ที่กรอกข้อมูลแล้วเพื่อตรวจสอบและดูพรีวิวก่อนนำเข้า
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+        <button type="button" class="btn-save-sm" onclick="closeExcelUploadWizard()">ปิดหน้าต่าง</button>
+        <button type="button" class="btn-steam" id="btnWizardConfirmImport" style="width:auto; padding:8px 24px; display:none;" onclick="executeWizardFinalImport()">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>ยืนยันนำเข้าข้อมูลทั้งหมด</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ตั้งค่าผู้ใช้และทะเบียนประวัติบุคลากร -->
+  <div class="modal-overlay" id="modalEditTeacher" style="z-index: 1005;">
+    <div class="modal-box" style="max-width: 900px; padding: 20px; width:100%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #2a475e; padding-bottom:8px;">
+        <h3 style="color:var(--steam-cyan); margin:0; font-size:16px; display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>&nbsp;<span>ตั้งค่าผู้ใช้และทะเบียนประวัติบุคลากร — <span id="modalEditHeaderName" style="color:var(--steam-green);"></span></span>
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeEditTeacherModal()" title="ปิดหน้าต่าง">
+          <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- แท็บย่อยชื่อสั้นกระชับ เว้น 1 เคาะหลังไอคอน -->
+      <div class="modal-sub-ribbon">
+        <div class="modal-sub-tab active" id="subTabBtn_profile" onclick="switchEditModalSubTab('profile')">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>&nbsp;<span>ข้อมูลผู้ใช้</span>
+        </div>
+        <div class="modal-sub-tab" id="subTabBtn_registry" onclick="switchEditModalSubTab('registry')">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>ทะเบียนประวัติ</span>
+        </div>
+        <div class="modal-sub-tab" id="subTabBtn_timeline" onclick="switchEditModalSubTab('timeline')">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>&nbsp;<span>ไทม์ไลน์</span>
+        </div>
+      </div>
+
+      <input type="hidden" id="edit_empId">
+      <input type="hidden" id="edit_oldName">
+
+      <!-- SUB-PANE 1: ข้อมูลผู้ใช้ -->
+      <div id="editSubPane_profile" style="max-height: 66vh; overflow-y: auto; padding-right:5px;">
+        <div class="adm-sec-card">
+          <div class="adm-sec-title">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>&nbsp;<span>ข้อมูลระบุตัวตน (แยกเก็บคนละฟิลด์)</span>
+          </div>
+          <div class="grid-4" style="display:grid; grid-template-columns: 1fr 1fr 1.15fr 1.15fr; gap:10px;">
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">รหัสบุคลากร (EmpID)</label>
+              <input type="text" id="edit_empId_display" class="steam-input" style="font-family:monospace; background:#0d1117; color:var(--steam-cyan); font-weight:bold; margin:0;" readonly>
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">เลขที่ตำแหน่ง <span id="posNoAuditBadge"></span></label>
+              <input type="text" id="edit_positionNo" class="steam-input" style="margin:0;" placeholder="ระบุเลขที่ตำแหน่งราชการ">
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">สมาชิกประเภทสามัญ เลขที่</label>
+              <input type="text" id="edit_memberId" class="steam-input" style="margin:0;" placeholder="สมาชิกประเภทสามัญ เลขที่">
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">เลขประจำตัวประชาชน</label>
+              <input type="text" id="edit_idCard" class="steam-input" style="margin:0;" maxlength="13">
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-sec-card" style="border-left-color:var(--steam-green);">
+          <div class="adm-sec-title" style="color:var(--steam-green);">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>ข้อมูลวันเกิด อายุปัจจุบัน และการคำนวณวันเกษียณอายุราชการอัตโนมัติ</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 240px 1fr; gap:12px; align-items:start;">
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">วันเดือนปีเกิด (BirthDate)</label>
+              <input type="date" id="edit_birthDate" class="steam-input" onchange="onBirthDateChangeCalc('edit')">
+            </div>
+            <div id="edit_retirementPreviewBox" class="retire-calc-card">
+              กรุณาเลือกวันเดือนปีเกิดเพื่อคำนวณอายุ (ปี-เดือน-วัน) และวันเกษียณอายุราชการอัตโนมัติ
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-sec-card" style="border-left-color:var(--orange);">
+          <div class="adm-sec-title" style="color:var(--orange);">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>ข้อมูลตำแหน่ง สังกัด ฝ่ายงาน และการติดต่อ</span>
+          </div>
+          <div class="grid-2">
+            <div class="input-group"><label class="ico-lbl">ชื่อ-นามสกุล <span class="req-star">*</span></label><input type="text" id="edit_name" class="steam-input" required></div>
+
+            <div class="input-group">
+              <label class="ico-lbl">ตำแหน่งมาตรฐาน สพฐ. (เลือกหรือพิมพ์เพิ่มเอง) <span class="req-star">*</span></label>
+              <select id="edit_role" class="steam-input" onchange="onRoleComboChange('edit')">
+                <optgroup label="ผู้บริหาร">
+                  <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+                  <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+                </optgroup>
+                <optgroup label="สายวิชาการ">
+                  <option value="ครูเชี่ยวชาญพิเศษ">ครูเชี่ยวชาญพิเศษ</option>
+                  <option value="ครูเชี่ยวชาญ">ครูเชี่ยวชาญ</option>
+                  <option value="ครูชำนาญการพิเศษ">ครูชำนาญการพิเศษ</option>
+                  <option value="ครูชำนาญการ">ครูชำนาญการ</option>
+                  <option value="ครู">ครู</option>
+                  <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+                </optgroup>
+                <optgroup label="อื่นๆ">
+                  <option value="ศึกษานิเทศก์">ศึกษานิเทศก์</option>
+                  <option value="พนักงานราชการ">พนักงานราชการ</option>
+                  <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+                  <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+                  <option value="ลูกจ้างชั่วคราว">ลูกจ้างชั่วคราว</option>
+                  <option value="เจ้าหน้าที่ธุรการ">เจ้าหน้าที่ธุรการ</option>
+                </optgroup>
+                <optgroup label="กำหนดเอง (ComboBox)">
+                  <option value="__CUSTOM_ROLE__">+ พิมพ์ระบุตำแหน่งใหม่เอง...</option>
+                </optgroup>
+              </select>
+              <input type="text" id="edit_role_custom" class="steam-input" style="display:none; margin-top:6px; border-color:var(--steam-cyan);" placeholder="พิมพ์ชื่อตำแหน่งใหม่...">
+            </div>
+
+            <div class="input-group">
+              <label class="ico-lbl" style="color:var(--steam-green);">กลุ่มสาระการเรียนรู้ (เลือกหรือพิมพ์เพิ่มเอง) <span class="req-star">*</span></label>
+              <select id="edit_dept" class="steam-input" onchange="onDeptComboChange('edit')">
+                <optgroup label="กลุ่มสาระการเรียนรู้ และปฐมวัย">
+                  <option value="ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
+                  <option value="คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
+                  <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
+                  <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนาและวัฒนธรรม</option>
+                  <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
+                  <option value="ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
+                  <option value="การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
+                  <option value="ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
+                  <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+                </optgroup>
+                <optgroup label="กิจกรรมพัฒนาผู้เรียน">
+                  <option value="กิจกรรมแนะแนว">กิจกรรมแนะแนว</option>
+                  <option value="กิจกรรมนักเรียน">กิจกรรมนักเรียน</option>
+                  <option value="กิจกรรมเพื่อสังคมและสาธารณประโยชน์">กิจกรรมเพื่อสังคมและสาธารณประโยชน์</option>
+                </optgroup>
+                <optgroup label="สายงานสนับสนุน">
+                  <option value="สายงานบริหารและสนับสนุนการศึกษา">สายงานบริหารและสนับสนุนการศึกษา</option>
+                </optgroup>
+                <optgroup label="กำหนดเอง (ComboBox)">
+                  <option value="__CUSTOM_DEPT__">+ พิมพ์ระบุกลุ่มสาระ/งานใหม่เอง...</option>
+                </optgroup>
+              </select>
+              <input type="text" id="edit_dept_custom" class="steam-input" style="display:none; margin-top:6px; border-color:var(--steam-green);" placeholder="พิมพ์ชื่อกลุ่มสาระ / สายงานใหม่...">
+            </div>
+
+            <div class="input-group"><label class="ico-lbl" style="color:var(--orange);">ชั้นที่ปรึกษา</label>
+              <select id="edit_class" class="steam-input"></select>
+            </div>
+
+            <div class="input-group" style="grid-column: 1 / -1; background:rgba(0,0,0,0.22); border:1px solid #2a475e; padding:12px; border-radius:6px;">
+              <label class="ico-lbl" style="color:var(--steam-cyan); margin-bottom:6px; display:block;">ข้อมูลฝ่ายงาน / หน้าที่พิเศษ (เลือกได้มากกว่า 1 ข้อ หรือพิมพ์เพิ่มเอง) <span class="req-star">*</span></label>
+              <div id="edit_division_tags" class="div-tags-box"></div>
+              <input type="hidden" id="edit_division">
+
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <select id="edit_division_picker" class="steam-input" style="margin:0; flex:1; min-width:240px;" onchange="onSelectEditDivisionPicker()">
+                  <option value="">+ คลิกเลือกฝ่ายงาน / หน้าที่พิเศษเพื่อเพิ่ม...</option>
+                  <optgroup label="คณะผู้บริหารสถานศึกษา">
+                    <option value="ผู้บริหารสถานศึกษา">ผู้บริหารสถานศึกษา</option>
+                  </optgroup>
+                  <optgroup label="1. ฝ่ายบริหารวิชาการ">
+                    <option value="หัวหน้าฝ่ายบริหารวิชาการ">หัวหน้าฝ่ายบริหารวิชาการ</option>
+                    <option value="เจ้าหน้าที่ฝ่ายบริหารวิชาการ">เจ้าหน้าที่ฝ่ายบริหารวิชาการ</option>
+                    <option value="งานพัฒนาหลักสูตรสถานศึกษา">งานพัฒนาหลักสูตรสถานศึกษา</option>
+                    <option value="งานวัดผลและประเมินผล / ทะเบียนนักเรียน">งานวัดผลและประเมินผล / ทะเบียนนักเรียน</option>
+                    <option value="งานประกันคุณภาพภายในสถานศึกษา">งานประกันคุณภาพภายในสถานศึกษา</option>
+                    <option value="งานนิเทศการศึกษาภายใน">งานนิเทศการศึกษาภายใน</option>
+                    <option value="งานห้องสมุดและสื่อเทคโนโลยีการศึกษา">งานห้องสมุดและสื่อเทคโนโลยีการศึกษา</option>
+                  </optgroup>
+                  <optgroup label="2. ฝ่ายบริหารงบประมาณและแผนงาน">
+                    <option value="หัวหน้าฝ่ายบริหารงบประมาณและแผนงาน">หัวหน้าฝ่ายบริหารงบประมาณและแผนงาน</option>
+                    <option value="เจ้าหน้าที่ฝ่ายบริหารงบประมาณ">เจ้าหน้าที่ฝ่ายบริหารงบประมาณ</option>
+                    <option value="งานนโยบายและแผนปฏิบัติการ">งานนโยบายและแผนปฏิบัติการ</option>
+                    <option value="งานการเงินและบัญชี">งานการเงินและบัญชี</option>
+                    <option value="งานพัสดุและสินทรัพย์">งานพัสดุและสินทรัพย์</option>
+                    <option value="งานระดมทรัพยากรเพื่อการศึกษา">งานระดมทรัพยากรเพื่อการศึกษา</option>
+                  </optgroup>
+                  <optgroup label="3. ฝ่ายบริหารงานบุคคล">
+                    <option value="หัวหน้าฝ่ายบริหารงานบุคคล">หัวหน้าฝ่ายบริหารงานบุคคล</option>
+                    <option value="เจ้าหน้าที่ฝ่ายบริหารงานบุคคล">เจ้าหน้าที่ฝ่ายบริหารงานบุคคล</option>
+                    <option value="งานทะเบียนประวัติและสถิติการปฏิบัติราชการ">งานทะเบียนประวัติและสถิติการปฏิบัติราชการ</option>
+                    <option value="งานพัฒนาครูและบุคลากรทางการศึกษา">งานพัฒนาครูและบุคลากรทางการศึกษา</option>
+                    <option value="งานวินัยและการรักษาวินัย">งานวินัยและการรักษาวินัย</option>
+                  </optgroup>
+                  <optgroup label="4. ฝ่ายบริหารทั่วไปและกิจการนักเรียน">
+                    <option value="หัวหน้าฝ่ายบริหารทั่วไป">หัวหน้าฝ่ายบริหารทั่วไป</option>
+                    <option value="เจ้าหน้าที่ฝ่ายบริหารทั่วไป">เจ้าหน้าที่ฝ่ายบริหารทั่วไป</option>
+                    <option value="งานธุรการและสารบรรณ">งานธุรการและสารบรรณ</option>
+                    <option value="งานระบบดูแลช่วยเหลือนักเรียน / กิจการนักเรียน">งานระบบดูแลช่วยเหลือนักเรียน / กิจการนักเรียน</option>
+                    <option value="งานโครงการอาหารกลางวันและโภชนาการ">งานโครงการอาหารกลางวันและโภชนาการ</option>
+                    <option value="งานอนามัยโรงเรียนและห้องพยาบาล">งานอนามัยโรงเรียนและห้องพยาบาล</option>
+                    <option value="งานอาคารสถานที่ สิ่งแวดล้อม และความปลอดภัย">งานอาคารสถานที่ สิ่งแวดล้อม และความปลอดภัย</option>
+                    <option value="งานประชาสัมพันธ์และชุมชนสัมพันธ์">งานประชาสัมพันธ์และชุมชนสัมพันธ์</option>
+                    <option value="งานเทคโนโลยีสารสนเทศ">งานเทคโนโลยีสารสนเทศ</option>
+                  </optgroup>
+                  <optgroup label="ระบุเอง">
+                    <option value="__CUSTOM__">ไม่มีในรายการ (พิมพ์ระบุเอง)</option>
+                  </optgroup>
+                </select>
+
+                <div id="edit_division_custom_wrap" style="display:none; flex:1; min-width:240px; gap:6px; align-items:center;">
+                  <input type="text" id="edit_division_custom_input" class="steam-input" style="margin:0; flex:1;" placeholder="พิมพ์ฝ่ายงาน / หน้าที่พิเศษ..." onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomEditDivision();}">
+                  <button type="button" class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; padding:7px 14px; display:inline-flex; align-items:center; gap:4px;" onclick="addCustomEditDivision()">
+                    <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>เพิ่ม</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="input-group"><label class="ico-lbl">วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></label><input type="date" id="edit_startDate" class="steam-input"></div>
+            <div class="input-group"><label class="ico-lbl">ระดับสิทธิ์ (Permission Level)</label>
+              <select id="edit_access" class="steam-input">
+                <option value="User">User</option>
+                <option value="Admin">Admin</option>
+                <option value="Superuser">Superuser</option>
+              </select>
+            </div>
+
+            <div class="input-group"><label class="ico-lbl">Email <span class="req-star">*</span></label><input type="email" id="edit_email" class="steam-input" placeholder="name@school.ac.th" required></div>
+            <div class="input-group"><label class="ico-lbl">เบอร์โทรศัพท์</label><input type="text" id="edit_phone" class="steam-input"></div>
+            <div class="input-group"><label class="ico-lbl">รหัสผ่าน (เข้ารหัส SHA-256 อัตโนมัติ)</label><input type="text" id="edit_pass" class="steam-input" placeholder="เว้นว่างไว้หากใช้รหัสเดิม"></div>
+            <div class="input-group"><label class="ico-lbl">โควตาลาป่วย / ลากิจสูงสุด</label>
+              <div style="display:flex; gap:8px;">
+                <input type="number" id="edit_sickMax" class="steam-input" value="60" title="โควตาลาป่วย">
+                <input type="number" id="edit_personalMax" class="steam-input" value="45" title="โควตาลากิจ">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right; margin-top:8px;">
+          <button class="btn-steam" id="btnSaveEditTeacher" onclick="saveEditTeacherFromModal()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกการตั้งค่าผู้ใช้</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SUB-PANE 2: ทะเบียนประวัติ -->
+      <div id="editSubPane_registry" style="display:none; max-height: 66vh; overflow-y: auto; padding-right:5px;">
+        <div style="background:rgba(0,0,0,0.28); border:1px solid var(--steam-green); border-radius:6px; padding:14px; margin-bottom:14px;">
+          <h4 style="color:var(--steam-green); margin:0 0 8px 0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/></svg>&nbsp;<span>1. ทะเบียนใบอนุญาตประกอบวิชาชีพ (เพิ่มได้หลายฉบับ / แก้ไข / ลบ)</span>
+          </h4>
+          <div id="selectedUserCurrentLicenses" style="margin-bottom:10px; font-size:12.5px;"></div>
+
+          <div id="lic_editModeBanner" class="hist-edit-banner">
+            <span id="lic_editModeText">กำลังแก้ไขรายการใบอนุญาต</span>
+            <button type="button" class="btn-save-sm" onclick="cancelEditHistoryItem('LICENSE')">ยกเลิกการแก้ไข</button>
+          </div>
+
+          <form id="formHistory_LICENSE" onsubmit="handleAdminSaveHistory(event, 'LICENSE')">
+            <input type="hidden" id="lic_recordId">
+            <div class="grid-2">
+              <div class="input-group">
+                <label>ประเภทของใบอนุญาตประกอบวิชาชีพ <span class="req-star">*</span></label>
+                <select id="lic_type" class="steam-input" onchange="onLicenseTypeChange()" required>
+                  <optgroup label="ประเภทใบอนุญาตประกอบวิชาชีพครู">
+                    <option value="P License (ใบอนุญาตปฏิบัติหน้าที่ครู)">P License</option>
+                    <option value="B License (ใบอนุญาตประกอบวิชาชีพครู ชั้นต้น)" selected>B License</option>
+                    <option value="A License (ใบอนุญาตประกอบวิชาชีพครู ชั้นสูง)">A License</option>
+                  </optgroup>
+                  <optgroup label="ประเภทใบอนุญาตผู้บริหารและศึกษานิเทศก์">
+                    <option value="ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา">ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา</option>
+                    <option value="ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์">ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>เลขที่ใบอนุญาต (LicenseNo) <span class="req-star">*</span></label>
+                <input type="text" id="lic_num" class="steam-input" placeholder="เช่น 6520112000000" required>
+              </div>
+            </div>
+
+            <div id="lic_specInfoBox" style="background:rgba(164,208,7,0.1); border:1px dashed var(--steam-green); padding:8px 12px; border-radius:4px; margin-bottom:10px; font-size:12px; color:#fff; line-height:1.5;">
+              <b>B License:</b> อายุการใช้งาน 5 ปี | คุณสมบัติ: จบวุฒิปริญญาทางการศึกษา, มีประสบการณ์สอนไม่น้อยกว่า 1 ปี, ผ่านการทดสอบและประเมินสมรรถนะทางวิชาชีพ
+            </div>
+
+            <div class="grid-2">
+              <div class="input-group">
+                <label>วันออกเอกสาร <span class="req-star">*</span></label>
+                <input type="date" id="lic_issue" class="steam-input" onchange="autoCalcLicenseExpiry()" required>
+              </div>
+              <div class="input-group">
+                <label>วันหมดอายุ <span class="req-star">*</span></label>
+                <input type="date" id="lic_exp" class="steam-input" required>
+              </div>
+            </div>
+            <button type="submit" id="btnSubmit_LICENSE" class="btn-steam">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>เพิ่มใบอนุญาต</span>
+            </button>
+          </form>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.28); border:1px solid var(--steam-cyan); border-radius:6px; padding:14px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #2a475e; padding-bottom:6px; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <h4 style="color:var(--steam-cyan); margin:0; font-size:14.5px; display:flex; align-items:center; gap:6px;">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>2. ประวัติการบรรจุ การดำรงตำแหน่ง และวิทยฐานะ (เพิ่ม/แก้ไขได้มากกว่า 1 รายการ)</span>
+            </h4>
+            <span style="font-size:11.5px; color:var(--steam-green);">* เพิ่มประวัติย้อนหลังได้หลายรายการ เช่น บรรจุครูผู้ช่วย → ครู คศ.1 → บรรจุตำแหน่งผู้บริหาร</span>
+          </div>
+
+          <div id="selectedUserCurrentStandings" style="margin-bottom:10px; font-size:12px;"></div>
+
+          <div id="std_editModeBanner" class="hist-edit-banner">
+            <span id="std_editModeText">กำลังแก้ไขรายการดำรงตำแหน่ง/วิทยฐานะ</span>
+            <button type="button" class="btn-save-sm" onclick="cancelEditHistoryItem('STANDING')">ยกเลิกการแก้ไข</button>
+          </div>
+
+          <form id="formHistory_STANDING" onsubmit="handleAdminSaveHistory(event, 'STANDING')">
+            <input type="hidden" id="std_recordId">
+            <div class="grid-3">
+              <div class="input-group">
+                <label>การบรรจุ / ตำแหน่ง / วิทยฐานะ (เลือกหรือพิมพ์เอง) <span class="req-star">*</span></label>
+                <select id="std_level" class="steam-input" onchange="onStandingComboChange()" required>
+                  <optgroup label="การบรรจุและแต่งตั้งสายงานการสอน">
+                    <option value="บรรจุครูผู้ช่วย">บรรจุครูผู้ช่วย</option>
+                    <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+                    <option value="ครู (คศ. 1)">ครู (คศ. 1)</option>
+                    <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+                    <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+                    <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+                    <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+                  </optgroup>
+                  <optgroup label="การบรรจุและแต่งตั้งสายงานบริหารสถานศึกษา">
+                    <option value="บรรจุตำแหน่งรองผู้อำนวยการสถานศึกษา">บรรจุตำแหน่งรองผู้อำนวยการสถานศึกษา</option>
+                    <option value="รองผู้อำนวยการชำนาญการพิเศษ">รองผู้อำนวยการชำนาญการพิเศษ</option>
+                    <option value="บรรจุตำแหน่งผู้อำนวยการสถานศึกษา">บรรจุตำแหน่งผู้อำนวยการสถานศึกษา</option>
+                    <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+                    <option value="ผู้อำนวยการชำนาญการพิเศษ">ผู้อำนวยการชำนาญการพิเศษ</option>
+                    <option value="ผู้อำนวยการเชี่ยวชาญ">ผู้อำนวยการเชี่ยวชาญ</option>
+                  </optgroup>
+                  <optgroup label="สายงานนิเทศและสนับสนุนการศึกษา">
+                    <option value="ศึกษานิเทศก์">ศึกษานิเทศก์</option>
+                    <option value="พนักงานราชการ">พนักงานราชการ</option>
+                    <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+                    <option value="เจ้าหน้าที่ธุรการ">เจ้าหน้าที่ธุรการ</option>
+                  </optgroup>
+                  <optgroup label="กำหนดเอง (ComboBox)">
+                    <option value="__CUSTOM_STD__">+ พิมพ์ระบุตำแหน่ง/การบรรจุเอง...</option>
+                  </optgroup>
+                </select>
+                <input type="text" id="std_level_custom" class="steam-input" style="display:none; margin-top:6px; border-color:var(--steam-cyan);" placeholder="เช่น บรรจุตำแหน่งผู้บริหาร หรือ ย้ายมาดำรงตำแหน่ง...">
+              </div>
+              <div class="input-group"><label>วันที่มีผล (เช่น 10/01/2555) <span class="req-star">*</span></label><input type="date" id="std_date" class="steam-input" required></div>
+              <div class="input-group"><label>เลขที่คำสั่ง / อ้างอิง <span class="req-star">*</span></label><input type="text" id="std_order" class="steam-input" placeholder="ระบุเลขที่คำสั่ง หรือ -" required></div>
+            </div>
+            <button type="submit" id="btnSubmit_STANDING" class="btn-steam" style="background:var(--steam-cyan); color:#000;">
+              <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>เพิ่มรายการดำรงตำแหน่ง / วิทยฐานะ</span>
+            </button>
+          </form>
+        </div>
+
+        <div class="grid-2" style="align-items:start;">
+          <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; border-radius:6px; padding:14px;">
+            <h4 style="color:var(--orange); margin:0 0 8px 0; font-size:14px; border-bottom:1px dashed #2a475e; padding-bottom:6px;">3. วุฒิทางลูกเสือ (เพิ่มได้หลายรายการ/แก้ไข/ลบ)</h4>
+            <div id="selectedUserCurrentScouts" style="margin-bottom:8px; font-size:12px;"></div>
+
+            <div id="sct_editModeBanner" class="hist-edit-banner">
+              <span id="sct_editModeText">กำลังแก้ไขวุฒิลูกเสือ</span>
+              <button type="button" class="btn-save-sm" onclick="cancelEditHistoryItem('SCOUT')">ยกเลิก</button>
+            </div>
+
+            <form id="formHistory_SCOUT" onsubmit="handleAdminSaveHistory(event, 'SCOUT')">
+              <input type="hidden" id="sct_recordId">
+              <div class="input-group">
+                <label>วุฒิทางลูกเสือ <span class="req-star">*</span></label>
+                <select id="sct_qual" class="steam-input" onchange="onScoutQualChange()" required>
+                  <option value="ไม่มีวุฒิลูกเสือ">ไม่มีวุฒิลูกเสือ</option>
+                  <option value="B.T.C." selected>B.T.C.</option>
+                  <option value="A.T.C.">A.T.C.</option>
+                  <option value="W.B.">W.B.</option>
+                  <option value="A.L.T.">A.L.T.</option>
+                  <option value="L.T.">L.T.</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>ประเภทกองลูกเสือ</label>
+                <select id="sct_type" class="steam-input">
+                  <option value="-">- ไม่ระบุ -</option>
+                  <option value="ลูกเสือสำรอง" selected>ลูกเสือสำรอง</option>
+                  <option value="ลูกเสือสามัญ">ลูกเสือสามัญ</option>
+                  <option value="ลูกเสือสามัญรุ่นใหญ่">ลูกเสือสามัญรุ่นใหญ่</option>
+                  <option value="ลูกเสือวิสามัญ">ลูกเสือวิสามัญ</option>
+                </select>
+              </div>
+              <div class="grid-2">
+                <div class="input-group"><label>เลขที่วุฒิบัตร <span class="req-star">*</span></label><input type="text" id="sct_cert" class="steam-input" required></div>
+                <div class="input-group"><label>วันที่ได้รับวุฒิ <span class="req-star">*</span></label><input type="date" id="sct_date" class="steam-input" required></div>
+              </div>
+              <button type="submit" id="btnSubmit_SCOUT" class="btn-steam" style="background:var(--orange); color:#000;">
+                <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>เพิ่มวุฒิลูกเสือ</span>
+              </button>
+            </form>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; border-radius:6px; padding:14px;">
+            <h4 style="color:var(--steam-green); margin:0 0 8px 0; font-size:14px; border-bottom:1px dashed #2a475e; padding-bottom:6px;">4. วุฒิการศึกษา (เพิ่มได้หลายรายการ/แก้ไข/ลบ)</h4>
+            <div id="selectedUserCurrentEducations" style="margin-bottom:8px; font-size:12px;"></div>
+
+            <div id="edu_editModeBanner" class="hist-edit-banner">
+              <span id="edu_editModeText">กำลังแก้ไขวุฒิการศึกษา</span>
+              <button type="button" class="btn-save-sm" onclick="cancelEditHistoryItem('EDUCATION')">ยกเลิก</button>
+            </div>
+
+            <form id="formHistory_EDUCATION" onsubmit="handleAdminSaveHistory(event, 'EDUCATION')">
+              <input type="hidden" id="edu_recordId">
+              <div class="grid-2">
+                <div class="input-group">
+                  <label>ระดับการศึกษา</label>
+                  <select id="edu_level" class="steam-input">
+                    <option value="ป.6">ป.6</option>
+                    <option value="ม.3">ม.3</option>
+                    <option value="ม.6">ม.6</option>
+                    <option value="ปริญญาตรี" selected>ปริญญาตรี</option>
+                    <option value="ป.บัณฑิต">ป.บัณฑิต</option>
+                    <option value="ปริญญาโท">ปริญญาโท</option>
+                    <option value="ปริญญาเอก">ปริญญาเอก</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label>อักษรย่อวุฒิ</label>
+                  <select id="edu_short" class="steam-input">
+                    <option value="ป.6">ป.6</option>
+                    <option value="ม.3">ม.3</option>
+                    <option value="ม.6">ม.6</option>
+                    <option value="ปวช.">ปวช.</option>
+                    <option value="ปวส.">ปวส.</option>
+                    <option value="ค.บ." selected>ค.บ.</option>
+                    <option value="ศษ.บ.">ศษ.บ.</option>
+                    <option value="กศ.บ.">กศ.บ.</option>
+                    <option value="วท.บ.">วท.บ.</option>
+                    <option value="ศศ.บ.">ศศ.บ.</option>
+                    <option value="บธ.บ.">บธ.บ.</option>
+                    <option value="ศษ.ม.">ศษ.ม.</option>
+                    <option value="กศ.ม.">กศ.ม.</option>
+                    <option value="ปร.ด.">ปร.ด.</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group"><label>วิชาเอก / สาขา <span class="req-star">*</span></label><input type="text" id="edu_major" class="steam-input" placeholder="ระบุวิชาเอก หรือ -" required></div>
+              <div class="grid-2">
+                <div class="input-group"><label>สถาบัน <span class="req-star">*</span></label><input type="text" id="edu_inst" class="steam-input" required></div>
+                <div class="input-group"><label>ปี พ.ศ. ที่จบ <span class="req-star">*</span></label><input type="number" id="edu_year" class="steam-input" value="2567" required></div>
+              </div>
+              <button type="submit" id="btnSubmit_EDUCATION" class="btn-steam">
+                <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>เพิ่มวุฒิการศึกษา</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-PANE 3: ไทม์ไลน์ -->
+      <div id="editSubPane_timeline" style="display:none; max-height: 66vh; overflow-y: auto; padding-right:5px;">
+        <div style="background:rgba(0,0,0,0.25); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:8px; margin-bottom:14px;">
+            <h4 style="color:var(--steam-cyan); margin:0; font-size:15px;">ไทม์ไลน์ประวัติการรับราชการและพัฒนาการวิชาชีพ (เก่าสุด → ล่าสุด)</h4>
+            <span id="modalTimelineCountBadge" style="font-size:12px; color:var(--steam-green); font-weight:bold;">0 รายการ</span>
+          </div>
+          <div id="modalPersonnelTimelineBox" class="p2-timeline-wrap"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: คู่มือระดับสิทธิ์การใช้งาน -->
+  <div class="modal-overlay" id="modalPermissionGuide" style="z-index: 1007;">
+    <div class="modal-box" style="max-width: 660px; padding: 20px; width:100%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #2a475e; padding-bottom:8px;">
+        <h3 style="color:var(--steam-cyan); margin:0; font-size:16px;">ตารางอธิบายระดับสิทธิ์และหน้าที่ในระบบ</h3>
+        <button onclick="document.getElementById('modalPermissionGuide').style.display='none'" style="background:none; border:none; color:var(--red); cursor:pointer; display:inline-flex; align-items:center;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+        <thead>
+          <tr><th style="width:22%;">ระดับสิทธิ์</th><th style="width:28%;">กลุ่มผู้ใช้งาน</th><th style="width:50%;">สิทธิ์การเข้าถึง</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="perm-badge perm-super">Superuser</span></td><td>ผอ.รร. / รอง ผอ. / ผู้ดูแลสูงสุด</td><td style="text-align:left;">อนุมัติใบลาขั้นสุดท้าย, จัดการผู้ใช้ทุกคน, ตั้งค่ารักษาการ, และตั้งค่าระบบทั้งหมด</td></tr>
+          <tr><td><span class="perm-badge perm-admin">Admin</span></td><td>หน.บุคคล / หน.วิชาการ</td><td style="text-align:left;">ตรวจสอบใบลาตามสายงาน, จัดการข้อมูลบุคลากร และบันทึกทะเบียนประวัติ</td></tr>
+          <tr><td><span class="perm-badge perm-user-cls">User</span></td><td>ข้าราชการครู / บุคลากร</td><td style="text-align:left;">ยื่นคำร้อง, ขออนุญาตออกนอกสถานที่, ติดตามคำร้อง และพิมพ์เอกสาร</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="loadingOverlay">
+    <div class="battery-popup-box">
+      <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+        <span id="loadTitle" style="color:var(--steam-cyan); font-weight:bold; font-size:15px;">กำลังโหลดระบบตั้งค่า...</span>
+        <span id="loadPercent" style="color:var(--steam-green); font-weight:bold; font-size:15px;">(0%)</span>
+      </div>
+      <div class="battery-shell"><div id="loadBatteryBar" class="battery-bar"></div></div>
+      <div style="color:var(--text-muted); font-size:12px;">กรุณารอสักครู่ ระบบกำลังซิงค์ข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- CONTAINER หน้าตั้งค่าระบบ -->
+  <div class="container" id="mainAdminContainer">
+    <div class="admin-header">
+      <div class="admin-title">
+        <svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09"/></svg>&nbsp;<span>ตั้งค่าระบบ (Production Control Center)</span>
+      </div>
+      <a id="homeLink" href="#" class="btn-back" onclick="goBackHome(event)">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>&nbsp;<span>กลับหน้าหลัก</span>
+      </a>
+    </div>
+
+    <div class="steam-ribbon">
+      <div class="ribbon-tab active" data-tab="tab1" onclick="switchAdminRibbonTab('tab1', this)">
+        <svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>&nbsp;<span>เพิ่มบุคลากร</span>
+      </div>
+      <div class="ribbon-tab" data-tab="tab2" onclick="switchAdminRibbonTab('tab2', this)">
+        <svg class="ui-ico" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>&nbsp;<span>จัดการผู้ใช้</span>
+      </div>
+      <div class="ribbon-tab" data-tab="tab4" onclick="switchAdminRibbonTab('tab4', this)">
+        <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>&nbsp;<span>ข้อมูลสถานศึกษา & ปีงบประมาณ</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: เพิ่มบัญชีผู้ใช้งานระบบ -->
+    <div id="tab1" class="tab-content active">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px; border-bottom:1px solid #2a475e; padding-bottom:10px;">
+        <div>
+          <h3 style="color:var(--steam-cyan); margin:0; font-size:16.5px; display:flex; align-items:center; gap:6px;">
+            <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>&nbsp;<span>เพิ่มบัญชีผู้ใช้งานระบบและขึ้นทะเบียนบุคลากรใหม่</span>
+          </h3>
+          <div style="color:var(--text-muted); font-size:12.5px; margin-top:2px;">ระบบจะออกรหัสประจำตัวบุคลากร (EmpID) อัตโนมัติตามสายงาน และเข้ารหัสรหัสผ่านด้วย SHA-256</div>
+        </div>
+        <button type="button" class="btn-save-sm" style="color:var(--steam-cyan); border-color:var(--steam-cyan); display:inline-flex; align-items:center; gap:5px;" onclick="document.getElementById('modalPermissionGuide').style.display='flex'">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>&nbsp;<span>คู่มือสิทธิ์</span>
+        </button>
+      </div>
+
+      <div style="max-width: 920px;">
+        <div class="adm-sec-card">
+          <div class="adm-sec-title">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>&nbsp;<span>หมวดที่ 1: ข้อมูลระบุตัวตนและรหัสอ้างอิงวิชาชีพ</span>
+          </div>
+          <div class="grid-4" style="display:grid; grid-template-columns: 1.25fr 1fr 1.15fr 1.1fr; gap:10px;">
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>&nbsp;<span>ชื่อ-นามสกุล <span class="req-star">*</span></span></label>
+              <input type="text" id="new_name" class="steam-input" style="margin:0;" placeholder="เช่น นายสมชาย ใจดี" required>
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>เลขที่ตำแหน่ง</span></label>
+              <input type="text" id="new_positionNo" class="steam-input" style="margin:0;" placeholder="เลขที่ราชการ (เว้นว่างได้)">
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>&nbsp;<span>สมาชิกประเภทสามัญ เลขที่</span></label>
+              <input type="text" id="new_memberId" class="steam-input" style="margin:0;" placeholder="สมาชิกประเภทสามัญ เลขที่">
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>&nbsp;<span>เลขประจำตัวประชาชน <span class="req-star">*</span></span></label>
+              <input type="text" id="new_idCard" class="steam-input" style="margin:0;" maxlength="13" placeholder="เลข 13 หลัก">
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-sec-card" style="border-left-color:var(--steam-green);">
+          <div class="adm-sec-title" style="color:var(--steam-green);">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>หมวดที่ 2: วันเดือนปีเกิด และการคำนวณอายุ / วันเกษียณอายุราชการอัตโนมัติ</span>
+          </div>
+          <div style="display:grid; grid-template-columns: 240px 1fr; gap:12px; align-items:start;">
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl">วันเดือนปีเกิด (BirthDate)</label>
+              <input type="date" id="new_birthDate" class="steam-input" onchange="onBirthDateChangeCalc('new')">
+            </div>
+            <div id="new_retirementPreviewBox" class="retire-calc-card">
+              เลือกวันเดือนปีเกิดเพื่อคำนวณอายุ (ปี-เดือน-วัน) และวันเกษียณอายุราชการอัตโนมัติ
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-sec-card" style="border-left-color:var(--orange);">
+          <div class="adm-sec-title" style="color:var(--orange);">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>หมวดที่ 3: ตำแหน่งมาตรฐาน สพฐ. กลุ่มสาระการเรียนรู้ และวันที่บรรจุ</span>
+          </div>
+          <div class="grid-2">
+            <div class="input-group">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></span></label>
+              <input type="date" id="new_startDate" class="steam-input">
+            </div>
+            
+            <div class="input-group">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>&nbsp;<span>กลุ่มสาระการเรียนรู้ (เลือกหรือพิมพ์เพิ่มเอง) <span class="req-star">*</span></span></label>
+              <select id="new_dept" class="steam-input" onchange="onDeptComboChange('new')">
+                <optgroup label="กลุ่มสาระการเรียนรู้ และปฐมวัย">
+                  <option value="ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
+                  <option value="คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
+                  <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
+                  <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนาและวัฒนธรรม</option>
+                  <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
+                  <option value="ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
+                  <option value="การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
+                  <option value="ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
+                  <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+                </optgroup>
+                <optgroup label="กิจกรรมพัฒนาผู้เรียน">
+                  <option value="กิจกรรมแนะแนว">กิจกรรมแนะแนว</option>
+                  <option value="กิจกรรมนักเรียน">กิจกรรมนักเรียน</option>
+                  <option value="กิจกรรมเพื่อสังคมและสาธารณประโยชน์">กิจกรรมเพื่อสังคมและสาธารณประโยชน์</option>
+                </optgroup>
+                <optgroup label="สายงานบริหารและสนับสนุน">
+                  <option value="สายงานบริหารและสนับสนุนการศึกษา">สายงานบริหารและสนับสนุนการศึกษา</option>
+                </optgroup>
+                <optgroup label="กำหนดเอง (ComboBox)">
+                  <option value="__CUSTOM_DEPT__">+ พิมพ์ระบุกลุ่มสาระ/งานใหม่เอง...</option>
+                </optgroup>
+              </select>
+              <input type="text" id="new_dept_custom" class="steam-input" style="display:none; margin-top:6px; border-color:var(--steam-green);" placeholder="พิมพ์ชื่อกลุ่มสาระ / สายงานใหม่...">
+            </div>
+
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>&nbsp;<span>ตำแหน่งมาตรฐาน สพฐ. (เลือกหรือพิมพ์เพิ่มเอง) <span class="req-star">*</span></span></label>
+              <select id="new_role" class="steam-input" style="margin:0;" onchange="onRoleComboChange('new')">
+                <optgroup label="ผู้บริหาร">
+                  <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+                  <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+                </optgroup>
+                <optgroup label="สายวิชาการ">
+                  <option value="ครูเชี่ยวชาญพิเศษ">ครูเชี่ยวชาญพิเศษ</option>
+                  <option value="ครูเชี่ยวชาญ">ครูเชี่ยวชาญ</option>
+                  <option value="ครูชำนาญการพิเศษ">ครูชำนาญการพิเศษ</option>
+                  <option value="ครูชำนาญการ">ครูชำนาญการ</option>
+                  <option value="ครู" selected>ครู</option>
+                  <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+                </optgroup>
+                <optgroup label="อื่นๆ">
+                  <option value="ศึกษานิเทศก์">ศึกษานิเทศก์</option>
+                  <option value="พนักงานราชการ">พนักงานราชการ</option>
+                  <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+                  <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+                  <option value="ลูกจ้างชั่วคราว">ลูกจ้างชั่วคราว</option>
+                  <option value="เจ้าหน้าที่ธุรการ">เจ้าหน้าที่ธุรการ</option>
+                </optgroup>
+                <optgroup label="กำหนดเอง (ComboBox)">
+                  <option value="__CUSTOM_ROLE__">+ พิมพ์ระบุตำแหน่งใหม่เอง...</option>
+                </optgroup>
+              </select>
+              <input type="text" id="new_role_custom" class="steam-input" style="display:none; margin-top:6px; border-color:var(--steam-cyan);" placeholder="พิมพ์ชื่อตำแหน่งใหม่...">
+            </div>
+
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>&nbsp;<span>ระดับสิทธิ์ในระบบ (Permission) <span class="req-star">*</span></span></label>
+              <select id="new_access" class="steam-input" style="margin:0;">
+                <option value="User" selected>User (บุคลากรทั่วไป)</option>
+                <option value="Admin">Admin (หัวหน้าฝ่ายบุคคล / วิชาการ)</option>
+                <option value="Superuser">Superuser (ผู้บริหาร / ผู้ดูแลสูงสุด)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-sec-card" style="border-left-color:var(--steam-cyan);">
+          <div class="adm-sec-title">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>&nbsp;<span>หมวดที่ 4: ข้อมูลการติดต่อและรหัสผ่านเริ่มต้น</span>
+          </div>
+          <div class="grid-3">
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>&nbsp;<span>Email <span class="req-star">*</span></span></label>
+              <input type="email" id="new_email" class="steam-input" style="margin:0;" placeholder="name@school.ac.th" required>
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>&nbsp;<span>เบอร์โทรศัพท์ติดต่อ</span></label>
+              <input type="text" id="new_phone" class="steam-input" style="margin:0;" placeholder="08xxxxxxxx">
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>&nbsp;<span>รหัสผ่านเริ่มต้น (SHA-256) <span class="req-star">*</span></span></label>
+              <input type="text" id="new_pass" class="steam-input" style="margin:0;" value="123456">
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align:right; margin-top:10px;">
+          <button id="btnAddNew" class="btn-steam" style="width:auto; padding:10px 28px;" onclick="addNewTeacher()">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>&nbsp;<span>บันทึกและเพิ่มบัญชีบุคลากรใหม่</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+         TAB 2: จัดการผู้ใช้ (ตั้งค่าชั้นเรียนแถวเดียว + แถบเครื่องมือแถวเดียว + RIBBON CARD)
+    ========================================================================== -->
+    <div id="tab2" class="tab-content">
+      <!-- ตั้งค่าชั้นเรียนที่เปิดสอนในโรงเรียน: ไอคอนสถานะ กับปุ่ม เปิด-ปิด แถวเดียวกัน -->
+      <div style="background: rgba(0,0,0,0.25); border: 1px solid #2a475e; border-left: 4px solid var(--steam-cyan); border-radius: 6px; padding: 10px 15px; margin-bottom: 12px;">
+        <div class="cls-header-single-row">
+          <div class="cls-header-left">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>&nbsp;<span>ตั้งค่าชั้นเรียนที่เปิดสอนในโรงเรียน</span>
+          </div>
+
+          <div class="cls-header-right">
+            <span id="activeClassCountBadge" class="cls-status-pill">
+              <svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>เปิดสอน 12 ชั้นเรียน</span>
+            </span>
+            <button type="button" class="btn-save-sm" id="btnToggleClassConfigBox" style="display:inline-flex; align-items:center; gap:5px; padding:5px 12px;" onclick="toggleClassConfigPanel()">
+              <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>&nbsp;<span>เลือกเปิด-ปิดชั้นเรียน</span>
+            </button>
+            <button type="button" class="btn-steam" id="btnSaveActiveClasses" style="display:none; width:auto; padding:5px 14px; font-size:12px;" onclick="saveActiveClassesConfig()">
+              <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกชั้นเรียน</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="activeClassConfigBody" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #2a475e;">
+          <div id="activeClassPillsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- แถบปุ่มเครื่องมือสั้นกระชับ แถวเดียวกัน -->
+      <div class="adm-single-row-toolbar">
+        <div class="adm-toolbar-btns">
+          <button type="button" class="adm-toolbar-btn" style="background:var(--steam-green); color:#000; border:none;" onclick="openExcelUploadWizard()">
+            <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>&nbsp;<span>นำเข้า Excel</span>
+          </button>
+          <button type="button" class="adm-toolbar-btn" style="background:rgba(102,192,244,0.16); color:var(--steam-cyan); border:1px solid var(--steam-cyan);" onclick="downloadMultiSheetTemplate()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>&nbsp;<span>โหลดไฟล์ต้นแบบ</span>
+          </button>
+          <button type="button" class="adm-toolbar-btn" style="background:transparent; color:var(--orange); border:1px solid var(--orange);" onclick="triggerSystemDataAudit()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>&nbsp;<span>ตรวจฐานข้อมูล</span>
+          </button>
+          <button type="button" class="adm-toolbar-btn" style="background:transparent; color:var(--steam-green); border:1px solid var(--steam-green);" onclick="triggerSHA256Migration()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>&nbsp;<span>เข้ารหัสผ่าน</span>
+          </button>
+          <button type="button" class="adm-toolbar-btn" style="background:transparent; color:#e6edf3; border:1px solid #2a475e;" onclick="document.getElementById('modalPermissionGuide').style.display='flex'">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>&nbsp;<span>คู่มือสิทธิ์</span>
+          </button>
+          <input type="file" id="excelTeacherInput" accept=".xlsx, .xls" style="display:none;" onchange="handleTeacherExcelUpload(event)">
+        </div>
+        <div id="roleSummaryContainer" style="white-space:nowrap;"></div>
+      </div>
+
+      <div class="deputy-card-modern">
+        <div>
+          <div style="color:var(--orange); font-weight:bold; font-size:14.5px; display:flex; align-items:center; gap:6px;">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>&nbsp;<span>กำหนดผู้รักษาราชการแทน</span>
+          </div>
+          <div style="color:var(--text-muted); font-size:12px; margin-top:3px;">ผู้มีอำนาจลงนามอนุมัติคำร้องแทน ผอ.รร.</div>
+        </div>
+
+        <div class="deputy-selectors-grid">
+          <div class="deputy-box-item">
+            <span class="deputy-num-badge">คนที่ 1</span>
+            <select id="adminSettingDep1" class="steam-input" style="margin:0; flex:1; padding:6px 10px;"></select>
+          </div>
+          <div class="deputy-box-item">
+            <span class="deputy-num-badge">คนที่ 2</span>
+            <select id="adminSettingDep2" class="steam-input" style="margin:0; flex:1; padding:6px 10px;"></select>
+          </div>
+        </div>
+
+        <div>
+          <button type="button" class="btn-steam" style="width:auto; padding:9px 20px;" onclick="saveAdminDelegation()">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึก</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- แถบค้นหาและตัวกรองของหน้าจัดการผู้ใช้ -->
+      <div class="adm-filter-bar">
+        <input type="text" id="admSearchUserInput" class="steam-input" placeholder="ค้นหาชื่อ-สกุล, รหัสบุคลากร, เลขที่ตำแหน่ง, สมาชิกสามัญ, หรือ Email..." oninput="filterAdminUsersList()">
+        
+        <select id="admFilterUserCategory" class="steam-input" onchange="filterAdminUsersList()">
+          <option value="ALL">ประเภทบุคลากร: ทั้งหมด</option>
+          <option value="EXE">ผู้บริหารสถานศึกษา</option>
+          <option value="TCH">ข้าราชการครู / บุคลากรทางการศึกษา</option>
+          <option value="STF">บุคลากรสายสนับสนุน</option>
+        </select>
+
+        <select id="admFilterUserAccess" class="steam-input" onchange="filterAdminUsersList()">
+          <option value="ALL">ระดับสิทธิ์: ทั้งหมด</option>
+          <option value="Superuser">Superuser</option>
+          <option value="Admin">Admin</option>
+          <option value="User">User</option>
+        </select>
+
+        <select id="admFilterUserStatus" class="steam-input" onchange="filterAdminUsersList()">
+          <option value="ALL">สถานะปฏิบัติงาน: ทั้งหมด</option>
+          <option value="ACTIVE">ปฏิบัติงานปกติ</option>
+          <option value="INACTIVE">ย้าย / เกษียณ</option>
+        </select>
+
+        <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px;" onclick="resetAdminUserFilters()">ล้างตัวกรอง</button>
+      </div>
+
+      <!-- RIBBON CARD CONTAINER -->
+      <div id="adminUserRibbonContainer" class="adm-user-ribbon-list"></div>
+    </div>
+
+    <!-- TAB 4: ข้อมูลสถานศึกษา & FISCAL YEAR ENGINE -->
+    <div id="tab4" class="tab-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <h3 style="color:var(--steam-cyan); margin:0; font-size:16px; display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>&nbsp;<span>ข้อมูลสถานศึกษา & ระบบบริหารปีงบประมาณ (Fiscal Year Engine)</span>
+        </h3>
+        <button type="button" class="btn-steam" style="width:auto; padding:8px 24px;" id="btnSaveSchool" onclick="saveSchoolData()">
+          <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกข้อมูลสถานศึกษา</span>
+        </button>
+      </div>
+
+      <div class="sch-card" style="margin-bottom:16px; border-left:4px solid var(--steam-green);">
+        <div class="sch-card-head" style="color:var(--steam-green);">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>ระบบบริหารปีงบประมาณ (Fiscal Year Engine — ช่วงที่ 1: 1 ต.ค. ถึง 31 มี.ค. | ช่วงที่ 2: 1 เม.ย. ถึง 30 ก.ย.)</span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:16px; align-items:center;">
+          <div id="fiscalYearActiveSummaryBox" style="font-size:13px; line-height:1.65;">
+            กำลังโหลดข้อมูลปีงบประมาณ...
+          </div>
+          <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; border-radius:6px; padding:12px;">
+            <label style="font-size:12px; color:var(--steam-cyan); font-weight:bold; display:block; margin-bottom:6px;">สร้าง / สลับปีงบประมาณที่ใช้งาน (พ.ศ. 4 หลัก)</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="fy_newYearInput" class="steam-input" style="margin:0; flex:1;" placeholder="เช่น 2570 หรือ 2571" value="2570">
+              <button type="button" class="btn-steam" style="width:auto; padding:6px 16px; font-size:12.5px;" onclick="handleCreateOrActivateFiscalYear()">ตั้งเป็นปีปัจจุบัน</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sch-top-grid">
+        <div class="sch-card" style="text-align:center; align-items:center;">
+          <div class="sch-card-head" style="width:100%; justify-content:center;">ตราสัญลักษณ์โรงเรียน</div>
+          <div style="width:125px; height:125px; border:2px dashed #2a475e; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#101822; overflow:hidden; margin: 6px auto 12px auto;">
+            <img id="logoPreview" src="" style="max-width:100%; max-height:100%; display:none; object-fit:contain;">
+            <span id="logoPlaceholder" style="color:var(--text-muted); font-size:12px;">ไม่มีรูปภาพ</span>
+          </div>
+          <div style="width:100%;">
+            <input type="file" id="logoFileInput" accept="image/png, image/jpeg" style="display:none;" onchange="previewLogo(event)">
+            <button type="button" class="btn-save-sm" style="width:100%; margin-bottom:6px; padding:7px 12px;" onclick="document.getElementById('logoFileInput').click()">เลือกไฟล์รูปภาพใหม่</button>
+            <button type="button" class="btn-steam" style="width:100%; padding:7px 12px; font-size:12.5px;" id="btnUploadLogo" onclick="uploadLogo()" disabled>อัปโหลดและบันทึกโลโก้</button>
+          </div>
+        </div>
+
+        <div class="sch-card">
+          <div>
+            <div class="sch-card-head">ข้อมูลพื้นฐานสถานศึกษาและผู้บริหาร</div>
+            <div class="grid-2">
+              <div class="input-group"><label>ชื่อสถานศึกษา</label><input type="text" id="sch_schoolName" class="steam-input"></div>
+              <div class="input-group"><label>หน่วยงานต้นสังกัด</label><input type="text" id="sch_affiliation" class="steam-input"></div>
+              <div class="input-group"><label>รหัสสถานศึกษา</label><input type="text" id="sch_schoolCode10" class="steam-input"></div>
+              <div class="input-group"><label>รหัส SMIS</label><input type="text" id="sch_schoolCode8" class="steam-input"></div>
+              <div class="input-group"><label>ชื่อ-นามสกุล ผู้อำนวยการ</label><input type="text" id="sch_directorName" class="steam-input"></div>
+              <div class="input-group"><label>ตำแหน่งที่ระบุในเอกสารราชการ</label><input type="text" id="sch_directorPosition" class="steam-input"></div>
+            </div>
+          </div>
+          <input type="hidden" id="sch_systemName" value="ManStat">
+        </div>
+      </div>
+
+      <div class="sch-card">
+        <div class="sch-card-head">ข้อมูลการติดต่อและพิกัดภูมิศาสตร์</div>
+        <div class="grid-2">
+          <div class="input-group"><label>เบอร์โทรศัพท์ติดต่อ</label><input type="text" id="sch_contactPhone" class="steam-input"></div>
+          <div class="input-group"><label>อีเมลโรงเรียน</label><input type="text" id="sch_contactEmail" class="steam-input"></div>
+          <div class="input-group" style="grid-column: 1 / -1;"><label>ที่อยู่สถานศึกษา</label><input type="text" id="sch_address" class="steam-input"></div>
+          <div class="input-group"><label>ละติจูด</label><input type="text" id="sch_lat" class="steam-input" placeholder="เช่น 14.979900"></div>
+          <div class="input-group">
+            <label>ลองจิจูด</label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="sch_lng" class="steam-input" placeholder="เช่น 102.097770" style="flex:1; margin:0;">
+              <button type="button" class="btn-save-sm" style="width:auto; padding:6px 14px; background:#2a475e; border-color:var(--steam-cyan); color:var(--steam-cyan); white-space:nowrap; display:inline-flex; align-items:center; gap:5px;" onclick="getLocationGPS()">
+                <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>&nbsp;<span>ค้นหาจาก GPS</span>
+              </button>
+            </div>
+            <span id="gpsStatus" style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto; padding:12px 20px; background:#101822; border-top:1px solid #2a475e; text-align:center; font-size:12px; color:var(--text-muted);">
+      <b style="color:var(--steam-cyan);">ManStat System</b> • พัฒนาโดย: <b style="color:#fff;">นายธีรศักดิ์ มโนธรรม</b> และ <b style="color:var(--steam-green);">Gemini 4 Argon</b>
+    </div>
+  </div>
+
+  <?!= include('JS_Core'); ?>
+  <?!= include('JS_Admin'); ?>
+</body>
+</html>

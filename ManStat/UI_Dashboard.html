@@ -1,0 +1,128 @@
+<!-- แบนเนอร์แสดงข้อมูลพื้นฐานสถานศึกษา (ดึงจากโมดูล 2.3) -->
+<div class="card shadow-sm mb-4 bg-primary text-white">
+  <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+      <span class="badge bg-warning text-dark mb-2">ข้อมูลสถานศึกษาประจำปี</span>
+      <h4 class="fw-bold mb-1" id="bannerSchoolName">โรงเรียน...</h4>
+      <p class="mb-1 opacity-75" id="bannerAffiliation">สังกัด...</p>
+      <small class="opacity-75"><i class="bi bi-megaphone-fill me-1"></i><span id="bannerAnnouncement">-</span></small>
+    </div>
+    <div class="text-end mt-3 mt-md-0 bg-white text-dark p-3 rounded-3 shadow-sm">
+      <div class="small text-muted">ผู้อำนวยการสถานศึกษา</div>
+      <div class="fw-bold text-primary" id="bannerDirectorName">-</div>
+      <div class="small mt-1">
+        ปีการศึกษา: <b id="bannerAcadYear">-</b> | ปีงบประมาณ: <b id="bannerFiscalYear">-</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- การ์ดสรุปสถิติ 4 มิติ -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card shadow-sm bg-white p-3 border-start border-primary border-4">
+      <div class="d-flex justify-content-between">
+        <div>
+          <h6 class="text-muted small mb-1">บุคลากรทั้งหมด</h6>
+          <h3 class="fw-bold text-primary mb-0" id="stat-total-users">0 คน</h3>
+        </div>
+        <i class="bi bi-people-fill fs-2 text-primary opacity-50"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm bg-white p-3 border-start border-warning border-4">
+      <div class="d-flex justify-content-between">
+        <div>
+          <h6 class="text-muted small mb-1">ใบลารอดำเนินการ</h6>
+          <h3 class="fw-bold text-warning mb-0" id="stat-pending-leaves">0 รายการ</h3>
+        </div>
+        <i class="bi bi-hourglass-split fs-2 text-warning opacity-50"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm bg-white p-3 border-start border-success border-4">
+      <div class="d-flex justify-content-between">
+        <div>
+          <h6 class="text-muted small mb-1">อนุมัติสำเร็จแล้ว</h6>
+          <h3 class="fw-bold text-success mb-0" id="stat-approved-leaves">0 รายการ</h3>
+        </div>
+        <i class="bi bi-check2-circle fs-2 text-success opacity-50"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm bg-white p-3 border-start border-danger border-4">
+      <div class="d-flex justify-content-between">
+        <div>
+          <h6 class="text-muted small mb-1">ใบประกอบฯ ใกล้หมด/หมดอายุ</h6>
+          <h3 class="fw-bold text-danger mb-0" id="stat-expiring-lic">0 คน</h3>
+        </div>
+        <i class="bi bi-exclamation-triangle-fill fs-2 text-danger opacity-50"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ตารางสถิติการลาและข้อมูลสูงสุดของทุกคนในหน้าเดียว -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-table me-2 text-primary"></i>ตารางสถิติการลา วิทยฐานะ วุฒิการศึกษา และลูกเสือของบุคลากรทั้งหมด (แสดงในหน้าเดียว)</h6>
+    <div class="d-flex gap-2">
+      <input type="text" class="form-control form-control-sm" id="searchUserInput" placeholder="ค้นหาชื่อ/แผนก/ลูกเสือ..." onkeyup="filterUsersTable()">
+      <button class="btn btn-sm btn-outline-danger d-none" id="btnFiscalReset" onclick="handleFiscalReset()">ตัดรอบปีงบประมาณ</button>
+      <button class="btn btn-sm btn-outline-primary" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    </div>
+  </div>
+  <div class="card-body table-responsive">
+    <table class="table table-hover align-middle" id="usersSummaryTable">
+      <thead class="table-light">
+        <tr>
+          <th>รหัส</th>
+          <th>ชื่อ-สกุล</th>
+          <th>ตำแหน่ง / กลุ่มสาระ</th>
+          <th>วันที่บรรจุ</th>
+          <th>วิทยฐานะสูงสุด (วันรับ)</th>
+          <th>วุฒิสูงสุด</th>
+          <th>วุฒิลูกเสือ</th>
+          <th>ใบประกอบวิชาชีพ</th>
+          <th>ลาป่วย (ใช้/ได้)</th>
+          <th>ลากิจ (ใช้/ได้)</th>
+        </tr>
+      </thead>
+      <tbody id="allUsersSummaryBody">
+        <tr><td colspan="10" class="text-center">กำลังโหลดข้อมูล...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ตารางรายการคำขอลาและสายการอนุมัติ -->
+<div class="card shadow-sm">
+  <div class="card-header bg-white py-3">
+    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-diagram-3-fill me-2 text-success"></i>รายการคำขอลา / ขออนุญาต (สายการอนุมัติ: 1.หน.งานบุคคล ➔ 2.วิชาการ ➔ 3.ผอ./รักษาการ)</h6>
+  </div>
+  <div class="card-body table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>รหัสใบลา</th>
+          <th>ผู้ยื่น</th>
+          <th>ประเภท</th>
+          <th>ช่วงวันที่ / เวลา</th>
+          <th>วันทำการจริง</th>
+          <th>งานสอนแทน / ไฟล์แนบ</th>
+          <th>สถานะปัจจุบัน</th>
+          <th>1. หน.งานบุคคล</th>
+          <th>2. วิชาการ</th>
+          <th>3. ผอ./รักษาการ</th>
+          <th>พิมพ์แบบฟอร์ม</th>
+        </tr>
+      </thead>
+      <tbody id="leaveLogsBody">
+        <tr><td colspan="11" class="text-center">กำลังโหลดข้อมูล...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

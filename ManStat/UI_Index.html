@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <?!= include('UI_CSS'); ?>
+</head>
+<body>
+
+  <!-- 1. หน้าต่างเข้าสู่ระบบ (Login Overlay & Database Connection Tester) -->
+  <div id="loginOverlay" class="login-wrapper no-print">
+    <div class="login-card shadow-lg">
+      <div class="text-center mb-4">
+        <div class="edustat-logo-badge mb-2">
+          <i class="bi bi-shield-lock-fill fs-2 text-white"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-1">ManStat <span class="badge bg-primary">EduStat UI</span></h4>
+        <p class="text-muted small mb-0" id="loginSchoolTitle">ระบบบริหารจัดการบุคลากรและสถิติการลาออนไลน์</p>
+      </div>
+
+      <!-- แถบสถานะการเชื่อมต่อฐานข้อมูล -->
+      <div class="db-status-box mb-3 p-2 rounded border d-flex justify-content-between align-items-center bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <span id="dbStatusDot" class="status-dot dot-online"></span>
+          <small id="dbStatusText" class="fw-semibold text-secondary">ฐานข้อมูลพร้อมใช้งาน</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="handleTestDbConnection()">
+          <i class="bi bi-database-check"></i> ทดลองเชื่อมต่อ
+        </button>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">รหัสบุคลากร / เลขบัตร ปชช. (แอดมินใช้: SUPERUSER)</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-person-badge text-primary"></i></span>
+            <input type="text" class="form-control" id="loginUsername" placeholder="กรอกรหัสผู้ใช้ หรือ SUPERUSER" value="SUPERUSER" required>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">รหัสผ่าน (Password)</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-key-fill text-primary"></i></span>
+            <input type="password" class="form-control" id="loginPassword" placeholder="กรอกรหัสผ่าน" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm" id="btnLoginSubmit">
+          <i class="bi bi-box-arrow-in-right me-1"></i> เข้าสู่ระบบอย่างปลอดภัย
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. โครงสร้างหลักแบบ EduStat (Left Sidebar + Top Header + Main Workspace) -->
+  <div id="appShell" class="edustat-layout d-none no-print">
+    
+    <!-- เมนูด้านซ้ายมือ (Left Sidebar) -->
+    <aside class="edustat-sidebar shadow">
+      <div class="sidebar-brand">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-bar-chart-steps fs-4 text-info"></i>
+          <div>
+            <div class="fw-bold fs-5 text-white leading-tight">ManStat</div>
+            <small class="text-info" style="font-size: 0.72rem;">EduStat Architecture</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-menu">
+        <div class="menu-header">โมดูลหลัก (MAIN MODULES)</div>
+        <a href="javascript:void(0)" class="sidebar-link active" id="nav-dashboard" onclick="switchTab('dashboard')">
+          <i class="bi bi-grid-1x2-fill"></i>
+          <span>หน้าแรก & สถิติการลา</span>
+        </a>
+        <a href="javascript:void(0)" class="sidebar-link" id="nav-leave" onclick="switchTab('leave')">
+          <i class="bi bi-calendar2-plus-fill"></i>
+          <span>ยื่นใบลา / ขออนุญาต (3 ชม.)</span>
+        </a>
+        <a href="javascript:void(0)" class="sidebar-link" id="nav-profile" onclick="switchTab('profile')">
+          <i class="bi bi-journal-bookmark-fill"></i>
+          <span>ทะเบียนประวัติ (วิทยฐานะ/ลูกเสือ)</span>
+        </a>
+
+        <!-- โมดูลผู้ดูแลระบบ (แสดงเฉพาะ ADMIN และ SUPER USER) -->
+        <div id="adminSidebarSection" class="d-none">
+          <div class="menu-header mt-3 text-warning">ผู้ดูแลระบบ (SUPER USER / ADMIN)</div>
+          <a href="javascript:void(0)" class="sidebar-link" id="nav-admin-add" onclick="openAdminModule('tab-add-user')">
+            <i class="bi bi-person-plus-fill text-warning"></i>
+            <span>2.1 เพิ่มบุคลากรใหม่ (ด่วน)</span>
+          </a>
+          <a href="javascript:void(0)" class="sidebar-link" id="nav-admin-manage" onclick="openAdminModule('tab-manage-member')">
+            <i class="bi bi-people-fill text-info"></i>
+            <span>2.2 จัดการสมาชิก (ละเอียด)</span>
+          </a>
+          <a href="javascript:void(0)" class="sidebar-link" id="nav-admin-school" onclick="openAdminModule('tab-school-settings')">
+            <i class="bi bi-building-fill-gear text-success"></i>
+            <span>2.3 ตั้งค่าข้อมูลโรงเรียน</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn btn-outline-light btn-sm w-100" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-left me-1"></i> ออกจากระบบ
+        </button>
+      </div>
+    </aside>
+
+    <!-- พื้นที่ทำงานด้านขวา (Main Content Panel) -->
+    <div class="edustat-main">
+      <!-- แถบด้านบน (Topbar) -->
+      <header class="edustat-topbar shadow-sm bg-white px-4 py-2 d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-0 fw-bold text-primary" id="topSchoolName">กำลังโหลดชื่อสถานศึกษา...</h6>
+          <small class="text-muted" id="topSchoolSub">ปีการศึกษา - | ปีงบประมาณ -</small>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-dark px-3 py-2" id="userInfoDisplay">ผู้ใช้งาน</span>
+        </div>
+      </header>
+
+      <!-- เนื้อหาแต่ละหน้า -->
+      <main class="p-4">
+        <div id="view-dashboard" class="view-section">
+          <?!= include('UI_Dashboard'); ?>
+        </div>
+        <div id="view-leave" class="view-section d-none">
+          <?!= include('UI_LeaveForm'); ?>
+        </div>
+        <div id="view-profile" class="view-section d-none">
+          <?!= include('UI_Profile'); ?>
+        </div>
+        <div id="view-admin" class="view-section d-none">
+          <?!= include('UI_Admin'); ?>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- พื้นที่สำหรับพิมพ์แบบฟอร์มราชการ -->
+  <div id="officialPrintContainer" class="d-none d-print-block"></div>
+
+  <!-- Modal แสดงตัวอย่างแบบฟอร์มราชการก่อนพิมพ์ -->
+  <div class="modal fade no-print" id="printModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title fw-bold"><i class="bi bi-printer-fill me-2"></i>ตรวจสอบเอกสารตามแบบฟอร์มราชการ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="printModalBody">กำลังสร้างเอกสาร...</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+          <button type="button" class="btn btn-primary" onclick="triggerOfficialPrint()">
+            <i class="bi bi-printer me-1"></i> สั่งพิมพ์ / บันทึกเป็น PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <?!= include('UI_JS'); ?>
+</body>
+</html>

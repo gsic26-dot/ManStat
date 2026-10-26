@@ -1,0 +1,181 @@
+<div class="mb-3 d-flex justify-content-between align-items-center">
+  <h5 class="fw-bold mb-0"><i class="bi bi-person-vcard-fill me-2 text-primary"></i>บันทึกทะเบียนประวัติ (แยกบันทึกทุกรายการ และแสดงค่าสูงสุดอัตโนมัติ)</h5>
+</div>
+
+<div class="row g-4">
+  <!-- 1. ประวัติวิทยฐานะ -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold text-primary">+ 1. เพิ่มประวัติวิทยฐานะ (แยกจากวันบรรจุ)</h6>
+      </div>
+      <div class="card-body">
+        <form onsubmit="handleSaveHistory(event, 'STANDING')">
+          <div class="mb-2">
+            <label class="form-label">ระดับวิทยฐานะ <span class="req-star">*</span></label>
+            <select class="form-select" id="std_level" required>
+              <option value="ไม่มีวิทยฐานะ (ครูผู้ช่วย)">ไม่มีวิทยฐานะ (ครูผู้ช่วย)</option>
+              <option value="ไม่มีวิทยฐานะ (คศ.1)">ไม่มีวิทยฐานะ (คศ.1)</option>
+              <option value="ครูชำนาญการ (คศ.2)">ครูชำนาญการ (คศ.2)</option>
+              <option value="ครูชำนาญการพิเศษ (คศ.3)">ครูชำนาญการพิเศษ (คศ.3)</option>
+              <option value="ครูเชี่ยวชาญ (คศ.4)">ครูเชี่ยวชาญ (คศ.4)</option>
+              <option value="ครูเชี่ยวชาญพิเศษ (คศ.5)">ครูเชี่ยวชาญพิเศษ (คศ.5)</option>
+              <option value="รอง ผอ.ชำนาญการ">รอง ผอ.ชำนาญการ</option>
+              <option value="รอง ผอ.ชำนาญการพิเศษ">รอง ผอ.ชำนาญการพิเศษ</option>
+              <option value="ผอ.ชำนาญการพิเศษ">ผอ.ชำนาญการพิเศษ</option>
+              <option value="ผอ.เชี่ยวชาญ">ผอ.เชี่ยวชาญ</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label">วันที่ได้รับแต่งตั้ง <span class="req-star">*</span></label>
+              <input type="date" class="form-control" id="std_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">เลขที่คำสั่ง <span class="req-star">*</span></label>
+              <input type="text" class="form-control" id="std_order" placeholder="ศธ 04009/..." required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">แนบไฟล์คำสั่งแต่งตั้ง (PDF/รูปภาพ)</label>
+            <input type="file" class="form-control" id="std_file" accept=".pdf,.jpg,.png">
+          </div>
+          <button type="submit" class="btn btn-outline-primary w-100 fw-bold">บันทึกประวัติวิทยฐานะ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ประวัติการศึกษา -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold text-success">+ 2. เพิ่มประวัติวุฒิการศึกษา (บันทึกทุกใบ)</h6>
+      </div>
+      <div class="card-body">
+        <form onsubmit="handleSaveHistory(event, 'EDUCATION')">
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label">ระดับการศึกษา <span class="req-star">*</span></label>
+              <select class="form-select" id="edu_level" required>
+                <option value="ปริญญาตรี">ปริญญาตรี</option>
+                <option value="ป.บัณฑิต">ประกาศนียบัตรบัณฑิต (ป.บัณฑิต)</option>
+                <option value="ปริญญาโท">ปริญญาโท</option>
+                <option value="ปริญญาเอก">ปริญญาเอก</option>
+                <option value="ต่ำกว่าปริญญาตรี">ต่ำกว่าปริญญาตรี</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">อักษรย่อวุฒิ <span class="req-star">*</span></label>
+              <select class="form-select" id="edu_short" required>
+                <option value="ค.บ.">ค.บ. (ครุศาสตรบัณฑิต)</option>
+                <option value="ศษ.บ.">ศษ.บ. (ศึกษาศาสตรบัณฑิต)</option>
+                <option value="กศ.บ.">กศ.บ. (การศึกษาบัณฑิต)</option>
+                <option value="วท.บ.">วท.บ. (วิทยาศาสตรบัณฑิต)</option>
+                <option value="ศศ.บ.">ศศ.บ. (ศิลปศาสตรบัณฑิต)</option>
+                <option value="ป.บัณฑิต">ป.บัณฑิต (วิชาชีพครู)</option>
+                <option value="ค.ม.">ค.ม. (ครุศาสตรมหาบัณฑิต)</option>
+                <option value="ศษ.ม.">ศษ.ม. (ศึกษาศาสตรมหาบัณฑิต)</option>
+                <option value="กศ.ม.">กศ.ม. (การศึกษามหาบัณฑิต)</option>
+                <option value="ปร.ด.">ปร.ด. (ดุษฎีบัณฑิต)</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">วิชาเอก / สาขาวิชา <span class="req-star">*</span></label>
+            <input type="text" class="form-control" id="edu_major" placeholder="เช่น คณิตศาสตร์, บริหารการศึกษา" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-8">
+              <label class="form-label">สถาบันการศึกษา <span class="req-star">*</span></label>
+              <input type="text" class="form-control" id="edu_inst" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">ปี พ.ศ. ที่จบ <span class="req-star">*</span></label>
+              <input type="number" class="form-control" id="edu_year" placeholder="2568" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-success w-100 fw-bold">บันทึกวุฒิการศึกษา</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. วุฒิทางลูกเสือ -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold text-warning">+ 3. เพิ่มข้อมูลวุฒิทางลูกเสือ</h6>
+      </div>
+      <div class="card-body">
+        <form onsubmit="handleSaveHistory(event, 'SCOUT')">
+          <div class="mb-2">
+            <label class="form-label">วุฒิทางลูกเสือสูงสุด <span class="req-star">*</span></label>
+            <select class="form-select" id="sct_qual" required>
+              <option value="B.T.C. (ขั้นความรู้เบื้องต้น)">B.T.C. (ขั้นความรู้เบื้องต้น)</option>
+              <option value="A.T.C. (ขั้นความรู้ชั้นสูง)">A.T.C. (ขั้นความรู้ชั้นสูง)</option>
+              <option value="W.B. (วูดแบดจ์ 2 ท่อน)">W.B. (วูดแบดจ์ 2 ท่อน)</option>
+              <option value="A.L.T. (3 ท่อน)">A.L.T. (ผู้ช่วยผู้ให้การฝึกอบรม 3 ท่อน)</option>
+              <option value="L.T. (4 ท่อน)">L.T. (ผู้ให้การฝึกอบรม 4 ท่อน)</option>
+              <option value="ยังไม่มีวุฒิทางลูกเสือ">ยังไม่มีวุฒิทางลูกเสือ</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">ประเภทกองลูกเสือ <span class="req-star">*</span></label>
+              <select class="form-select" id="sct_type">
+                <option value="ลูกเสือสำรอง">ลูกเสือสำรอง</option>
+                <option value="ลูกเสือสามัญ">ลูกเสือสามัญ</option>
+                <option value="ลูกเสือสามัญรุ่นใหญ่">ลูกเสือสามัญรุ่นใหญ่</option>
+                <option value="ลูกเสือวิสามัญ">ลูกเสือวิสามัญ</option>
+                <option value="เนตรนารี / ยุวกาชาด">เนตรนารี / ยุวกาชาด</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">เลขที่ใบวุฒิบัตร / ปี พ.ศ. <span class="req-star">*</span></label>
+              <input type="text" class="form-control" id="sct_cert" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-warning text-dark w-100 fw-bold">บันทึกวุฒิลูกเสือ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ใบอนุญาตประกอบวิชาชีพ -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold text-info">+ 4. เพิ่มข้อมูลใบอนุญาตประกอบวิชาชีพ</h6>
+      </div>
+      <div class="card-body">
+        <form onsubmit="handleSaveHistory(event, 'LICENSE')">
+          <div class="mb-2">
+            <label class="form-label">ประเภทใบอนุญาต <span class="req-star">*</span></label>
+            <select class="form-select" id="lic_type" required>
+              <option value="ใบอนุญาตประกอบวิชาชีพครู">ใบอนุญาตประกอบวิชาชีพครู</option>
+              <option value="ใบอนุญาตผู้บริหารสถานศึกษา">ใบอนุญาตผู้บริหารสถานศึกษา</option>
+              <option value="ใบอนุญาตศึกษานิเทศก์">ใบอนุญาตศึกษานิเทศก์</option>
+              <option value="ใบอนุญาตปฏิบัติการสอนชั่วคราว">ใบอนุญาตปฏิบัติการสอนชั่วคราว</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">เลขที่ใบอนุญาต <span class="req-star">*</span></label>
+            <input type="text" class="form-control" id="lic_num" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">วันออกใบอนุญาต <span class="req-star">*</span></label>
+              <input type="date" class="form-control" id="lic_issue" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">วันหมดอายุ <span class="req-star">*</span></label>
+              <input type="date" class="form-control" id="lic_exp" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-info text-dark w-100 fw-bold">บันทึกใบอนุญาต</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,885 @@
+<style>
+  .exp-days-badge { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 3px 9px; border-radius: 4px; font-size: 11.5px; font-weight: bold; min-width: 80px; }
+  .exp-days-ok { background: rgba(164, 208, 7, 0.14); border: 1px solid var(--steam-green); color: var(--steam-green); }
+  .exp-days-warn { background: rgba(210, 153, 34, 0.18); border: 1px solid var(--orange); color: var(--orange); box-shadow: 0 0 8px rgba(210,153,34,0.3); }
+  .exp-days-expired { background: rgba(248, 81, 73, 0.18); border: 1px solid var(--red); color: var(--red); box-shadow: 0 0 8px rgba(248,81,73,0.35); }
+  .exp-days-exempt { background: rgba(143, 152, 160, 0.14); border: 1px solid var(--text-muted); color: var(--text-muted); }
+  .std-sub-line { padding: 3px 6px; margin-bottom: 3px; border-bottom: 1px dashed rgba(42,71,94,0.6); font-size: 12.5px; }
+
+  .approval-3rows-box { display: flex; flex-direction: column; gap: 5px; max-width: 260px; margin: 0 auto; }
+  .approval-row-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.28); border: 1px solid #2a475e; padding: 5px 10px; border-radius: 4px; font-size: 12.5px; }
+  .approval-row-item.done { border-left: 3px solid var(--steam-green); background: rgba(164,208,7,0.08); }
+  .approval-row-label { font-weight: bold; color: #fff; text-align: left; }
+
+  .timeline-attached-row td { background: #10161f !important; padding: 7px 14px !important; border-top: 1px dashed #2a475e !important; border-bottom: 2px solid #2a475e !important; }
+  .tl-bar-wrap { display: flex; align-items: center; justify-content: center; gap: 0; width: 100%; max-width: 680px; margin: 0 auto; font-size: 12px; font-weight: bold; }
+  .tl-line { flex: 1; height: 3px; background: #2a475e; border-radius: 2px; transition: 0.3s; }
+  .tl-line.done { background: var(--steam-green); box-shadow: 0 0 6px rgba(164,208,7,0.5); }
+  .tl-node { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 14px; border: 1px solid #2a475e; background: #171a21; color: var(--text-muted); white-space: nowrap; }
+  .tl-node.done { border-color: var(--steam-green); color: var(--steam-green); background: rgba(164,208,7,0.14); }
+  .tl-final-badge { margin-left: 10px; padding: 3px 12px; border-radius: 14px; font-size: 12px; font-weight: bold; border: 1px solid #2a475e; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+  .tl-final-badge.done { background: var(--steam-green); color: #000; border-color: var(--steam-green); box-shadow: 0 0 10px rgba(164,208,7,0.5); }
+
+  .org-viewport { width: 100%; overflow: auto; background: rgba(0,0,0,0.22); border: 1px solid #2a475e; border-radius: 6px; padding: 30px 20px; box-sizing: border-box; min-height: 480px; text-align: center; }
+  .org-tree { display: inline-flex; flex-direction: column; align-items: center; transform-origin: top center; transition: transform 0.2s ease; }
+  
+  .org-node { background: #101822; border: 1px solid #2a475e; border-radius: 6px; padding: 10px 14px; min-width: 200px; max-width: 260px; text-align: center; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: relative; }
+  .org-node:hover { border-color: var(--steam-cyan); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102,192,244,0.25); }
+  .org-node.director { border-top: 3px solid var(--orange); }
+  .org-node.deputy { border-top: 3px solid var(--steam-cyan); }
+  .org-node.dept-head { border-top: 3px solid var(--steam-green); }
+  .org-node.staff { border-top: 3px solid #567086; min-width: 170px; padding: 6px 10px; }
+  .org-node.vacant { border: 1px dashed var(--red); background: rgba(248,81,73,0.06); }
+
+  .org-node-role { font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 3px; }
+  .org-node-name { font-size: 13.5px; font-weight: bold; color: #fff; line-height: 1.3; }
+  .org-node-pos { font-size: 11.5px; color: var(--steam-cyan); margin-top: 2px; }
+  .org-node-task { font-size: 11px; color: #8f98a0; margin-top: 3px; line-height: 1.25; }
+
+  .org-connector-v { width: 2px; height: 24px; background: #2a475e; margin: 0 auto; }
+  .org-level-row { display: flex; justify-content: center; gap: 20px; position: relative; }
+  .org-dept-container { display: flex; gap: 16px; justify-content: center; margin-top: 10px; flex-wrap: nowrap; }
+  .org-dept-branch { display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.18); border: 1px solid #23384c; border-radius: 6px; padding: 12px 10px; }
+  .org-staff-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; width: 100%; }
+
+  .wl-metric-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .wl-metric-card { background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .wl-metric-card .stat-val { font-size: 17px; font-weight: bold; }
+
+  .wl-filter-bar { background: rgba(0,0,0,0.22); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; display: grid; grid-template-columns: 1.4fr 1fr 1.1fr 1fr auto; gap: 8px; align-items: center; }
+  .wl-filter-bar .steam-input { margin: 0; padding: 6px 10px; font-size: 13px; height: 34px; box-sizing: border-box; }
+
+  .wl-ribbon-card { background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 4px; transition: border-color 0.15s, background 0.15s; margin-bottom: 6px; overflow: hidden; }
+  .wl-ribbon-card:hover { border-color: #3d6482; background: rgba(102,192,244,0.03); }
+  .wl-ribbon-card.expanded { border-color: var(--steam-green); background: rgba(16,24,34,0.92); }
+
+  .wl-ribbon-main { display: grid; grid-template-columns: minmax(220px, 1.35fr) minmax(290px, 1.65fr) minmax(180px, 1fr) 34px; gap: 12px; align-items: center; padding: 10px 14px; cursor: pointer; }
+  .wl-meta-code { font-family: monospace; font-weight: bold; color: var(--steam-cyan); font-size: 12px; }
+  .wl-task-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(102,192,244,0.14); border: 1px solid var(--steam-cyan); color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 11.5px; }
+  
+  .wl-detail-panel { display: none; border-top: 1px solid #2a475e; background: rgba(16,24,34,0.65); padding: 14px 16px; text-align: left; }
+  .wl-ribbon-card.expanded .wl-detail-panel { display: block; }
+  
+  .wl-cat-section { margin-bottom: 12px; background: rgba(0,0,0,0.22); border: 1px solid #23384c; border-radius: 4px; padding: 10px 12px; }
+  .wl-cat-head { font-size: 12.5px; font-weight: bold; color: var(--steam-green); border-bottom: 1px dashed #2a475e; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .wl-item-row { display: grid; grid-template-columns: 1.4fr 1.2fr 0.8fr 1.2fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(42,71,94,0.4); font-size: 12px; }
+
+  .lic-audit-banner { background: rgba(210, 153, 34, 0.12); border: 1px solid var(--orange); border-left: 4px solid var(--orange); border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.6; color: #fff; }
+  .lic-view-tabs { display: flex; gap: 8px; margin-bottom: 10px; border-bottom: 1px solid #2a475e; padding-bottom: 8px; }
+  .lic-tab-btn { background: transparent; border: 1px solid #2a475e; color: var(--text-muted); padding: 5px 12px; border-radius: 4px; font-size: 12.5px; font-weight: bold; cursor: pointer; transition: 0.15s; }
+  .lic-tab-btn:hover { color: #fff; border-color: var(--steam-cyan); }
+  .lic-tab-btn.active { background: rgba(102, 192, 244, 0.16); color: var(--steam-cyan); border-color: var(--steam-cyan); }
+
+  .lic-ribbon-list { display: flex; flex-direction: column; gap: 6px; }
+  .lic-ribbon-card { background: rgba(0, 0, 0, 0.24); border: 1px solid #2a475e; border-radius: 4px; transition: border-color 0.15s, background 0.15s; overflow: hidden; }
+  .lic-ribbon-card:hover { border-color: #3d6482; background: rgba(102, 192, 244, 0.04); }
+  .lic-ribbon-card.expanded { border-color: var(--steam-green); background: rgba(16, 24, 34, 0.9); }
+
+  .lic-ribbon-main { display: grid; grid-template-columns: minmax(230px, 1.35fr) minmax(290px, 1.5fr) minmax(210px, 1.15fr) 34px; gap: 12px; align-items: center; padding: 10px 14px; cursor: pointer; }
+  .lic-ident-zone { text-align: left; min-width: 0; }
+  .lic-name-line { font-size: 15px; font-weight: 700; color: #ffffff; line-height: 1.35; word-break: break-word; }
+  .lic-meta-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; word-break: break-word; }
+  
+  .lic-refs-zone { border-left: 1px solid rgba(42, 71, 94, 0.65); border-right: 1px solid rgba(42, 71, 94, 0.65); padding: 0 10px; text-align: left; font-size: 12.5px; color: #d0d7de; line-height: 1.5; }
+  .lic-status-zone { text-align: left; padding-left: 4px; min-width: 0; }
+
+  .lic-detail-panel { display: none; border-top: 1px solid #2a475e; background: rgba(16, 24, 34, 0.65); padding: 12px 16px; text-align: left; }
+  .lic-ribbon-card.expanded .lic-detail-panel { display: block; }
+  .lic-sub-item { background: rgba(0,0,0,0.3); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 12px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+
+  .ico-lbl { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: #d0d7de; margin-bottom: 5px; font-size: 13px; }
+  .leave-form-card { background: linear-gradient(145deg, rgba(16,24,34,0.88), rgba(23,26,33,0.94)); padding: 22px; border-radius: 8px; border: 1px solid #2a475e; max-width: 900px; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+  .leave-sec-box { background: rgba(0,0,0,0.26); border: 1px solid #2a475e; border-left: 3px solid var(--steam-cyan); padding: 14px 16px; border-radius: 6px; margin-bottom: 14px; }
+
+  @media screen and (max-width: 1024px) {
+    .lic-ribbon-main { grid-template-columns: 1fr auto; gap: 8px; }
+    .lic-refs-zone { grid-column: 1 / -1; border-left: none; border-right: none; border-top: 1px dashed rgba(42,71,94,0.55); border-bottom: 1px dashed rgba(42,71,94,0.55); padding: 6px 0; }
+    .lic-status-zone { grid-column: 1 / -1; padding-left: 0; }
+  }
+</style>
+
+<!-- VIEW: ยื่นคำร้อง -->
+<div id="view_leave" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-green); margin:0; font-size:17.5px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>&nbsp;<span>ยื่นคำร้องขอลา / ขออนุญาตออกนอกบริเวณสถานศึกษา</span>
+      </h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">กรอกข้อมูลคำร้องและเลือกผู้สอนแทนตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลา</div>
+    </div>
+    <span style="font-size:12px; color:var(--orange); cursor:pointer; display:inline-flex; align-items:center; gap:5px; background:rgba(210,153,34,0.12); border:1px solid var(--orange); padding:5px 12px; border-radius:16px; font-weight:bold;" onclick="triggerVacationLockClick()">
+      <svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>&nbsp;<span>ระเบียบการลาพักผ่อนของข้าราชการครู</span>
+    </span>
+  </div>
+
+  <div id="directorCannotLeaveNotice" style="display:none; background:rgba(248,81,73,0.16); border:1px solid var(--red); border-left:4px solid var(--red); padding:12px 16px; border-radius:6px; margin-bottom:16px; color:#fff; font-size:13px; line-height:1.6;">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico" style="color:var(--red);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>&nbsp;<span><b style="color:var(--red);">ระเบียบการลาของผู้บริหารสถานศึกษา:</b> ผู้อำนวยการสถานศึกษาไม่มีสิทธิยื่นลาและอนุมัติตนเองภายในสถานศึกษา ต้องยื่นใบลาต่อ <b>ผู้อำนวยการสำนักงานเขตพื้นที่การศึกษา (สพป.)</b> เท่านั้น</span>
+    </div>
+  </div>
+
+  <div class="leave-form-card">
+    <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+      <div class="input-group">
+        <label class="ico-lbl" style="color:var(--steam-cyan); font-size:13.5px;">
+          <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>&nbsp;<span>เลือกประเภทคำร้อง <span class="req-star">*</span></span>
+        </label>
+        <select id="leaveType" class="steam-input" onchange="toggleLeaveTimeFields()" required>
+          <optgroup label="ประเภทการลาของข้าราชการครูและบุคลากรทางการศึกษา">
+            <option value="ลาป่วย">ลาป่วย</option>
+            <option value="ลากิจ">ลากิจส่วนตัว</option>
+            <option value="ลาคลอดบุตร">ลาคลอดบุตร</option>
+            <option value="ลาไปช่วยเหลือภริยาที่คลอดบุตร">ลาไปช่วยเหลือภริยาที่คลอดบุตร</option>
+            <option value="ลาพักผ่อน">ลาพักผ่อน (ล็อกตามระเบียบครู)</option>
+            <option value="ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์">ลาอุปสมบท หรือลาไปประกอบพิธีฮัจย์</option>
+            <option value="ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล">ลาเข้ารับการตรวจเลือก หรือเข้ารับการเตรียมพล</option>
+            <option value="ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน">ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน</option>
+            <option value="ลาไปปฏิบัติงานในองค์การระหว่างประเทศ">ลาไปปฏิบัติงานในองค์การระหว่างประเทศ</option>
+            <option value="ลาติดตามคู่สมรส">ลาติดตามคู่สมรส</option>
+            <option value="ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ">ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ</option>
+          </optgroup>
+          <option disabled>──────────────────────────────────────────</option>
+          <optgroup label="การขออนุญาตออกนอกบริเวณสถานศึกษา">
+            <option value="ขออนุญาต (ไม่เกิน 3 ชม.)">ขออนุญาตออกนอกบริเวณโรงเรียน (ไม่เกิน 3 ชั่วโมง)</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div id="leavePolicyAlertBanner" style="background:rgba(102,192,244,0.12); border:1px solid var(--steam-cyan); border-left:4px solid var(--steam-cyan); padding:10px 14px; border-radius:5px; margin-bottom:14px; font-size:12.5px; color:#fff; line-height:1.6;"></div>
+
+      <div class="leave-sec-box">
+        <div class="grid-2">
+          <div class="input-group" style="margin-bottom:8px;">
+            <label class="ico-lbl" id="lblStartDateTitle">
+              <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>ตั้งแต่วันที่ <span class="req-star">*</span></span>
+            </label>
+            <input type="date" id="leaveStartDate" class="steam-input" onchange="onLeaveDatesChange()" required>
+          </div>
+          <div class="input-group" id="endDateGroup" style="margin-bottom:8px;">
+            <label class="ico-lbl">
+              <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>&nbsp;<span>ถึงวันที่ <span class="req-star">*</span></span>
+            </label>
+            <input type="date" id="leaveEndDate" class="steam-input" onchange="onLeaveDatesChange()">
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-bottom:0;">
+          <label class="ico-lbl" id="lblLeaveReasonTitle">
+            <svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>&nbsp;<span>เนื่องจาก (ระบุสาเหตุการลา) <span class="req-star">*</span></span>
+          </label>
+          <input type="text" id="leaveReason" class="steam-input" style="margin-bottom:0;" placeholder="ระบุสาเหตุความจำเป็น..." required>
+        </div>
+      </div>
+
+      <div id="form1_1_zone" class="leave-sec-box" style="border-left-color:var(--steam-green);">
+        <div class="grid-2">
+          <div class="input-group">
+            <label class="ico-lbl">
+              <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>&nbsp;<span>ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <span class="req-star">*</span></span>
+            </label>
+            <input type="text" id="leaveContactAddr" class="steam-input" placeholder="ระบุเบอร์โทรศัพท์ หรือที่อยู่ที่ติดต่อได้">
+          </div>
+          <div class="input-group">
+            <label class="ico-lbl" style="color:var(--steam-green);">
+              <svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>&nbsp;<span>ผู้สอนแทนระหว่างลา <span class="req-star">*</span></span>
+            </label>
+            <select id="leaveSubTeacherSelect" class="steam-input">
+              <option value="">-- คลิกเลือกผู้สอนแทน --</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom:0;">
+          <label class="ico-lbl">
+            <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>&nbsp;<span>รายละเอียดวิชา / ชั้นเรียนที่ฝากสอน (ถ้ามี)</span>
+          </label>
+          <input type="text" id="leaveSubNote" class="steam-input" style="margin-bottom:0;" placeholder="เช่น คาบที่ 2-3 ชั้น ป.4 วิชาคณิตศาสตร์">
+        </div>
+      </div>
+
+      <div id="form1_2_zone" style="display:none; background:rgba(210,153,34,0.08); border:1px solid var(--orange); border-left:3px solid var(--orange); padding:14px 16px; border-radius:6px; margin-bottom:14px;">
+        <div class="grid-3">
+          <div class="input-group">
+            <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>&nbsp;<span>ระหว่างเวลา (น.) <span class="req-star">*</span></span></label>
+            <input type="time" id="leaveStartTime" class="steam-input" onchange="calcPermitHoursPreview()">
+          </div>
+          <div class="input-group">
+            <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>&nbsp;<span>ถึงเวลา (น.) <span class="req-star">*</span></span></label>
+            <input type="time" id="leaveEndTime" class="steam-input" onchange="calcPermitHoursPreview()">
+          </div>
+          <div class="input-group">
+            <label class="ico-lbl"><svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>&nbsp;<span>สถานที่ไป <span class="req-star">*</span></span></label>
+            <input type="text" id="permitPlace" class="steam-input" placeholder="ระบุสถานที่ไป...">
+          </div>
+        </div>
+        <div id="permitHoursPreviewText" style="font-size:12px; color:var(--steam-green); font-weight:bold; margin-bottom:10px;"></div>
+
+        <div style="margin-bottom:10px;">
+          <label style="font-size:13px; color:#fff; font-weight:bold; margin-right:15px;">ภาระงาน:</label>
+          <label style="cursor:pointer; margin-right:18px; color:var(--steam-cyan); font-weight:bold;">
+            <input type="radio" name="permitWorkloadRadio" value="ไม่มี" checked onchange="togglePermitWorkloadTable()"> ไม่มีภาระงานสอน
+          </label>
+          <label style="cursor:pointer; color:var(--steam-green); font-weight:bold;">
+            <input type="radio" name="permitWorkloadRadio" value="มี" onchange="togglePermitWorkloadTable()"> มีภาระงานสอน
+          </label>
+        </div>
+
+        <div id="permitWorkloadTableWrap" style="display:none; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; border:1px solid #2a475e;">
+          <div style="display:grid; grid-template-columns: 1.1fr 0.8fr 1.5fr 1.6fr; gap:8px; margin-bottom:6px; align-items:center;">
+            <select id="pw_cls_1" class="steam-input" style="margin:0;"></select>
+            <input type="text" id="pw_per_1" class="steam-input" style="margin:0;" placeholder="1. คาบที่...">
+            <input type="text" id="pw_task_1" class="steam-input" style="margin:0;" placeholder="งานที่มอบหมาย...">
+            <select id="pw_sub_1" class="steam-input" style="margin:0;"></select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1.1fr 0.8fr 1.5fr 1.6fr; gap:8px; margin-bottom:6px; align-items:center;">
+            <select id="pw_cls_2" class="steam-input" style="margin:0;"></select>
+            <input type="text" id="pw_per_2" class="steam-input" style="margin:0;" placeholder="2. คาบที่...">
+            <input type="text" id="pw_task_2" class="steam-input" style="margin:0;" placeholder="งานที่มอบหมาย...">
+            <select id="pw_sub_2" class="steam-input" style="margin:0;"></select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1.1fr 0.8fr 1.5fr 1.6fr; gap:8px; align-items:center;">
+            <select id="pw_cls_3" class="steam-input" style="margin:0;"></select>
+            <input type="text" id="pw_per_3" class="steam-input" style="margin:0;" placeholder="3. คาบที่...">
+            <input type="text" id="pw_task_3" class="steam-input" style="margin:0;" placeholder="งานที่มอบหมาย...">
+            <select id="pw_sub_3" class="steam-input" style="margin:0;"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="ico-lbl">
+          <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>&nbsp;<span>แนบไฟล์ใบรับรองแพทย์ หรือเอกสารอ้างอิง (ถ้ามี)</span>
+        </label>
+        <input type="file" id="leaveAttachFile" class="steam-input" accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+
+      <div style="text-align:right; margin-top:12px;">
+        <button type="submit" id="btnSubmitLeave" class="btn-steam" style="width:auto; padding:10px 28px;">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกและยื่นคำร้อง</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- VIEW: รายการคำร้อง -->
+<div id="view_requests" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <h3 style="color:var(--orange); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>&nbsp;<span>รายการคำร้อง</span>
+    </h3>
+    <div style="display:flex; gap:8px;">
+      <button type="button" class="btn-save-sm" style="border-color:var(--steam-cyan); color:var(--steam-cyan); display:inline-flex; align-items:center; gap:5px;" onclick="switchView('tracking')">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>&nbsp;<span>ไปที่หน้า ติดตามคำร้อง</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:5px;" onclick="refreshAllData()">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรช</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:11%;">รหัสคำร้อง</th>
+          <th style="width:18%; text-align:left; padding-left:10px;">ผู้ยื่นคำร้อง</th>
+          <th style="width:14%;">ประเภท</th>
+          <th style="width:18%;">ช่วงวันที่ / เวลา</th>
+          <th style="width:9%;">รวมเวลา</th>
+          <th style="width:18%;">ผู้สอนแทน</th>
+          <th style="width:12%;">สถานะ</th>
+        </tr>
+      </thead>
+      <tbody id="leaveLogsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: ติดตามคำร้อง -->
+<div id="view_tracking" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>&nbsp;<span>ติดตามคำร้อง</span>
+    </h3>
+    <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:5px;" onclick="refreshAllData()">
+      <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชสถานะ</span>
+    </button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:11%;">รหัสคำร้อง</th>
+          <th style="width:18%; text-align:left; padding-left:10px;">ผู้ยื่นคำร้อง</th>
+          <th style="width:14%;">ประเภท</th>
+          <th style="width:18%;">ช่วงเวลา</th>
+          <th style="width:26%;">การอนุมัติ</th>
+          <th style="width:13%;">พิมพ์เอกสาร</th>
+        </tr>
+      </thead>
+      <tbody id="trackingLogsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: แผนผังการบริหารงาน -->
+<div id="view_org_chart" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="9" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5"/><path d="M5 17v-5h14v5"/></svg>&nbsp;<span>แผนผังการบริหารงาน (Organization Chart)</span>
+      </h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">
+        โครงสร้างการบริหารงาน สายการบังคับบัญชา และการมอบหมายงานตามฝ่ายของสถานศึกษา • 
+        <span id="orgHeaderSchoolName" style="color:#fff; font-weight:bold;">โรงเรียนชุมชนบ้านตะขบ</span> (ปีการศึกษา <span id="orgHeaderAcadYear" style="color:var(--steam-cyan);">2569</span>)
+      </div>
+    </div>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:4px;" onclick="zoomOrgTree(-0.1)" title="ย่อแผนผัง">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>ย่อ</span>
+      </button>
+      <button type="button" class="btn-save-sm" onclick="resetOrgTreeZoom()" title="ขนาดปกติ">100%</button>
+      <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:4px;" onclick="zoomOrgTree(0.1)" title="ขยายแผนผัง">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>ขยาย</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="border-color:var(--steam-cyan); color:var(--steam-cyan); display:inline-flex; align-items:center; gap:5px;" onclick="refreshAllData()">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชข้อมูล</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="emp-filter-bar" style="margin-bottom:10px;">
+    <input type="text" id="orgSearchInput" class="steam-input" placeholder="ค้นหาชื่อ-นามสกุล หรือ รหัสบุคลากรในแผนผัง..." oninput="filterOrgChartTree()">
+    <select id="orgFilterCategory" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">กลุ่มตำแหน่ง: ทั้งหมด</option>
+      <option value="EXE">ผู้บริหารสถานศึกษา</option>
+      <option value="TCH">ข้าราชการครู</option>
+      <option value="STF">บุคลากรสายสนับสนุน</option>
+    </select>
+    <select id="orgFilterDept" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">ฝ่ายบริหารงาน: ทั้งหมด</option>
+    </select>
+    <select id="orgFilterViewMode" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">มุมมอง: แสดงทุกฝ่ายและงานย่อย</option>
+      <option value="HEAD_ONLY">แสดงเฉพาะหัวหน้าฝ่ายงาน</option>
+      <option value="VACANT">แสดงเฉพาะงานที่ยังไม่มีผู้รับผิดชอบ</option>
+    </select>
+    <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px;" onclick="resetOrgFilters()">ล้างตัวกรอง</button>
+  </div>
+
+  <div class="org-viewport" id="orgViewportBox">
+    <div class="org-tree" id="orgTreeContainer"></div>
+  </div>
+</div>
+
+<!-- VIEW: ภาระงานของบุคลากร -->
+<div id="view_workload" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-green); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>ภาระงานของบุคลากร (Staff Workload Management)</span>
+      </h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">
+        ตรวจสอบและบริหารภาระงานประจำฝ่าย งานสอน และหน้าที่พิเศษของบุคลากรรายบุคคล
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" id="btnAdminAddWorkload" class="btn-steam" style="width:auto; padding:6px 16px; font-size:12.5px; display:none;" onclick="openWorkloadModal(null)">
+        <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>&nbsp;<span>มอบหมายภาระงาน</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:5px;" onclick="refreshAllData()">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชข้อมูล</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="wl-metric-strip">
+    <div class="wl-metric-card" style="border-left:3px solid var(--steam-cyan);">
+      <span style="color:var(--text-muted);">บุคลากรทั้งหมด</span>
+      <span class="stat-val" style="color:#fff;" id="wlTotalStaffCount">0</span>
+    </div>
+    <div class="wl-metric-card" style="border-left:3px solid var(--steam-green);">
+      <span style="color:var(--text-muted);">รายการภาระงานที่บันทึก</span>
+      <span class="stat-val" style="color:var(--steam-green);" id="wlTotalTasksCount">0</span>
+    </div>
+    <div class="wl-metric-card" style="border-left:3px solid var(--orange);">
+      <span style="color:var(--text-muted);">งานฝ่ายที่ยังไม่มีผู้รับผิดชอบ</span>
+      <span class="stat-val" style="color:var(--orange);" id="wlVacantTasksCount">0</span>
+    </div>
+  </div>
+
+  <div class="wl-filter-bar">
+    <input type="text" id="wlSearchInput" class="steam-input" placeholder="ค้นหาชื่อ-นามสกุล หรือ รหัสบุคลากร (เช่น TCH-001)..." oninput="filterStaffWorkloadList()">
+    <select id="wlFilterCategory" class="steam-input" onchange="filterStaffWorkloadList()">
+      <option value="ALL">ประเภทบุคลากร: ทั้งหมด</option>
+      <option value="EXE">ผู้บริหารสถานศึกษา</option>
+      <option value="TCH">ข้าราชการครู</option>
+      <option value="STF">บุคลากรสายสนับสนุน</option>
+    </select>
+    <select id="wlFilterDept" class="steam-input" onchange="filterStaffWorkloadList()">
+      <option value="ALL">ฝ่ายงาน / กลุ่มสาระ: ทั้งหมด</option>
+    </select>
+    <select id="wlFilterTaskScope" class="steam-input" onchange="filterStaffWorkloadList()">
+      <option value="ALL">หมวดหมู่ภาระงาน: ทั้งหมด</option>
+      <option value="HAS_ADVISOR">มีชั้นที่ปรึกษา</option>
+      <option value="HEAD_ONLY">หัวหน้าฝ่ายงาน</option>
+      <option value="HAS_EXTRA">มีงานโครงการ/หน้าที่พิเศษ</option>
+    </select>
+    <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px;" onclick="resetWorkloadFilters()">ล้างตัวกรอง</button>
+  </div>
+
+  <div id="staffWorkloadRibbonContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
+</div>
+
+<!-- VIEW: วิทยฐานะ -->
+<div id="view_dir_standing" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>วิทยฐานะ</span>
+    </h3>
+    <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange); display:inline-flex; align-items:center; gap:5px;" onclick="goToAdminPage(event, 'tab2')">
+      <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>&nbsp;<span>เพิ่ม/แก้ไขในตั้งค่าระบบ</span>
+    </button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:10%;">รหัส</th>
+          <th style="width:22%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+          <th style="width:13%;">วันที่บรรจุ</th>
+          <th style="width:16%;">วิทยฐานะ</th>
+          <th style="width:15%;">วันที่มีผล</th>
+          <th style="width:14%;">เลขที่คำสั่ง</th>
+          <th style="width:10%;">ก.พ. 7 ย่อ</th>
+        </tr>
+      </thead>
+      <tbody id="dirStandingBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: วุฒิลูกเสือ -->
+<div id="view_dir_scout" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <h3 style="color:var(--orange); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>&nbsp;<span>วุฒิลูกเสือ</span>
+    </h3>
+    <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange); display:inline-flex; align-items:center; gap:5px;" onclick="goToAdminPage(event, 'tab2')">
+      <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>&nbsp;<span>เพิ่ม/แก้ไขในตั้งค่าระบบ</span>
+    </button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:10%;">รหัส</th>
+          <th style="width:23%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+          <th style="width:20%;">วุฒิทางลูกเสือ</th>
+          <th style="width:17%;">ประเภทกองลูกเสือ</th>
+          <th style="width:15%;">เลขที่วุฒิบัตร</th>
+          <th style="width:15%;">วันที่ได้รับวุฒิ</th>
+        </tr>
+      </thead>
+      <tbody id="dirScoutBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: ทะเบียนใบอนุญาต -->
+<div id="view_dir_license" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-green); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>&nbsp;<span>ทะเบียนใบอนุญาตประกอบวิชาชีพและเอกสารรับรอง</span>
+      </h3>
+      <div style="font-size:12.5px; color:var(--text-muted); margin-top:3px;">
+        ตรวจสอบข้อมูลและประวัติใบอนุญาตประกอบวิชาชีพครู ผู้บริหาร และเอกสารรับรอง แยกตามรหัสเฉพาะ
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button type="button" class="btn-save-sm" style="color:var(--orange); border-color:var(--orange); display:inline-flex; align-items:center; gap:5px;" onclick="goToAdminPage(event, 'tab2')">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>&nbsp;<span>เพิ่ม/แก้ไขในตั้งค่าระบบ</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="display:inline-flex; align-items:center; gap:5px;" onclick="refreshAllData()">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชข้อมูล</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="licenseAuditAlertBanner" class="lic-audit-banner" style="display:none;"></div>
+
+  <div class="lic-view-tabs">
+    <button type="button" class="lic-tab-btn active" id="btnLicTab_allDocs" onclick="switchLicenseViewTab('ALL_DOCS')">ทะเบียนเอกสารใบอนุญาตทั้งหมด</button>
+    <button type="button" class="lic-tab-btn" id="btnLicTab_personnel" onclick="switchLicenseViewTab('PERSONNEL')">รายชื่อบุคลากรและสถานะเอกสาร</button>
+    <button type="button" class="lic-tab-btn" id="btnLicTab_audit" onclick="switchLicenseViewTab('AUDIT')">รายการรอตรวจสอบ (Audit Issues)</button>
+  </div>
+
+  <div class="emp-filter-bar" style="margin-bottom:12px;">
+    <input type="text" id="searchLicenseInput" class="steam-input" placeholder="พิมพ์คำค้นหา..." oninput="filterLicenseDirectoryTable()">
+    
+    <select id="filterLicenseField" class="steam-input" onchange="filterLicenseDirectoryTable()">
+      <option value="ALL">ค้นหา: ทุกฟิลด์</option>
+      <option value="EMPID">เฉพาะ: รหัสบุคลากร (EmpID)</option>
+      <option value="NAME">เฉพาะ: ชื่อ-นามสกุล</option>
+      <option value="POSNO">เฉพาะ: เลขที่ตำแหน่ง (PositionNo)</option>
+      <option value="MEMBERID">เฉพาะ: สมาชิกประเภทสามัญ เลขที่ (MemberID)</option>
+      <option value="LICNO">เฉพาะ: เลขที่ใบอนุญาต (LicenseNo)</option>
+    </select>
+
+    <select id="filterLicenseStatus" class="steam-input" onchange="filterLicenseDirectoryTable()">
+      <option value="ALL">สถานะเอกสาร: ทั้งหมด</option>
+      <option value="ACTIVE">ปกติ</option>
+      <option value="EXPIRING">ใกล้หมดอายุ (ภายใน 90 วัน)</option>
+      <option value="EXPIRED">หมดอายุแล้ว</option>
+      <option value="NO_DOC">ยังไม่พบหลักฐานในระบบ</option>
+      <option value="EXEMPT">ได้รับการยกเว้นตามตำแหน่ง</option>
+    </select>
+
+    <select id="filterLicenseCategory" class="steam-input" onchange="filterLicenseDirectoryTable()">
+      <option value="ALL">กลุ่มบุคลากร: ทั้งหมด</option>
+      <option value="EXE">ผู้บริหารสถานศึกษา</option>
+      <option value="TCH">ข้าราชการครู</option>
+      <option value="STF">บุคลากรสายสนับสนุน</option>
+    </select>
+
+    <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px;" onclick="resetLicenseFilters()">ล้างตัวกรอง</button>
+  </div>
+
+  <div id="employeeLicenseRibbonContainer" class="lic-ribbon-list"></div>
+</div>
+
+<!-- VIEW: แจ้งปรับปรุงระบบ -->
+<div id="view_feedback" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>&nbsp;<span>แจ้งปรับปรุงระบบ</span>
+    </h3>
+  </div>
+
+  <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e; margin-bottom: 18px;">
+    <form id="feedbackForm" onsubmit="handleFeedbackSubmit(event)">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>ประเภทเรื่องที่แจ้ง <span class="req-star">*</span></label>
+          <select id="fb_category" class="steam-input" required>
+            <option value="เสนอฟีเจอร์ใหม่">เสนอแนะฟีเจอร์ใหม่</option>
+            <option value="แจ้งปรับปรุง/แก้ไขบั๊ก">แจ้งปรับปรุงระบบ / แก้ไขข้อผิดพลาด</option>
+            <option value="แสดงความคิดเห็นทั่วไป">แสดงความคิดเห็นทั่วไป</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>หัวข้อเรื่อง <span class="req-star">*</span></label>
+          <input type="text" id="fb_topic" class="steam-input" placeholder="ระบุหัวข้อเรื่อง..." required>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>รายละเอียด <span class="req-star">*</span></label>
+        <input type="text" id="fb_detail" class="steam-input" placeholder="อธิบายรายละเอียดเพิ่มเติม..." required>
+      </div>
+      <div style="text-align:right;">
+        <button type="submit" class="btn-steam" style="width:auto; padding:8px 24px;">
+          <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกส่งคำขอ</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:10%;">วันที่แจ้ง</th>
+          <th style="width:16%; text-align:left; padding-left:10px;">ผู้เสนอแนะ</th>
+          <th style="width:14%;">ประเภท</th>
+          <th style="width:26%; text-align:left; padding-left:10px;">หัวข้อและรายละเอียด</th>
+          <th style="width:12%;">สถานะ</th>
+          <th style="width:22%;">การแจ้งผล / จัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="feedbackTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: กราฟสถิติ & รายงานสรุปสำหรับผู้บริหารสถานศึกษา -->
+<div id="view_analytics" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #2a475e; padding-bottom:12px; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+    <div style="font-size:18px; color:#fff; font-weight:bold; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>&nbsp;<span>กราฟสถิติ & รายงานสรุปสำหรับผู้บริหารสถานศึกษา</span>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn-save-sm" style="background:rgba(102,192,244,0.16); border-color:var(--steam-cyan); color:var(--steam-cyan); display:inline-flex; align-items:center; gap:5px;" onclick="openSchoolLeaveSummaryPrint('PERIOD_1')">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>&nbsp;<span>พิมพ์สรุปวันลา รอบที่ 1 (1 ต.ค.–31 มี.ค.)</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="background:rgba(102,192,244,0.16); border-color:var(--steam-cyan); color:var(--steam-cyan); display:inline-flex; align-items:center; gap:5px;" onclick="openSchoolLeaveSummaryPrint('PERIOD_2')">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>&nbsp;<span>พิมพ์สรุปวันลา รอบที่ 2 (1 เม.ย.–30 ก.ย.)</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="background:var(--steam-green); color:#000; border:none; font-weight:bold; display:inline-flex; align-items:center; gap:5px;" onclick="openSchoolLeaveSummaryPrint('ALL')">
+        <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>&nbsp;<span>พิมพ์สรุปวันลารวมทั้งปีงบประมาณ (A4)</span>
+      </button>
+      <button type="button" class="btn-save-sm" style="border-color:var(--orange); color:var(--orange); display:inline-flex; align-items:center; gap:5px;" onclick="exportFullSystemToExcel5Sheets()">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>&nbsp;<span>ส่งออกฐานข้อมูล Excel (5 Sheets)</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:16px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-cyan); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>&nbsp;<span>สัดส่วนจำนวนครั้งการลาแยกตามประเภท</span>
+      </div>
+      <div style="position:relative; height:240px; width:100%;">
+        <canvas id="leavePieChart"></canvas>
+      </div>
+    </div>
+    <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:16px; border-radius:6px;">
+      <div style="font-size:14px; font-weight:bold; color:var(--steam-green); border-bottom:1px solid #2a475e; padding-bottom:6px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>&nbsp;<span>สถิติวันลาป่วย/ลากิจสะสมรายบุคคล (10 อันดับแรก)</span>
+      </div>
+      <div style="position:relative; height:240px; width:100%;">
+        <canvas id="leaveBarChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:rgba(0,0,0,0.28); border:1px solid #2a475e; padding:16px; border-radius:6px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:8px; margin-bottom:12px;">
+      <span style="font-size:14.5px; font-weight:bold; color:var(--orange); display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>&nbsp;<span>ตารางแผนอัตรากำลังและกำหนดการเกษียณอายุราชการของบุคลากร (เรียงตามปีเกษียณ)</span>
+      </span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:9%;">รหัส</th>
+            <th style="width:22%; text-align:left; padding-left:10px;">ชื่อ-นามสกุล</th>
+            <th style="width:16%;">ตำแหน่ง</th>
+            <th style="width:12%;">วันเกิด</th>
+            <th style="width:15%;">อายุปัจจุบัน</th>
+            <th style="width:13%;">วันเกษียณ</th>
+            <th style="width:13%;">เวลาคงเหลือ</th>
+          </tr>
+        </thead>
+        <tbody id="retirementForecastBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ข้อมูลบุคลากรในแผนผังองค์กร -->
+<div class="modal-overlay" id="modalOrgStaffDetail" style="z-index: 2800; display:none;">
+  <div class="modal-box" style="max-width: 680px; padding: 20px; text-align: left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:8px; margin-bottom:12px;">
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:16px; display:flex; align-items:center; gap:6px;">
+        <svg class="ui-ico" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>&nbsp;<span id="orgModalStaffName">-</span>
+      </h3>
+      <button type="button" class="modal-close-btn" onclick="document.getElementById('modalOrgStaffDetail').style.display='none'" title="ปิดหน้าต่าง">
+        <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="orgModalStaffBody" style="font-size:13px; line-height:1.65; color:#d0d7de;"></div>
+    <div style="text-align:right; margin-top:14px; border-top:1px dashed #2a475e; padding-top:10px;">
+      <button type="button" class="btn-steam" style="width:auto; padding:6px 18px;" onclick="document.getElementById('modalOrgStaffDetail').style.display='none'">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: เพิ่ม/แก้ไขภาระงาน -->
+<div class="modal-overlay" id="modalWorkloadForm" style="z-index: 2850; display:none;">
+  <div class="modal-box" style="max-width: 640px; padding: 20px; text-align: left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:8px; margin-bottom:14px;">
+      <h3 style="color:var(--steam-green); margin:0; font-size:16px;" id="wlModalFormTitle">เพิ่มรายการภาระงาน</h3>
+      <button type="button" class="modal-close-btn" onclick="closeWorkloadModal()" title="ปิดหน้าต่าง">
+        <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="workloadDataForm" onsubmit="handleWorkloadFormSubmit(event)">
+      <input type="hidden" id="wlForm_workloadId">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>ผู้รับผิดชอบหลัก <span class="req-star">*</span></label>
+          <select id="wlForm_empId" class="steam-input" required></select>
+        </div>
+        <div class="input-group">
+          <label>หมวดหมู่ภาระงาน <span class="req-star">*</span></label>
+          <select id="wlForm_category" class="steam-input" required>
+            <option value="งานประจำฝ่าย">หมวด 2: งานประจำฝ่าย</option>
+            <option value="งานสอน">หมวด 1: งานสอนและรายวิชา</option>
+            <option value="งานที่ได้รับมอบหมาย">หมวด 3: งานโครงการ / หน้าที่พิเศษ</option>
+            <option value="งานอื่น ๆ">หมวด 4: งานเวร / กิจกรรมอื่น ๆ</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>ชื่องาน / รายวิชา / หน้าที่ <span class="req-star">*</span></label>
+        <input type="text" id="wlForm_title" class="steam-input" placeholder="เช่น การเงินและบัญชี หรือ วิชาคณิตศาสตร์พื้นฐาน" required>
+      </div>
+
+      <div class="grid-3">
+        <div class="input-group">
+          <label>ฝ่ายงาน / ระดับชั้น</label>
+          <input type="text" id="wlForm_subGroup" class="steam-input" placeholder="เช่น ฝ่ายบริหารงบประมาณ หรือ ม.1">
+        </div>
+        <div class="input-group">
+          <label>ชั่วโมง / สัปดาห์</label>
+          <input type="text" id="wlForm_hours" class="steam-input" placeholder="เช่น 4 หรือ -">
+        </div>
+        <div class="input-group">
+          <label>บทบาทในงาน</label>
+          <select id="wlForm_role" class="steam-input">
+            <option value="ผู้รับผิดชอบหลัก">ผู้รับผิดชอบหลัก</option>
+            <option value="หัวหน้าฝ่าย">หัวหน้าฝ่าย</option>
+            <option value="กรรมการ / ผู้ร่วมงาน">กรรมการ / ผู้ร่วมงาน</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="input-group">
+          <label>คำสั่งที่ / หนังสืออ้างอิง</label>
+          <input type="text" id="wlForm_orderRef" class="steam-input" placeholder="เช่น คำสั่งที่ 45/2569 หรือ -">
+        </div>
+        <div class="input-group">
+          <label>สถานะการดำเนินงาน</label>
+          <select id="wlForm_status" class="steam-input">
+            <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+            <option value="เสร็จสิ้นแล้ว">เสร็จสิ้นแล้ว</option>
+            <option value="งานประจำต่อเนื่อง">งานประจำต่อเนื่อง</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>ผู้ร่วมรับผิดชอบ (ถ้ามี)</label>
+        <input type="text" id="wlForm_coEmp" class="steam-input" placeholder="เช่น TCH-002, TCH-004 หรือระบุชื่อ">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px; border-top:1px dashed #2a475e; padding-top:10px;">
+        <button type="button" class="btn-save-sm" onclick="closeWorkloadModal()">ยกเลิก</button>
+        <button type="submit" class="btn-steam" style="width:auto; padding:7px 24px;">
+          <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>&nbsp;<span>บันทึกภาระงาน</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: รายละเอียดใบอนุญาตและระเบียนเอกสาร -->
+<div class="modal-overlay" id="modalLicenseDetailView" style="z-index: 2900; display:none;">
+  <div class="modal-box" style="max-width: 640px; padding: 20px; text-align: left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:8px; margin-bottom:12px;">
+      <h3 style="color:var(--steam-green); margin:0; font-size:16px;">รายละเอียดใบอนุญาตประกอบวิชาชีพ</h3>
+      <button type="button" class="modal-close-btn" onclick="document.getElementById('modalLicenseDetailView').style.display='none'" title="ปิดหน้าต่าง">
+        <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="modalLicenseDetailBody" style="font-size:13px; line-height:1.7; color:#d0d7de;"></div>
+    <div style="text-align:right; margin-top:14px; border-top:1px dashed #2a475e; padding-top:10px;">
+      <button type="button" class="btn-steam" style="width:auto; padding:6px 18px;" onclick="document.getElementById('modalLicenseDetailView').style.display='none'">ปิดหน้าต่าง</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS พื้นฐานระบบ -->
+<div class="modal-overlay" id="modalSettings" style="display:none;">
+  <div class="modal-box">
+    <h3 style="color:var(--steam-cyan); margin-top:0; display:flex; align-items:center; gap:6px;">
+      <svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82"/></svg>&nbsp;<span>ตั้งค่าข้อมูลส่วนตัว</span>
+    </h3>
+    <label style="font-size:13px; color:var(--text-muted);">เบอร์โทรศัพท์ติดต่อ</label>
+    <input type="text" id="setPhone" class="steam-input">
+    <hr style="border:none; border-top:1px solid #2a475e; margin: 15px 0;">
+    <label style="font-size:13px; color:var(--text-muted);">รหัสผ่านเดิม</label>
+    <input type="password" id="setOldPass" class="steam-input">
+    <label style="font-size:13px; color:var(--text-muted);">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label>
+    <input type="password" id="setNewPass" class="steam-input">
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSettingsModal()">ยกเลิก</button>
+      <button type="button" class="btn-steam" id="btnSaveSet" onclick="saveSettings()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPrintPreview" style="display:none;">
+  <div class="modal-box" style="max-width:820px; max-height:92vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:12px;">
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:16px;">พรีวิวเอกสารราชการ (ขนาด A4 หน้าเดียว)</h3>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-save-sm" onclick="document.getElementById('modalPrintPreview').style.display='none'">ปิดหน้าต่าง</button>
+        <button type="button" class="btn-steam" style="width:auto; padding:6px 18px;" onclick="window.print()">
+          <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>&nbsp;<span>พิมพ์เอกสาร</span>
+        </button>
+      </div>
+    </div>
+    <div id="printPreviewBody" style="background:#fff; border-radius:4px; overflow:hidden;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="steamAlertModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 380px; padding: 25px;">
+    <h3 id="steamAlertTitle" style="color:var(--steam-cyan); margin-top:0; font-size:18px;">ระบบ ManStat</h3>
+    <div style="color:#fff; font-size:14px; margin-bottom:25px; word-break: break-word; line-height:1.6;" id="steamAlertMessage"></div>
+    <button type="button" class="btn-steam" onclick="closeSteamAlert()">ตกลง (OK)</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="steamConfirmModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 360px; padding: 25px;">
+    <h3 style="color:var(--orange); margin-top:0; font-size:18px;">ยืนยันการดำเนินการ</h3>
+    <p style="color:#fff; font-size:14px; margin-bottom:25px;" id="steamConfirmMessage"></p>
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSteamConfirm()">ยกเลิก</button>
+      <button type="button" class="btn-steam" style="background:var(--orange); color:#fff;" onclick="executeSteamConfirm()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="steamPromptModal" style="z-index: 9999; display:none;">
+  <div class="modal-box" style="text-align: center; max-width: 360px; padding: 25px;">
+    <h3 id="steamPromptTitle" style="color:var(--steam-cyan); margin-top:0; font-size:18px;">ระบุข้อมูล</h3>
+    <p style="color:#fff; font-size:14px; margin-bottom:15px;" id="steamPromptMessage"></p>
+    <input type="text" id="steamPromptInput" class="steam-input" style="margin-bottom:20px; text-align:center;">
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn-steam" style="background:#323e4c; color:#fff;" onclick="closeSteamPrompt()">ยกเลิก</button>
+      <button type="button" class="btn-steam" style="background:var(--steam-cyan); color:#000;" onclick="executeSteamPrompt()">ตกลง</button>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar" id="sidebar">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:14px;">
+    <h3 style="color:var(--steam-cyan); margin:0; font-size:16px;" id="sbTitle">เปลี่ยนผู้ลงนาม</h3>
+    <button type="button" class="modal-close-btn" onclick="closeSidebar()" title="ปิดหน้าต่าง">
+      <svg class="ui-ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div id="sbContentDelegate">
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 15px 0;">เลือกผู้มีอำนาจลงนามอนุมัติใบลาในวันนี้</p>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:10px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="director" checked>
+      <b style="color:#fff; margin-left:6px;">ผู้อำนวยการสถานศึกษา</b>
+      <div style="color:var(--steam-cyan); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Director">-</div>
+    </label>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:10px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="deputy1">
+      <b style="color:#fff; margin-left:6px;">รักษาการคนที่ 1</b>
+      <div style="color:var(--orange); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Dep1">- ยังไม่ได้กำหนด -</div>
+    </label>
+    <label style="display:block; background:rgba(0,0,0,0.25); padding:12px; border:1px solid #2a475e; border-radius:4px; margin-bottom:14px; cursor:pointer;">
+      <input type="radio" name="delegateSignerSb" value="deputy2">
+      <b style="color:#fff; margin-left:6px;">รักษาการคนที่ 2</b>
+      <div style="color:var(--orange); font-size:12.5px; padding-left:22px; margin-top:4px;" id="sb_delName_Dep2">- ยังไม่ได้กำหนด -</div>
+    </label>
+    <button type="button" class="btn-steam" style="width:100%;" onclick="saveDelegationFromSidebar()">
+      <svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>ยืนยันผู้ลงนาม</span>
+    </button>
+  </div>
+</div>
+<div class="modal-overlay" id="sbOverlay" style="display:none; z-index:2750;" onclick="closeSidebar()"></div>

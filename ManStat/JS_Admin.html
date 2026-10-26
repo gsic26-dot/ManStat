@@ -1,0 +1,1776 @@
+<script>
+  var currentLogoFile = null;
+  var currentLogoBase64Full = "";
+  var g_SchoolLogoBase64 = "";
+  var g_SelectedEditDivisions = [];
+  var g_ExpandedAdminUserEmpId = null;
+  var g_LastSavedEmpId = null;
+  var g_LastSaveContext = 'EDIT';
+  var g_AdminFiscalData = null;
+  var g_WizardParsedBundle = null;
+
+  // มาตรฐานไอคอน SVG เดียวกันทั้งระบบ (Unified Stroke SVG Icons)
+  var ADM_SVG = {
+    check: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    circleOff: '<svg class="ui-ico-sm" style="color:var(--text-muted);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>',
+    chevDown: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>',
+    chevUp: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>',
+    plus: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    plusDark: '<svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    save: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>',
+    saveDark: '<svg class="ui-ico-sm" style="color:#000;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>',
+    edit: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+    trash: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    xMark: '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    user: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    users: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',
+    mail: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+    dept: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+    shield: '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    gear: '<svg class="ui-ico-sm" style="width:13px; height:13px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09"/></svg>',
+    statusActive: '<svg class="ui-ico-sm" style="color:var(--steam-green); width:13px; height:13px;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    statusInactive: '<svg class="ui-ico-sm" style="color:var(--red); width:13px; height:13px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>'
+  };
+
+  var LICENSE_SPECS_CLIENT = {
+    'P License (ใบอนุญาตปฏิบัติหน้าที่ครู)': {
+      years: 2,
+      text: '<b>P License:</b> อายุการใช้งาน <b>2 ปี</b> | คุณสมบัติ: จบวุฒิปริญญาทางการศึกษา (ตั้งแต่ปี 2562 เป็นต้นไป), มีประสบการณ์สอนไม่น้อยกว่า 1 ปี และมีอายุไม่ต่ำกว่า 20 ปีบริบูรณ์'
+    },
+    'B License (ใบอนุญาตประกอบวิชาชีพครู ชั้นต้น)': {
+      years: 5,
+      text: '<b>B License:</b> อายุการใช้งาน <b>5 ปี</b> | คุณสมบัติ: จบวุฒิปริญญาทางการศึกษา, มีประสบการณ์สอนไม่น้อยกว่า 1 ปี, ผ่านการทดสอบและประเมินสมรรถนะทางวิชาชีพ'
+    },
+    'A License (ใบอนุญาตประกอบวิชาชีพครู ชั้นสูง)': {
+      years: 7,
+      text: '<b>A License:</b> อายุการใช้งาน <b>7 ปี</b> | คุณสมบัติ: มี B License ที่ยังไม่หมดอายุ, ผ่านการประเมินคุณภาพการปฏิบัติงาน'
+    },
+    'ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา': {
+      years: 5,
+      text: '<b>ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา:</b> อายุการใช้งาน <b>5 ปี</b> | สามารถถือครองควบคู่กับใบอนุญาตประกอบวิชาชีพครูได้'
+    },
+    'ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์': {
+      years: 5,
+      text: '<b>ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์:</b> อายุการใช้งาน <b>5 ปี</b> | สามารถถือครองควบคู่กับใบอนุญาตประเภทอื่นได้'
+    }
+  };
+
+  function isValidEmailFormat(emailStr) {
+    if (!emailStr) return false;
+    var s = String(emailStr).trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  }
+
+  // =========================================================
+  // COMBOBOX ตำแหน่งมาตรฐาน สพฐ., กลุ่มสาระ & ประวัติการดำรงตำแหน่ง
+  // =========================================================
+  function onRoleComboChange(prefix) {
+    var sel = document.getElementById(prefix + '_role');
+    var customInp = document.getElementById(prefix + '_role_custom');
+    if (!sel || !customInp) return;
+    if (sel.value === '__CUSTOM_ROLE__') {
+      customInp.style.display = 'block';
+      customInp.focus();
+    } else {
+      customInp.style.display = 'none';
+      customInp.value = '';
+    }
+  }
+
+  function getRoleComboValue(prefix) {
+    var sel = document.getElementById(prefix + '_role');
+    var customInp = document.getElementById(prefix + '_role_custom');
+    if (!sel) return 'ครู';
+    if (sel.value === '__CUSTOM_ROLE__') {
+      return customInp && customInp.value.trim() ? customInp.value.trim() : '';
+    }
+    return sel.value;
+  }
+
+  function setRoleComboValue(prefix, val) {
+    var sel = document.getElementById(prefix + '_role');
+    var customInp = document.getElementById(prefix + '_role_custom');
+    if (!sel || !customInp) return;
+    var targetVal = String(val || 'ครู').trim();
+    var hasOption = Array.from(sel.options).some(opt => opt.value === targetVal && opt.value !== '__CUSTOM_ROLE__');
+    if (hasOption) {
+      sel.value = targetVal;
+      customInp.style.display = 'none';
+      customInp.value = '';
+    } else {
+      sel.value = '__CUSTOM_ROLE__';
+      customInp.style.display = 'block';
+      customInp.value = targetVal;
+    }
+  }
+
+  function onDeptComboChange(prefix) {
+    var sel = document.getElementById(prefix + '_dept');
+    var customInp = document.getElementById(prefix + '_dept_custom');
+    if (!sel || !customInp) return;
+    if (sel.value === '__CUSTOM_DEPT__') {
+      customInp.style.display = 'block';
+      customInp.focus();
+    } else {
+      customInp.style.display = 'none';
+      customInp.value = '';
+    }
+  }
+
+  function getDeptComboValue(prefix) {
+    var sel = document.getElementById(prefix + '_dept');
+    var customInp = document.getElementById(prefix + '_dept_custom');
+    if (!sel) return 'ภาษาไทย';
+    if (sel.value === '__CUSTOM_DEPT__') {
+      return customInp && customInp.value.trim() ? customInp.value.trim() : '';
+    }
+    return sel.value;
+  }
+
+  function setDeptComboValue(prefix, val) {
+    var sel = document.getElementById(prefix + '_dept');
+    var customInp = document.getElementById(prefix + '_dept_custom');
+    if (!sel || !customInp) return;
+    var targetVal = String(val || 'ภาษาไทย').trim();
+    var hasOption = Array.from(sel.options).some(opt => opt.value === targetVal && opt.value !== '__CUSTOM_DEPT__');
+    if (hasOption) {
+      sel.value = targetVal;
+      customInp.style.display = 'none';
+      customInp.value = '';
+    } else {
+      sel.value = '__CUSTOM_DEPT__';
+      customInp.style.display = 'block';
+      customInp.value = targetVal;
+    }
+  }
+
+  function onStandingComboChange() {
+    var sel = document.getElementById('std_level');
+    var customInp = document.getElementById('std_level_custom');
+    if (!sel || !customInp) return;
+    if (sel.value === '__CUSTOM_STD__') {
+      customInp.style.display = 'block';
+      customInp.focus();
+    } else {
+      customInp.style.display = 'none';
+      customInp.value = '';
+    }
+  }
+
+  function getStandingComboValue() {
+    var sel = document.getElementById('std_level');
+    var customInp = document.getElementById('std_level_custom');
+    if (!sel) return 'บรรจุครูผู้ช่วย';
+    if (sel.value === '__CUSTOM_STD__') {
+      return customInp && customInp.value.trim() ? customInp.value.trim() : '';
+    }
+    return sel.value;
+  }
+
+  function setStandingComboValue(val) {
+    var sel = document.getElementById('std_level');
+    var customInp = document.getElementById('std_level_custom');
+    if (!sel || !customInp) return;
+    var targetVal = String(val || 'บรรจุครูผู้ช่วย').trim();
+    var hasOption = Array.from(sel.options).some(opt => opt.value === targetVal && opt.value !== '__CUSTOM_STD__');
+    if (hasOption) {
+      sel.value = targetVal;
+      customInp.style.display = 'none';
+      customInp.value = '';
+    } else {
+      sel.value = '__CUSTOM_STD__';
+      customInp.style.display = 'block';
+      customInp.value = targetVal;
+    }
+  }
+
+  // =========================================================
+  // คำนวณอายุ (ปี-เดือน-วัน) และวันเกษียณอายุราชการฝั่ง Client
+  // =========================================================
+  function _clientDiffYMD(startDate, endDate) {
+    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) {
+      return { years: 0, months: 0, days: 0, text: '0 ปี 0 เดือน 0 วัน' };
+    }
+    var years = endDate.getFullYear() - startDate.getFullYear();
+    var months = endDate.getMonth() - startDate.getMonth();
+    var days = endDate.getDate() - startDate.getDate();
+
+    if (days < 0) {
+      months--;
+      var prevMonthLastDay = new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
+      days += prevMonthLastDay;
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    return {
+      years: years,
+      months: months,
+      days: days,
+      text: years + ' ปี ' + months + ' เดือน ' + days + ' วัน'
+    };
+  }
+
+  function calculateRetirementClient(birthDateStr) {
+    if (!birthDateStr) return null;
+    var p = String(birthDateStr).trim().split('-');
+    if (p.length !== 3) return null;
+    var y = normalizeYearToCEClient(p[0]);
+    var m = parseInt(p[1], 10);
+    var d = parseInt(p[2], 10);
+    var bDate = new Date(y, m - 1, d, 0, 0, 0);
+    if (isNaN(bDate.getTime())) return null;
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    var curAge = _clientDiffYMD(bDate, today);
+
+    var isOctToDec = (m >= 10 && m <= 12);
+    var retireYearCE = y + 60 + (isOctToDec ? 1 : 0);
+    var retireYearBE = retireYearCE + 543;
+    var retireDateObj = new Date(retireYearCE, 8, 30, 0, 0, 0);
+
+    var ageAtRetire = _clientDiffYMD(bDate, retireDateObj);
+    var isRetired = (today > retireDateObj);
+    var remainObj = isRetired
+      ? { text: 'เกษียณอายุราชการแล้ว' }
+      : _clientDiffYMD(today, retireDateObj);
+
+    return {
+      ageText: curAge.text,
+      retireDateFormatted: '30 กันยายน ' + retireYearBE + ' (30/09/' + retireYearBE + ')',
+      ageAtRetirementText: ageAtRetire.text,
+      remainingToRetireText: remainObj.text,
+      isOctToDec: isOctToDec,
+      isRetired: isRetired
+    };
+  }
+
+  function onBirthDateChangeCalc(prefix) {
+    var inp = document.getElementById(prefix + '_birthDate');
+    var box = document.getElementById(prefix + '_retirementPreviewBox');
+    if (!inp || !box) return;
+
+    var calc = calculateRetirementClient(inp.value);
+    if (!calc) {
+      box.innerHTML = `<span style="color:var(--text-muted);">กรุณาเลือกวันเดือนปีเกิดเพื่อคำนวณอายุ (ปี-เดือน-วัน) และวันเกษียณอายุราชการอัตโนมัติ</span>`;
+      return;
+    }
+
+    var octNote = calc.isOctToDec
+      ? `<span style="background:rgba(164,208,7,0.16); border:1px solid var(--steam-green); color:var(--steam-green); padding:1px 7px; border-radius:10px; font-size:11px; font-weight:bold; margin-left:6px;">เกิด 1 ต.ค.–31 ธ.ค. เลื่อนเกษียณ +1 ปี</span>`
+      : '';
+
+    box.innerHTML = `
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 14px;">
+        <div>• <b>อายุปัจจุบัน:</b> <span style="color:var(--steam-cyan); font-weight:bold;">${escapeHtml(calc.ageText)}</span></div>
+        <div>• <b>วันเกษียณอายุราชการ:</b> <span style="color:var(--orange); font-weight:bold;">${escapeHtml(calc.retireDateFormatted)}</span>${octNote}</div>
+        <div>• <b>อายุ ณ วันเกษียณ:</b> <span style="color:#fff; font-weight:bold;">${escapeHtml(calc.ageAtRetirementText)}</span></div>
+        <div>• <b>เวลาคงเหลือ:</b> <span style="color:${calc.isRetired ? 'var(--red)' : 'var(--steam-green)'}; font-weight:bold;">${escapeHtml(calc.remainingToRetireText)}</span></div>
+      </div>
+    `;
+  }
+
+  // =========================================================
+  // UX MODAL บันทึกสำเร็จ [ปิด] / [แก้ไขต่อ]
+  // =========================================================
+  function showSaveSuccessUXModal(message, empId, contextMode) {
+    g_LastSavedEmpId = empId || null;
+    g_LastSaveContext = contextMode || 'EDIT';
+    var msgEl = document.getElementById('saveSuccessUXMessage');
+    if (msgEl) msgEl.innerHTML = escapeHtml(message || 'บันทึกข้อมูลเรียบร้อยแล้ว');
+    var modal = document.getElementById('modalSaveSuccessUX');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function onSaveSuccessCloseClick() {
+    var uxModal = document.getElementById('modalSaveSuccessUX');
+    if (uxModal) uxModal.style.display = 'none';
+    if (g_LastSaveContext === 'EDIT') {
+      closeEditTeacherModal();
+    } else if (g_LastSaveContext === 'NEW') {
+      var tab2El = document.querySelector('.ribbon-tab[data-tab="tab2"]');
+      if (tab2El) switchAdminRibbonTab('tab2', tab2El);
+    }
+  }
+
+  function onSaveSuccessContinueEditClick() {
+    var uxModal = document.getElementById('modalSaveSuccessUX');
+    if (uxModal) uxModal.style.display = 'none';
+    if (g_LastSavedEmpId) {
+      var idx = g_AdminTeachers.findIndex(t => (t.EmpID || t.id) === g_LastSavedEmpId);
+      if (idx !== -1) {
+        if (document.getElementById('modalEditTeacher').style.display !== 'flex') {
+          openEditTeacherModal(idx);
+        }
+      }
+    }
+  }
+
+  function bootAdminApp() {
+    if (typeof initThaiDatePickers === 'function') initThaiDatePickers();
+
+    var currentAuthUser = null;
+    try {
+      var savedSess = localStorage.getItem(SESSION_USER_OBJ_KEY);
+      if (savedSess) currentAuthUser = JSON.parse(savedSess);
+    } catch (e) {}
+
+    if (!currentAuthUser || !isSuperuserOrAdmin(currentAuthUser)) {
+      steamAlert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลระบบ (Admin / Superuser)', 'ปฏิเสธการเข้าถึง');
+      setTimeout(function() {
+        if (typeof goBackHome === 'function') {
+          goBackHome();
+        } else {
+          window.location.href = '?page=index';
+        }
+      }, 1500);
+      return;
+    }
+
+    try {
+      const prefetched = sessionStorage.getItem('steam_prefetch_admin');
+      if (prefetched) {
+        sessionStorage.removeItem('steam_prefetch_admin');
+        initAdminData(JSON.parse(prefetched));
+        const jumpTab = sessionStorage.getItem('steam_admin_jump_tab');
+        if (jumpTab) {
+          sessionStorage.removeItem('steam_admin_jump_tab');
+          let tabEl = document.querySelector(`.ribbon-tab[data-tab="${jumpTab}"]`);
+          if (tabEl) switchAdminRibbonTab(jumpTab, tabEl);
+        }
+        return;
+      }
+    } catch (e) {}
+
+    startLoadingBar('กำลังโหลดข้อมูลตั้งค่าระบบ...');
+    google.script.run
+      .withSuccessHandler(data => stopLoadingBar(() => initAdminData(data)))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('โหลดข้อมูลไม่สำเร็จ: ' + (err.message || err))))
+      .getAdminData();
+  }
+
+  function switchAdminRibbonTab(tabId, el) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.ribbon-tab').forEach(tab => tab.classList.remove('active'));
+    let target = document.getElementById(tabId);
+    if (target) target.classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  function buildClassOptionsHtml() {
+    let html = `<option value="">-- ไม่มีชั้นที่ปรึกษา --</option>`;
+    g_ActiveClasses.forEach(c => {
+      html += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+    });
+    return html;
+  }
+
+  function initEditDivisionTags(rawDivisionStr) {
+    g_SelectedEditDivisions = [];
+    if (rawDivisionStr) {
+      String(rawDivisionStr).split(',').forEach(part => {
+        let clean = part.trim();
+        if (clean && !g_SelectedEditDivisions.includes(clean)) {
+          g_SelectedEditDivisions.push(clean);
+        }
+      });
+    }
+    if (g_SelectedEditDivisions.length === 0) {
+      g_SelectedEditDivisions.push('เจ้าหน้าที่ฝ่ายบริหารวิชาการ');
+    }
+    const picker = document.getElementById('edit_division_picker');
+    if (picker) picker.value = '';
+    const customWrap = document.getElementById('edit_division_custom_wrap');
+    if (customWrap) customWrap.style.display = 'none';
+    const customInp = document.getElementById('edit_division_custom_input');
+    if (customInp) customInp.value = '';
+    renderEditDivisionTags();
+  }
+
+  function renderEditDivisionTags() {
+    const box = document.getElementById('edit_division_tags');
+    const hiddenInp = document.getElementById('edit_division');
+    if (hiddenInp) {
+      hiddenInp.value = g_SelectedEditDivisions.join(', ');
+    }
+    if (!box) return;
+
+    if (g_SelectedEditDivisions.length === 0) {
+      box.innerHTML = `<span style="color:var(--text-muted); font-size:12px;">ยังไม่ได้ระบุฝ่ายงาน / หน้าที่พิเศษ (กรุณาเลือกจากด้านล่าง หรือพิมพ์เพิ่ม)</span>`;
+      return;
+    }
+
+    box.innerHTML = g_SelectedEditDivisions.map((item, idx) => `
+      <span class="div-tag-chip">
+        <span>${escapeHtml(item)}</span>
+        <span class="del-tag" title="ลบรายการนี้" onclick="removeEditDivisionTag(${idx})">${ADM_SVG.xMark}</span>
+      </span>
+    `).join('');
+  }
+
+  function onSelectEditDivisionPicker() {
+    const picker = document.getElementById('edit_division_picker');
+    const customWrap = document.getElementById('edit_division_custom_wrap');
+    const customInp = document.getElementById('edit_division_custom_input');
+    if (!picker) return;
+
+    const val = picker.value;
+    if (!val) return;
+
+    if (val === '__CUSTOM__') {
+      if (customWrap) customWrap.style.display = 'flex';
+      if (customInp) customInp.focus();
+      return;
+    }
+
+    if (customWrap) customWrap.style.display = 'none';
+    if (!g_SelectedEditDivisions.includes(val)) {
+      g_SelectedEditDivisions.push(val);
+      renderEditDivisionTags();
+    }
+    picker.value = '';
+  }
+
+  function addCustomEditDivision() {
+    const customInp = document.getElementById('edit_division_custom_input');
+    const picker = document.getElementById('edit_division_picker');
+    const customWrap = document.getElementById('edit_division_custom_wrap');
+    if (!customInp) return;
+
+    const val = customInp.value.trim();
+    if (!val) {
+      steamAlert('กรุณาพิมพ์ชื่อฝ่ายงาน หรือหน้าที่พิเศษที่ต้องการเพิ่ม');
+      return;
+    }
+
+    val.split(',').forEach(part => {
+      let clean = part.trim();
+      if (clean && !g_SelectedEditDivisions.includes(clean)) {
+        g_SelectedEditDivisions.push(clean);
+      }
+    });
+
+    customInp.value = '';
+    if (picker) picker.value = '';
+    if (customWrap) customWrap.style.display = 'none';
+    renderEditDivisionTags();
+  }
+
+  function removeEditDivisionTag(idx) {
+    g_SelectedEditDivisions.splice(idx, 1);
+    renderEditDivisionTags();
+  }
+
+  // =========================================================
+  // FISCAL YEAR ENGINE UI
+  // =========================================================
+  function renderFiscalYearAdminPanel() {
+    const box = document.getElementById('fiscalYearActiveSummaryBox');
+    if (!box) return;
+    if (!g_AdminFiscalData || !g_AdminFiscalData.active) {
+      box.innerHTML = `<span style="color:var(--text-muted);">ยังไม่มีข้อมูลปีงบประมาณ</span>`;
+      return;
+    }
+    const act = g_AdminFiscalData.active;
+    const inp = document.getElementById('fy_newYearInput');
+    if (inp && act.yearBE) inp.value = act.yearBE;
+
+    const listBadges = (g_AdminFiscalData.list || []).map(item => {
+      const isAct = (item.Status === 'Active');
+      return `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:12px; font-size:11.5px; margin-right:6px; border:1px solid ${isAct ? 'var(--steam-green)' : '#2a475e'}; color:${isAct ? 'var(--steam-green)' : 'var(--text-muted)'}; font-weight:${isAct ? 'bold' : 'normal'};">${isAct ? ADM_SVG.check : ADM_SVG.circleOff}&nbsp;<span>${escapeHtml(item.FiscalYear)} (${escapeHtml(item.Status)})</span></span>`;
+    }).join('');
+
+    box.innerHTML = `
+      <div>• <b>ปีงบประมาณปัจจุบัน:</b> <span style="color:var(--steam-green); font-weight:bold; font-size:14.5px;">${escapeHtml(act.FiscalYear)}</span> (ตั้งแต่วันที่ <b>${escapeHtml(act.StartDate)}</b> ถึง <b>${escapeHtml(act.EndDate)}</b>)</div>
+      <div style="margin-top:4px; color:var(--steam-cyan);">
+        <span>• <b>${escapeHtml(act.period1Label)}</b></span> &nbsp;|&nbsp;
+        <span><b>${escapeHtml(act.period2Label)}</b></span>
+      </div>
+      <div style="margin-top:6px;">รายการปีงบประมาณในระบบ: ${listBadges}</div>
+    `;
+  }
+
+  function handleCreateOrActivateFiscalYear() {
+    const inp = document.getElementById('fy_newYearInput');
+    if (!inp || !inp.value) {
+      steamAlert('กรุณาระบุปีงบประมาณ พ.ศ. 4 หลัก (เช่น 2570 หรือ 2571)');
+      return;
+    }
+    startLoadingBar('กำลังอัปเดตตารางปีงบประมาณ (FiscalYear)...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (res && res.status === 'success') {
+            g_AdminFiscalData = res.fiscalData;
+            renderFiscalYearAdminPanel();
+          }
+          steamAlert(res ? res.message : 'ดำเนินการเสร็จสิ้น');
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('ตั้งค่าปีงบประมาณไม่สำเร็จ: ' + (err.message || err))))
+      .createOrSetActiveFiscalYear(inp.value);
+  }
+
+  function initAdminData(data) {
+    g_AdminTeachers = data.teachers || [];
+    g_SchoolInfo = data.schoolInfo || {};
+    g_AdminFiscalData = data.fiscalData || null;
+    if (Array.isArray(data.activeClasses) && data.activeClasses.length > 0) {
+      g_ActiveClasses = data.activeClasses.slice();
+    }
+
+    renderActiveClassPills();
+    renderTeacherEditTable();
+    loadAdminDelegationDropdowns();
+    renderFiscalYearAdminPanel();
+    if (typeof initThaiDatePickers === 'function') initThaiDatePickers();
+
+    const sch = g_SchoolInfo;
+    if (document.getElementById('sch_schoolName')) {
+      document.getElementById('sch_schoolName').value = sch.schoolName || "";
+      document.getElementById('sch_affiliation').value = sch.affiliation || "";
+      document.getElementById('sch_schoolCode10').value = (sch.schoolCode10 || "").replace(/^'+/, "");
+      document.getElementById('sch_schoolCode8').value = (sch.schoolCode8 || "").replace(/^'+/, "");
+      document.getElementById('sch_directorName').value = sch.directorName || "";
+      document.getElementById('sch_directorPosition').value = sch.directorPosition || "";
+      document.getElementById('sch_contactPhone').value = (sch.contactPhone || "").replace(/^'+/, "");
+      document.getElementById('sch_contactEmail').value = sch.contactEmail || "";
+      document.getElementById('sch_address').value = sch.address || "";
+      document.getElementById('sch_lat').value = sch.lat || "";
+      document.getElementById('sch_lng').value = sch.lng || "";
+    }
+  }
+
+  function refreshAdminData(keepModalOpenForEmpId, onDoneCallback) {
+    startLoadingBar('กำลังอัปเดตข้อมูล...');
+    google.script.run
+      .withSuccessHandler(data => {
+        stopLoadingBar(() => {
+          initAdminData(data);
+          if (keepModalOpenForEmpId) {
+            renderModalHistoryPreviews(keepModalOpenForEmpId);
+          }
+          if (typeof onDoneCallback === 'function') onDoneCallback();
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('อัปเดตไม่สำเร็จ: ' + (err.message || err))))
+      .getAdminData();
+  }
+
+  // =========================================================
+  // ตั้งค่าชั้นเรียนที่เปิดสอนในโรงเรียน (ไอคอนสถานะ + ปุ่มเปิด-ปิด แถวเดียวกัน)
+  // =========================================================
+  function toggleClassConfigPanel() {
+    let body = document.getElementById('activeClassConfigBody');
+    let btn = document.getElementById('btnToggleClassConfigBox');
+    if (!body) return;
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      if (btn) btn.innerHTML = `${ADM_SVG.chevUp}&nbsp;<span>ซ่อนแผงเลือกชั้นเรียน</span>`;
+      renderActiveClassPills();
+    } else {
+      body.style.display = 'none';
+      if (btn) btn.innerHTML = `${ADM_SVG.chevDown}&nbsp;<span>เลือกเปิด-ปิดชั้นเรียน</span>`;
+    }
+  }
+
+  function renderActiveClassPills() {
+    let container = document.getElementById('activeClassPillsContainer');
+    let badge = document.getElementById('activeClassCountBadge');
+    if (badge) {
+      badge.innerHTML = `${ADM_SVG.check}&nbsp;<span>เปิดสอน ${g_ActiveClasses.length} ชั้นเรียน</span>`;
+    }
+    if (!container) return;
+
+    container.innerHTML = ALL_CLASS_GROUPS_MASTER.map(g => {
+      let pills = g.classes.map(cName => {
+        let isOn = g_ActiveClasses.includes(cName);
+        return `
+        <div class="cls-toggle-pill ${isOn ? 'active' : ''}" onclick="toggleActiveClassPill('${cName}')">
+          ${isOn ? ADM_SVG.check : ADM_SVG.circleOff}&nbsp;<span>${cName}</span>
+        </div>`;
+      }).join('');
+
+      let allInGrpOn = g.classes.every(c => g_ActiveClasses.includes(c));
+      return `
+      <div class="cls-config-row">
+        <div style="color:var(--orange); font-weight:bold; font-size:13px;">ระดับ${g.group}</div>
+        <div class="cls-pills-grid">${pills}</div>
+        <div style="text-align:right;">
+          <button type="button" class="btn-save-sm" style="width:100%; padding:5px 8px; font-size:11.5px; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="toggleWholeClassGroup('${g.group}')">
+            ${allInGrpOn ? ADM_SVG.circleOff : ADM_SVG.check}&nbsp;<span>${allInGrpOn ? 'ปิดทั้งระดับ' : 'เปิดทั้งระดับ'}</span>
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleActiveClassPill(className) {
+    let pos = g_ActiveClasses.indexOf(className);
+    if (pos === -1) {
+      g_ActiveClasses.push(className);
+    } else {
+      if (g_ActiveClasses.length <= 1) {
+        steamAlert("ต้องเปิดสอนอย่างน้อย 1 ชั้นเรียนครับ");
+        return;
+      }
+      g_ActiveClasses.splice(pos, 1);
+    }
+    g_ActiveClasses = ALL_ORDERED_CLASSES_MASTER.filter(c => g_ActiveClasses.includes(c));
+    renderActiveClassPills();
+    let saveBtn = document.getElementById('btnSaveActiveClasses');
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  function toggleWholeClassGroup(groupName) {
+    let grpObj = ALL_CLASS_GROUPS_MASTER.find(g => g.group === groupName);
+    if (!grpObj) return;
+    let allOn = grpObj.classes.every(c => g_ActiveClasses.includes(c));
+    if (allOn) {
+      let remaining = g_ActiveClasses.filter(c => !grpObj.classes.includes(c));
+      if (remaining.length === 0) {
+        steamAlert("ไม่สามารถปิดทุกชั้นเรียนได้ ต้องมีชั้นเรียนที่เปิดสอนอย่างน้อย 1 ชั้นครับ");
+        return;
+      }
+      g_ActiveClasses = remaining;
+    } else {
+      grpObj.classes.forEach(c => {
+        if (!g_ActiveClasses.includes(c)) g_ActiveClasses.push(c);
+      });
+    }
+    g_ActiveClasses = ALL_ORDERED_CLASSES_MASTER.filter(c => g_ActiveClasses.includes(c));
+    renderActiveClassPills();
+    let saveBtn = document.getElementById('btnSaveActiveClasses');
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  function saveActiveClassesConfig() {
+    startLoadingBar("กำลังบันทึกชั้นเรียนที่เปิดสอน...");
+    google.script.run
+      .withSuccessHandler(res => {
+        g_ActiveClasses = res.activeClasses || g_ActiveClasses;
+        let saveBtn = document.getElementById('btnSaveActiveClasses');
+        if (saveBtn) saveBtn.style.display = 'none';
+        renderActiveClassPills();
+        stopLoadingBar(() => steamAlert(res.message));
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert(err.message || err)))
+      .saveAdminActiveClasses(g_ActiveClasses);
+  }
+
+  // =========================================================
+  // จัดการผู้ใช้แบบ RIBBON CARD LAYOUT + ไอคอนมาตรฐานเดียวกัน เว้น 1 เคาะ
+  // =========================================================
+  function filterAdminUsersList() {
+    renderTeacherEditTable();
+  }
+
+  function resetAdminUserFilters() {
+    var s = document.getElementById('admSearchUserInput'); if (s) s.value = '';
+    var c = document.getElementById('admFilterUserCategory'); if (c) c.value = 'ALL';
+    var a = document.getElementById('admFilterUserAccess'); if (a) a.value = 'ALL';
+    var st = document.getElementById('admFilterUserStatus'); if (st) st.value = 'ALL';
+    renderTeacherEditTable();
+  }
+
+  function toggleAdminUserRibbonExpand(empId, event) {
+    if (event) event.stopPropagation();
+    g_ExpandedAdminUserEmpId = (g_ExpandedAdminUserEmpId === empId) ? null : empId;
+    renderTeacherEditTable();
+  }
+
+  function renderTeacherEditTable() {
+    let container = document.getElementById('adminUserRibbonContainer');
+    if (!container) return;
+
+    let totalActive = g_AdminTeachers.filter(t => t.status !== 'ย้าย/เกษียณ').length;
+    let roleSum = document.getElementById('roleSummaryContainer');
+    if (roleSum) {
+      roleSum.innerHTML = `
+        <span style="background:rgba(102,192,244,0.15); border:1px solid var(--steam-cyan); color:var(--steam-cyan); padding:5px 12px; border-radius:20px; font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:5px;">
+          ${ADM_SVG.users}&nbsp;<span>ปกติ: ${totalActive}/${g_AdminTeachers.length} คน</span>
+        </span>
+      `;
+    }
+
+    const q = (document.getElementById('admSearchUserInput') ? document.getElementById('admSearchUserInput').value : '').trim().toLowerCase();
+    const catFilter = document.getElementById('admFilterUserCategory') ? document.getElementById('admFilterUserCategory').value : 'ALL';
+    const accFilter = document.getElementById('admFilterUserAccess') ? document.getElementById('admFilterUserAccess').value : 'ALL';
+    const stFilter = document.getElementById('admFilterUserStatus') ? document.getElementById('admFilterUserStatus').value : 'ALL';
+
+    const filteredItems = [];
+    g_AdminTeachers.forEach((t, origIndex) => {
+      const empId = String(t.EmpID || t.id || '');
+      const normAccess = normalizeRolePermission(t.accessLevel);
+      const isActive = (t.status !== 'ย้าย/เกษียณ');
+
+      if (catFilter !== 'ALL' && getStaffCategoryCode(t) !== catFilter) return;
+      if (accFilter !== 'ALL' && normAccess !== accFilter) return;
+      if (stFilter === 'ACTIVE' && !isActive) return;
+      if (stFilter === 'INACTIVE' && isActive) return;
+
+      if (q) {
+        const hay = `${t.name || ''} ${empId} ${t.PositionNo || ''} ${t.MemberID || ''} ${t.email || ''} ${t.role || ''} ${t.department || ''} ${t.Division || ''}`.toLowerCase();
+        if (!hay.includes(q)) return;
+      }
+
+      filteredItems.push({ t, origIndex });
+    });
+
+    if (filteredItems.length === 0) {
+      container.innerHTML = `
+        <div style="background:rgba(0,0,0,0.2); border:1px dashed #2a475e; border-radius:4px; padding:26px; text-align:center; color:var(--text-muted); font-size:13.5px;">
+          ไม่พบบัญชีผู้ใช้ที่ตรงกับเงื่อนไขการค้นหา
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filteredItems.map(({ t, origIndex }) => {
+      const empId = t.EmpID || t.id;
+      const isExpanded = (g_ExpandedAdminUserEmpId === empId);
+      const isActive = (t.status !== 'ย้าย/เกษียณ');
+      const normAccess = normalizeRolePermission(t.accessLevel);
+
+      let permBadge = `<span class="perm-badge perm-user-cls">${ADM_SVG.shield}&nbsp;<span>${escapeHtml(normAccess)}</span></span>`;
+      if (normAccess === 'Superuser') permBadge = `<span class="perm-badge perm-super">${ADM_SVG.shield}&nbsp;<span>Superuser</span></span>`;
+      else if (normAccess === 'Admin') permBadge = `<span class="perm-badge perm-admin">${ADM_SVG.shield}&nbsp;<span>Admin</span></span>`;
+
+      const identitySubtitleHtml = buildStaffIdentitySubtitle(t);
+      const emailDisplay = t.email ? escapeHtml(t.email) : `<span style="color:var(--orange);">ยังไม่ได้ระบุ Email</span>`;
+      const deptDisplay = escapeHtml(t.department || '-');
+      const statusTextBadge = isActive
+        ? `<span style="color:var(--steam-green); font-size:11.5px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;">${ADM_SVG.statusActive}&nbsp;<span>ปกติ</span></span>`
+        : `<span style="color:var(--red); font-size:11.5px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;">${ADM_SVG.statusInactive}&nbsp;<span>ย้าย/เกษียณ</span></span>`;
+
+      const arrowIcon = isExpanded ? ADM_SVG.chevUp : ADM_SVG.chevDown;
+
+      return `
+        <div class="adm-user-ribbon-card ${isExpanded ? 'expanded' : ''}" style="${isActive ? '' : 'opacity:0.65;'}" id="admUserCard_${escapeHtml(empId)}">
+          <div class="adm-user-ribbon-main" onclick="toggleAdminUserRibbonExpand('${escapeHtml(empId)}', event)">
+            
+            <div class="adm-user-ident-zone">
+              <div class="adm-user-name-line">
+                ${ADM_SVG.user}&nbsp;<span>${escapeHtml(t.name)}</span>
+                ${t.IsPositionUnverified ? `<span class="id-unverified-badge">รอตรวจสอบเลขที่ตำแหน่ง</span>` : ''}
+              </div>
+              <div class="adm-user-meta-line">${identitySubtitleHtml}</div>
+            </div>
+
+            <div class="adm-user-mid-zone">
+              <div style="display:flex; align-items:center; gap:5px;">${ADM_SVG.dept}&nbsp;<span>กลุ่มสาระ: <b style="color:#fff;">${deptDisplay}</b></span></div>
+              <div style="display:flex; align-items:center; gap:5px;">${ADM_SVG.mail}&nbsp;<span>Email: <span style="color:var(--steam-cyan); font-family:monospace;">${emailDisplay}</span></span></div>
+            </div>
+
+            <!-- ระดับสิทธิ์ สถานะ และปุ่มเปิด-ปิด แถวเดียวกัน -->
+            <div class="adm-user-action-zone" onclick="event.stopPropagation();">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
+                ${permBadge}
+                <label class="switch" title="สลับสถานะ ปกติ / ย้าย-เกษียณ">
+                  <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleTeacherStatus(${origIndex}, this)">
+                  <span class="slider"></span>
+                </label>
+                ${statusTextBadge}
+              </div>
+
+              <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+                <button type="button" class="btn-save-sm" style="border-color:var(--steam-cyan); color:var(--steam-cyan); padding:4px 10px; display:inline-flex; align-items:center; gap:4px;" onclick="openEditTeacherModal(${origIndex})">${ADM_SVG.gear}&nbsp;<span>ตั้งค่า</span></button>
+                <button type="button" class="btn-save-sm btn-del-sm" style="padding:4px 8px; display:inline-flex; align-items:center;" title="ลบบัญชีผู้ใช้" onclick="confirmDeleteTeacher(${origIndex})">${ADM_SVG.trash}</button>
+              </div>
+            </div>
+
+            <button type="button" class="emp-expand-btn" title="${isExpanded ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}" onclick="toggleAdminUserRibbonExpand('${escapeHtml(empId)}', event)">
+              ${arrowIcon}
+            </button>
+          </div>
+
+          <div class="adm-user-detail-panel" id="admUserDetail_${escapeHtml(empId)}">
+            ${isExpanded ? buildAdminUserExpandedDetailHtml(t, origIndex) : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function buildAdminUserExpandedDetailHtml(t, origIndex) {
+    const empId = t.EmpID || t.id;
+    const posNoTxt = t.PositionNo ? escapeHtml(t.PositionNo) : (t.IsPositionUnverified ? `รอตรวจสอบ (${escapeHtml(t.RawPositionNo || '')})` : 'ไม่มีข้อมูล');
+    const memIdTxt = t.MemberID ? escapeHtml(t.MemberID) : 'ไม่มีข้อมูล';
+    const sStart = t.StartDate || (t.startDate && t.startDate !== '-' ? formatSlashDateBE(t.startDate) : '-');
+    const lics = t.ActiveLicenses || [];
+    const ret = t.RetirementInfo || {};
+
+    let retireSummaryHtml = `<div style="color:var(--text-muted);">• วันเกิด/เกษียณ: ยังไม่ได้ระบุวันเกิด</div>`;
+    if (ret.hasBirthDate) {
+      retireSummaryHtml = `
+        <div>• วันเกิด: <b>${escapeHtml(ret.birthDateFormatted)}</b> (อายุ <b style="color:var(--steam-cyan);">${escapeHtml(ret.ageText)}</b>)</div>
+        <div>• วันเกษียณ: <b style="color:var(--orange);">${escapeHtml(ret.retireDateFormatted)}</b> (เหลือ <b style="color:var(--steam-green);">${escapeHtml(ret.remainingToRetireText)}</b>)</div>
+      `;
+    }
+
+    return `
+      <div class="adm-detail-grid">
+        <div class="adm-detail-box">
+          <div class="adm-detail-head">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/></svg>&nbsp;<span>ข้อมูลระบุตัวตน & วันเกษียณอายุราชการ</span>
+          </div>
+          <div>• รหัสบุคลากร (EmpID): <b style="color:var(--steam-cyan); font-family:monospace;">${escapeHtml(empId)}</b></div>
+          <div>• เลขที่ตำแหน่ง: <b style="color:#fff;">${posNoTxt}</b></div>
+          <div>• สมาชิกประเภทสามัญ เลขที่: <b style="color:var(--steam-green); font-family:monospace;">${memIdTxt}</b></div>
+          <div>• วันที่บรรจุ: ${escapeHtml(sStart)}</div>
+          ${retireSummaryHtml}
+        </div>
+
+        <div class="adm-detail-box">
+          <div class="adm-detail-head">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>ตำแหน่งและภาระงานหลัก</span>
+          </div>
+          <div>• ตำแหน่ง: <b style="color:#fff;">${escapeHtml(t.role || '-')}</b></div>
+          <div>• ประวัติการดำรงตำแหน่ง/วิทยฐานะ: <b style="color:var(--steam-cyan);">${(t.StandingsHistory || []).length} รายการ</b> (ล่าสุด: ${escapeHtml(t.HighestStanding || '-')})</div>
+          <div>• วุฒิการศึกษาสูงสุด: ${escapeHtml(t.HighestEducation || '-')}</div>
+          <div>• กลุ่มสาระ: ${escapeHtml(t.department || '-')}</div>
+          <div>• ชั้นที่ปรึกษา: ${escapeHtml(t.classLevel || 'ไม่มีชั้นที่ปรึกษา')}</div>
+        </div>
+
+        <div class="adm-detail-box">
+          <div class="adm-detail-head">
+            <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>&nbsp;<span>การติดต่อและทะเบียนประวัติ</span>
+          </div>
+          <div>• Email: <b style="color:var(--steam-cyan);">${escapeHtml(t.email || '-')}</b></div>
+          <div>• เบอร์โทรศัพท์: ${escapeHtml(t.phone || '-')}</div>
+          <div>• ใบอนุญาตประกอบวิชาชีพ: <b style="color:var(--steam-green);">${lics.length} ฉบับ</b> (${escapeHtml(t.LicenseDocStatus || '-')})</div>
+          <div>• เหตุการณ์ในไทม์ไลน์: <b>${(t.TimelineEvents || []).length} รายการ</b></div>
+          <div style="margin-top:8px; text-align:right;">
+            <button type="button" class="btn-steam" style="width:auto; padding:5px 14px; font-size:12px;" onclick="openEditTeacherModal(${origIndex})">
+              ${ADM_SVG.edit}&nbsp;<span>จัดการข้อมูล / ประวัติ / ไทม์ไลน์</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function switchEditModalSubTab(subTabName) {
+    document.getElementById('editSubPane_profile').style.display = (subTabName === 'profile') ? 'block' : 'none';
+    document.getElementById('editSubPane_registry').style.display = (subTabName === 'registry') ? 'block' : 'none';
+    document.getElementById('editSubPane_timeline').style.display = (subTabName === 'timeline') ? 'block' : 'none';
+    document.getElementById('subTabBtn_profile').classList.toggle('active', subTabName === 'profile');
+    document.getElementById('subTabBtn_registry').classList.toggle('active', subTabName === 'registry');
+    document.getElementById('subTabBtn_timeline').classList.toggle('active', subTabName === 'timeline');
+  }
+
+  function openEditTeacherModal(index) {
+    let t = g_AdminTeachers[index];
+    if (!t) return;
+
+    const empId = t.EmpID || t.id;
+    document.getElementById('modalEditHeaderName').innerText = `[${empId}] ${t.name}`;
+    document.getElementById('edit_empId').value = empId;
+    document.getElementById('edit_empId_display').value = empId;
+    document.getElementById('edit_oldName').value = t.name;
+
+    const posInp = document.getElementById('edit_positionNo');
+    const badgeEl = document.getElementById('posNoAuditBadge');
+    if (t.IsPositionUnverified) {
+      if (posInp) posInp.value = t.RawPositionNo || '';
+      if (badgeEl) badgeEl.innerHTML = `<span class="id-unverified-badge">รอตรวจสอบ (คล้ายรหัสบุคลากร)</span>`;
+    } else {
+      if (posInp) posInp.value = t.PositionNo || t.positionNo || '';
+      if (badgeEl) badgeEl.innerHTML = '';
+    }
+
+    const memInp = document.getElementById('edit_memberId');
+    if (memInp) memInp.value = t.MemberID || t.memberId || '';
+
+    document.getElementById('edit_name').value = t.name;
+    document.getElementById('edit_idCard').value = t.idCard || '';
+    setDatePickerVal('edit_startDate', t.RawStartDate || t.startDate || '');
+
+    setDatePickerVal('edit_birthDate', t.RawBirthDate || '');
+    onBirthDateChangeCalc('edit');
+
+    let cleanRole = String(t.role || 'ครู').replace(/\s*\(คศ\.\s*\d+\)/g, '').replace(/\s*\(รปภ\.\)/g, '').trim();
+    setRoleComboValue('edit', cleanRole);
+    setDeptComboValue('edit', t.department || 'ภาษาไทย');
+
+    initEditDivisionTags(t.Division || t.division || 'เจ้าหน้าที่ฝ่ายบริหารวิชาการ');
+
+    document.getElementById('edit_email').value = t.email || '';
+    document.getElementById('edit_phone').value = t.phone || '';
+    document.getElementById('edit_pass').value = '';
+
+    document.getElementById('edit_access').value = normalizeRolePermission(t.accessLevel || 'User');
+
+    let clsSel = document.getElementById('edit_class');
+    clsSel.innerHTML = buildClassOptionsHtml();
+    if (t.classLevel && !g_ActiveClasses.includes(t.classLevel)) {
+      clsSel.innerHTML += `<option value="${escapeHtml(t.classLevel)}">${escapeHtml(t.classLevel)}</option>`;
+    }
+    clsSel.value = t.classLevel || '';
+
+    document.getElementById('edit_sickMax').value = t.SickMax || 60;
+    document.getElementById('edit_personalMax').value = t.PersonalMax || 45;
+
+    cancelEditHistoryItem('LICENSE');
+    cancelEditHistoryItem('STANDING');
+    cancelEditHistoryItem('SCOUT');
+    cancelEditHistoryItem('EDUCATION');
+
+    renderModalHistoryPreviews(empId);
+    switchEditModalSubTab('profile');
+    document.getElementById('modalEditTeacher').style.display = 'flex';
+  }
+
+  function closeEditTeacherModal() {
+    document.getElementById('modalEditTeacher').style.display = 'none';
+  }
+
+  // =========================================================
+  // แสดงรายการประวัติ 4 หมวด + ปุ่ม [แก้ไข] / [ลบ] พร้อมไอคอนมาตรฐาน
+  // =========================================================
+  function renderModalHistoryPreviews(empId) {
+    const user = g_AdminTeachers.find(u => (u.EmpID || u.id) === empId);
+    if (!user) return;
+
+    const licBox = document.getElementById('selectedUserCurrentLicenses');
+    if (licBox) {
+      const lics = user.ActiveLicenses || [];
+      if (lics.length === 0) {
+        licBox.innerHTML = '<div style="color:var(--text-muted); padding:4px 0;">ยังไม่มีประวัติใบอนุญาตประกอบวิชาชีพ</div>';
+      } else {
+        licBox.innerHTML = lics.map((l, i) => `
+          <div class="hist-item-card">
+            <div>
+              <b style="color:var(--steam-green);">รายการที่ ${i + 1}: ${escapeHtml(l.type)}</b>
+              <div style="font-size:11.5px; color:var(--text-muted);">
+                เลขที่: <b style="color:#fff; font-family:monospace;">${escapeHtml(l.number)}</b> • ออก: ${escapeHtml(l.issueDate)} • หมดอายุ: <b>${escapeHtml(l.expiryDate)}</b> (${escapeHtml(l.status)})
+              </div>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button type="button" class="btn-save-sm" style="padding:2px 8px; font-size:11px; color:var(--steam-cyan); border-color:var(--steam-cyan); display:inline-flex; align-items:center; gap:4px;" onclick="startEditHistoryItem('LICENSE', '${escapeHtml(empId)}', '${escapeHtml(l.recordId)}')">${ADM_SVG.edit}&nbsp;<span>แก้ไข</span></button>
+              <button type="button" class="btn-save-sm btn-del-sm" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;" onclick="removeHistoryItem('LICENSE', '${escapeHtml(l.recordId)}', '${escapeHtml(empId)}')">${ADM_SVG.trash}&nbsp;<span>ลบ</span></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const stdBox = document.getElementById('selectedUserCurrentStandings');
+    if (stdBox) {
+      const rawArr = (user.StandingsHistory || []).slice();
+      rawArr.sort((a, b) => {
+        const dA = _dateStrToComparableNum(a.RawEffectiveDate || a.EffectiveDate);
+        const dB = _dateStrToComparableNum(b.RawEffectiveDate || b.EffectiveDate);
+        return dA - dB;
+      });
+
+      if (rawArr.length === 0) {
+        stdBox.innerHTML = '<div style="color:var(--text-muted); padding:4px 0;">ยังไม่มีประวัติการดำรงตำแหน่งและวิทยฐานะ (สามารถเพิ่มรายการบรรจุและเลื่อนตำแหน่งได้ด้านล่าง)</div>';
+      } else {
+        stdBox.innerHTML = rawArr.map((s, i) => `
+          <div class="hist-item-card">
+            <div>
+              <b style="color:var(--steam-cyan);">รายการที่ ${i + 1}: ${escapeHtml(s.StandingLevel)}</b>
+              <div style="font-size:11.5px; color:var(--text-muted);">
+                ตั้งแต่วันที่: <b style="color:#fff;">${escapeHtml(s.FormattedDate || formatSlashDateBE(s.EffectiveDate))}</b> • เลขที่คำสั่ง/อ้างอิง: <b style="color:var(--orange);">${escapeHtml(s.OrderNumber || '-')}</b>
+              </div>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button type="button" class="btn-save-sm" style="padding:2px 8px; font-size:11px; color:var(--steam-cyan); border-color:var(--steam-cyan); display:inline-flex; align-items:center; gap:4px;" onclick="startEditHistoryItem('STANDING', '${escapeHtml(empId)}', '${escapeHtml(s.RecordID)}')">${ADM_SVG.edit}&nbsp;<span>แก้ไข</span></button>
+              <button type="button" class="btn-save-sm btn-del-sm" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;" onclick="removeHistoryItem('STANDING', '${escapeHtml(s.RecordID)}', '${escapeHtml(empId)}')">${ADM_SVG.trash}&nbsp;<span>ลบ</span></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const sctBox = document.getElementById('selectedUserCurrentScouts');
+    if (sctBox) {
+      const arr = user.ScoutsHistory || [];
+      if (arr.length === 0) {
+        sctBox.innerHTML = '<div style="color:var(--text-muted); padding:4px 0;">ยังไม่มีประวัติวุฒิลูกเสือ</div>';
+      } else {
+        sctBox.innerHTML = arr.map((s, i) => `
+          <div class="hist-item-card">
+            <div>
+              <b style="color:var(--orange);">รายการที่ ${i + 1}: ${escapeHtml(s.ScoutQualification)}</b> (${escapeHtml(s.ScoutType || '-')})
+              <div style="font-size:11.5px; color:var(--text-muted);">
+                เลขที่วุฒิบัตร: <b>${escapeHtml(s.CertNumber || '-')}</b> • วันที่: ${escapeHtml(s.FormattedDate || formatSlashDateBE(s.ApprovedDate))}
+              </div>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button type="button" class="btn-save-sm" style="padding:2px 8px; font-size:11px; color:var(--steam-cyan); border-color:var(--steam-cyan); display:inline-flex; align-items:center; gap:4px;" onclick="startEditHistoryItem('SCOUT', '${escapeHtml(empId)}', '${escapeHtml(s.RecordID)}')">${ADM_SVG.edit}&nbsp;<span>แก้ไข</span></button>
+              <button type="button" class="btn-save-sm btn-del-sm" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;" onclick="removeHistoryItem('SCOUT', '${escapeHtml(s.RecordID)}', '${escapeHtml(empId)}')">${ADM_SVG.trash}&nbsp;<span>ลบ</span></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const eduBox = document.getElementById('selectedUserCurrentEducations');
+    if (eduBox) {
+      const arr = user.EducationsHistory || [];
+      if (arr.length === 0) {
+        eduBox.innerHTML = '<div style="color:var(--text-muted); padding:4px 0;">ยังไม่มีประวัติวุฒิการศึกษา</div>';
+      } else {
+        eduBox.innerHTML = arr.map((e, i) => `
+          <div class="hist-item-card">
+            <div>
+              <b style="color:var(--steam-green);">รายการที่ ${i + 1}: ${escapeHtml(e.DegreeLevel)} (${escapeHtml(e.DegreeShort)})</b>
+              <div style="font-size:11.5px; color:var(--text-muted);">
+                สาขา: <b>${escapeHtml(e.Major || '-')}</b> • สถาบัน: ${escapeHtml(e.Institute || '-')} (ปี พ.ศ. ${escapeHtml(e.GradYear || '-')})
+              </div>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button type="button" class="btn-save-sm" style="padding:2px 8px; font-size:11px; color:var(--steam-cyan); border-color:var(--steam-cyan); display:inline-flex; align-items:center; gap:4px;" onclick="startEditHistoryItem('EDUCATION', '${escapeHtml(empId)}', '${escapeHtml(e.RecordID)}')">${ADM_SVG.edit}&nbsp;<span>แก้ไข</span></button>
+              <button type="button" class="btn-save-sm btn-del-sm" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;" onclick="removeHistoryItem('EDUCATION', '${escapeHtml(e.RecordID)}', '${escapeHtml(empId)}')">${ADM_SVG.trash}&nbsp;<span>ลบ</span></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const tlBox = document.getElementById('modalPersonnelTimelineBox');
+    const tlBadge = document.getElementById('modalTimelineCountBadge');
+    const tlEvents = user.TimelineEvents || [];
+    if (tlBadge) tlBadge.innerText = `${tlEvents.length} รายการ (เก่าสุด → ล่าสุด)`;
+    if (tlBox) {
+      if (tlEvents.length === 0) {
+        tlBox.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">ยังไม่มีข้อมูลประวัติในไทม์ไลน์</div>`;
+      } else {
+        tlBox.innerHTML = tlEvents.map((ev, idx) => `
+          <div class="p2-tl-item">
+            <span class="p2-tl-dot" style="background:${ev.badgeColor || 'var(--steam-cyan)'};"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <div>
+                <span style="color:var(--steam-cyan); font-weight:bold;">ลำดับที่ ${idx + 1} • ${escapeHtml(ev.displayDate)}</span>
+                <span style="background:rgba(255,255,255,0.06); border:1px solid #2a475e; padding:1px 7px; border-radius:4px; font-size:11px; margin-left:6px;">${escapeHtml(ev.category)}</span>
+              </div>
+              <span style="font-size:11.5px; color:var(--orange); font-family:monospace;">${escapeHtml(ev.refNo)}</span>
+            </div>
+            <div style="font-weight:bold; color:#fff; font-size:13.5px; margin-top:4px;">${escapeHtml(ev.title)}</div>
+            <div style="color:var(--text-muted); font-size:12px; margin-top:2px;">${escapeHtml(ev.subtitle)}</div>
+          </div>
+        `).join('');
+      }
+    }
+  }
+
+  function startEditHistoryItem(type, empId, recordId) {
+    const user = g_AdminTeachers.find(u => (u.EmpID || u.id) === empId);
+    if (!user) return;
+
+    if (type === 'LICENSE') {
+      const item = (user.ActiveLicenses || []).find(x => x.recordId === recordId);
+      if (!item) return;
+      document.getElementById('lic_recordId').value = item.recordId;
+      document.getElementById('lic_type').value = item.type;
+      document.getElementById('lic_num').value = item.number;
+      setDatePickerVal('lic_issue', item.rawIssueDate || '');
+      setDatePickerVal('lic_exp', item.rawExpiryDate || '');
+      document.getElementById('lic_editModeBanner').style.display = 'flex';
+      document.getElementById('lic_editModeText').innerText = `โหมดแก้ไขใบอนุญาต: ${item.number}`;
+      document.getElementById('btnSubmit_LICENSE').innerHTML = `${ADM_SVG.save}&nbsp;<span>บันทึกการแก้ไขใบอนุญาต</span>`;
+    } else if (type === 'STANDING') {
+      const item = (user.StandingsHistory || []).find(x => x.RecordID === recordId);
+      if (!item) return;
+      document.getElementById('std_recordId').value = item.RecordID;
+      setStandingComboValue(item.StandingLevel);
+      setDatePickerVal('std_date', item.RawEffectiveDate || item.EffectiveDate || '');
+      document.getElementById('std_order').value = item.OrderNumber || '';
+      document.getElementById('std_editModeBanner').style.display = 'flex';
+      document.getElementById('std_editModeText').innerText = `โหมดแก้ไขรายการ: ${item.StandingLevel}`;
+      document.getElementById('btnSubmit_STANDING').innerHTML = `${ADM_SVG.saveDark}&nbsp;<span>บันทึกการแก้ไขรายการนี้</span>`;
+    } else if (type === 'SCOUT') {
+      const item = (user.ScoutsHistory || []).find(x => x.RecordID === recordId);
+      if (!item) return;
+      document.getElementById('sct_recordId').value = item.RecordID;
+      document.getElementById('sct_qual').value = item.ScoutQualification;
+      document.getElementById('sct_type').value = item.ScoutType || '-';
+      document.getElementById('sct_cert').value = item.CertNumber || '';
+      setDatePickerVal('sct_date', item.RawApprovedDate || item.ApprovedDate || '');
+      document.getElementById('sct_editModeBanner').style.display = 'flex';
+      document.getElementById('sct_editModeText').innerText = `โหมดแก้ไขวุฒิลูกเสือ: ${item.ScoutQualification}`;
+      document.getElementById('btnSubmit_SCOUT').innerHTML = `${ADM_SVG.saveDark}&nbsp;<span>บันทึกการแก้ไขวุฒิลูกเสือ</span>`;
+    } else if (type === 'EDUCATION') {
+      const item = (user.EducationsHistory || []).find(x => x.RecordID === recordId);
+      if (!item) return;
+      document.getElementById('edu_recordId').value = item.RecordID;
+      document.getElementById('edu_level').value = item.DegreeLevel || 'ปริญญาตรี';
+      document.getElementById('edu_short').value = item.DegreeShort || 'ค.บ.';
+      document.getElementById('edu_major').value = item.Major || '';
+      document.getElementById('edu_inst').value = item.Institute || '';
+      document.getElementById('edu_year').value = item.GradYear || '2567';
+      document.getElementById('edu_editModeBanner').style.display = 'flex';
+      document.getElementById('edu_editModeText').innerText = `โหมดแก้ไขวุฒิการศึกษา: ${item.DegreeShort}`;
+      document.getElementById('btnSubmit_EDUCATION').innerHTML = `${ADM_SVG.save}&nbsp;<span>บันทึกการแก้ไขวุฒิการศึกษา</span>`;
+    }
+  }
+
+  function cancelEditHistoryItem(type) {
+    if (type === 'LICENSE') {
+      var f = document.getElementById('formHistory_LICENSE'); if (f) f.reset();
+      var r = document.getElementById('lic_recordId'); if (r) r.value = '';
+      var b = document.getElementById('lic_editModeBanner'); if (b) b.style.display = 'none';
+      var btn = document.getElementById('btnSubmit_LICENSE'); if (btn) btn.innerHTML = `${ADM_SVG.plus}&nbsp;<span>เพิ่มใบอนุญาต</span>`;
+      setDatePickerVal('lic_issue', '');
+      setDatePickerVal('lic_exp', '');
+    } else if (type === 'STANDING') {
+      var f2 = document.getElementById('formHistory_STANDING'); if (f2) f2.reset();
+      var r2 = document.getElementById('std_recordId'); if (r2) r2.value = '';
+      var b2 = document.getElementById('std_editModeBanner'); if (b2) b2.style.display = 'none';
+      var btn2 = document.getElementById('btnSubmit_STANDING'); if (btn2) btn2.innerHTML = `${ADM_SVG.plusDark}&nbsp;<span>เพิ่มรายการดำรงตำแหน่ง / วิทยฐานะ</span>`;
+      setStandingComboValue('บรรจุครูผู้ช่วย');
+      setDatePickerVal('std_date', '');
+    } else if (type === 'SCOUT') {
+      var f3 = document.getElementById('formHistory_SCOUT'); if (f3) f3.reset();
+      var r3 = document.getElementById('sct_recordId'); if (r3) r3.value = '';
+      var b3 = document.getElementById('sct_editModeBanner'); if (b3) b3.style.display = 'none';
+      var btn3 = document.getElementById('btnSubmit_SCOUT'); if (btn3) btn3.innerHTML = `${ADM_SVG.plusDark}&nbsp;<span>เพิ่มวุฒิลูกเสือ</span>`;
+      setDatePickerVal('sct_date', '');
+    } else if (type === 'EDUCATION') {
+      var f4 = document.getElementById('formHistory_EDUCATION'); if (f4) f4.reset();
+      var r4 = document.getElementById('edu_recordId'); if (r4) r4.value = '';
+      var b4 = document.getElementById('edu_editModeBanner'); if (b4) b4.style.display = 'none';
+      var btn4 = document.getElementById('btnSubmit_EDUCATION'); if (btn4) btn4.innerHTML = `${ADM_SVG.plus}&nbsp;<span>เพิ่มวุฒิการศึกษา</span>`;
+    }
+  }
+
+  function removeHistoryItem(type, recordId, empId) {
+    steamConfirm('ยืนยันการลบรายการประวัตินี้ใช่หรือไม่?', () => {
+      startLoadingBar('กำลังลบรายการ...');
+      google.script.run
+        .withSuccessHandler(res => stopLoadingBar(() => refreshAdminData(empId)))
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('ลบไม่สำเร็จ: ' + (err.message || err))))
+        .deleteHistoryRecordById(type, recordId);
+    });
+  }
+
+  function onScoutQualChange() {
+    const q = document.getElementById('sct_qual').value;
+    const t = document.getElementById('sct_type');
+    const c = document.getElementById('sct_cert');
+    if (q === 'ไม่มีวุฒิลูกเสือ') {
+      if (t) t.value = '-';
+      if (c) c.value = '-';
+    } else if (c && c.value === '-') {
+      c.value = '';
+    }
+  }
+
+  function onLicenseTypeChange() {
+    const type = document.getElementById('lic_type').value;
+    const spec = LICENSE_SPECS_CLIENT[type];
+    const infoBox = document.getElementById('lic_specInfoBox');
+    if (spec && infoBox) infoBox.innerHTML = spec.text;
+    autoCalcLicenseExpiry();
+  }
+
+  function autoCalcLicenseExpiry() {
+    const type = document.getElementById('lic_type').value;
+    const issueVal = document.getElementById('lic_issue').value;
+    if (!issueVal) return;
+    const spec = LICENSE_SPECS_CLIENT[type] || { years: 5 };
+    const p = issueVal.split('-');
+    if (p.length === 3) {
+      const expYear = normalizeYearToCEClient(p[0]) + spec.years;
+      const dObj = new Date(expYear, parseInt(p[1], 10) - 1, parseInt(p[2], 10) - 1);
+      const yyyy = dObj.getFullYear();
+      const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(dObj.getDate()).padStart(2, '0');
+      setDatePickerVal('lic_exp', `${yyyy}-${mm}-${dd}`);
+    }
+  }
+
+  function handleAdminSaveHistory(e, type) {
+    e.preventDefault();
+    const empId = document.getElementById('edit_empId').value;
+    if (!empId) return;
+    let payload = { empId: empId };
+
+    if (type === 'LICENSE') {
+      payload.recordId = document.getElementById('lic_recordId').value;
+      payload.licenseType = document.getElementById('lic_type').value;
+      payload.licenseNum = document.getElementById('lic_num').value.trim();
+      payload.issueDate = document.getElementById('lic_issue').value;
+      payload.expiryDate = document.getElementById('lic_exp').value;
+    } else if (type === 'STANDING') {
+      const stdVal = getStandingComboValue();
+      if (!stdVal) {
+        steamAlert('กรุณาเลือกหรือพิมพ์ระบุชื่อตำแหน่ง / การบรรจุ');
+        return;
+      }
+      payload.recordId = document.getElementById('std_recordId').value;
+      payload.standingLevel = stdVal;
+      payload.effectiveDate = document.getElementById('std_date').value;
+      payload.orderNumber = document.getElementById('std_order').value.trim();
+    } else if (type === 'SCOUT') {
+      payload.recordId = document.getElementById('sct_recordId').value;
+      payload.scoutQual = document.getElementById('sct_qual').value;
+      payload.scoutType = document.getElementById('sct_type').value;
+      payload.certNum = document.getElementById('sct_cert').value.trim();
+      payload.approvedDate = document.getElementById('sct_date') ? document.getElementById('sct_date').value : '-';
+    } else if (type === 'EDUCATION') {
+      payload.recordId = document.getElementById('edu_recordId').value;
+      payload.degreeLevel = document.getElementById('edu_level').value;
+      payload.degreeShort = document.getElementById('edu_short').value;
+      payload.major = document.getElementById('edu_major').value.trim();
+      payload.institute = document.getElementById('edu_inst').value.trim();
+      payload.gradYear = document.getElementById('edu_year').value;
+    }
+
+    startLoadingBar('กำลังบันทึกข้อมูลลงทะเบียนประวัติ...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          cancelEditHistoryItem(type);
+          refreshAdminData(empId, () => {
+            showSaveSuccessUXModal(res.message, empId, 'EDIT');
+          });
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('บันทึกไม่สำเร็จ: ' + (err.message || err))))
+      .saveHistoryRecord(type, payload);
+  }
+
+  function addNewTeacher() {
+    const deptVal = getDeptComboValue('new');
+    const roleVal = getRoleComboValue('new');
+    const emailVal = document.getElementById('new_email').value.trim();
+    const nameVal = document.getElementById('new_name').value.trim();
+    const birthVal = document.getElementById('new_birthDate') ? document.getElementById('new_birthDate').value : '';
+
+    if (!nameVal) {
+      steamAlert('กรุณากรอกชื่อ-นามสกุลบุคลากร');
+      return;
+    }
+    if (!roleVal) {
+      steamAlert('กรุณาเลือกหรือระบุตำแหน่ง');
+      return;
+    }
+    if (!deptVal) {
+      steamAlert('กรุณาเลือกหรือระบุกลุ่มสาระการเรียนรู้');
+      return;
+    }
+    if (!isValidEmailFormat(emailVal)) {
+      steamAlert('กรุณากรอก Email ให้ถูกต้องตามรูปแบบมาตรฐาน (เช่น name@school.ac.th)');
+      return;
+    }
+
+    const payload = {
+      positionNo: document.getElementById('new_positionNo') ? document.getElementById('new_positionNo').value.trim() : '',
+      memberId: document.getElementById('new_memberId') ? document.getElementById('new_memberId').value.trim() : '',
+      birthDate: birthVal,
+      name: nameVal,
+      idCard: document.getElementById('new_idCard').value.trim(),
+      startDate: document.getElementById('new_startDate').value,
+      department: deptVal,
+      division: 'เจ้าหน้าที่ฝ่ายบริหารวิชาการ',
+      role: roleVal,
+      accessLevel: document.getElementById('new_access').value,
+      email: emailVal,
+      phone: document.getElementById('new_phone').value.trim(),
+      password: document.getElementById('new_pass').value,
+      classLevel: '',
+      status: 'ปกติ'
+    };
+
+    startLoadingBar('กำลังสร้างบัญชีบุคลากรใหม่...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (!res || !res.success) {
+            steamAlert((res && res.message) ? res.message : 'ไม่สามารถสร้างบัญชีได้');
+            return;
+          }
+          if (document.getElementById('new_positionNo')) document.getElementById('new_positionNo').value = '';
+          if (document.getElementById('new_memberId')) document.getElementById('new_memberId').value = '';
+          setDatePickerVal('new_birthDate', '');
+          onBirthDateChangeCalc('new');
+          document.getElementById('new_name').value = '';
+          document.getElementById('new_idCard').value = '';
+          document.getElementById('new_email').value = '';
+          setDeptComboValue('new', 'ภาษาไทย');
+          setRoleComboValue('new', 'ครู');
+
+          refreshAdminData(null, () => {
+            showSaveSuccessUXModal(res.message, res.empId, 'NEW');
+          });
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('สร้างบัญชีไม่สำเร็จ: ' + (err.message || err))))
+      .saveAdminTeacher(payload);
+  }
+
+  function saveEditTeacherFromModal() {
+    const pendingCustom = document.getElementById('edit_division_custom_input');
+    if (pendingCustom && pendingCustom.value.trim() !== '') {
+      pendingCustom.value.split(',').forEach(part => {
+        let clean = part.trim();
+        if (clean && !g_SelectedEditDivisions.includes(clean)) g_SelectedEditDivisions.push(clean);
+      });
+      pendingCustom.value = '';
+    }
+
+    const finalDivisionStr = g_SelectedEditDivisions.length > 0 ? g_SelectedEditDivisions.join(', ') : 'เจ้าหน้าที่ฝ่ายบริหารวิชาการ';
+    const targetEmpId = document.getElementById('edit_empId').value;
+    const deptVal = getDeptComboValue('edit');
+    const roleVal = getRoleComboValue('edit');
+    const emailVal = document.getElementById('edit_email').value.trim();
+    const nameVal = document.getElementById('edit_name').value.trim();
+    const birthVal = document.getElementById('edit_birthDate') ? document.getElementById('edit_birthDate').value : '';
+
+    if (!nameVal) {
+      steamAlert('กรุณากรอกชื่อ-นามสกุล');
+      return;
+    }
+    if (!roleVal) {
+      steamAlert('กรุณาเลือกหรือพิมพ์ระบุตำแหน่ง');
+      return;
+    }
+    if (!deptVal) {
+      steamAlert('กรุณาเลือกหรือพิมพ์ระบุกลุ่มสาระการเรียนรู้');
+      return;
+    }
+    if (!isValidEmailFormat(emailVal)) {
+      steamAlert('กรุณากรอก Email ให้ถูกต้องตามรูปแบบมาตรฐาน (เช่น name@school.ac.th)');
+      return;
+    }
+
+    const payload = {
+      empId: targetEmpId,
+      oldName: document.getElementById('edit_oldName').value,
+      positionNo: document.getElementById('edit_positionNo') ? document.getElementById('edit_positionNo').value.trim() : '',
+      memberId: document.getElementById('edit_memberId') ? document.getElementById('edit_memberId').value.trim() : '',
+      birthDate: birthVal,
+      name: nameVal,
+      idCard: document.getElementById('edit_idCard').value.trim(),
+      startDate: document.getElementById('edit_startDate').value,
+      department: deptVal,
+      division: finalDivisionStr,
+      email: emailVal,
+      phone: document.getElementById('edit_phone').value.trim(),
+      password: document.getElementById('edit_pass').value,
+      role: roleVal,
+      accessLevel: document.getElementById('edit_access').value,
+      classLevel: document.getElementById('edit_class').value,
+      sickMax: document.getElementById('edit_sickMax').value,
+      personalMax: document.getElementById('edit_personalMax').value
+    };
+
+    startLoadingBar('กำลังบันทึกการตั้งค่าผู้ใช้...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (!res || !res.success) {
+            steamAlert((res && res.message) ? res.message : 'บันทึกไม่สำเร็จ');
+            return;
+          }
+          refreshAdminData(targetEmpId, () => {
+            showSaveSuccessUXModal(res.message, targetEmpId, 'EDIT');
+          });
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('บันทึกไม่สำเร็จ: ' + (err.message || err))))
+      .saveAdminTeacher(payload);
+  }
+
+  function toggleTeacherStatus(index, el) {
+    let t = g_AdminTeachers[index];
+    let newStatus = el.checked ? "ปกติ" : "ย้าย/เกษียณ";
+    startLoadingBar('กำลังอัปเดตสถานะ...');
+    google.script.run
+      .withSuccessHandler(res => stopLoadingBar(() => refreshAdminData()))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('อัปเดตสถานะไม่สำเร็จ: ' + (err.message || err))))
+      .updateAdminTeacherStatus(t.email, t.name, newStatus);
+  }
+
+  function confirmDeleteTeacher(index) {
+    let t = g_AdminTeachers[index];
+    steamPrompt(`พิมพ์คำว่า CONFIRM เพื่อยืนยันการลบ "${t.name}" (${t.id}):`, val => {
+      if (val && val.toUpperCase() === 'CONFIRM') {
+        startLoadingBar('กำลังลบข้อมูลบุคลากร...');
+        google.script.run
+          .withSuccessHandler(res => stopLoadingBar(() => refreshAdminData()))
+          .withFailureHandler(err => stopLoadingBar(() => steamAlert('ลบไม่สำเร็จ: ' + (err.message || err))))
+          .deleteAdminTeacher(t.email || "", t.name || "");
+      }
+    });
+  }
+
+  // =========================================================
+  // 5-SHEET TEMPLATE & 5-STEP UPLOAD WIZARD
+  // =========================================================
+  function setWizardStepState(activeStep) {
+    for (var s = 1; s <= 5; s++) {
+      var el = document.getElementById('wizStepIndicator_' + s);
+      if (!el) continue;
+      el.classList.remove('active', 'done');
+      if (s < activeStep) el.classList.add('done');
+      else if (s === activeStep) el.classList.add('active');
+    }
+  }
+
+  function openExcelUploadWizard() {
+    g_WizardParsedBundle = null;
+    setWizardStepState(1);
+    var btnImp = document.getElementById('btnWizardConfirmImport');
+    if (btnImp) btnImp.style.display = 'none';
+    var zone = document.getElementById('wizValidationAndPreviewZone');
+    if (zone) {
+      zone.innerHTML = 'กรุณาเลือกไฟล์ Excel ที่กรอกข้อมูลแล้วเพื่อตรวจสอบและดูพรีวิวก่อนนำเข้า';
+    }
+    var fileInp = document.getElementById('wizExcelFileInput');
+    if (fileInp) fileInp.value = '';
+    var mod = document.getElementById('modalExcelUploadWizard');
+    if (mod) mod.style.display = 'flex';
+  }
+
+  function closeExcelUploadWizard() {
+    var mod = document.getElementById('modalExcelUploadWizard');
+    if (mod) mod.style.display = 'none';
+  }
+
+  function downloadMultiSheetTemplate() {
+    if (typeof XLSX === 'undefined') {
+      steamAlert('กำลังโหลดไลบรารี Excel กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+
+    const personnelSample = [
+      {
+        "EmpID": "TCH-001",
+        "PositionNo": "10001",
+        "สมาชิกประเภทสามัญ เลขที่": "6510001234",
+        "Name": "นางสาวสมหญิง ใจงาม",
+        "BirthDate": "1985-10-15",
+        "Role": "ครูชำนาญการพิเศษ",
+        "Division": "เจ้าหน้าที่ฝ่ายบริหารวิชาการ, งานวัดผลและประเมินผล / ทะเบียนนักเรียน",
+        "Department": "สังคมศึกษา ศาสนาและวัฒนธรรม",
+        "Class_Level": "ประถมศึกษาปีที่ 1",
+        "StartDate": "2015-05-16",
+        "Email": "somying@school.ac.th",
+        "Phone": "0812345678",
+        "Access_Level": "User"
+      },
+      {
+        "EmpID": "TCH-002",
+        "PositionNo": "10002",
+        "สมาชิกประเภทสามัญ เลขที่": "6510005678",
+        "Name": "นายสมชาย รักเรียน",
+        "BirthDate": "1990-04-20",
+        "Role": "ครู",
+        "Division": "เจ้าหน้าที่ฝ่ายบริหารงานบุคคล",
+        "Department": "วิทยาศาสตร์และเทคโนโลยี",
+        "Class_Level": "ประถมศึกษาปีที่ 4",
+        "StartDate": "2018-11-01",
+        "Email": "somchai@school.ac.th",
+        "Phone": "0898765432",
+        "Access_Level": "User"
+      }
+    ];
+
+    const eduSample = [
+      { "EmpID": "TCH-001", "DegreeLevel": "ปริญญาตรี", "DegreeShort": "ค.บ.", "Major": "สังคมศึกษา", "Institute": "มหาวิทยาลัยราชภัฏนครราชสีมา", "GradYear": "2551" },
+      { "EmpID": "TCH-002", "DegreeLevel": "ปริญญาตรี", "DegreeShort": "วท.บ.", "Major": "วิทยาศาสตร์ทั่วไป", "Institute": "มหาวิทยาลัยขอนแก่น", "GradYear": "2556" }
+    ];
+
+    const standingSample = [
+      { "EmpID": "TCH-001", "StandingLevel": "บรรจุครูผู้ช่วย", "EffectiveDate": "2015-05-16", "OrderNumber": "สพป.นม.3 ที่ 120/2558" },
+      { "EmpID": "TCH-001", "StandingLevel": "ครูชำนาญการพิเศษ", "EffectiveDate": "2022-10-01", "OrderNumber": "สพป.นม.3 ที่ 412/2565" },
+      { "EmpID": "TCH-002", "StandingLevel": "บรรจุครูผู้ช่วย", "EffectiveDate": "2018-11-01", "OrderNumber": "สพป.นม.3 ที่ 305/2561" }
+    ];
+
+    const scoutSample = [
+      { "EmpID": "TCH-001", "ScoutQualification": "A.T.C.", "ScoutType": "ลูกเสือสามัญ", "CertNumber": "นม.1045/2562", "ApprovedDate": "2019-04-10" },
+      { "EmpID": "TCH-002", "ScoutQualification": "B.T.C.", "ScoutType": "ลูกเสือสำรอง", "CertNumber": "นม.2099/2564", "ApprovedDate": "2021-05-12" }
+    ];
+
+    const licenseSample = [
+      { "EmpID": "TCH-001", "LicenseType": "B License (ใบอนุญาตประกอบวิชาชีพครู ชั้นต้น)", "LicenseNumber": "6520112000111", "IssueDate": "2023-06-01", "ExpiryDate": "2028-05-31" },
+      { "EmpID": "TCH-002", "LicenseType": "B License (ใบอนุญาตประกอบวิชาชีพครู ชั้นต้น)", "LicenseNumber": "6520112000222", "IssueDate": "2024-01-15", "ExpiryDate": "2029-01-14" }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(personnelSample), "Personnel");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eduSample), "Education");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standingSample), "Standing");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(scoutSample), "Scout");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(licenseSample), "License");
+
+    XLSX.writeFile(wb, "ManStat_Import_Template.xlsx");
+    setWizardStepState(2);
+  }
+
+  function downloadTeacherExcelTemplate() {
+    downloadMultiSheetTemplate();
+  }
+
+  function handleWizardExcelFileSelect(event) {
+    let file = event.target.files[0];
+    if (!file) return;
+    setWizardStepState(3);
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        let data = new Uint8Array(e.target.result);
+        let workbook = XLSX.read(data, { type: 'array' });
+
+        let bundle = {
+          Personnel: [],
+          Education: [],
+          Standing: [],
+          Scout: [],
+          License: []
+        };
+
+        workbook.SheetNames.forEach(sName => {
+          let rows = XLSX.utils.sheet_to_json(workbook.Sheets[sName]);
+          let cleanName = sName.trim().toLowerCase();
+          if (cleanName === 'personnel' || cleanName === 'รายชื่อบุคลากร' || cleanName === 'teachers') {
+            bundle.Personnel = rows;
+          } else if (cleanName === 'education') {
+            bundle.Education = rows;
+          } else if (cleanName === 'standing') {
+            bundle.Standing = rows;
+          } else if (cleanName === 'scout') {
+            bundle.Scout = rows;
+          } else if (cleanName === 'license' || cleanName === 'licenses') {
+            bundle.License = rows;
+          }
+        });
+
+        if (workbook.SheetNames.length === 1 && bundle.Personnel.length === 0) {
+          bundle.Personnel = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        }
+
+        let warnings = [];
+        bundle.Personnel.forEach((p, idx) => {
+          let email = p.Email || p['อีเมล'] || '';
+          if (email && !isValidEmailFormat(email)) {
+            warnings.push(`Personnel แถวที่ ${idx + 1}: รูปแบบ Email ไม่ถูกต้อง (${email})`);
+          }
+        });
+
+        g_WizardParsedBundle = bundle;
+        setWizardStepState(4);
+
+        const zone = document.getElementById('wizValidationAndPreviewZone');
+        const btnImp = document.getElementById('btnWizardConfirmImport');
+        if (btnImp) btnImp.style.display = 'inline-flex';
+
+        let warnHtml = warnings.length > 0
+          ? `<div style="color:var(--orange); margin-top:6px;">แจ้งเตือนการตรวจสอบ (${warnings.length} รายการ):<br>• ${warnings.map(escapeHtml).join('<br>• ')}</div>`
+          : `<div style="color:var(--steam-green); font-weight:bold; margin-top:6px; display:flex; align-items:center; gap:5px;">${ADM_SVG.check}&nbsp;<span>ผ่านการตรวจสอบโครงสร้างข้อมูล (Validation Passed)</span></div>`;
+
+        if (zone) {
+          zone.innerHTML = `
+            <div style="color:#fff; font-weight:bold; margin-bottom:6px;">ผลลัพธ์การตรวจสอบและพรีวิวข้อมูลก่อนนำเข้า:</div>
+            <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; text-align:center; margin-bottom:8px;">
+              <div style="background:#101822; border:1px solid var(--steam-cyan); padding:8px; border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-muted);">Personnel</div>
+                <div style="font-size:16px; font-weight:bold; color:#fff;">${bundle.Personnel.length}</div>
+              </div>
+              <div style="background:#101822; border:1px solid var(--steam-green); padding:8px; border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-muted);">Education</div>
+                <div style="font-size:16px; font-weight:bold; color:var(--steam-green);">${bundle.Education.length}</div>
+              </div>
+              <div style="background:#101822; border:1px solid var(--steam-cyan); padding:8px; border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-muted);">Standing</div>
+                <div style="font-size:16px; font-weight:bold; color:var(--steam-cyan);">${bundle.Standing.length}</div>
+              </div>
+              <div style="background:#101822; border:1px solid var(--orange); padding:8px; border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-muted);">Scout</div>
+                <div style="font-size:16px; font-weight:bold; color:var(--orange);">${bundle.Scout.length}</div>
+              </div>
+              <div style="background:#101822; border:1px solid var(--steam-green); padding:8px; border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-muted);">License</div>
+                <div style="font-size:16px; font-weight:bold; color:var(--steam-green);">${bundle.License.length}</div>
+              </div>
+            </div>
+            ${warnHtml}
+          `;
+        }
+      } catch (err) {
+        steamAlert('ไม่สามารถอ่านไฟล์ Excel ได้: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function executeWizardFinalImport() {
+    if (!g_WizardParsedBundle) return;
+    setWizardStepState(5);
+    startLoadingBar('กำลังนำเข้าข้อมูลทั้ง 5 ชีตลงฐานข้อมูล ManStat...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          closeExcelUploadWizard();
+          steamAlert(res ? res.message : 'นำเข้าข้อมูลเรียบร้อยแล้ว', 'นำเข้า Excel สำเร็จ');
+          refreshAdminData();
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('นำเข้าไม่สำเร็จ: ' + (err.message || err))))
+      .importMultiSheetBundleJSON(g_WizardParsedBundle);
+  }
+
+  function handleTeacherExcelUpload(event) {
+    openExcelUploadWizard();
+    handleWizardExcelFileSelect(event);
+  }
+
+  // =========================================================
+  // SYSTEM DATA AUDIT & SHA-256 MIGRATION
+  // =========================================================
+  function triggerSystemDataAudit() {
+    startLoadingBar('กำลังตรวจสอบความถูกต้องของฐานข้อมูลทั้งระบบ (Data Audit)...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (!res || res.status !== 'success') {
+            steamAlert('ไม่สามารถตรวจสอบข้อมูลได้');
+            return;
+          }
+          let html = `
+            <div>• <b>จำนวนบุคลากรทั้งหมด:</b> ${res.totalTeachers} คน</div>
+            <div>• <b>รหัสบุคลากรซ้ำ (Duplicate ID):</b> ${res.duplicateIds.length === 0 ? '<span style="color:var(--steam-green);">ไม่พบ (ปกติ)</span>' : '<span style="color:var(--red);">' + escapeHtml(res.duplicateIds.join(', ')) + '</span>'}</div>
+            <div>• <b>บัญชีที่ยังไม่ได้ระบุ Email หรือผิดรูปแบบ:</b> ${res.missingEmails.length === 0 ? '<span style="color:var(--steam-green);">ครบถ้วนทุกรายการ</span>' : '<span style="color:var(--orange);">' + res.missingEmails.length + ' รายการ</span>'}</div>
+            <div>• <b>รหัสผ่านที่ยังไม่ได้เข้ารหัส SHA-256:</b> ${res.unhashedPasswordsCount === 0 ? '<span style="color:var(--steam-green);">เข้ารหัส SHA-256 ครบ 100%</span>' : '<span style="color:var(--orange);">' + res.unhashedPasswordsCount + ' บัญชี (กดปุ่ม เข้ารหัสผ่าน เพื่อแปลงทันที)</span>'}</div>
+            <div>• <b>วันที่ผิดปกติ (เช่น ปี 3102):</b> ${res.invalidDates.length === 0 ? '<span style="color:var(--steam-green);">ไม่พบ (ปกติ)</span>' : '<span style="color:var(--orange);">พบ ' + res.invalidDates.length + ' จุด (ระบบซ่อมแซมการแสดงผลอัตโนมัติแล้ว)</span>'}</div>
+          `;
+          steamAlert(html, 'ผลการตรวจฐานข้อมูล (Data Audit)');
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Data Audit ขัดข้อง: ' + (err.message || err))))
+      .runSystemDataAudit();
+  }
+
+  function triggerSHA256Migration() {
+    steamConfirm('ยืนยันการเข้ารหัสรหัสผ่านของบุคลากรทั้งหมดในฐานข้อมูลด้วยอัลกอริทึม SHA-256 ใช่หรือไม่? (ผู้ใช้งานยังใช้รหัสผ่านเดิมล็อกอินได้ตามปกติ)', () => {
+      startLoadingBar('กำลังเข้ารหัสรหัสผ่านทั้งหมดเป็น SHA-256...');
+      google.script.run
+        .withSuccessHandler(res => {
+          stopLoadingBar(() => {
+            steamAlert(res ? res.message : 'ดำเนินการเสร็จสิ้น', 'เข้ารหัสผ่าน SHA-256 สำเร็จ');
+            refreshAdminData();
+          });
+        })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('เข้ารหัสไม่สำเร็จ: ' + (err.message || err))))
+        .migrateAllPasswordsToSHA256('Superuser');
+    });
+  }
+
+  function loadAdminDelegationDropdowns() {
+    let sel1 = document.getElementById('adminSettingDep1');
+    let sel2 = document.getElementById('adminSettingDep2');
+    if (!sel1 || !sel2) return;
+    let options = `<option value="">-- เลือกผู้รักษาราชการแทน --</option>` + g_AdminTeachers.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+    sel1.innerHTML = options;
+    sel2.innerHTML = options;
+    sel1.value = g_SchoolInfo.deputy1 || localStorage.getItem('steam_dep1') || '';
+    sel2.value = g_SchoolInfo.deputy2 || localStorage.getItem('steam_dep2') || '';
+  }
+
+  function saveAdminDelegation() {
+    const d1 = document.getElementById('adminSettingDep1').value;
+    const d2 = document.getElementById('adminSettingDep2').value;
+    localStorage.setItem('steam_dep1', d1);
+    localStorage.setItem('steam_dep2', d2);
+    startLoadingBar('กำลังบันทึกผู้รักษาราชการแทน...');
+    google.script.run
+      .withSuccessHandler(res => stopLoadingBar(() => steamAlert('บันทึกรายชื่อผู้รักษาราชการแทนเรียบร้อยแล้ว')))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('บันทึกไม่สำเร็จ: ' + (err.message || err))))
+      .School_saveInfo({ deputy1: d1, deputy2: d2 });
+  }
+
+  function getLocationGPS() {
+    const status = document.getElementById('gpsStatus');
+    if (!status) return;
+    status.innerText = "กำลังค้นหาตำแหน่งจากพิกัดดาวเทียม GPS...";
+    status.style.color = "var(--steam-cyan)";
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(position => {
+        document.getElementById('sch_lat').value = position.coords.latitude.toFixed(6);
+        document.getElementById('sch_lng').value = position.coords.longitude.toFixed(6);
+        status.innerText = "ดึงพิกัดสำเร็จ! กดปุ่ม 'บันทึกข้อมูลสถานศึกษา' ด้านบนเพื่อยืนยัน";
+        status.style.color = "var(--steam-green)";
+      }, err => {
+        status.innerText = "ไม่สามารถดึงตำแหน่งได้ กรุณาอนุญาตสิทธิ์การเข้าถึงตำแหน่งบนเบราว์เซอร์";
+        status.style.color = "var(--red)";
+      });
+    } else {
+      status.innerText = "เบราว์เซอร์ไม่รองรับ GPS";
+      status.style.color = "var(--red)";
+    }
+  }
+
+  function previewLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    currentLogoFile = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 240;
+        let width = img.width, height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        currentLogoBase64Full = canvas.toDataURL(file.type);
+        const prev = document.getElementById('logoPreview');
+        prev.src = currentLogoBase64Full;
+        prev.style.display = 'block';
+        document.getElementById('logoPlaceholder').style.display = 'none';
+        document.getElementById('btnUploadLogo').disabled = false;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function uploadLogo() {
+    if (!currentLogoBase64Full) return;
+    document.getElementById('btnUploadLogo').disabled = true;
+    startLoadingBar("กำลังอัปโหลดและบันทึกโลโก้โรงเรียน...");
+    google.script.run
+      .withSuccessHandler(res => {
+        g_SchoolLogoBase64 = currentLogoBase64Full;
+        stopLoadingBar(() => steamAlert(res.message));
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert("ผิดพลาด: " + (err.message || err))))
+      .uploadSchoolLogo(currentLogoFile ? currentLogoFile.name : 'logo.png', 'image/png', currentLogoBase64Full);
+  }
+
+  function saveSchoolData() {
+    const payload = {
+      schoolName: document.getElementById('sch_schoolName').value,
+      affiliation: document.getElementById('sch_affiliation').value,
+      schoolCode10: document.getElementById('sch_schoolCode10').value,
+      schoolCode8: document.getElementById('sch_schoolCode8').value,
+      systemName: 'ManStat',
+      directorName: document.getElementById('sch_directorName').value,
+      directorPosition: document.getElementById('sch_directorPosition').value,
+      contactPhone: document.getElementById('sch_contactPhone').value,
+      contactEmail: document.getElementById('sch_contactEmail').value,
+      address: document.getElementById('sch_address').value,
+      lat: document.getElementById('sch_lat').value,
+      lng: document.getElementById('sch_lng').value
+    };
+    startLoadingBar('กำลังบันทึกข้อมูลสถานศึกษา...');
+    google.script.run
+      .withSuccessHandler(res => stopLoadingBar(() => steamAlert(res.message)))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('บันทึกไม่สำเร็จ: ' + (err.message || err))))
+      .saveAdminSchoolInfo(payload);
+  }
+</script>

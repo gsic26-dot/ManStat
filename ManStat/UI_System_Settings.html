@@ -1,0 +1,474 @@
+<div id="view_settings" class="main-view" style="display:none;">
+  <div style="border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:14px;">
+    <h3 style="color:var(--orange); margin:0; font-size:18px; display:flex; align-items:center; gap:8px;">
+      <svg class="ui-ico-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      โมดูลตั้งค่าระบบและจัดการทะเบียนบุคลากร (System & Registry Management)
+    </h3>
+  </div>
+
+  <!-- แถบเมนูย่อยในหน้าตั้งค่าระบบ -->
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;">
+    <button type="button" class="btn-save-sm" id="sysBtn_sys_registry" onclick="openSystemSettings('sys_registry')">1. ทะเบียนประวัติบุคลากร (บันทึกแยกทุกรายการ)</button>
+    <button type="button" class="btn-save-sm admin-only-tab" id="sysBtn_sys_user_list" onclick="openSystemSettings('sys_user_list')">2. รายการผู้ใช้ทั้งหมด & เพิ่มบุคลากรใหม่ (*)</button>
+    <button type="button" class="btn-save-sm admin-only-tab" id="sysBtn_sys_user_config" onclick="openSystemSettings('sys_user_config')">3. การจัดการ User ระดับต่างๆ / ตั้งค่าผู้ใช้</button>
+    <button type="button" class="btn-save-sm admin-only-tab" id="sysBtn_sys_school" onclick="openSystemSettings('sys_school')">4. ข้อมูลสถานศึกษา (School Profile)</button>
+    <button type="button" class="btn-save-sm admin-only-tab" id="sysBtn_sys_holiday" onclick="openSystemSettings('sys_holiday')">5. ประกาศวันหยุดราชการ</button>
+  </div>
+
+  <!-- =========================================================================
+       SUB-TAB 1: ทะเบียนประวัติบุคลากร (บันทึกแยกทุกรายการ และคำนวณรายการสูงสุดอัตโนมัติ)
+  ========================================================================== -->
+  <div id="sys_registry" class="tab-content active">
+    <div style="background: rgba(102,192,244,0.1); border: 1px solid var(--steam-cyan); border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <div style="color:var(--steam-cyan); font-weight:bold; font-size:14.5px;">ทะเบียนประวัติบุคลากร (บันทึกแยกทุกรายการ และคำนวณรายการสูงสุดอัตโนมัติ)</div>
+        <div style="font-size:12px; color:var(--text-muted);">ข้อมูลที่บันทึกในส่วนนี้จะถูกส่งไปแสดงผลในเมนู <b>ข้อมูลวิทยฐานะ</b>, <b>ข้อมูลวุฒิลูกเสือ</b>, และ <b>ข้อมูลใบอนุญาต</b> ทางด้านซ้ายมือทันที</div>
+      </div>
+      <div id="registryTargetUserWrap" style="display:flex; align-items:center; gap:8px;">
+        <label style="font-size:12.5px; color:#fff; font-weight:bold;">เลือกบุคลากรที่ต้องการบันทึกประวัติ:</label>
+        <select id="reg_targetEmpId" class="steam-input" style="width:260px; margin:0; border-color:var(--steam-cyan); font-weight:bold;"></select>
+      </div>
+    </div>
+
+    <div class="grid-2" style="align-items:start;">
+      <!-- กล่องที่ 1: ประวัติวิทยฐานะ -->
+      <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+        <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">+ 1. บันทึกประวัติวิทยฐานะ (แยกจากวันบรรจุ)</h4>
+        <form onsubmit="handleSaveHistory(event, 'STANDING')">
+          <div class="input-group">
+            <label>ระดับวิทยฐานะ <span class="req-star">*</span></label>
+            <select id="std_level" class="steam-input" required>
+              <option value="ไม่มีวิทยฐานะ (ครูผู้ช่วย)">ไม่มีวิทยฐานะ (ครูผู้ช่วย)</option>
+              <option value="ครู คศ. 1">ครู คศ. 1</option>
+              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+              <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+              <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>วันที่ได้รับวิทยฐานะ <span class="req-star">*</span></label>
+              <input type="date" id="std_date" class="steam-input" required>
+            </div>
+            <div class="input-group">
+              <label>เลขที่คำสั่ง <span class="req-star">*</span></label>
+              <input type="text" id="std_order" class="steam-input" placeholder="ศธ 04009/..." required>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>แนบไฟล์คำสั่งแต่งตั้ง (PDF/JPG)</label>
+            <input type="file" id="std_file" class="steam-input" accept=".pdf,.jpg,.png">
+          </div>
+          <button type="submit" class="btn-steam">บันทึกประวัติวิทยฐานะ</button>
+        </form>
+      </div>
+
+      <!-- กล่องที่ 2: ประวัติวุฒิการศึกษา -->
+      <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+        <h4 style="color:var(--steam-green); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">+ 2. บันทึกประวัติวุฒิการศึกษา</h4>
+        <form onsubmit="handleSaveHistory(event, 'EDUCATION')">
+          <div class="grid-2">
+            <div class="input-group">
+              <label>ระดับการศึกษา <span class="req-star">*</span></label>
+              <select id="edu_level" class="steam-input" required>
+                <option value="ปริญญาตรี">ปริญญาตรี</option>
+                <option value="ป.บัณฑิต">ป.บัณฑิต</option>
+                <option value="ปริญญาโท">ปริญญาโท</option>
+                <option value="ปริญญาเอก">ปริญญาเอก</option>
+                <option value="ต่ำกว่าปริญญาตรี">ต่ำกว่าปริญญาตรี</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>อักษรย่อวุฒิ <span class="req-star">*</span></label>
+              <select id="edu_short" class="steam-input" required>
+                <option value="ค.บ.">ค.บ.</option>
+                <option value="ศษ.บ.">ศษ.บ.</option>
+                <option value="กศ.บ.">กศ.บ.</option>
+                <option value="วท.บ.">วท.บ.</option>
+                <option value="ศศ.บ.">ศศ.บ.</option>
+                <option value="ป.บัณฑิต">ป.บัณฑิต</option>
+                <option value="ค.ม.">ค.ม.</option>
+                <option value="ศษ.ม.">ศษ.ม.</option>
+                <option value="กศ.ม.">กศ.ม.</option>
+                <option value="ปร.ด.">ปร.ด.</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>วิชาเอก / สาขาวิชา <span class="req-star">*</span></label>
+            <input type="text" id="edu_major" class="steam-input" placeholder="เช่น ภาษาไทย, บริหารการศึกษา" required>
+          </div>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>สถาบันการศึกษา <span class="req-star">*</span></label>
+              <input type="text" id="edu_inst" class="steam-input" required>
+            </div>
+            <div class="input-group">
+              <label>ปี พ.ศ. ที่จบ <span class="req-star">*</span></label>
+              <input type="number" id="edu_year" class="steam-input" placeholder="2566" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-steam">บันทึกวุฒิการศึกษา</button>
+        </form>
+      </div>
+
+      <!-- กล่องที่ 3: วุฒิทางลูกเสือ -->
+      <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+        <h4 style="color:var(--orange); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">+ 3. บันทึกประวัติวุฒิทางลูกเสือ</h4>
+        <form onsubmit="handleSaveHistory(event, 'SCOUT')">
+          <div class="input-group">
+            <label>วุฒิทางลูกเสือ <span class="req-star">*</span></label>
+            <select id="sct_qual" class="steam-input" required>
+              <option value="B.T.C. (ขั้นความรู้เบื้องต้น)">B.T.C. (ขั้นความรู้เบื้องต้น)</option>
+              <option value="A.T.C. (ขั้นความรู้ชั้นสูง)">A.T.C. (ขั้นความรู้ชั้นสูง)</option>
+              <option value="W.B. (วูดแบดจ์ 2 ท่อน)">W.B. (วูดแบดจ์ 2 ท่อน)</option>
+              <option value="A.L.T. (3 ท่อน)">A.L.T. (ผู้ช่วยผู้ให้การฝึกอบรม 3 ท่อน)</option>
+              <option value="L.T. (4 ท่อน)">L.T. (ผู้ให้การฝึกอบรม 4 ท่อน)</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>ประเภทลูกเสือ <span class="req-star">*</span></label>
+              <select id="sct_type" class="steam-input">
+                <option value="ลูกเสือสำรอง">ลูกเสือสำรอง</option>
+                <option value="ลูกเสือสามัญ">ลูกเสือสามัญ</option>
+                <option value="ลูกเสือสามัญรุ่นใหญ่">ลูกเสือสามัญรุ่นใหญ่</option>
+                <option value="ลูกเสือวิสามัญ">ลูกเสือวิสามัญ</option>
+                <option value="ยุวกาชาด / เนตรนารี">ยุวกาชาด / เนตรนารี</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>เลขที่วุฒิบัตร / ปี พ.ศ. <span class="req-star">*</span></label>
+              <input type="text" id="sct_cert" class="steam-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-steam" style="background:var(--orange); color:#000;">บันทึกวุฒิลูกเสือ</button>
+        </form>
+      </div>
+
+      <!-- กล่องที่ 4: ใบอนุญาตประกอบวิชาชีพ -->
+      <div style="background:rgba(0,0,0,0.24); border:1px solid #2a475e; border-radius:6px; padding:16px;">
+        <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14.5px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">+ 4. บันทึกข้อมูลใบอนุญาตประกอบวิชาชีพ</h4>
+        <form onsubmit="handleSaveHistory(event, 'LICENSE')">
+          <div class="input-group">
+            <label>ประเภทใบอนุญาต <span class="req-star">*</span></label>
+            <select id="lic_type" class="steam-input" required>
+              <option value="ใบอนุญาตประกอบวิชาชีพครู">ใบอนุญาตประกอบวิชาชีพครู</option>
+              <option value="ใบอนุญาตผู้บริหารสถานศึกษา">ใบอนุญาตผู้บริหารสถานศึกษา</option>
+              <option value="ใบอนุญาตศึกษานิเทศก์">ใบอนุญาตศึกษานิเทศก์</option>
+              <option value="ใบอนุญาตปฏิบัติการสอนชั่วคราว">ใบอนุญาตปฏิบัติการสอนชั่วคราว</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>เลขที่ใบอนุญาต <span class="req-star">*</span></label>
+            <input type="text" id="lic_num" class="steam-input" required>
+          </div>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>วันที่ออกให้ <span class="req-star">*</span></label>
+              <input type="date" id="lic_issue" class="steam-input" required>
+            </div>
+            <div class="input-group">
+              <label>วันหมดอายุ <span class="req-star">*</span></label>
+              <input type="date" id="lic_exp" class="steam-input" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-steam">บันทึกใบอนุญาตประกอบวิชาชีพ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SUB-TAB 2: รายการผู้ใช้ทั้งหมด & เพิ่มบุคลากรใหม่ (ดอกจันสีแดงในฟิลด์สำคัญ)
+  ========================================================================== -->
+  <div id="sys_user_list" class="tab-content">
+    <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e; margin-bottom: 18px;">
+      <h4 style="color:var(--steam-green); margin-top:0; font-size:15px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">+ เพิ่มบุคลากรใหม่ (สร้างรหัส EXE / TCH / STF อัตโนมัติ)</h4>
+      <form id="quickAddStaffForm" onsubmit="handleQuickAddStaff(event)">
+        <div class="grid-3">
+          <div class="input-group">
+            <label>คำนำหน้า <span class="req-star">*</span></label>
+            <select id="new_prefix" class="steam-input" required>
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+              <option value="ว่าที่ร้อยตรี">ว่าที่ร้อยตรี</option>
+              <option value="ดร.">ดร.</option>
+            </select>
+          </div>
+          <div class="input-group"><label>ชื่อจริง <span class="req-star">*</span></label><input type="text" id="new_firstName" class="steam-input" required></div>
+          <div class="input-group"><label>นามสกุล <span class="req-star">*</span></label><input type="text" id="new_lastName" class="steam-input" required></div>
+          <div class="input-group"><label>เลขประจำตัวประชาชน (13 หลัก) <span class="req-star">*</span></label><input type="text" id="new_idCard" class="steam-input" maxlength="13" required></div>
+          <div class="input-group"><label>วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></label><input type="date" id="new_startDate" class="steam-input" required></div>
+          <div class="input-group">
+            <label>ตำแหน่ง <span class="req-star">*</span></label>
+            <select id="new_role" class="steam-input" required>
+              <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+              <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+              <option value="ครู คศ. 1" selected>ครู คศ. 1</option>
+              <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="เจ้าหน้าที่ธุรการโรงเรียน">เจ้าหน้าที่ธุรการโรงเรียน</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>กลุ่มสาระ / ฝ่ายงาน <span class="req-star">*</span></label>
+            <select id="new_dept" class="steam-input" required>
+              <option value="ภาษาไทย">กลุ่มสาระฯ ภาษาไทย</option>
+              <option value="คณิตศาสตร์">กลุ่มสาระฯ คณิตศาสตร์</option>
+              <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี</option>
+              <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระฯ สังคมศึกษาฯ</option>
+              <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระฯ สุขศึกษาและพลศึกษา</option>
+              <option value="ศิลปะ">กลุ่มสาระฯ ศิลปะ</option>
+              <option value="การงานอาชีพ">กลุ่มสาระฯ การงานอาชีพ</option>
+              <option value="ภาษาต่างประเทศ">กลุ่มสาระฯ ภาษาต่างประเทศ</option>
+              <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+              <option value="บริหารทั่วไป">บริหารทั่วไป</option>
+            </select>
+          </div>
+          <div class="input-group"><label>รหัสผ่านเริ่มต้น <span class="req-star">*</span></label><input type="text" id="new_pass" class="steam-input" value="123456" required></div>
+          <div class="input-group">
+            <label>ระดับสิทธิ์ User <span class="req-star">*</span></label>
+            <select id="new_access" class="steam-input" required>
+              <option value="User" selected>User (บุคลากรทั่วไป)</option>
+              <option value="Admin">Admin (หน.บุคคล / วิชาการ / ผู้อนุมัติ)</option>
+              <option value="Super Admin">Super Admin (ผู้ดูแลระบบสูงสุด)</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" id="new_email" value="">
+        <input type="hidden" id="new_phone" value="">
+        <div style="text-align:right;">
+          <button type="submit" class="btn-steam" style="width:220px;">+ สร้างบัญชีผู้ใช้ใหม่</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ตารางรายการผู้ใช้ทั้งหมด (คลิกปุ่มเพื่อไปหน้าตั้งค่าผู้ใช้แต่ละคนได้ทันที) -->
+    <h4 style="color:var(--steam-cyan); margin:0 0 10px 0; font-size:15px;">รายการผู้ใช้ทั้งหมดในระบบ (All Users Directory)</h4>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:9%;">รหัส</th>
+            <th style="width:24%; text-align:left; padding-left:12px;">ชื่อ-นามสกุล</th>
+            <th style="width:18%;">ตำแหน่ง</th>
+            <th style="width:16%;">กลุ่มสาระ / แผนก</th>
+            <th style="width:11%;">สิทธิ์ระบบ</th>
+            <th style="width:9%;">สถานะ</th>
+            <th style="width:13%;">จัดการผู้ใช้</th>
+          </tr>
+        </thead>
+        <tbody id="allUsersManagementTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SUB-TAB 3: การจัดการ User ระดับต่างๆ / การตั้งค่าผู้ใช้แต่ละคน & ตั้งค่ารักษาการ
+  ========================================================================== -->
+  <div id="sys_user_config" class="tab-content">
+    <div style="background: rgba(0,0,0,0.24); border: 1px solid var(--steam-cyan); border-radius: 6px; padding: 12px 15px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+      <div>
+        <h4 style="color: var(--steam-cyan); margin: 0; font-size: 14.5px;">กำหนดผู้รักษาราชการแทน (สายอนุมัติขั้นที่ 3)</h4>
+        <div style="color: var(--text-muted); font-size: 12px;">มีสิทธิ์กดอนุมัติใบลาและปรากฏชื่อในแบบฟอร์มราชการ A4 เมื่อเปลี่ยนผู้ลงนาม</div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+        <div>
+          <label style="color: #fff; font-size: 12px; font-weight: bold; display: block;">รักษาการคนที่ 1</label>
+          <select id="adminSettingDep1" class="steam-input" style="width: 190px; padding: 5px 8px; font-size: 13px; margin:0;"></select>
+        </div>
+        <div>
+          <label style="color: #fff; font-size: 12px; font-weight: bold; display: block;">รักษาการคนที่ 2</label>
+          <select id="adminSettingDep2" class="steam-input" style="width: 190px; padding: 5px 8px; font-size: 13px; margin:0;"></select>
+        </div>
+        <button type="button" class="btn-steam" style="background: var(--steam-green); color: #000; width: auto; padding: 6px 16px; font-size: 13px; height: 32px;" onclick="saveAdminDelegation()">บันทึกผู้รักษาการ</button>
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 6px; padding: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #2a475e; padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <h4 style="color:var(--orange); margin:0; font-size:15px;">ตั้งค่าข้อมูลผู้ใช้รายบุคคล & กำหนดระดับสิทธิ์ User</h4>
+        <select id="adminSelectMember" class="steam-input" style="width:320px; margin:0; border-color:var(--steam-cyan);" onchange="loadSelectedMemberToForm()">
+          <option value="">-- คลิกเลือกบุคลากรที่ต้องการตั้งค่า --</option>
+        </select>
+      </div>
+
+      <form id="fullMemberEditForm" onsubmit="handleUpdateFullMember(event)">
+        <div class="grid-3">
+          <div class="input-group"><label>รหัสบุคลากร</label><input type="text" id="ed_empId" class="steam-input" readonly style="background:#101822; color:var(--steam-cyan); font-weight:bold;"></div>
+          <div class="input-group"><label>ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label><input type="text" id="ed_newPassword" class="steam-input" placeholder="พิมพ์รหัสใหม่เพื่อรีเซ็ต..."></div>
+          <div class="input-group">
+            <label>ระดับสิทธิ์ User <span class="req-star">*</span></label>
+            <select id="ed_role" class="steam-input">
+              <option value="User">User (ผู้ใช้งานทั่วไป)</option>
+              <option value="Admin">Admin (หน.งานบุคคล / วิชาการ)</option>
+              <option value="Super Admin">Super Admin (ผู้ดูแลระบบสูงสุด)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>คำนำหน้า <span class="req-star">*</span></label>
+            <select id="ed_prefix" class="steam-input">
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+              <option value="ว่าที่ร้อยตรี">ว่าที่ร้อยตรี</option>
+              <option value="ดร.">ดร.</option>
+            </select>
+          </div>
+          <div class="input-group"><label>ชื่อจริง <span class="req-star">*</span></label><input type="text" id="ed_firstName" class="steam-input" required></div>
+          <div class="input-group"><label>นามสกุล <span class="req-star">*</span></label><input type="text" id="ed_lastName" class="steam-input" required></div>
+          <div class="input-group"><label>เลขประจำตัวประชาชน <span class="req-star">*</span></label><input type="text" id="ed_idCard" class="steam-input" maxlength="13" required></div>
+          <div class="input-group"><label>วันเดือนปีเกิด</label><input type="date" id="ed_birthDate" class="steam-input"></div>
+          <div class="input-group"><label>วันที่บรรจุเข้ารับราชการ <span class="req-star">*</span></label><input type="date" id="ed_startDate" class="steam-input" required></div>
+          <div class="input-group">
+            <label>ตำแหน่ง <span class="req-star">*</span></label>
+            <select id="ed_position" class="steam-input">
+              <option value="ผู้อำนวยการสถานศึกษา">ผู้อำนวยการสถานศึกษา</option>
+              <option value="รองผู้อำนวยการสถานศึกษา">รองผู้อำนวยการสถานศึกษา</option>
+              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+              <option value="ครู คศ. 1">ครู คศ. 1</option>
+              <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
+              <option value="ครู">ครู</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="เจ้าหน้าที่ธุรการโรงเรียน">เจ้าหน้าที่ธุรการโรงเรียน</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>ประเภทบุคลากร <span class="req-star">*</span></label>
+            <select id="ed_empType" class="steam-input">
+              <option value="ข้าราชการครูและบุคลากรทางการศึกษา">ข้าราชการครูและบุคลากรทางการศึกษา</option>
+              <option value="พนักงานราชการ">พนักงานราชการ</option>
+              <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+              <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>กลุ่มสาระ / ฝ่ายงาน <span class="req-star">*</span></label>
+            <select id="ed_department" class="steam-input">
+              <option value="ภาษาไทย">กลุ่มสาระฯ ภาษาไทย</option>
+              <option value="คณิตศาสตร์">กลุ่มสาระฯ คณิตศาสตร์</option>
+              <option value="วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี</option>
+              <option value="สังคมศึกษา ศาสนาและวัฒนธรรม">กลุ่มสาระฯ สังคมศึกษาฯ</option>
+              <option value="สุขศึกษาและพลศึกษา">กลุ่มสาระฯ สุขศึกษาและพลศึกษา</option>
+              <option value="ศิลปะ">กลุ่มสาระฯ ศิลปะ</option>
+              <option value="การงานอาชีพ">กลุ่มสาระฯ การงานอาชีพ</option>
+              <option value="ภาษาต่างประเทศ">กลุ่มสาระฯ ภาษาต่างประเทศ</option>
+              <option value="การศึกษาปฐมวัย">การศึกษาปฐมวัย</option>
+              <option value="บริหารทั่วไป">บริหารทั่วไป</option>
+            </select>
+          </div>
+          <div class="input-group"><label>เบอร์โทรศัพท์</label><input type="text" id="ed_phone" class="steam-input"></div>
+          <div class="input-group"><label>Email</label><input type="email" id="ed_email" class="steam-input"></div>
+          <div class="input-group">
+            <label>สถานะบัญชี</label>
+            <select id="ed_status" class="steam-input">
+              <option value="ปกติ">ปกติ</option>
+              <option value="ช่วยราชการ">ช่วยราชการ</option>
+              <option value="ลาศึกษาต่อ">ลาศึกษาต่อ</option>
+              <option value="ระงับสิทธิ์">ระงับสิทธิ์</option>
+            </select>
+          </div>
+          <div class="input-group"><label>ผู้ติดต่อฉุกเฉิน</label><input type="text" id="ed_emergName" class="steam-input"></div>
+          <div class="input-group"><label>เบอร์โทรฉุกเฉิน</label><input type="text" id="ed_emergPhone" class="steam-input"></div>
+          <div class="input-group"><label>ชั้นที่ปรึกษา</label><input type="text" id="ed_advisorClass" class="steam-input"></div>
+        </div>
+
+        <div style="border-top:1px dashed #2a475e; padding-top:10px; margin-top:6px;">
+          <div style="color:var(--orange); font-size:13px; font-weight:bold; margin-bottom:8px;">โควตาวันลาสูงสุดประจำปีของข้าราชการครู (ไม่มีลาพักผ่อน)</div>
+          <div class="grid-2">
+            <div class="input-group"><label>สิทธิ์ลาป่วยสูงสุด (วัน/ปี)</label><input type="number" id="ed_sickMax" class="steam-input" value="60"></div>
+            <div class="input-group"><label>สิทธิ์ลากิจส่วนตัวสูงสุด (วัน/ปี)</label><input type="number" id="ed_personalMax" class="steam-input" value="45"></div>
+          </div>
+        </div>
+
+        <div style="text-align:right;">
+          <button type="submit" class="btn-steam" style="width:auto; padding:9px 24px;">บันทึกการตั้งค่าผู้ใช้</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SUB-TAB 4: ข้อมูลสถานศึกษา (School Profile)
+  ========================================================================== -->
+  <div id="sys_school" class="tab-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:12px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <h4 style="color:var(--steam-cyan); margin:0; font-size:16px;">ตั้งค่าข้อมูลสถานศึกษา (School Profile)</h4>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-save-sm" style="border-color:var(--red); color:var(--red);" onclick="promptFiscalReset()">ตัดรอบปีงบประมาณใหม่</button>
+        <button type="button" class="btn-steam" style="width:auto; padding:8px 24px;" onclick="saveSchoolData()">บันทึกข้อมูลสถานศึกษา</button>
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.24); border: 1px solid #2a475e; border-radius: 6px; padding: 16px;">
+      <div class="grid-2">
+        <div class="input-group"><label>ชื่อสถานศึกษา <span class="req-star">*</span></label><input type="text" id="sch_schoolName" class="steam-input"></div>
+        <div class="input-group"><label>หน่วยงานต้นสังกัด <span class="req-star">*</span></label><input type="text" id="sch_affiliation" class="steam-input"></div>
+        <div class="input-group"><label>รหัสสถานศึกษา (10 หลัก)</label><input type="text" id="sch_schoolCode10" class="steam-input"></div>
+        <div class="input-group"><label>รหัส SMIS (8 หลัก)</label><input type="text" id="sch_schoolCode8" class="steam-input"></div>
+        <div class="input-group"><label>ชื่อ-นามสกุล ผู้อำนวยการ <span class="req-star">*</span></label><input type="text" id="sch_directorName" class="steam-input"></div>
+        <div class="input-group"><label>ตำแหน่งที่ระบุในเอกสารราชการ</label><input type="text" id="sch_directorPosition" class="steam-input"></div>
+        <div class="input-group"><label>ปีการศึกษาปัจจุบัน</label><input type="text" id="sch_academicYear" class="steam-input"></div>
+        <div class="input-group"><label>ปีงบประมาณปัจจุบัน</label><input type="text" id="sch_fiscalYear" class="steam-input"></div>
+        <div class="input-group"><label>เบอร์โทรศัพท์โรงเรียน</label><input type="text" id="sch_contactPhone" class="steam-input"></div>
+        <div class="input-group"><label>อีเมลโรงเรียน</label><input type="text" id="sch_contactEmail" class="steam-input"></div>
+        <div class="input-group" style="grid-column: 1 / -1;"><label>ที่อยู่สถานศึกษา</label><input type="text" id="sch_address" class="steam-input"></div>
+        <div class="input-group"><label>ละติจูด (Latitude)</label><input type="text" id="sch_lat" class="steam-input"></div>
+        <div class="input-group">
+          <label>ลองจิจูด (Longitude)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="sch_lng" class="steam-input" style="flex:1; margin:0;">
+            <button type="button" class="btn-save-sm" onclick="getLocationGPS()">ดึงพิกัดปัจจุบัน</button>
+          </div>
+          <span id="gpsStatus" style="font-size:11px; color:var(--text-muted);"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SUB-TAB 5: ประกาศวันหยุดราชการ
+  ========================================================================== -->
+  <div id="sys_holiday" class="tab-content">
+    <div class="grid-2" style="align-items: start; gap: 16px;">
+      <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e;">
+        <h4 style="color:var(--orange); margin-top:0; font-size:14px; border-bottom:1px dashed #2a475e; padding-bottom:8px;">สร้างประกาศวันหยุดใหม่</h4>
+        <div class="input-group">
+          <label>เลือกวันที่หยุดจากปฏิทิน <span class="req-star">*</span></label>
+          <input type="date" id="hol_date_picker" class="steam-input">
+        </div>
+        <div class="input-group">
+          <label>ประเภท / สาเหตุวันหยุด</label>
+          <select id="hol_reason_select" class="steam-input">
+            <option value="วันหยุดนักขัตฤกษ์ (ตามปฏิทินหลวง)" selected>วันหยุดนักขัตฤกษ์ (ตามปฏิทินหลวง)</option>
+            <option value="วันหยุดชดเชยวันสำคัญ">วันหยุดชดเชยวันสำคัญ</option>
+            <option value="วันหยุดราชการกรณีพิเศษ (ตามมติ ครม.)">วันหยุดราชการกรณีพิเศษ (ตามมติ ครม.)</option>
+            <option value="เหตุสุดวิสัย (ภัยธรรมชาติ / เหตุฉุกเฉิน)">เหตุสุดวิสัย (ภัยธรรมชาติ / เหตุฉุกเฉิน)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>รายละเอียด / ชื่อวันสำคัญ <span class="req-star">*</span></label>
+          <input type="text" id="hol_note" class="steam-input" placeholder="เช่น วันปิยมหาราช, วันแม่แห่งชาติ">
+        </div>
+        <button type="button" class="btn-steam" onclick="submitHolidayAdmin()">บันทึกและประกาศวันหยุด</button>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.24); padding: 16px; border-radius: 6px; border: 1px solid #2a475e;">
+        <h4 style="color:var(--steam-cyan); margin-top:0; font-size:14px; border-bottom:1px dashed var(--steam-cyan); padding-bottom:8px;">รายการวันหยุดที่ประกาศในระบบ</h4>
+        <div id="holidayDashboardContainer" style="max-height: 340px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>

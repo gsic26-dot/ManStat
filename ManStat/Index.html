@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <?!= include('CSS_Steam'); ?>
+  <style>
+    .online-presence-wrap { position: relative; display: inline-flex; align-items: center; }
+    .online-pill-btn { background: rgba(164, 208, 7, 0.12); border: 1px solid rgba(164, 208, 7, 0.45); color: var(--steam-green); padding: 5px 10px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; font-family: 'Sarabun', sans-serif; }
+    .online-pill-btn:hover { background: rgba(164, 208, 7, 0.22); border-color: var(--steam-green); }
+    .online-dropdown-box { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #171a21; border: 1px solid #2a475e; border-radius: 6px; min-width: 230px; box-shadow: 0 8px 24px rgba(0,0,0,0.85); z-index: 1500; padding: 10px 14px; }
+    .online-dropdown-box.show { display: block; }
+
+    .compact-stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+    .compact-stat-pill { background: rgba(0, 0, 0, 0.24); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; transition: 0.15s; }
+    .compact-stat-pill.clickable:hover { border-color: var(--steam-cyan); background: rgba(102, 192, 244, 0.08); }
+    .compact-stat-pill .stat-val { font-size: 17px; font-weight: 700; line-height: 1; }
+
+    .emp-filter-bar { background: rgba(0, 0, 0, 0.22); border: 1px solid #2a475e; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px; display: grid; grid-template-columns: 1.5fr 1fr 1.1fr 0.95fr auto; gap: 8px; align-items: center; }
+    .emp-filter-bar .steam-input { margin: 0; padding: 6px 10px; font-size: 13px; height: 34px; box-sizing: border-box; }
+
+    .emp-ribbon-list { display: flex; flex-direction: column; gap: 6px; }
+    .emp-ribbon-card { background: rgba(0, 0, 0, 0.24); border: 1px solid #2a475e; border-radius: 4px; transition: border-color 0.15s, background 0.15s; overflow: hidden; }
+    .emp-ribbon-card:hover { border-color: #3d6482; background: rgba(102, 192, 244, 0.04); }
+    .emp-ribbon-card.expanded { border-color: var(--steam-cyan); background: rgba(16, 24, 34, 0.9); }
+
+    .emp-ribbon-main { display: grid; grid-template-columns: minmax(230px, 1.35fr) minmax(290px, 1.6fr) minmax(200px, 1.05fr) 34px; gap: 12px; align-items: center; padding: 10px 14px; cursor: pointer; }
+
+    .emp-identity-zone { text-align: left; min-width: 0; }
+    .emp-name-line { font-size: 15px; font-weight: 700; color: #ffffff; line-height: 1.35; word-break: break-word; }
+    .emp-meta-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; word-break: break-word; }
+    .emp-meta-code { font-family: monospace; font-weight: 700; color: var(--steam-cyan); font-size: 12px; }
+    .emp-meta-sep { color: #4b6278; margin: 0 5px; }
+
+    .emp-stats-ribbon { display: grid; grid-template-columns: repeat(3, 1fr); border-left: 1px solid rgba(42, 71, 94, 0.65); border-right: 1px solid rgba(42, 71, 94, 0.65); padding: 0 4px; }
+    .emp-stat-col { padding: 2px 10px; text-align: left; border-right: 1px dashed rgba(42, 71, 94, 0.45); display: flex; flex-direction: column; justify-content: center; }
+    .emp-stat-col:last-child { border-right: none; }
+    .emp-stat-label { font-size: 11.5px; color: var(--text-muted); font-weight: 400; line-height: 1.2; margin-bottom: 2px; white-space: nowrap; }
+    .emp-stat-values { font-size: 13px; font-weight: 700; color: #ffffff; display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; line-height: 1.3; }
+    .emp-stat-values .val-unit { font-size: 12px; font-weight: 600; }
+    .emp-stat-col.is-zero .emp-stat-values { color: var(--text-muted); font-weight: 400; }
+    .emp-stat-col.is-zero .emp-stat-values .val-unit { color: var(--text-muted); font-weight: 400; }
+
+    .emp-latest-zone { text-align: left; padding-left: 4px; min-width: 0; }
+    .emp-latest-caption { font-size: 11px; color: var(--text-muted); line-height: 1.2; }
+    .emp-latest-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+    .emp-latest-value { font-size: 12.5px; color: #e6edf3; font-weight: 600; line-height: 1.35; word-break: break-word; }
+    .emp-status-pill { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; line-height: 1.3; }
+    .emp-status-approved { background: rgba(164, 208, 7, 0.14); color: var(--steam-green); border: 1px solid rgba(164, 208, 7, 0.4); }
+    .emp-status-pending { background: rgba(210, 153, 34, 0.16); color: var(--orange); border: 1px solid rgba(210, 153, 34, 0.45); }
+    .emp-status-rejected { background: rgba(248, 81, 73, 0.16); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.45); }
+
+    .emp-expand-btn { width: 30px; height: 30px; border-radius: 4px; border: 1px solid #2a475e; background: transparent; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; flex-shrink: 0; }
+    .emp-ribbon-card:hover .emp-expand-btn { color: var(--steam-cyan); border-color: #3d6482; }
+    .emp-ribbon-card.expanded .emp-expand-btn { background: rgba(102, 192, 244, 0.18); color: var(--steam-cyan); border-color: var(--steam-cyan); }
+
+    .emp-detail-panel { display: none; border-top: 1px solid #2a475e; background: rgba(16, 24, 34, 0.65); padding: 12px 16px; text-align: left; }
+    .emp-ribbon-card.expanded .emp-detail-panel { display: block; }
+
+    .emp-detail-summary-bar { display: grid; grid-template-columns: 1.1fr 1.2fr; gap: 14px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed #2a475e; font-size: 12.5px; color: var(--text-main); line-height: 1.6; }
+    .emp-detail-sec-head { font-size: 12px; font-weight: 700; color: var(--steam-cyan); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .emp-type-chip { display: inline-block; background: rgba(0,0,0,0.3); border: 1px solid #2a475e; border-radius: 3px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 12px; color: #e6edf3; }
+
+    .emp-hist-row { display: grid; grid-template-columns: 1.1fr 1.2fr 0.7fr 1.3fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(42, 71, 94, 0.45); font-size: 12.5px; }
+    .emp-hist-row:last-child { border-bottom: none; }
+    .emp-hist-row:hover { background: rgba(255, 255, 255, 0.02); }
+
+    .emp-empty-state { background: rgba(0, 0, 0, 0.2); border: 1px dashed #2a475e; border-radius: 4px; padding: 28px 20px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
+
+    @media screen and (max-width: 1024px) {
+      .emp-filter-bar { grid-template-columns: 1fr 1fr; }
+      .emp-filter-bar #searchStaffInput { grid-column: 1 / -1; }
+      .emp-ribbon-main { grid-template-columns: 1fr auto; gap: 8px; }
+      .emp-stats-ribbon { grid-column: 1 / -1; border-left: none; border-right: none; border-top: 1px dashed rgba(42, 71, 94, 0.55); border-bottom: 1px dashed rgba(42, 71, 94, 0.55); padding: 6px 0; }
+      .emp-latest-zone { grid-column: 1 / -1; padding-left: 0; }
+      .emp-detail-summary-bar { grid-template-columns: 1fr; gap: 10px; }
+      .emp-hist-row { grid-template-columns: 1fr auto; gap: 4px; padding: 8px 6px; }
+    }
+    @media screen and (max-width: 640px) {
+      .compact-stat-strip { grid-template-columns: 1fr; gap: 6px; }
+      .emp-filter-bar { grid-template-columns: 1fr; }
+      .emp-stats-ribbon { grid-template-columns: 1fr; gap: 4px; }
+      .emp-stat-col { border-right: none; border-bottom: 1px dashed rgba(42, 71, 94, 0.35); padding: 4px 2px; flex-direction: row; justify-content: space-between; align-items: center; }
+      .emp-stat-col:last-child { border-bottom: none; }
+      .emp-stat-label { margin-bottom: 0; }
+    }
+
+    .flatpickr-calendar { font-family: 'Sarabun', sans-serif !important; background: #171a21 !important; border: 1px solid #2a475e !important; box-shadow: 0 10px 25px rgba(0,0,0,0.85) !important; z-index: 99999 !important; }
+    .flatpickr-day.selected { background: var(--steam-cyan) !important; border-color: var(--steam-cyan) !important; color: #000 !important; font-weight: bold; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-weekdays, span.flatpickr-weekday { background: #101822 !important; color: var(--steam-cyan) !important; font-weight: bold !important; }
+    @media print {
+      @page { size: A4 portrait; margin: 8mm; }
+      html, body { height: 99%; overflow: hidden !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
+      #officialPrintContainer { page-break-after: avoid !important; page-break-inside: avoid !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. BATTERY LOADING SCREEN -->
+  <div id="loadingScreen" style="display:flex;">
+    <div class="battery-popup-box">
+      <div style="display:flex; justify-content:center; align-items:center; gap:6px;">
+        <span id="loadingTitleText" style="color:var(--steam-cyan); font-weight:bold; font-size:15px;">กำลังเชื่อมต่อฐานข้อมูล...</span>
+        <span id="loadingPercentText" style="color:var(--steam-green); font-weight:bold; font-size:15px;">(0%)</span>
+      </div>
+      <div class="battery-shell">
+        <div id="loadingBatteryBar" class="battery-bar"></div>
+      </div>
+      <div style="color:var(--text-muted); font-size:12px;">กรุณารอสักครู่ ระบบ ManStat กำลังซิงค์ข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- 2. LOGIN SCREEN -->
+  <div id="loginScreen" class="fullscreen-container" style="display:none;">
+    <div class="login-box">
+      <h2 id="lblLoginSystemName" style="margin-bottom:4px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>&nbsp;<span>ManStat Login</span>
+      </h2>
+      <div style="text-align:center; color:var(--steam-cyan); font-size:12px; font-weight:bold; margin-bottom:12px;" id="loginSchoolSubtitle">ระบบสารสนเทศสถิติการลาและทะเบียนประวัติบุคลากร</div>
+
+      <div style="background: rgba(0,0,0,0.28); border: 1px dashed #2a475e; border-radius: 4px; padding: 8px 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span id="dbDot" style="width:8px; height:8px; border-radius:50%; background:var(--steam-green); display:inline-block;"></span>
+          <span id="dbStatusLabel" style="font-size:11.5px; color:var(--text-main);">ฐานข้อมูลพร้อมใช้งาน</span>
+        </div>
+        <button type="button" class="btn-save-sm" style="padding:3px 8px; font-size:11px; display:inline-flex; align-items:center; gap:5px;" onclick="testDbConnectionManual()">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>ทดลองเชื่อมต่อ</span>
+        </button>
+      </div>
+
+      <div id="savedAccountsZone" style="display:none;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:5px;">บัญชีที่เคยใช้งานในเครื่องนี้:</div>
+        <div class="saved-acc-box" id="savedAccountsList"></div>
+      </div>
+
+      <input type="text" id="txtEmail" class="steam-input" placeholder="Email / ชื่อ-สกุล / รหัสบุคลากร (แอดมิน: superuser)" value="superuser">
+      <input type="password" id="txtPassword" class="steam-input" placeholder="Password">
+      <label class="remember-row"><input type="checkbox" id="chkRemember" checked> จดจำบัญชีและรหัสผ่านในเครื่องนี้</label>
+      <button type="button" class="btn-steam" style="width:100%;" onclick="handleLogin()" id="btnLogin">
+        <svg class="ui-ico" style="color:#000;" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>&nbsp;<span>เข้าสู่ระบบ (SIGN IN)</span>
+      </button>
+
+      <div style="margin-top:16px; padding-top:12px; border-top:1px dashed #2a475e; text-align:center; font-size:11px; color:var(--text-muted); line-height:1.5;">
+        <b style="color:var(--steam-cyan);">ManStat System</b><br>
+        ผู้พัฒนา: <span style="color:#fff;">นายธีรศักดิ์ มโนธรรม</span> & <span style="color:var(--steam-green);">Gemini 4 Argon</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. MAIN APPLICATION SCREEN -->
+  <div id="appScreen" style="display:none;">
+    <div class="top-bar">
+      <div class="top-brand-inline">
+        <span class="top-edustat-pill">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>&nbsp;<span>ManStat</span>
+        </span>
+        <span class="top-school-name" id="lblHeaderSchoolName">โรงเรียนชุมชนบ้านตะขบ</span>
+        <span class="top-school-divider">|</span>
+        <span class="top-school-aff" id="lblHeaderSchoolAff">สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3</span>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="online-presence-wrap">
+          <button type="button" class="online-pill-btn" onclick="toggleOnlineMinimalBox(event)" title="คลิกดูผู้ใช้งานและเวลาเข้าสู่ระบบ">
+            <svg class="ui-ico" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>&nbsp;<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="online-dropdown-box" id="onlineMinimalDropdown">
+            <div style="font-size:11px; color:var(--text-muted); border-bottom:1px solid #2a475e; padding-bottom:4px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span>กำลังใช้งาน</span>
+              <span style="color:var(--steam-green); font-weight:bold; display:inline-flex; align-items:center; gap:4px;">
+                <svg class="ui-ico-sm" style="color:var(--steam-green); width:12px; height:12px;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>&nbsp;<span>ออนไลน์</span>
+              </span>
+            </div>
+            <div style="font-size:13.5px; color:#fff; font-weight:bold;" id="minimalUserFullName">-</div>
+            <div style="font-size:11.5px; color:var(--steam-cyan); margin-top:2px;" id="minimalUserRole">-</div>
+            <div style="font-size:11.5px; color:var(--orange); margin-top:6px; border-top:1px dashed #2a475e; padding-top:5px;">
+              เวลาเข้าสู่ระบบ: <b id="minimalLoginTimeDetail" style="color:#fff;">-</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-menu" style="display:inline-flex; align-items:center; gap:5px;">
+          <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>&nbsp;<span class="profile-name" style="font-size:13.5px;" id="displayProfileName">Superuser</span>&nbsp;<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="profile-dropdown">
+            <div onclick="openSettingsModal()" style="display:flex; align-items:center; gap:6px;">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82"/></svg>&nbsp;<span>ตั้งค่าบัญชี</span>
+            </div>
+            <div onclick="handleLogout()" style="display:flex; align-items:center; gap:6px;">
+              <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>&nbsp;<span>ออกจากระบบ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout-wrapper">
+      <div class="left-menu" id="navMenu">
+        
+        <div class="menu-title" style="display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>&nbsp;<span>ระบบการลา (Leave System)</span>
+        </div>
+        
+        <button type="button" class="menu-btn active" id="btnNav_dashboard" onclick="switchView('dashboard')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>&nbsp;<span>สถิติการลา</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_leave" onclick="switchView('leave')" style="color: var(--steam-green); font-weight:bold;">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>&nbsp;<span>ยื่นคำร้อง</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_requests" onclick="switchView('requests')" style="color: var(--orange);">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>&nbsp;<span>รายการคำร้อง</span>
+          </div>
+          <span id="badgePendingCount" class="sidebar-menu-badge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_tracking" onclick="switchView('tracking')" style="color: var(--steam-cyan); font-weight:bold;">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>&nbsp;<span>ติดตามคำร้อง</span>
+          </div>
+          <span id="badgeTrackingCount" class="sidebar-menu-badge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_analytics" onclick="switchView('analytics')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>&nbsp;<span>กราฟสถิติ</span>
+          </div>
+        </button>
+
+        <div class="menu-title" style="margin-top:12px; border-top:1px dashed #2a475e; padding-top:10px; color:var(--steam-green); display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>การบริหารและภาระงาน</span>
+        </div>
+
+        <button type="button" class="menu-btn" id="btnNav_org_chart" onclick="switchView('org_chart')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="9" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5"/><path d="M5 17v-5h14v5"/></svg>&nbsp;<span>แผนผังการบริหารงาน</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_workload" onclick="switchView('workload')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" style="color:var(--steam-green);" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>&nbsp;<span>ภาระงานของบุคลากร</span>
+          </div>
+        </button>
+
+        <div class="menu-title" style="margin-top:12px; border-top:1px dashed #2a475e; padding-top:10px; color:var(--steam-cyan); display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>ทะเบียนประวัติ</span>
+        </div>
+        
+        <button type="button" class="menu-btn" id="btnNav_dir_standing" onclick="switchView('dir_standing')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>&nbsp;<span>วิทยฐานะ</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_dir_scout" onclick="switchView('dir_scout')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" style="color:var(--orange);" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>&nbsp;<span>วุฒิลูกเสือ</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_dir_license" onclick="switchView('dir_license')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" style="color:var(--steam-green);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>&nbsp;<span>ใบอนุญาตประกอบวิชาชีพ</span>
+          </div>
+        </button>
+
+        <div class="menu-title" style="margin-top:12px; border-top:1px dashed #2a475e; padding-top:10px; color:var(--orange); display:flex; align-items:center; gap:6px;">
+          <svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09"/></svg>&nbsp;<span>ตั้งค่าระบบ</span>
+        </div>
+        
+        <button type="button" class="menu-btn" id="btnNav_feedback" onclick="switchView('feedback')" style="color: var(--steam-cyan);">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>&nbsp;<span>แจ้งปรับปรุงระบบ</span>
+          </div>
+          <span id="badgeFeedbackCount" class="sidebar-menu-badge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="menu-btn" id="adminLinkBtn" onclick="goToAdminPage(event)" style="color: var(--orange); font-weight:bold;">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09"/></svg>&nbsp;<span>ตั้งค่าระบบ</span>
+          </div>
+        </button>
+
+        <button type="button" class="menu-btn" id="btnNav_delegate" style="display:none; color:var(--steam-cyan);" onclick="openSidebarDrawer('delegate')">
+          <div class="menu-btn-content">
+            <svg class="ui-ico" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>&nbsp;<span>เปลี่ยนผู้ลงนาม</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="main-content">
+        
+        <div id="view_dashboard" class="main-view">
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #2a475e; padding-bottom:10px; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap:6px;">
+                <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>&nbsp;<span>สรุปสถิติการลาบุคลากร</span>
+              </h3>
+              <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">
+                ตรวจสอบสถิติการลาและประวัติการลาของบุคลากร • 
+                ปีการศึกษา <span id="lblAcadYear" style="color:var(--steam-cyan); font-weight:bold;">2569</span> | 
+                ปีงบประมาณ <span id="lblFiscalYear" style="color:var(--steam-green); font-weight:bold;">2570</span> | 
+                ผู้อำนวยการ: <span id="lblDirectorHeader" style="color:#fff;">นายธีรศักดิ์ มโนธรรม</span>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn-save-sm" style="border-color:var(--orange); color:var(--orange); display:inline-flex; align-items:center; gap:5px;" onclick="promptLinkSpreadsheetManual()">
+                <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>&nbsp;<span>เชื่อมโยงชีตฐานข้อมูล</span>
+              </button>
+              <button type="button" class="btn-save-sm" onclick="refreshAllData()" style="display:inline-flex; align-items:center; gap:5px;">
+                <svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>&nbsp;<span>รีเฟรชข้อมูล</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="delegateBanner" style="display:none; background: rgba(102, 192, 244, 0.15); border-left: 3px solid var(--steam-cyan); padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; align-items: center; justify-content:space-between; gap: 12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>&nbsp;<div style="font-size:12.5px; color:#fff;">
+                ผู้มีอำนาจลงนามอนุมัติวันนี้: <span id="bannerDelegateName" style="color:var(--orange); font-weight:bold;">-</span>
+              </div>
+            </div>
+            <button type="button" class="btn-save-sm" onclick="openSidebarDrawer('delegate')" style="display:inline-flex; align-items:center; gap:5px;"><svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>&nbsp;<span>เปลี่ยนผู้ลงนาม</span></button>
+          </div>
+
+          <div class="compact-stat-strip">
+            <div class="compact-stat-pill" style="border-left: 3px solid var(--steam-cyan);">
+              <span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:5px;">
+                <svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>&nbsp;<span>บุคลากรทั้งหมด</span>
+              </span>
+              <span class="stat-val" style="color:#fff;" id="cardTotalUsers">0</span>
+            </div>
+            <div class="compact-stat-pill clickable" style="border-left: 3px solid var(--orange); cursor:pointer;" onclick="switchView('tracking')">
+              <span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:5px;">
+                <svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>&nbsp;<span>คำร้องรออนุมัติ</span>
+              </span>
+              <span class="stat-val" style="color:var(--orange);" id="cardPendingLeaves">0</span>
+            </div>
+            <div class="compact-stat-pill clickable" style="border-left: 3px solid var(--steam-green); cursor:pointer;" onclick="switchView('tracking')">
+              <span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:5px;">
+                <svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>&nbsp;<span>อนุมัติสำเร็จแล้ว</span>
+              </span>
+              <span class="stat-val" style="color:var(--steam-green);" id="cardApprovedLeaves">0</span>
+            </div>
+          </div>
+
+          <div class="emp-filter-bar">
+            <input type="text" id="searchStaffInput" class="steam-input" placeholder="ค้นหาชื่อ-นามสกุล หรือ รหัสบุคลากร (เช่น TCH-001)..." oninput="filterDashboardUsers()">
+            
+            <select id="filterStaffCategory" class="steam-input" onchange="filterDashboardUsers()">
+              <option value="ALL">ประเภทบุคลากร: ทั้งหมด</option>
+              <option value="EXE">ผู้บริหารสถานศึกษา</option>
+              <option value="TCH">ข้าราชการครู / บุคลากรทางการศึกษา</option>
+              <option value="STF">บุคลากรสายสนับสนุน</option>
+            </select>
+
+            <select id="filterStaffDept" class="steam-input" onchange="filterDashboardUsers()">
+              <option value="ALL">กลุ่มสาระ / งาน: ทั้งหมด</option>
+            </select>
+
+            <select id="filterLeaveStatus" class="steam-input" onchange="filterDashboardUsers()">
+              <option value="ALL">ประวัติการลา: ทั้งหมด</option>
+              <option value="HAS_LEAVE">มีประวัติการลาแล้ว</option>
+              <option value="PENDING">มีคำร้องรออนุมัติ</option>
+              <option value="NEVER">ยังไม่เคยลา</option>
+            </select>
+
+            <button type="button" class="btn-save-sm" style="height:34px; padding:0 12px; display:inline-flex; align-items:center; gap:5px;" onclick="resetDashboardFilters()"><svg class="ui-ico-sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>&nbsp;<span>ล้างตัวกรอง</span></button>
+          </div>
+
+          <div id="employeeRibbonListContainer" class="emp-ribbon-list"></div>
+
+        </div>
+
+        <?!= include('UI_Main_Views'); ?>
+
+        <div class="edustat-footer">
+          <b style="color:var(--steam-cyan);">ManStat</b> — ระบบสารสนเทศสถิติการลาและทะเบียนประวัติบุคลากร<br>
+          ผู้พัฒนา: <b style="color:#fff;">นายธีรศักดิ์ มโนธรรม</b> และ <b style="color:var(--steam-green);">Gemini 4 Argon</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="bnav-item active" onclick="switchView('dashboard')">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>สถิติการลา</span>
+      </div>
+      <div class="bnav-item" onclick="switchView('org_chart')" style="color:var(--steam-cyan);">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5"/><path d="M5 17v-5h14v5"/></svg>
+        <span>แผนผังองค์กร</span>
+      </div>
+      <div class="bnav-item" onclick="switchView('workload')" style="color:var(--steam-green);">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        <span>ภาระงาน</span>
+      </div>
+      <div class="bnav-item" onclick="switchView('tracking')" style="color:var(--orange);">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>ติดตามคำร้อง</span>
+      </div>
+      <div class="bnav-item" onclick="goToAdminPage(event)" style="color:var(--orange);">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82"/></svg>
+        <span>ตั้งค่าระบบ</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="officialPrintContainer" style="display:none;"></div>
+  <?!= include('JS_Core'); ?>
+  <?!= include('JS_Plugin_Leave'); ?>
+  <?!= include('JS_Plugin_Registry'); ?>
+  <?!= include('JS_Plugin_OrgWorkload'); ?>
+  <script>
+    function promptLinkSpreadsheetManual() {
+      steamPrompt(
+        'วางลิงก์ URL ของไฟล์ Google Sheets ฐานข้อมูลจริง (หรือ Spreadsheet ID) เพื่อบังคับเชื่อมโยงฐานข้อมูล:',
+        function(val) {
+          if (!val || !val.trim()) return;
+          startLoadingBar('กำลังเชื่อมโยงไฟล์ Google Sheets ฐานข้อมูล...');
+          google.script.run
+            .withSuccessHandler(function(bundle) {
+              stopLoadingBar(function() {
+                if (bundle && bundle.status === 'error') {
+                  steamAlert('เชื่อมโยงไม่สำเร็จ: ' + bundle.message, 'ข้อผิดพลาด');
+                  return;
+                }
+                if (bundle) _applyBundleToStateAndRender(bundle);
+                steamAlert(bundle.linkMessage || 'เชื่อมโยงฐานข้อมูลและดึงรายชื่อบุคลากรสำเร็จ!', 'สำเร็จ');
+              });
+            })
+            .withFailureHandler(function(err) {
+              stopLoadingBar(function() {
+                steamAlert('เกิดข้อผิดพลาด: ' + (err.message || err));
+              });
+            })
+            .linkCustomSpreadsheetAndReload(val.trim());
+        },
+        'เชื่อมโยงไฟล์ Google Sheets ฐานข้อมูลจริง'
+      );
+    }
+  </script>
+</body>
+</html>
