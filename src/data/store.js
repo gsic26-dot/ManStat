@@ -3,14 +3,17 @@
  * MANSTAT MODERN - PURE JAVASCRIPT PERSISTENCE STORE (store.js)
  * =========================================================================
  * Robust, zero-dependency, JSON-file-backed data store.
- * Fully compatible with Windows Application Control (Zero C++ .node binaries).
- * Seamlessly migratable to Supabase / PostgreSQL in Cloud Deployment.
+ * Fully compatible with Vercel Serverless (read-only filesystem safe).
  * =========================================================================
  */
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-const dataDir = path.join(__dirname, '../../data');
+// In Serverless (Vercel / AWS Lambda), the deployment root is read-only.
+// Only os.tmpdir() (/tmp) is writable.
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+const dataDir = isServerless ? os.tmpdir() : path.join(__dirname, '../../data');
 const dbFilePath = path.join(dataDir, 'manstat_db.json');
 
 // Initial baseline template if db does not exist yet
@@ -75,7 +78,7 @@ const defaultDatabase = {
       role: 'ผู้อำนวยการสถานศึกษา',
       Position: 'ผู้อำนวยการสถานศึกษา',
       dutyDay: 'จันทร์',
-      password: 'sha256$a1b2c3d4e5f67890$c733e45e381a93bce9d310a83bc85acf992d412b62739137ff5c0dd20c19a6a3',
+      password: 'sha256$a1b2c3d4e5f67890$4b5be9f5f054aa62af0c63019b93c47284df267a970edcb6b0f8f15a263f713c',
       isPasswordHashed: true,
       accessLevel: 'Superuser',
       status: 'ปกติ',
@@ -115,7 +118,7 @@ const defaultDatabase = {
       role: 'ครู ชำนาญการพิเศษ',
       Position: 'ครู ชำนาญการพิเศษ',
       dutyDay: 'อังคาร',
-      password: 'sha256$a1b2c3d4e5f67890$c733e45e381a93bce9d310a83bc85acf992d412b62739137ff5c0dd20c19a6a3',
+      password: 'sha256$a1b2c3d4e5f67890$4b5be9f5f054aa62af0c63019b93c47284df267a970edcb6b0f8f15a263f713c',
       isPasswordHashed: true,
       accessLevel: 'Admin',
       status: 'ปกติ',
@@ -173,32 +176,43 @@ const defaultDatabase = {
 let inMemoryDb = null;
 
 function ensureDataDirectory() {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+  } catch (err) {
+    // Read-only filesystem warning
+    console.warn('[Store Warning] Directory creation skipped/failed:', err.message);
   }
 }
 
 function loadDatabase() {
   if (inMemoryDb) return inMemoryDb;
-  ensureDataDirectory();
-  if (fs.existsSync(dbFilePath)) {
-    try {
+  
+  try {
+    ensureDataDirectory();
+    if (fs.existsSync(dbFilePath)) {
       const raw = fs.readFileSync(dbFilePath, 'utf8');
       inMemoryDb = JSON.parse(raw);
       return inMemoryDb;
-    } catch (e) {
-      console.error('[Store Error] Failed to parse db file, initializing default:', e);
     }
+  } catch (e) {
+    console.warn('[Store Notice] Read/init db file fallback:', e.message);
   }
+
   inMemoryDb = JSON.parse(JSON.stringify(defaultDatabase));
   saveDatabase();
   return inMemoryDb;
 }
 
 function saveDatabase() {
-  ensureDataDirectory();
   if (!inMemoryDb) inMemoryDb = JSON.parse(JSON.stringify(defaultDatabase));
-  fs.writeFileSync(dbFilePath, JSON.stringify(inMemoryDb, null, 2), 'utf8');
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(dbFilePath, JSON.stringify(inMemoryDb, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[Store Notice] Disk write skipped in serverless/read-only environment:', err.message);
+  }
 }
 
 function getDatabase() {
