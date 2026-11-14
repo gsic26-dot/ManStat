@@ -9,6 +9,9 @@
           <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">กำหนดข้อมูลทั่วไป พิกัดภูมิศาสตร์</div>
         </div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="btn-circle-glow glow-cyan" id="btnImportFromGoogleSheets" onclick="openCloudMigrationModal()" title="นำเข้าฐานข้อมูลจาก Google Sheets สู่ Cloud PostgreSQL" aria-label="นำเข้าฐานข้อมูลจาก Google Sheets">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
           <button type="button" class="btn-circle-glow glow-cyan" id="btnBackupDatabase" onclick="triggerDatabaseBackupNow()" title="สำรองข้อมูล" aria-label="สำรองข้อมูล">
             <svg class="ui-ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>

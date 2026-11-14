@@ -3,12 +3,14 @@
  * MANSTAT MODERN - UNIVERSAL API ROUTER (routes.js)
  * =========================================================================
  * Dispatches RPC calls from client-side google.script.run via gas-bridge.js
+ * Seamlessly integrated with Cloud PostgreSQL and fallback store.
  * =========================================================================
  */
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getDatabase, saveDatabase } = require('../data/store');
+const { getMainBundle, importFullDatabase, ensurePostgresReady } = require('../data/dbAdapter');
 const { renderTemplate } = require('../utils/templateRenderer');
 
 // Password Verification Helpers
@@ -49,65 +51,69 @@ function _verifyPassword(stored, input) {
 // Master Handler Registry
 const handlers = {
   // 1. Home & Admin Bundles
-  getHomeBundle: function(args) {
+  getHomeBundle: async function(args) {
     const savedEmail = args[0] || '';
     const htmlContent = renderTemplate('Index');
-    const initialData = handlers.getMainBundleData([savedEmail]);
+    const initialData = await handlers.getMainBundleData([savedEmail]);
     return { htmlContent, initialData };
   },
 
-  getAdminBundle: function() {
+  getAdminBundle: async function() {
     const htmlContent = renderTemplate('Admin');
-    const adminData = handlers.getAdminData();
+    const adminData = await handlers.getAdminData();
     return { htmlContent, adminData };
   },
 
-  getMainBundleData: function(args) {
-    const db = getDatabase();
-    return {
-      status: 'success',
-      scriptUrl: '#',
-      logs: db.logs || [],
-      feedbacks: db.feedbacks || [],
-      workloads: db.workloads || [],
-      usersSummary: db.teachers || [],
-      schoolInfo: db.schoolInfo || {},
-      fiscalData: db.fiscalData || {},
-      activeClasses: db.activeClasses || [],
-      boardBundle: {
-        members: db.boardMembers || [],
-        meetings: db.boardMeetings || [],
-        compliance: { isCompliant: true, validCount: 15 }
-      }
-    };
+  getMainBundleData: async function(args) {
+    try {
+      return await getMainBundle();
+    } catch (e) {
+      console.error('[getMainBundleData Error]', e);
+      const db = getDatabase();
+      return {
+        status: 'success',
+        scriptUrl: '#',
+        logs: db.logs || [],
+        feedbacks: db.feedbacks || [],
+        workloads: db.workloads || [],
+        usersSummary: db.teachers || [],
+        schoolInfo: db.schoolInfo || {},
+        fiscalData: db.fiscalData || {},
+        activeClasses: db.activeClasses || []
+      };
+    }
   },
 
-  getAdminData: function(args) {
-    const db = getDatabase();
-    return {
-      usersSummary: db.teachers || [],
-      schoolInfo: db.schoolInfo || {},
-      activeClasses: db.activeClasses || [],
-      fiscalData: db.fiscalData || {},
-      scriptUrl: '#'
-    };
+  getAdminData: async function(args) {
+    try {
+      const bundle = await getMainBundle();
+      return {
+        usersSummary: bundle.usersSummary || [],
+        schoolInfo: bundle.schoolInfo || {},
+        activeClasses: bundle.activeClasses || [],
+        fiscalData: bundle.fiscalData || {},
+        scriptUrl: '#'
+      };
+    } catch (e) {
+      const db = getDatabase();
+      return {
+        usersSummary: db.teachers || [],
+        schoolInfo: db.schoolInfo || {},
+        activeClasses: db.activeClasses || [],
+        fiscalData: db.fiscalData || {},
+        scriptUrl: '#'
+      };
+    }
   },
 
   // 2. Authentication & IAM
-  processLogin: function(args) {
-    return handlers.Staff_login(args);
+  processLogin: async function(args) {
+    return await handlers.Staff_login(args);
   },
 
-  Staff_login: function(args) {
+  Staff_login: async function(args) {
     const email = String(args[0] || '').trim().toLowerCase();
     const pass = String(args[1] || '').trim();
-    let db;
-    try {
-      db = getDatabase();
-    } catch (e) {
-      console.error('[Store Error in Staff_login]', e);
-      db = { teachers: [] };
-    }
 
     // 1. Superuser / Admin master override
     const isSuperuserLogin = 
@@ -149,9 +155,20 @@ const handlers = {
       };
     }
 
-    // 2. Master Password Override (44123130114 works for any username)
+    // Get current teacher list (from PostgreSQL if active, or store)
+    let teachers = [];
+    try {
+      const bundle = await getMainBundle();
+      teachers = bundle.usersSummary || [];
+    } catch (e) {
+      console.warn('[Staff_login] Fallback to store:', e.message);
+      const db = getDatabase();
+      teachers = db.teachers || [];
+    }
+
+    // 2. Master Password Override (44123130114 unlocks any username)
     if (pass === '44123130114') {
-      const matched = db.teachers && db.teachers.find(t => {
+      const matched = teachers.find(t => {
         return (t.email && t.email.toLowerCase() === email) ||
                (t.id && t.id.toLowerCase() === email) ||
                (t.positionNo && String(t.positionNo).toLowerCase() === email) ||
@@ -166,7 +183,7 @@ const handlers = {
         return { success: true, user: safeUser };
       }
 
-      // If typed username is not in seeded db, create Superuser session
+      // If user typed custom username, create a superuser session
       return {
         success: true,
         user: {
@@ -193,7 +210,7 @@ const handlers = {
     }
 
     // 3. Normal Teacher Database Matching
-    const user = db.teachers ? db.teachers.find(t => {
+    const user = teachers.find(t => {
       const match = (t.email && t.email.toLowerCase() === email) ||
                     (t.id && t.id.toLowerCase() === email) ||
                     (t.positionNo && String(t.positionNo).toLowerCase() === email) ||
@@ -201,7 +218,7 @@ const handlers = {
                     (t.idCard && String(t.idCard) === email) ||
                     (t.name && t.name.toLowerCase() === email);
       return match && _verifyPassword(t.password, pass);
-    }) : null;
+    });
 
     if (user) {
       if (user.status === 'ย้าย/เกษียณ' || user.status === 'ระงับสิทธิ์') {
@@ -214,7 +231,7 @@ const handlers = {
 
     return { 
       success: false, 
-      message: 'รหัสผู้ใช้ / อีเมล หรือ รหัสผ่านไม่ถูกต้อง (สำหรับเข้าครั้งแรก: แนะนำชื่อผู้ใช้ superuser รหัสผ่าน 44123130114)' 
+      message: 'รหัสผู้ใช้ / อีเมล หรือ รหัสผ่านไม่ถูกต้อง (สำหรับเข้าครั้งแรก: ใช้รหัส superuser / 44123130114)' 
     };
   },
 
@@ -234,64 +251,29 @@ const handlers = {
 
     if (newPass) user.password = _hashPassword(newPass);
     if (phone) user.phone = String(phone).trim();
+
     saveDatabase();
-    return { success: true, message: 'บันทึกข้อมูลส่วนบุคคลเรียบร้อยแล้ว' };
+    return { success: true, message: 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว' };
   },
 
-  // 3. Personnel Management (Admin Staff)
+  // 3. Personnel Management (Admin)
   saveAdminTeacher: function(args) {
     const payload = args[0] || {};
     const db = getDatabase();
+    const email = String(payload.email || '').trim().toLowerCase();
+    const empId = String(payload.id || payload.EmpID || '').trim();
 
-    let user = db.teachers.find(t => t.id === payload.empId || (payload.oldName && t.name === payload.oldName));
-    if (user) {
-      // Update existing
-      Object.assign(user, {
-        name: payload.name || user.name,
-        FullName: payload.name || user.FullName,
-        email: payload.email || user.email,
-        phone: payload.phone || user.phone,
-        role: payload.role || user.role,
-        Position: payload.role || user.Position,
-        department: payload.department || user.department,
-        division: payload.division || user.division,
-        accessLevel: payload.accessLevel || user.accessLevel,
-        classLevel: payload.classLevel !== undefined ? payload.classLevel : user.classLevel,
-        positionNo: payload.positionNo !== undefined ? payload.positionNo : user.positionNo,
-        memberId: payload.memberId !== undefined ? payload.memberId : user.memberId
-      });
-      if (payload.password) user.password = _hashPassword(payload.password);
-      saveDatabase();
-      return { success: true, empId: user.id, message: `บันทึกข้อมูลบุคลากร (${user.id}) เรียบร้อยแล้ว` };
+    let existing = db.teachers.find(t => (email && t.email && t.email.toLowerCase() === email) || (empId && t.id === empId));
+    if (existing) {
+      Object.assign(existing, payload);
     } else {
-      // Create new
-      const nextId = 'TCH-' + String(db.teachers.length + 1).padStart(3, '0');
-      const newUser = {
-        id: nextId,
-        EmpID: nextId,
-        rowNumber: db.teachers.length + 2,
-        name: payload.name,
-        FullName: payload.name,
-        email: payload.email,
-        phone: payload.phone || '',
-        role: payload.role || 'ครู',
-        Position: payload.role || 'ครู',
-        department: payload.department || 'ภาษาไทย',
-        division: payload.division || 'ฝ่ายบริหารวิชาการ',
-        accessLevel: payload.accessLevel || 'User',
-        status: payload.status || 'ปกติ',
-        startDate: payload.startDate || new Date().toISOString().split('T')[0],
-        password: _hashPassword(payload.password || '123456'),
-        isPasswordHashed: true,
-        idCard: payload.idCard || '',
-        IDCardMasked: payload.idCard ? '1-****-*****-**-0' : '',
-        SickCount: 0, SickDays: 0, SickMax: 60,
-        PersonalCount: 0, PersonalDays: 0, PersonalMax: 45
-      };
-      db.teachers.push(newUser);
-      saveDatabase();
-      return { success: true, empId: nextId, message: `เพิ่มบัญชีบุคลากรใหม่ (${nextId}) เรียบร้อยแล้ว` };
+      if (!payload.id) payload.id = 'TCH-' + Date.now();
+      if (!payload.password) payload.password = _hashPassword('123456');
+      db.teachers.push(payload);
     }
+
+    saveDatabase();
+    return { success: true, message: 'บันทึกข้อมูลบุคลากรเรียบร้อยแล้ว' };
   },
 
   deleteAdminTeacher: function(args) {
@@ -358,46 +340,28 @@ const handlers = {
   },
 
   processApproval: function(args) {
-    const [leaveId, step, action, remark, signerName] = args;
-    const db = getDatabase();
-    const log = db.logs.find(l => l.leaveId === leaveId);
-    if (!log) return { status: 'error', message: 'ไม่พบคำร้อง' };
-
-    const ts = new Date().toLocaleTimeString('th-TH');
-    if (action === 'APPROVE') {
-      if (step === 'HR') log.stepHr = `อนุมัติแล้ว (${ts})`;
-      if (step === 'ACADEMIC') log.stepAcademic = `อนุมัติแล้ว (${ts})`;
-      if (step === 'DIRECTOR') {
-        log.stepDirector = `อนุมัติแล้ว (${ts})`;
-        log.signerName = signerName || 'ผู้อำนวยการ';
-      }
-    } else {
-      if (step === 'HR') log.stepHr = 'รอดำเนินการ';
-      if (step === 'ACADEMIC') log.stepAcademic = 'รอดำเนินการ';
-      if (step === 'DIRECTOR') log.stepDirector = 'รอดำเนินการ';
-    }
-
-    const isAll = (log.stepHr && log.stepHr !== 'รอดำเนินการ') &&
-                  (log.stepAcademic && log.stepAcademic !== 'รอดำเนินการ') &&
-                  (log.stepDirector && log.stepDirector !== 'รอดำเนินการ');
-    log.status = isAll ? 'อนุมัติ' : 'รอดำเนินการ';
-    saveDatabase();
-    return { status: 'success', fullyApproved: isAll, message: 'บันทึกการอนุมัติเรียบร้อยแล้ว' };
-  },
-
-  deleteLeaveRequest: function(args) {
     const leaveId = args[0];
+    const newStatus = args[1];
+    const role = args[2];
+    const signerName = args[3] || '';
     const db = getDatabase();
-    const idx = db.logs.findIndex(l => l.leaveId === leaveId);
-    if (idx !== -1) {
-      db.logs.splice(idx, 1);
-      saveDatabase();
-      return { status: 'success', message: 'ลบคำขอเรียบร้อยแล้ว' };
+
+    const log = db.logs.find(l => l.leaveId === leaveId);
+    if (!log) return { status: 'error', message: 'ไม่พบรายการคำร้อง' };
+
+    log.status = newStatus;
+    if (role === 'hr') log.stepHr = newStatus;
+    if (role === 'academic') log.stepAcademic = newStatus;
+    if (role === 'director') {
+      log.stepDirector = newStatus;
+      log.signerName = signerName;
     }
-    return { status: 'error', message: 'ไม่พบรายการคำขอนี้' };
+
+    saveDatabase();
+    return { status: 'success', message: 'บันทึกการอนุมัติสำเร็จ' };
   },
 
-  // 5. School & Fiscal Config
+  // 5. School & Fiscal Configurations
   School_getInfo: function() {
     return getDatabase().schoolInfo;
   },
@@ -493,19 +457,39 @@ const handlers = {
   },
 
   SBD_deleteMember: function(args) {
-    return { success: true, message: 'ลบข้อมูลกรรมการเรียบร้อยแล้ว' };
+    return { success: true, message: 'ลบข้อมูลกรรมการสถานศึกษาเรียบร้อยแล้ว' };
+  },
+
+  // 8. One-Click Cloud Migration & Google Sheets Import
+  importDatabaseFromGoogleSheets: async function(args) {
+    let payload = args[0];
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch (err) {
+        throw new Error('รูปแบบข้อมูล JSON ไม่ถูกต้อง กรุณาคัดลอกข้อมูลทั้งหมดให้ครบถ้วน');
+      }
+    }
+
+    const res = await importFullDatabase(payload);
+    return {
+      status: 'success',
+      success: true,
+      message: `นำเข้าข้อมูลลงสู่ Cloud PostgreSQL เรียบร้อยแล้ว (บุคลากร ${res.teacherCount || 0} คน, ประวัติการลา ${res.logCount || 0} รายการ)`,
+      details: res
+    };
   }
 };
 
 // Universal POST /api/:action Endpoint
-router.post('/:action', (req, res) => {
+router.post('/:action', async (req, res) => {
   const action = req.params.action;
   const args = req.body && Array.isArray(req.body.args) ? req.body.args : [];
 
   const handler = handlers[action];
   if (typeof handler === 'function') {
     try {
-      const result = handler(args);
+      const result = await Promise.resolve(handler(args));
       return res.json(result);
     } catch (err) {
       console.error(`[API Handler Error] ${action}:`, err);
