@@ -1,0 +1,953 @@
+<script>
+// =========================================================================
+// MODULE: LEAVE SUMMARY (JS_Mod_OfficialReports.html)
+// เมนู "สรุปวันลา" - UI/UX หน้าจอทันสมัย สบายตา + ระบบพิมพ์รายงาน A4 มาตรฐานราชการ
+// =========================================================================
+
+var _rptState = {
+  currentFormat: 'ROUND_EXCEL', // 'ROUND_EXCEL' | 'MONTHLY_OFFICIAL'
+  selectedYearBE: 2570,
+  selectedPeriodMode: 'PERIOD_1',
+  selectedMonth: 10
+};
+
+var THAI_MONTH_NAMES = [
+  '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
+function _rptEscapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function _rptParseDate(raw) {
+  if (!raw) return null;
+  if (Object.prototype.toString.call(raw) === '[object Date]') {
+    return isNaN(raw.getTime()) ? null : raw;
+  }
+  var s = String(raw).trim().split(' ')[0];
+  if (s.indexOf('-') !== -1) {
+    var p = s.split('-');
+    if (p.length === 3) {
+      var y = parseInt(p[0], 10);
+      if (y > 2400) y -= 543;
+      var d = new Date(y, parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+      return isNaN(d.getTime()) ? null : d;
+    }
+  } else if (s.indexOf('/') !== -1) {
+    var p2 = s.split('/');
+    if (p2.length === 3) {
+      var y2 = parseInt(p2[2], 10);
+      if (y2 > 2400) y2 -= 543;
+      var d2 = new Date(y2, parseInt(p2[1], 10) - 1, parseInt(p2[0], 10));
+      return isNaN(d2.getTime()) ? null : d2;
+    }
+  }
+  return null;
+}
+
+function _rptDateToNum(raw) {
+  var d = _rptParseDate(raw);
+  if (!d) return 0;
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+function _isSupportOrEmployee(u) {
+  if (!u) return false;
+  var p = String(u.Position || u.role || '').trim();
+  var t = String(u.empType || u.EmpType || '').trim();
+  var prefix = String(u.EmpID || u.id || '').toUpperCase();
+
+  if (prefix.indexOf('STF') !== -1) return true;
+  if (t.indexOf('สนับสนุน') !== -1 || t.indexOf('ลูกจ้าง') !== -1 || t.indexOf('พนักงาน') !== -1) return true;
+
+  var keywords = [
+    'ลูกจ้าง', 'ธุรการ', 'ภารโรง', 'พี่เลี้ยง', 'แม่บ้าน', 'รปภ',
+    'พนักงานราชการ', 'อัตราจ้าง', 'จ้างเหมา', 'คนสวน', 'รักษาความปลอดภัย',
+    'การเงิน', 'พัสดุ', 'ขับรถ'
+  ];
+
+  for (var i = 0; i < keywords.length; i++) {
+    if (p.indexOf(keywords[i]) !== -1) return true;
+  }
+  return false;
+}
+
+function MOD_OfficialReports_initView() {
+  var curYearBE = 2570;
+  var curMode = 'PERIOD_1';
+  var curMonth = (new Date()).getMonth() + 1;
+
+  if (window.g_FiscalData && window.g_FiscalData.active) {
+    curYearBE = parseInt(window.g_FiscalData.active.yearBE, 10) || 2570;
+    curMode = window.g_FiscalData.active.ActivePeriodMode || 'PERIOD_1';
+  }
+
+  _rptState.selectedYearBE = curYearBE;
+  _rptState.selectedPeriodMode = curMode;
+  _rptState.selectedMonth = curMonth;
+
+  // 1. Dropdown ปีงบประมาณ (แสดงเฉพาะปีที่มีในฐานข้อมูล)
+  var selYear = document.getElementById('rpt_fiscalYearSelect');
+  if (selYear) {
+    selYear.innerHTML = '';
+    var availableYears = [];
+    if (window.g_FiscalData && Array.isArray(window.g_FiscalData.list) && window.g_FiscalData.list.length > 0) {
+      window.g_FiscalData.list.forEach(function(item) {
+        if (item && item.yearBE) {
+          var num = parseInt(item.yearBE, 10);
+          if (num && availableYears.indexOf(num) === -1) availableYears.push(num);
+        }
+      });
+    } else if (window.g_FiscalData && Array.isArray(window.g_FiscalData.years) && window.g_FiscalData.years.length > 0) {
+      window.g_FiscalData.years.forEach(function(y) {
+        var num = parseInt(y, 10);
+        if (num && availableYears.indexOf(num) === -1) availableYears.push(num);
+      });
+    }
+    if (availableYears.length === 0) {
+      availableYears.push(curYearBE);
+    }
+    availableYears.sort(function(a, b) { return b - a; });
+
+    availableYears.forEach(function(y) {
+      var opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = 'ปีงบประมาณ ' + y;
+      if (y === curYearBE) opt.selected = true;
+      selYear.appendChild(opt);
+    });
+    if (!selYear.value && availableYears.length > 0) {
+      selYear.value = availableYears[0];
+    }
+  }
+
+  // 2. Dropdown รอบเวลา
+  _updateReportPeriodDropdownLabels();
+  var selPeriod = document.getElementById('rpt_periodSelect');
+  if (selPeriod) {
+    selPeriod.value = curMode;
+  }
+
+  // 3. Dropdown เดือน
+  _populateReportMonthDropdown();
+
+  updateOfficialReportFormatUI();
+}
+
+function _updateReportPeriodDropdownLabels() {
+  var selPeriod = document.getElementById('rpt_periodSelect');
+  if (!selPeriod) return;
+  var curVal = selPeriod.value || _rptState.selectedPeriodMode || 'PERIOD_1';
+  var yBE = _rptState.selectedYearBE;
+  var prevYBE = yBE - 1;
+  selPeriod.innerHTML =
+    '<option value="PERIOD_1">รอบที่ 1 (1 ต.ค. ' + prevYBE + ' – 31 มี.ค. ' + yBE + ')</option>' +
+    '<option value="PERIOD_2">รอบที่ 2 (1 เม.ย. ' + yBE + ' – 30 ก.ย. ' + yBE + ')</option>' +
+    '<option value="FULL">ทั้งปีงบประมาณ ' + yBE + ' (1 ต.ค. ' + prevYBE + ' – 30 ก.ย. ' + yBE + ')</option>';
+  selPeriod.value = curVal;
+}
+
+function switchOfficialReportFormat(format) {
+  _rptState.currentFormat = format;
+  updateOfficialReportFormatUI();
+}
+
+function updateOfficialReportFormatUI() {
+  var btnRound = document.getElementById('btnRptTab_round');
+  var btnMonth = document.getElementById('btnRptTab_month');
+  var wrapPeriod = document.getElementById('rpt_periodWrapper');
+  var wrapMonth = document.getElementById('rpt_monthWrapper');
+
+  if (_rptState.currentFormat === 'ROUND_EXCEL') {
+    if (btnRound) { btnRound.classList.add('active'); }
+    if (btnMonth) { btnMonth.classList.remove('active'); }
+    if (wrapPeriod) wrapPeriod.style.display = 'inline-flex';
+    if (wrapMonth) wrapMonth.style.display = 'none';
+    renderScreenRoundReport();
+  } else {
+    if (btnRound) { btnRound.classList.remove('active'); }
+    if (btnMonth) { btnMonth.classList.add('active'); }
+    if (wrapPeriod) wrapPeriod.style.display = 'inline-flex';
+    if (wrapMonth) wrapMonth.style.display = 'inline-flex';
+    _populateReportMonthDropdown();
+    renderScreenMonthlyReport();
+  }
+}
+
+function onOfficialReportFilterChange(triggeredBy) {
+  var selYear = document.getElementById('rpt_fiscalYearSelect');
+  var selPeriod = document.getElementById('rpt_periodSelect');
+  var selMonth = document.getElementById('rpt_monthSelect');
+
+  if (selYear) _rptState.selectedYearBE = parseInt(selYear.value, 10);
+  if (selPeriod) _rptState.selectedPeriodMode = selPeriod.value;
+
+  if (triggeredBy === 'year') {
+    _updateReportPeriodDropdownLabels();
+  }
+
+  if (triggeredBy === 'year' || triggeredBy === 'period') {
+    _populateReportMonthDropdown();
+  }
+
+  if (selMonth) _rptState.selectedMonth = parseInt(selMonth.value, 10);
+
+  if (_rptState.currentFormat === 'ROUND_EXCEL') {
+    renderScreenRoundReport();
+  } else {
+    renderScreenMonthlyReport();
+  }
+}
+
+function _populateReportMonthDropdown() {
+  var selMonth = document.getElementById('rpt_monthSelect');
+  if (!selMonth) return;
+
+  var mode = _rptState.selectedPeriodMode;
+  var monthsToShow = [];
+
+  // รอบที่ 1: ต.ค. ถึง มี.ค. / รอบที่ 2: เม.ย. ถึง ก.ย. / ทั้งปี: ต.ค. ถึง ก.ย.
+  if (mode === 'PERIOD_1') {
+    monthsToShow = [10, 11, 12, 1, 2, 3];
+  } else if (mode === 'PERIOD_2') {
+    monthsToShow = [4, 5, 6, 7, 8, 9];
+  } else {
+    monthsToShow = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  }
+
+  var curVal = _rptState.selectedMonth;
+  var yBE = _rptState.selectedYearBE;
+  var prevYBE = yBE - 1;
+
+  selMonth.innerHTML = '';
+  monthsToShow.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m;
+    var mYear = (m >= 10) ? prevYBE : yBE;
+    opt.textContent = THAI_MONTH_NAMES[m] + ' ' + mYear;
+    if (m === curVal) opt.selected = true;
+    selMonth.appendChild(opt);
+  });
+
+  if (monthsToShow.indexOf(curVal) === -1 && monthsToShow.length > 0) {
+    _rptState.selectedMonth = monthsToShow[0];
+    selMonth.value = String(monthsToShow[0]);
+  }
+}
+
+// =========================================================================
+// 1. หน้าจอ: เรนเดอร์แท็บที่ 1 (รายงานรอบการประเมิน - Modern Polished Table)
+// ข้อ 1 & 2: เอาข้อความ "กลุ่มข้าราชการครู (...)" และ "กลุ่มลูกจ้าง (...)" ออก
+// ข้อ 3: แยกประเภทถูกต้อง (อภิชญา, กำพล อยู่ลูกจ้าง)
+// ข้อ 4.1: รายชื่อชิดซ้ายตาราง
+// =========================================================================
+function renderScreenRoundReport() {
+  var container = document.getElementById('rpt_screenInteractiveContainer');
+  if (!container) return;
+
+  var yBE = _rptState.selectedYearBE;
+  var prevYBE = yBE - 1;
+  var mode = _rptState.selectedPeriodMode;
+  var yCE = yBE - 543;
+  var prevYCE = yCE - 1;
+
+  // รอบการประเมินตามระบบราชการไทย:
+  // รอบที่ 1: 1 ต.ค. (prevYBE) - 31 มี.ค. (yBE)
+  // รอบที่ 2: 1 เม.ย. (yBE) - 30 ก.ย. (yBE)
+  // ทั้งปีงบประมาณ: 1 ต.ค. (prevYBE) - 30 ก.ย. (yBE)
+  var roundTitle = (mode === 'PERIOD_1')
+    ? ('รอบที่ 1 (1 ตุลาคม ' + prevYBE + ' – 31 มีนาคม ' + yBE + ')')
+    : ((mode === 'PERIOD_2')
+      ? ('รอบที่ 2 (1 เมษายน ' + yBE + ' – 30 กันยายน ' + yBE + ')')
+      : ('ทั้งปีงบประมาณ ' + yBE + ' (1 ตุลาคม ' + prevYBE + ' – 30 กันยายน ' + yBE + ')'));
+
+  var startNum = (mode === 'PERIOD_1')
+    ? (prevYCE * 10000 + 1001)
+    : ((mode === 'PERIOD_2')
+      ? (yCE * 10000 + 401)
+      : (prevYCE * 10000 + 1001));
+
+  var endNum = (mode === 'PERIOD_1')
+    ? (yCE * 10000 + 331)
+    : (yCE * 10000 + 930);
+
+  var staff = Array.isArray(window.g_UsersSummary) ? window.g_UsersSummary : [];
+  var activeStaff = staff.filter(function(u) { return u.status !== 'ย้าย/เกษียณ'; });
+
+  // จัดเรียง: ข้าราชการครูก่อน แล้วตามด้วยลูกจ้าง (ข้อ 3 ตรวจสอบถูกต้อง)
+  var civilStaff = [];
+  var empStaff = [];
+  activeStaff.forEach(function(u) {
+    if (_isSupportOrEmployee(u)) {
+      empStaff.push(u);
+    } else {
+      civilStaff.push(u);
+    }
+  });
+
+  // รวมรายการบุคลากรเรียงลำดับต่อเนื่อง 1 ถึง N (โดยไม่ใส่แถวข้อความหัวกลุ่มคั่น)
+  var combinedStaff = civilStaff.concat(empStaff);
+
+  // คำนวณสถิติจาก Leave_Logs
+  var logs = Array.isArray(window.g_LeaveLogs) ? window.g_LeaveLogs : [];
+  var userStats = {};
+  var grandTotals = { sickC:0, sickD:0, perC:0, perD:0, lateC:0, lateD:0, absC:0, absD:0, totC:0, totD:0 };
+
+  activeStaff.forEach(function(u) {
+    var id = String(u.EmpID || u.id || '').trim();
+    userStats[id] = { sickC:0, sickD:0, perC:0, perD:0, lateC:0, lateD:0, absC:0, absD:0, totC:0, totD:0 };
+  });
+
+  logs.forEach(function(l) {
+    var st = String(l.Status || '').trim();
+    if (st.indexOf('อนุมัติ') !== -1 || st === 'ผ่าน' || st === 'เสร็จสิ้น') {
+      var sNum = _rptDateToNum(l.StartDate);
+      if (sNum >= startNum && sNum <= endNum) {
+        var id = String(l.EmpID || l.id || '').trim();
+        var s = userStats[id];
+        if (s) {
+          var lt = String(l.LeaveType || '');
+          var d = parseFloat(l.TotalDays) || 1;
+          if (lt.indexOf('ลาป่วย') !== -1) { s.sickC += 1; s.sickD += d; s.totC += 1; s.totD += d; grandTotals.sickC += 1; grandTotals.sickD += d; grandTotals.totC += 1; grandTotals.totD += d; }
+          else if (lt.indexOf('ลากิจ') !== -1) { s.perC += 1; s.perD += d; s.totC += 1; s.totD += d; grandTotals.perC += 1; grandTotals.perD += d; grandTotals.totC += 1; grandTotals.totD += d; }
+          else if (lt.indexOf('สาย') !== -1) { s.lateC += 1; s.lateD += d; s.totC += 1; s.totD += d; grandTotals.lateC += 1; grandTotals.lateD += d; grandTotals.totC += 1; grandTotals.totD += d; }
+          else if (lt.indexOf('ขาด') !== -1) { s.absC += 1; s.absD += d; s.totC += 1; s.totD += d; grandTotals.absC += 1; grandTotals.absD += d; grandTotals.totC += 1; grandTotals.totD += d; }
+        }
+      }
+    }
+  });
+
+  var rowsHtml = '';
+  combinedStaff.forEach(function(u, idx) {
+    var isSupport = _isSupportOrEmployee(u);
+    var id = String(u.EmpID || u.id || '').trim();
+    var s = userStats[id] || { sickC:0, sickD:0, perC:0, perD:0, lateC:0, lateD:0, absC:0, absD:0, totC:0, totD:0 };
+    
+    // ข้อ 6.1: เกณฑ์ ว15/2561 ตรวจสอบทั้งจำนวนครั้ง (> 6 ครั้ง) และจำนวนวัน (> 23 วัน/รอบ)
+    var badgeV15 = '';
+    if (isSupport) {
+      badgeV15 = '<span style="color:rgba(255,255,255,0.25); font-weight:normal;">-</span>';
+    } else {
+      var isExceedV15 = (s.totC > 6 || s.totD > 23);
+      var isNearV15 = (s.totC >= 5 || s.totD > 15);
+      if (isExceedV15) {
+        badgeV15 = '<span class="g-badge g-badge-alert" title="ตามเกณฑ์ ก.ค.ศ. ว15/2561: ลาเกิน 6 ครั้ง หรือเกิน 23 วัน/รอบ">เกินเกณฑ์ ว15</span>';
+      } else if (isNearV15) {
+        badgeV15 = '<span class="g-badge g-badge-warn" title="เฝ้าระวังใกล้แตะเกณฑ์ ว15">เฝ้าระวัง</span>';
+      } else {
+        badgeV15 = '<span class="g-badge g-badge-ok">ปกติ</span>';
+      }
+    }
+
+    // ข้อ 6: เปลี่ยนจาก ลูกจ้าง/สนับสนุน เป็น บุคลากรสนับสนุน
+    var roleBadge = isSupport
+      ? '<span style="font-size:10.5px; background:rgba(210,153,34,0.18); color:var(--steam-orange); padding:1px 6px; border-radius:3px; margin-left:6px;">บุคลากรสนับสนุน</span>'
+      : '';
+
+    // เส้นแบ่งกลุ่มที่ 1: ข้าราชการครู
+    if (idx === 0 && civilStaff.length > 0) {
+      rowsHtml += '<tr class="g-table-section-row">' +
+        '<td colspan="10" style="padding:8px 16px; text-align:left;">' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; background:rgba(102,192,244,0.15); border:1px solid var(--steam-cyan); color:var(--steam-cyan);">' +
+              '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' +
+            '</span>' +
+            '<span style="font-weight:700; color:var(--steam-cyan); font-size:12px; letter-spacing:0.5px;">กลุ่มข้าราชการครู (' + civilStaff.length + ' คน)</span>' +
+            '<span style="flex:1; height:1px; background:linear-gradient(90deg, rgba(102,192,244,0.35), transparent); margin-left:6px;"></span>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    // เส้นแบ่งกลุ่มที่ 2: บุคลากรสายสนับสนุน (แยกชัดเจน 100%)
+    if (idx === civilStaff.length && empStaff.length > 0) {
+      rowsHtml += '<tr class="g-table-section-row">' +
+        '<td colspan="10" style="padding:9px 16px; text-align:left;">' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; background:rgba(210,153,34,0.2); border:1px solid var(--steam-orange); color:var(--steam-orange);">' +
+              '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+            '</span>' +
+            '<span style="font-weight:700; color:#ffc83d; font-size:12px; letter-spacing:0.5px;">กลุ่มบุคลากรสายสนับสนุน (' + empStaff.length + ' คน)</span>' +
+            '<span style="flex:1; height:1px; background:linear-gradient(90deg, rgba(210,153,34,0.45), transparent); margin-left:6px;"></span>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    var rowBg = (idx % 2 === 0) ? 'background:rgba(255,255,255,0.015);' : '';
+    rowsHtml += '<tr style="' + rowBg + ' border-bottom:1px solid rgba(42,71,94,0.35); transition:background 0.2s;">' +
+      '<td style="text-align:left; padding-left:14px;">' +
+        '<div style="font-weight:600; color:#fff; display:flex; align-items:center;">' +
+          _rptEscapeHtml(u.FullName || u.name) + roleBadge +
+        '</div>' +
+        '<div style="font-size:11px; color:var(--text-muted); margin-top:1px;">' + _rptEscapeHtml(u.Position || u.role) + '</div>' +
+      '</td>' +
+      '<td style="text-align:center;">' + fmt(s.sickC) + '</td>' +
+      '<td style="text-align:center; color:var(--red); font-weight:600;">' + fmt(s.sickD) + '</td>' +
+      '<td style="text-align:center;">' + fmt(s.perC) + '</td>' +
+      '<td style="text-align:center; color:var(--steam-cyan); font-weight:600;">' + fmt(s.perD) + '</td>' +
+      '<td style="text-align:center;">' + fmt(s.lateC) + '</td>' +
+      '<td style="text-align:center;">' + fmt(s.absC) + '</td>' +
+      '<td style="text-align:center; font-weight:bold; color:#fff;">' + fmt(s.totC) + '</td>' +
+      '<td style="text-align:center; font-weight:bold; color:var(--steam-green); font-size:13px;">' + fmt(s.totD) + '</td>' +
+      '<td style="text-align:center;">' + badgeV15 + '</td>' +
+    '</tr>';
+  });
+
+  var html = '' +
+    '<div class="g-table-card">' +
+    '<div class="g-table-header">' +
+      '<div class="g-table-title">' +
+        '<svg class="ui-ico" style="color:#8ab4f8;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+        '<span>แบบสรุปวันลาประจำรอบ • ' + _rptEscapeHtml(roundTitle) + '</span>' +
+      '</div>' +
+      '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<span class="g-chip g-chip-blue">บุคลากร ' + combinedStaff.length + ' คน</span>' +
+        '<span class="g-chip g-chip-green">ยอดวันลาสะสม ' + grandTotals.totD + ' วัน</span>' +
+      '</div>' +
+    '</div>' +
+    '<div style="overflow-x:auto;">' +
+      '<table class="g-table">' +
+        '<thead>' +
+          '<tr style="color:var(--text-muted); border-bottom:1px solid #2a475e; background:linear-gradient(180deg, rgba(26,38,54,0.95), rgba(16,24,34,0.95));">' +
+            '<th rowspan="2" style="text-align:left; padding:12px 14px; color:#fff; font-weight:700; vertical-align:middle;">ชื่อ - ชื่อสกุล</th>' +
+            '<th colspan="2" style="text-align:center; padding:8px 4px; color:#fff; font-weight:700; border-left:1px solid rgba(42,71,94,0.35);">ป่วย</th>' +
+            '<th colspan="2" style="text-align:center; padding:8px 4px; color:#fff; font-weight:700; border-left:1px solid rgba(42,71,94,0.35);">กิจ</th>' +
+            '<th rowspan="2" style="width:58px; text-align:center; padding:10px 4px; border-left:1px solid rgba(42,71,94,0.35); vertical-align:middle;">สาย</th>' +
+            '<th rowspan="2" style="width:58px; text-align:center; padding:10px 4px; vertical-align:middle;">ขาด</th>' +
+            '<th rowspan="2" style="width:72px; text-align:center; padding:10px 4px; border-left:1px solid rgba(42,71,94,0.35); color:#fff; vertical-align:middle;">รวมครั้ง</th>' +
+            '<th rowspan="2" style="width:78px; text-align:center; padding:10px 4px; color:var(--steam-green); font-weight:700; vertical-align:middle;">รวมวันลา</th>' +
+            '<th rowspan="2" style="width:100px; text-align:center; padding:10px 4px; border-left:1px solid rgba(42,71,94,0.35); vertical-align:middle;">เกณฑ์ ว15</th>' +
+          '</tr>' +
+          '<tr style="color:var(--text-muted); font-size:11.5px; border-bottom:2px solid #2a475e; background:rgba(16,24,34,0.95);">' +
+            '<th style="width:64px; text-align:center; padding:6px 4px; border-left:1px solid rgba(42,71,94,0.35);">ครั้ง</th>' +
+            '<th style="width:64px; text-align:center; padding:6px 4px; color:var(--red); font-weight:700;">วัน</th>' +
+            '<th style="width:64px; text-align:center; padding:6px 4px; border-left:1px solid rgba(42,71,94,0.35);">ครั้ง</th>' +
+            '<th style="width:64px; text-align:center; padding:6px 4px; color:var(--steam-cyan); font-weight:700;">วัน</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' +
+          rowsHtml +
+        '</tbody>' +
+        '<tfoot>' +
+          '<tr style="background:rgba(22,32,45,0.95); font-weight:bold; border-top:2px solid #2a475e;">' +
+            '<td style="text-align:left; padding:12px 14px; color:#fff;">รวมทั้งสิ้น (' + combinedStaff.length + ' คน)</td>' +
+            '<td style="text-align:center; color:#fff; border-left:1px solid rgba(42,71,94,0.35);">' + grandTotals.sickC + '</td>' +
+            '<td style="text-align:center; color:var(--red); font-weight:700;">' + grandTotals.sickD + '</td>' +
+            '<td style="text-align:center; color:#fff; border-left:1px solid rgba(42,71,94,0.35);">' + grandTotals.perC + '</td>' +
+            '<td style="text-align:center; color:var(--steam-cyan); font-weight:700;">' + grandTotals.perD + '</td>' +
+            '<td style="text-align:center; color:#fff; border-left:1px solid rgba(42,71,94,0.35);">' + grandTotals.lateC + '</td>' +
+            '<td style="text-align:center; color:#fff;">' + grandTotals.absC + '</td>' +
+            '<td style="text-align:center; color:#fff; border-left:1px solid rgba(42,71,94,0.35);">' + grandTotals.totC + '</td>' +
+            '<td style="text-align:center; color:var(--steam-green); font-size:14px; font-weight:700;">' + grandTotals.totD + '</td>' +
+            '<td style="text-align:center; color:var(--text-muted); font-size:11px; border-left:1px solid rgba(42,71,94,0.35);">-</td>' +
+          '</tr>' +
+        '</tfoot>' +
+      '</table>' +
+    '</div>';
+
+  container.innerHTML = html;
+}
+
+// =========================================================================
+// 2. หน้าจอ: เรนเดอร์แท็บที่ 2 (สรุปประจำเดือน 3 แกนเวลา - Modern Polished Table)
+// ข้อ 4.1: รายชื่อชิดซ้ายตาราง
+// ข้อ 4.2: เดือนนี้ -> แสดงเป็นชื่อเดือนเลย (เช่น พฤศจิกายน)
+// ข้อ 4.3: ป่วย, กิจ, ขาด, สาย (ไม่มีวงเล็บ)
+// ข้อ 4.4: รอบการประเมิน 1 หรือ 2
+// ข้อ 4.5: ปีงบประมาณ 2570 (ตัดคำว่า รอบ)
+// =========================================================================
+function renderScreenMonthlyReport() {
+  var container = document.getElementById('rpt_screenInteractiveContainer');
+  if (!container) return;
+
+  var yBE = _rptState.selectedYearBE;
+  var prevYBE = yBE - 1;
+  var mNum = _rptState.selectedMonth;
+  var mName = THAI_MONTH_NAMES[mNum] || 'ตุลาคม';
+  var yCE = yBE - 543;
+  var prevYCE = yCE - 1;
+
+  // คำนวณปี พ.ศ. และ ค.ศ. ของเดือนที่เลือกในรอบปีงบประมาณ
+  // ถ้าเป็นเดือน ต.ค. (10), พ.ย. (11), ธ.ค. (12) จะอยู่ในปีก่อนหน้า (prevYBE เช่น 2569 สำหรับปีงบ 2570)
+  // ถ้าเป็นเดือน ม.ค. ถึง ก.ย. (1-9) จะอยู่ในปีงบประมาณนั้นๆ (yBE เช่น 2570)
+  var targetMonthBE = (mNum >= 10) ? prevYBE : yBE;
+  var targetYearCE = (mNum >= 10) ? prevYCE : yCE;
+
+  // รอบที่ 1: ต.ค., พ.ย., ธ.ค., ม.ค., ก.พ., มี.ค.
+  // รอบที่ 2: เม.ย., พ.ค., มิ.ย., ก.ค., ส.ค., ก.ย.
+  var isRound1 = (mNum >= 10 || mNum <= 3);
+  var evalRoundText = isRound1 ? 'รอบการประเมิน 1' : 'รอบการประเมิน 2';
+
+  var lastDayOfMonth = new Date(targetYearCE, mNum, 0).getDate();
+  var startMonthNum = targetYearCE * 10000 + mNum * 100 + 1;
+  var endMonthNum = targetYearCE * 10000 + mNum * 100 + lastDayOfMonth;
+
+  var startEvalNum = isRound1 ? (prevYCE * 10000 + 1001) : (yCE * 10000 + 401);
+  var endEvalNum = isRound1 ? (yCE * 10000 + 331) : (yCE * 10000 + 930);
+
+  var startFiscNum = prevYCE * 10000 + 1001;
+  var endFiscNum = yCE * 10000 + 930;
+
+  var staff = Array.isArray(window.g_UsersSummary) ? window.g_UsersSummary : [];
+  var activeStaff = staff.filter(function(u) { return u.status !== 'ย้าย/เกษียณ'; });
+
+  // จัดเรียง: ข้าราชการครูก่อน แล้วตามด้วยลูกจ้าง
+  var civilStaff = [], empStaff = [];
+  activeStaff.forEach(function(u) {
+    if (_isSupportOrEmployee(u)) empStaff.push(u);
+    else civilStaff.push(u);
+  });
+  var combinedStaff = civilStaff.concat(empStaff);
+
+  var user3Axes = {};
+  activeStaff.forEach(function(u) {
+    var id = String(u.EmpID || u.id || '').trim();
+    user3Axes[id] = {
+      m: { sickD: 0, perD: 0, absC: 0, lateC: 0 },
+      e: { sickD: 0, perD: 0, absC: 0, lateC: 0 },
+      f: { sickD: 0, perD: 0, absC: 0, lateC: 0 }
+    };
+  });
+
+  var logs = Array.isArray(window.g_LeaveLogs) ? window.g_LeaveLogs : [];
+  logs.forEach(function(l) {
+    var st = String(l.Status || '').trim();
+    if (st.indexOf('อนุมัติ') !== -1 || st === 'ผ่าน' || st === 'เสร็จสิ้น') {
+      var sNum = _rptDateToNum(l.StartDate);
+      var id = String(l.EmpID || l.id || '').trim();
+      var item = user3Axes[id];
+      if (item) {
+        var lt = String(l.LeaveType || '');
+        var d = parseFloat(l.TotalDays) || 1;
+        if (sNum >= startMonthNum && sNum <= endMonthNum) {
+          if (lt.indexOf('ลาป่วย') !== -1) item.m.sickD += d;
+          else if (lt.indexOf('ลากิจ') !== -1) item.m.perD += d;
+          else if (lt.indexOf('ขาด') !== -1) item.m.absC += 1;
+          else if (lt.indexOf('สาย') !== -1) item.m.lateC += 1;
+        }
+        if (sNum >= startEvalNum && sNum <= endEvalNum) {
+          if (lt.indexOf('ลาป่วย') !== -1) item.e.sickD += d;
+          else if (lt.indexOf('ลากิจ') !== -1) item.e.perD += d;
+          else if (lt.indexOf('ขาด') !== -1) item.e.absC += 1;
+          else if (lt.indexOf('สาย') !== -1) item.e.lateC += 1;
+        }
+        if (sNum >= startFiscNum && sNum <= endFiscNum) {
+          if (lt.indexOf('ลาป่วย') !== -1) item.f.sickD += d;
+          else if (lt.indexOf('ลากิจ') !== -1) item.f.perD += d;
+          else if (lt.indexOf('ขาด') !== -1) item.f.absC += 1;
+          else if (lt.indexOf('สาย') !== -1) item.f.lateC += 1;
+        }
+      }
+    }
+  });
+
+  var rowsHtml = '';
+  combinedStaff.forEach(function(u, idx) {
+    var isSupport = _isSupportOrEmployee(u);
+    var id = String(u.EmpID || u.id || '').trim();
+    var ax = user3Axes[id] || { m:{}, e:{}, f:{} };
+
+    // ข้อ 6: เปลี่ยนจาก ลูกจ้าง/สนับสนุน เป็น บุคลากรสนับสนุน
+    var roleBadge = isSupport
+      ? '<span style="font-size:10.5px; background:rgba(210,153,34,0.18); color:var(--steam-orange); padding:1px 6px; border-radius:3px; margin-left:6px;">บุคลากรสนับสนุน</span>'
+      : '';
+
+    // เส้นแบ่งกลุ่มที่ 1: ข้าราชการครู
+    if (idx === 0 && civilStaff.length > 0) {
+      rowsHtml += '<tr class="g-table-section-row">' +
+        '<td colspan="13" style="padding:8px 16px; text-align:left;">' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; background:rgba(102,192,244,0.15); border:1px solid var(--steam-cyan); color:var(--steam-cyan);">' +
+              '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' +
+            '</span>' +
+            '<span style="font-weight:700; color:var(--steam-cyan); font-size:12px; letter-spacing:0.5px;">กลุ่มข้าราชการครู (' + civilStaff.length + ' คน)</span>' +
+            '<span style="flex:1; height:1px; background:linear-gradient(90deg, rgba(102,192,244,0.35), transparent); margin-left:6px;"></span>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    // เส้นแบ่งกลุ่มที่ 2: บุคลากรสายสนับสนุน (แยกชัดเจน 100%)
+    if (idx === civilStaff.length && empStaff.length > 0) {
+      rowsHtml += '<tr class="g-table-section-row">' +
+        '<td colspan="13" style="padding:9px 16px; text-align:left;">' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; background:rgba(210,153,34,0.2); border:1px solid var(--steam-orange); color:var(--steam-orange);">' +
+              '<svg class="ui-ico-sm" style="width:12px; height:12px;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+            '</span>' +
+            '<span style="font-weight:700; color:#ffc83d; font-size:12px; letter-spacing:0.5px;">กลุ่มบุคลากรสายสนับสนุน (' + empStaff.length + ' คน)</span>' +
+            '<span style="flex:1; height:1px; background:linear-gradient(90deg, rgba(210,153,34,0.45), transparent); margin-left:6px;"></span>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    var rowBg = (idx % 2 === 0) ? 'background:rgba(255,255,255,0.015);' : '';
+    rowsHtml += '<tr style="' + rowBg + ' border-bottom:1px solid rgba(42,71,94,0.35); transition:background 0.2s;">' +
+      '<td style="text-align:left; padding-left:14px;">' +
+        '<div style="font-weight:600; color:#fff; display:flex; align-items:center;">' +
+          _rptEscapeHtml(u.FullName || u.name) + roleBadge +
+        '</div>' +
+        '<div style="font-size:11px; color:var(--text-muted); margin-top:1px;">' + _rptEscapeHtml(u.Position || u.role) + '</div>' +
+      '</td>' +
+      // เดือนนี้
+      '<td style="text-align:center; color:var(--red); font-weight:600;">' + fmt(ax.m.sickD) + '</td>' +
+      '<td style="text-align:center; color:var(--steam-cyan); font-weight:600;">' + fmt(ax.m.perD) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.m.absC) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.m.lateC) + '</td>' +
+      // รอบการประเมิน 1 หรือ 2
+      '<td style="text-align:center; color:var(--red); font-weight:600; border-left:1px solid rgba(42,71,94,0.4);">' + fmt(ax.e.sickD) + '</td>' +
+      '<td style="text-align:center; color:var(--steam-cyan); font-weight:600;">' + fmt(ax.e.perD) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.e.absC) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.e.lateC) + '</td>' +
+      // ปีงบประมาณ
+      '<td style="text-align:center; color:var(--red); font-weight:600; border-left:1px solid rgba(42,71,94,0.4);">' + fmt(ax.f.sickD) + '</td>' +
+      '<td style="text-align:center; color:var(--steam-cyan); font-weight:600;">' + fmt(ax.f.perD) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.f.absC) + '</td>' +
+      '<td style="text-align:center;">' + fmt(ax.f.lateC) + '</td>' +
+    '</tr>';
+  });
+
+  var html = '' +
+    '<div class="g-table-card">' +
+    '<div class="g-table-header">' +
+      '<div class="g-table-title">' +
+        '<svg class="ui-ico" style="color:#81c995;" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>' +
+        '<span>แบบสรุปวันลาประจำเดือน • ' + _rptEscapeHtml(mName) + ' พ.ศ. ' + targetMonthBE + '</span>' +
+      '</div>' +
+      '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<span class="g-chip g-chip-blue">บุคลากร ' + combinedStaff.length + ' คน</span>' +
+      '</div>' +
+    '</div>' +
+    '<div style="overflow-x:auto;">' +
+      '<table class="g-table">' +
+        '<thead>' +
+          '<tr style="color:var(--text-muted); border-bottom:1px solid #2a475e; background:linear-gradient(180deg, rgba(26,38,54,0.95), rgba(16,24,34,0.95));">' +
+            '<th rowspan="2" style="text-align:left; padding:12px 14px; color:#fff; font-weight:700;">ชื่อ - สกุล</th>' +
+            '<th colspan="4" style="text-align:center; padding:8px; background:rgba(102,192,244,0.12); color:var(--steam-cyan); font-weight:700; border-left:1px solid rgba(42,71,94,0.4);">' + mName + '</th>' +
+            '<th colspan="4" style="text-align:center; padding:8px; background:rgba(164,208,7,0.12); color:var(--steam-green); font-weight:700; border-left:1px solid rgba(42,71,94,0.4);">' + evalRoundText + '</th>' +
+            '<th colspan="4" style="text-align:center; padding:8px; background:rgba(210,153,34,0.12); color:var(--steam-orange); font-weight:700; border-left:1px solid rgba(42,71,94,0.4);">ปีงบประมาณ ' + yBE + '</th>' +
+          '</tr>' +
+          '<tr style="color:var(--text-muted); font-size:11.5px; border-bottom:2px solid #2a475e; background:rgba(16,24,34,0.95);">' +
+            '<th style="text-align:center; width:50px; padding:6px; border-left:1px solid rgba(42,71,94,0.4);">ป่วย</th><th style="text-align:center; width:50px; padding:6px;">กิจ</th><th style="text-align:center; width:45px; padding:6px;">ขาด</th><th style="text-align:center; width:45px; padding:6px;">สาย</th>' +
+            '<th style="text-align:center; width:50px; padding:6px; border-left:1px solid rgba(42,71,94,0.4);">ป่วย</th><th style="text-align:center; width:50px; padding:6px;">กิจ</th><th style="text-align:center; width:45px; padding:6px;">ขาด</th><th style="text-align:center; width:45px; padding:6px;">สาย</th>' +
+            '<th style="text-align:center; width:50px; padding:6px; border-left:1px solid rgba(42,71,94,0.4);">ป่วย</th><th style="text-align:center; width:50px; padding:6px;">กิจ</th><th style="text-align:center; width:45px; padding:6px;">ขาด</th><th style="text-align:center; width:45px; padding:6px;">สาย</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' +
+          rowsHtml +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+
+  container.innerHTML = html;
+}
+
+// =========================================================================
+// 3. ฟังก์ชัน พิมพ์รายงาน A4 (Print Official Paper Form)
+// =========================================================================
+function printOfficialReport() {
+  var printBox = document.getElementById('officialPrintContainer');
+  if (!printBox) return;
+
+  var yBE = _rptState.selectedYearBE;
+  var prevYBE = yBE - 1;
+  var mode = _rptState.selectedPeriodMode;
+  var schoolName = (window.g_SchoolInfo && window.g_SchoolInfo.schoolName) ? window.g_SchoolInfo.schoolName : 'โรงเรียนชุมชนบ้านตะขบ';
+  var directorName = (window.g_SchoolInfo && window.g_SchoolInfo.directorName) ? window.g_SchoolInfo.directorName : 'นายธีรศักดิ์ มโนธรรม';
+  var reporterName = 'นางสาวทัชชกร ช่วยจังหรีด';
+
+  var staff = Array.isArray(window.g_UsersSummary) ? window.g_UsersSummary : [];
+  var activeStaff = staff.filter(function(u) { return u.status !== 'ย้าย/เกษียณ'; });
+  var logs = Array.isArray(window.g_LeaveLogs) ? window.g_LeaveLogs : [];
+
+  var styleEl = document.getElementById('dynamicPrintOrientationStyle');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamicPrintOrientationStyle';
+    document.head.appendChild(styleEl);
+  }
+
+  function fmtVal(v) { return (v > 0) ? String(v) : '-'; }
+
+  if (_rptState.currentFormat === 'ROUND_EXCEL') {
+    // ---------------------------------------------------------------------
+    // รูปแบบที่ 1: รายงานรอบการประเมิน A4 แนวนอน (Landscape) ตามภาพที่ 1
+    // ---------------------------------------------------------------------
+    styleEl.innerHTML = '@media print { @page { size: A4 landscape; margin: 8mm; } }';
+
+    var yCE = yBE - 543;
+    var prevYCE = yCE - 1;
+    var roundTitle = (mode === 'PERIOD_1')
+      ? ('รอบที่ 1 (1 ตุลาคม ' + prevYBE + ' – 31 มีนาคม ' + yBE + ')')
+      : ((mode === 'PERIOD_2')
+        ? ('รอบที่ 2 (1 เมษายน ' + yBE + ' – 30 กันยายน ' + yBE + ')')
+        : ('ทั้งปีงบประมาณ ' + yBE + ' (1 ตุลาคม ' + prevYBE + ' – 30 กันยายน ' + yBE + ')'));
+
+    var startNum = (mode === 'PERIOD_1')
+      ? (prevYCE * 10000 + 1001)
+      : ((mode === 'PERIOD_2')
+        ? (yCE * 10000 + 401)
+        : (prevYCE * 10000 + 1001));
+
+    var endNum = (mode === 'PERIOD_1')
+      ? (yCE * 10000 + 331)
+      : (yCE * 10000 + 930);
+
+    var userStats = {};
+    activeStaff.forEach(function(u) {
+      var id = String(u.EmpID || u.id || '').trim();
+      userStats[id] = { sickC:0, sickD:0, perC:0, perD:0, lateC:0, lateD:0, absC:0, absD:0, stuD:0, matD:0, mnkD:0, totC:0, totD:0 };
+    });
+
+    logs.forEach(function(l) {
+      var st = String(l.Status || '').trim();
+      if (st.indexOf('อนุมัติ') !== -1 || st === 'ผ่าน' || st === 'เสร็จสิ้น') {
+        var sNum = _rptDateToNum(l.StartDate);
+        if (sNum >= startNum && sNum <= endNum) {
+          var id = String(l.EmpID || l.id || '').trim();
+          var s = userStats[id];
+          if (s) {
+            var lt = String(l.LeaveType || '');
+            var d = parseFloat(l.TotalDays) || 1;
+            if (lt.indexOf('ลาป่วย') !== -1) { s.sickC += 1; s.sickD += d; s.totC += 1; s.totD += d; }
+            else if (lt.indexOf('ลากิจ') !== -1) { s.perC += 1; s.perD += d; s.totC += 1; s.totD += d; }
+            else if (lt.indexOf('สาย') !== -1) { s.lateC += 1; s.lateD += d; s.totC += 1; s.totD += d; }
+            else if (lt.indexOf('ขาด') !== -1) { s.absC += 1; s.absD += d; s.totC += 1; s.totD += d; }
+            else if (lt.indexOf('ศึกษา') !== -1) { s.stuD += d; s.totD += d; }
+            else if (lt.indexOf('คลอด') !== -1) { s.matD += d; s.totD += d; }
+            else if (lt.indexOf('อุปสมบท') !== -1) { s.mnkD += d; s.totD += d; }
+          }
+        }
+      }
+    });
+
+    // ข้อ 3: จัดกลุ่ม ข้าราชการครู และ ลูกจ้าง ถูกต้อง 100%
+    var civilStaff = [], empStaff = [];
+    activeStaff.forEach(function(u) {
+      if (_isSupportOrEmployee(u)) empStaff.push(u);
+      else civilStaff.push(u);
+    });
+
+    function renderPaperGroup(list, startIndex) {
+      var r = '';
+      list.forEach(function(u, idx) {
+        var id = String(u.EmpID || u.id || '').trim();
+        var s = userStats[id] || { sickC:0, sickD:0, perC:0, perD:0, lateC:0, lateD:0, absC:0, absD:0, stuD:0, matD:0, mnkD:0, totC:0, totD:0 };
+        r += '<tr>' +
+          '<td>' + (startIndex + idx) + '</td>' +
+          '<td style="text-align:left; padding-left:8px; white-space:nowrap;">' + _rptEscapeHtml(u.FullName || u.name) + '</td>' +
+          '<td>' + fmtVal(s.sickC) + '</td><td>' + fmtVal(s.sickD) + '</td>' +
+          '<td>' + fmtVal(s.perC) + '</td><td>' + fmtVal(s.perD) + '</td>' +
+          '<td>' + fmtVal(s.lateC) + '</td><td>' + fmtVal(s.lateD) + '</td>' +
+          '<td>' + fmtVal(s.absC) + '</td><td>' + fmtVal(s.absD) + '</td>' +
+          '<td>' + fmtVal(s.stuD) + '</td><td>' + fmtVal(s.matD) + '</td><td>' + fmtVal(s.mnkD) + '</td>' +
+          '<td style="font-weight:bold;">' + fmtVal(s.totC) + '</td><td style="font-weight:bold;">' + fmtVal(s.totD) + '</td>' +
+        '</tr>';
+      });
+      return r;
+    }
+
+    printBox.innerHTML = '' +
+      '<div class="report-paper-sheet sheet-landscape">' +
+        '<div class="rpt-head-school">' + _rptEscapeHtml(schoolName) + '</div>' +
+        '<div class="rpt-head-fiscal">ประจำปีงบประมาณ ' + yBE + '</div>' +
+        '<div class="rpt-head-period">' + roundTitle + '</div>' +
+        '<table class="tbl-official-excel">' +
+          '<thead>' +
+            '<tr>' +
+              '<th rowspan="2" style="width:36px;">ที่</th><th rowspan="2" style="width:200px; text-align:left; padding-left:8px;">ชื่อ - ชื่อสกุล</th>' +
+              '<th colspan="2">ลาป่วย</th><th colspan="2">ลากิจ</th><th colspan="2">มาสาย</th><th colspan="2">ขาดราชการ</th>' +
+              '<th>ลาศึกษา</th><th>ลาคลอด</th><th>ลาอุปสมบท</th><th colspan="2">รวมวันลา</th>' +
+            '</tr>' +
+            '<tr>' +
+              '<th style="width:32px;">ครั้ง</th><th style="width:32px;">วัน</th>' +
+              '<th style="width:32px;">ครั้ง</th><th style="width:32px;">วัน</th>' +
+              '<th style="width:32px;">ครั้ง</th><th style="width:32px;">วัน</th>' +
+              '<th style="width:32px;">ครั้ง</th><th style="width:32px;">วัน</th>' +
+              '<th style="width:40px;">วัน</th><th style="width:40px;">วัน</th><th style="width:45px;">วัน</th>' +
+              '<th style="width:34px;">ครั้ง</th><th style="width:34px;">วัน</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' +
+            '<tr class="row-sec-hdr"><td colspan="15" style="text-align:left; font-weight:bold; background:#eaeaea; padding:4px 8px;">ข้าราชการ</td></tr>' +
+            renderPaperGroup(civilStaff, 1) +
+            '<tr class="row-sec-hdr"><td colspan="15" style="text-align:left; font-weight:bold; background:#eaeaea; padding:4px 8px;">บุคลากรสนับสนุน</td></tr>' +
+            renderPaperGroup(empStaff, 1) +
+          '</tbody>' +
+        '</table>' +
+        '<div class="rpt-signatures-bar">' +
+          '<div class="sig-block">' +
+            '<div>ลงชื่อ ................................................................ ผู้สรุป</div>' +
+            '<div style="margin-top:4px;">(' + _rptEscapeHtml(reporterName) + ')</div>' +
+          '</div>' +
+          '<div class="sig-block">' +
+            '<div>ลงชื่อ ................................................................ ผู้อำนวยการสถานศึกษา</div>' +
+            '<div style="margin-top:4px;">(' + _rptEscapeHtml(directorName) + ')</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  } else {
+    // ---------------------------------------------------------------------
+    // รูปแบบที่ 2: สรุปประจำเดือน A4 แนวตั้ง (Portrait) ตามภาพที่ 2
+    // ข้อ 4.1: รายชื่อชิดซ้าย
+    // ข้อ 4.2: เดือนนี้ -> ชื่อเดือน (เช่น พฤศจิกายน)
+    // ข้อ 4.3: ป่วย, กิจ, ขาด, สาย (ไม่มีวงเล็บ)
+    // ข้อ 4.4: รอบการประเมิน 1 หรือ 2
+    // ข้อ 4.5: ปีงบประมาณ 2570
+    // ---------------------------------------------------------------------
+    styleEl.innerHTML = '@media print { @page { size: A4 portrait; margin: 10mm; } }';
+
+    var mNum = _rptState.selectedMonth;
+    var mName = THAI_MONTH_NAMES[mNum] || 'ตุลาคม';
+    var yCE = yBE - 543;
+    var prevYCE = yCE - 1;
+
+    var targetMonthBE = (mNum >= 10) ? prevYBE : yBE;
+    var targetYearCE = (mNum >= 10) ? prevYCE : yCE;
+
+    var isRound1 = (mNum >= 10 || mNum <= 3);
+    var evalRoundText = isRound1 ? 'รอบการประเมิน 1' : 'รอบการประเมิน 2';
+
+    var lastDayOfMonth = new Date(targetYearCE, mNum, 0).getDate();
+    var startMonthNum = targetYearCE * 10000 + mNum * 100 + 1;
+    var endMonthNum = targetYearCE * 10000 + mNum * 100 + lastDayOfMonth;
+
+    var startEvalNum = isRound1 ? (prevYCE * 10000 + 1001) : (yCE * 10000 + 401);
+    var endEvalNum = isRound1 ? (yCE * 10000 + 331) : (yCE * 10000 + 930);
+
+    var startFiscNum = prevYCE * 10000 + 1001;
+    var endFiscNum = yCE * 10000 + 930;
+
+    var civilStaff = [], empStaff = [];
+    activeStaff.forEach(function(u) {
+      if (_isSupportOrEmployee(u)) empStaff.push(u);
+      else civilStaff.push(u);
+    });
+    var combinedStaff = civilStaff.concat(empStaff);
+
+    var user3Axes = {};
+    activeStaff.forEach(function(u) {
+      var id = String(u.EmpID || u.id || '').trim();
+      user3Axes[id] = {
+        m: { sickC: 0, sickD: 0, perC: 0, perD: 0, absC: 0, lateC: 0 },
+        e: { sickC: 0, sickD: 0, perC: 0, perD: 0, absC: 0, lateC: 0 },
+        f: { sickC: 0, sickD: 0, perC: 0, perD: 0, absC: 0, lateC: 0 }
+      };
+    });
+
+    logs.forEach(function(l) {
+      var st = String(l.Status || '').trim();
+      if (st.indexOf('อนุมัติ') !== -1 || st === 'ผ่าน' || st === 'เสร็จสิ้น') {
+        var sNum = _rptDateToNum(l.StartDate);
+        var id = String(l.EmpID || l.id || '').trim();
+        var item = user3Axes[id];
+        if (item) {
+          var lt = String(l.LeaveType || '');
+          var d = parseFloat(l.TotalDays) || 1;
+          if (sNum >= startMonthNum && sNum <= endMonthNum) {
+            if (lt.indexOf('ลาป่วย') !== -1) { item.m.sickC += 1; item.m.sickD += d; }
+            else if (lt.indexOf('ลากิจ') !== -1) { item.m.perC += 1; item.m.perD += d; }
+            else if (lt.indexOf('ขาด') !== -1) { item.m.absC += 1; }
+            else if (lt.indexOf('สาย') !== -1) { item.m.lateC += 1; }
+          }
+          if (sNum >= startEvalNum && sNum <= endEvalNum) {
+            if (lt.indexOf('ลาป่วย') !== -1) { item.e.sickC += 1; item.e.sickD += d; }
+            else if (lt.indexOf('ลากิจ') !== -1) { item.e.perC += 1; item.e.perD += d; }
+            else if (lt.indexOf('ขาด') !== -1) { item.e.absC += 1; }
+            else if (lt.indexOf('สาย') !== -1) { item.e.lateC += 1; }
+          }
+          if (sNum >= startFiscNum && sNum <= endFiscNum) {
+            if (lt.indexOf('ลาป่วย') !== -1) { item.f.sickC += 1; item.f.sickD += d; }
+            else if (lt.indexOf('ลากิจ') !== -1) { item.f.perC += 1; item.f.perD += d; }
+            else if (lt.indexOf('ขาด') !== -1) { item.f.absC += 1; }
+            else if (lt.indexOf('สาย') !== -1) { item.f.lateC += 1; }
+          }
+        }
+      }
+    });
+
+    var rowsHtml = '';
+    combinedStaff.forEach(function(u, idx) {
+      if (idx === civilStaff.length && empStaff.length > 0) {
+        rowsHtml += '<tr style="background:#eaeaea; font-weight:bold; border-top:2px solid #000; border-bottom:1px solid #333;">' +
+          '<td colspan="20" style="text-align:left; padding:4px 8px; font-size:12px;">บุคลากรสนับสนุน</td>' +
+        '</tr>';
+      }
+      var id = String(u.EmpID || u.id || '').trim();
+      var ax = user3Axes[id] || { m:{}, e:{}, f:{} };
+      rowsHtml += '<tr>' +
+        '<td style="text-align:left; padding-left:8px; white-space:nowrap;">' + _rptEscapeHtml(u.FullName || u.name) + '</td>' +
+        '<td>' + fmtVal(ax.m.sickC) + '</td><td>' + fmtVal(ax.m.sickD) + '</td><td>' + fmtVal(ax.m.perC) + '</td><td>' + fmtVal(ax.m.perD) + '</td><td>' + fmtVal(ax.m.absC) + '</td><td>' + fmtVal(ax.m.lateC) + '</td>' +
+        '<td>' + fmtVal(ax.e.sickC) + '</td><td>' + fmtVal(ax.e.sickD) + '</td><td>' + fmtVal(ax.e.perC) + '</td><td>' + fmtVal(ax.e.perD) + '</td><td>' + fmtVal(ax.e.absC) + '</td><td>' + fmtVal(ax.e.lateC) + '</td>' +
+        '<td>' + fmtVal(ax.f.sickC) + '</td><td>' + fmtVal(ax.f.sickD) + '</td><td>' + fmtVal(ax.f.perC) + '</td><td>' + fmtVal(ax.f.perD) + '</td><td>' + fmtVal(ax.f.absC) + '</td><td>' + fmtVal(ax.f.lateC) + '</td>' +
+        '<td>-</td>' +
+      '</tr>';
+    });
+
+    printBox.innerHTML = '' +
+      '<div class="report-paper-sheet sheet-portrait">' +
+        '<div class="rpt-monthly-header-grid">' +
+          '<div class="rpt-logo-box">' +
+            '<svg class="ui-ico-xl" style="width:48px; height:48px; color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' +
+          '</div>' +
+          '<div class="rpt-monthly-title-box">' +
+            '<div style="font-size:15px; font-weight:bold;">แบบสรุปวันลา ประจำเดือน ' + mName + ' พ.ศ. ' + targetMonthBE + '</div>' +
+            '<div style="font-size:13.5px; font-weight:bold; margin-top:2px;">' + _rptEscapeHtml(schoolName) + ' ตำบลตะขบ อำเภอปักธงชัย จังหวัดนครราชสีมา</div>' +
+            '<div style="font-size:12.5px; color:#333; margin-top:2px;">สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3</div>' +
+          '</div>' +
+        '</div>' +
+        '<table class="tbl-official-excel tbl-monthly">' +
+          '<thead>' +
+            '<tr>' +
+              '<th rowspan="3" style="width:180px; text-align:left; padding-left:8px;">ชื่อ - สกุล</th>' +
+              '<th colspan="6">' + mName + '</th>' +
+              '<th colspan="6">' + evalRoundText + '</th>' +
+              '<th colspan="6">ปีงบประมาณ ' + yBE + '</th>' +
+              '<th rowspan="3" style="width:50px;">หมายเหตุ</th>' +
+            '</tr>' +
+            '<tr>' +
+              '<th colspan="2">ลาป่วย</th><th colspan="2">ลากิจ</th><th rowspan="2">ขาด</th><th rowspan="2">สาย</th>' +
+              '<th colspan="2">ลาป่วย</th><th colspan="2">ลากิจ</th><th rowspan="2">ขาด</th><th rowspan="2">สาย</th>' +
+              '<th colspan="2">ลาป่วย</th><th colspan="2">ลากิจ</th><th rowspan="2">ขาด</th><th rowspan="2">สาย</th>' +
+            '</tr>' +
+            '<tr>' +
+              '<th>ครั้ง</th><th>วัน</th><th>ครั้ง</th><th>วัน</th>' +
+              '<th>ครั้ง</th><th>วัน</th><th>ครั้ง</th><th>วัน</th>' +
+              '<th>ครั้ง</th><th>วัน</th><th>ครั้ง</th><th>วัน</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' +
+            rowsHtml +
+          '</tbody>' +
+        '</table>' +
+        '<div class="rpt-signatures-bar" style="margin-top:26px;">' +
+          '<div class="sig-block">' +
+            '<div>ลงชื่อ ................................................................ ผู้สรุป</div>' +
+            '<div style="margin-top:4px;">(' + _rptEscapeHtml(reporterName) + ')</div>' +
+          '</div>' +
+          '<div class="sig-block">' +
+            '<div>ลงชื่อ ................................................................ ผู้ตรวจสอบ</div>' +
+            '<div style="margin-top:4px;">(' + _rptEscapeHtml(directorName) + ')</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window.print();
+}
+
+// Global exports
+window.MOD_OfficialReports_initView = MOD_OfficialReports_initView;
+window.switchOfficialReportFormat = switchOfficialReportFormat;
+window.onOfficialReportFilterChange = onOfficialReportFilterChange;
+window.printOfficialReport = printOfficialReport;
+</script>

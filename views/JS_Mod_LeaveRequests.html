@@ -1,0 +1,92 @@
+<script>
+  // =========================================================================
+  // MODULE: LEAVE REQUESTS CONTROLLER (JS_Mod_LeaveRequests.html)
+  // แยกอิสระ 100% ควบคุมตารางรายการคำร้อง การอนุมัติ 3 ขั้น และการลบคำร้อง
+  // =========================================================================
+  function renderRequestsListOnlyTable() {
+    const logTbody = document.getElementById('leaveLogsBody');
+    if (!logTbody) return;
+    if (!g_LeaveLogs || g_LeaveLogs.length === 0) {
+      logTbody.innerHTML = '<tr><td colspan="7" style="padding:20px; color:var(--text-muted);">ยังไม่มีรายการคำร้องในระบบ</td></tr>';
+      return;
+    }
+    const myId = g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : '';
+    const myName = g_CurrentUser ? (g_CurrentUser.name || '') : '';
+    const isAdminOrSuper = isSuperuserOrAdmin(g_CurrentUser);
+
+    const trashSvg = '<svg class="ui-ico-sm" style="color:#f85149;" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+    logTbody.innerHTML = g_LeaveLogs.map(l => {
+      const isPermit = (l.LeaveType && l.LeaveType.includes('3 ชม.'));
+      const thaiDateRange = formatThaiRangeDisplay(l.StartDate, l.EndDate, isPermit, l.StartTime, l.EndTime);
+      const amountTxt = isPermit ? `${escapeHtml(l.TotalHours)} ชม.` : `${escapeHtml(l.TotalDays)} วัน`;
+      const attachLink = (l.AttachUrl && l.AttachUrl.startsWith('http')) ? ` <a href="${escapeHtml(l.AttachUrl)}" target="_blank" style="color:var(--steam-cyan); font-size:11.5px;">[ไฟล์]</a>` : '';
+      const canDelete = (l.EmpID === myId || l.FullName === myName || isAdminOrSuper);
+      const statusCellHtml = canDelete
+        ? `<button class="btn-save-sm btn-del-sm" style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px;" onclick="handleDeleteLeave('${escapeHtml(l.LeaveID)}')">${trashSvg}<span>ลบคำขอ</span></button>`
+        : `<span style="color:var(--text-muted); font-size:12px;">-</span>`;
+
+      return `
+        <tr>
+          <td style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(l.LeaveID)}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold;">${escapeHtml(l.FullName)}</td>
+          <td>${escapeHtml(shortLeaveType(l.LeaveType))}</td>
+          <td style="font-size:12.5px; color:var(--steam-cyan); font-weight:bold;">${thaiDateRange}</td>
+          <td style="font-weight:bold; color:var(--orange);">${amountTxt}</td>
+          <td style="font-size:12px;">${escapeHtml(shortSubInfo(l.SubstituteInfo))}${attachLink}</td>
+          <td>${statusCellHtml}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function toggleApprovalStep(leaveId, step, action) {
+    startLoadingBar(action === 'UNAPPROVE' ? 'Revoking Approval...' : 'Saving Approval...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (res && res.fullyApproved && action === 'APPROVE') {
+            const printSvg = '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>';
+            steamAlert('Approval saved successfully.', 'Approval Saved');
+          } else {
+            steamAlert(res.message);
+          }
+          if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+            window.LeaveBus.emit('LEAVE_UPDATED', { type: 'APPROVAL', leaveId, step, action });
+          }
+          refreshAllData();
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .processApproval(leaveId, step, action, '', getActiveSignerName());
+  }
+
+  function handleDeleteLeave(leaveId) {
+    steamConfirm('Are you sure you want to delete this record?', () => {
+      startLoadingBar('Deleting Request...');
+      const actor = g_CurrentUser ? g_CurrentUser.name : 'ผู้ใช้งาน';
+      google.script.run
+        .withSuccessHandler(res => {
+          stopLoadingBar(() => {
+            steamAlert(res.message);
+            if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+              window.LeaveBus.emit('LEAVE_UPDATED', { type: 'DELETE', leaveId });
+            }
+            refreshAllData();
+          });
+        })
+        .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+        .deleteLeaveRequest(leaveId, actor);
+    });
+  }
+
+  // เชื่อมต่อ Event Bus เพื่ออัปเดตตารางรายการคำร้องแบบ Real-time
+  if (window.LeaveBus && typeof window.LeaveBus.on === 'function') {
+    window.LeaveBus.on('LEAVE_UPDATED', function() {
+      const viewRequests = document.getElementById('view_requests');
+      if (viewRequests && viewRequests.style.display !== 'none') {
+        renderRequestsListOnlyTable();
+      }
+    });
+  }
+</script>

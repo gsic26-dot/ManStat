@@ -1,0 +1,2109 @@
+<script>
+  // =========================================================================
+  // MANSTAT CORE ENGINE (JS_Core.html) — UNIFIED LUCIDE SVG ICON SUITE
+  // =========================================================================
+  var UI_ICONS = {
+    check: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+    checkDark: '<svg class="ui-ico" style="color:#000;" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+    checkCircle: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    circleCheck: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    xMark: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg>',
+    xCircle: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
+    plus: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+    plusCircle: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>',
+    minus: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
+    edit: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
+    pencil: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
+    trash: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+    trash2: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+    save: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+    refresh: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
+    refreshCw: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
+    search: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+    user: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    users: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    userCheck: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>',
+    userPlus: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>',
+    userX: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></svg>',
+    shield: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
+    shieldCheck: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>',
+    calendar: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>',
+    clock: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    fileText: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    filePlus: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 12v6"/></svg>',
+    fileCheck: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m9 15 2 2 4-4"/></svg>',
+    printer: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>',
+    print: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>',
+    download: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    upload: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+    gear: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    settings: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    briefcase: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>',
+    award: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
+    book: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 2v20"/></svg>',
+    graduationCap: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>',
+    building: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>',
+    school: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="m18 10 3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10"/><path d="M18 5v17"/><path d="m4 6 7.106-3.553a2 2 0 0 1 1.788 0L20 6"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg>',
+    network: '<svg class="ui-ico" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><path d="M12 8v4"/><path d="M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/></svg>',
+    mail: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+    phone: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    chevronDown: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+    chevDown: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+    chevronUp: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>',
+    chevUp: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>',
+    chevronLeft: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+    chevronRight: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>',
+    arrowLeft: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
+    arrowRight: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    eye: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    eyeOff: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>',
+    mapPin: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+    circleAlert: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>',
+    circleOff: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>',
+    layoutDashboard: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+    clipboardCheck: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>',
+    clipboardList: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
+    stethoscope: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>',
+    sick: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+    personal: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>',
+    permit: '<svg class="ui-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    lock: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    unlock: '<svg class="ui-ico" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>',
+    sparkles: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
+    messageSquare: '<svg class="ui-ico" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>',
+    idCard: '<svg class="ui-ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>'
+  };
+
+  // Export to global scope for all HTML and JS modules
+  window.UI_ICONS = UI_ICONS;
+  window.UI_SVG = UI_ICONS;
+
+  function uiIcon(name, sizeCls, extraCls, customStyle) {
+    var rawSvg = UI_ICONS[name] || UI_ICONS.circleOff;
+    var sCls = sizeCls ? (' ' + sizeCls) : '';
+    var eCls = extraCls ? (' ' + extraCls) : '';
+    var styleAttr = customStyle ? (' style="' + customStyle + '"') : '';
+    return rawSvg.replace('<svg class="ui-ico"', '<svg class="ui-ico' + sCls + eCls + '"' + styleAttr);
+  }
+  window.uiIcon = uiIcon;
+  window.uiSvg = uiIcon;
+
+  
+  // =========================================================================
+  // REACTIVE LEAVE EVENT BUS (ตัวกลางประสานงานข้ามโมดูลระบบการลาแบบไร้รอยต่อ)
+  // =========================================================================
+  window.LeaveBus = {
+    _listeners: {},
+    on: function(event, callback) {
+      if (!this._listeners[event]) this._listeners[event] = [];
+      this._listeners[event].push(callback);
+    },
+    off: function(event, callback) {
+      if (!this._listeners[event]) return;
+      this._listeners[event] = this._listeners[event].filter(function(cb) { return cb !== callback; });
+    },
+    emit: function(event, data) {
+      if (!this._listeners[event]) return;
+      this._listeners[event].forEach(function(cb) {
+        try { cb(data); } catch (err) { console.error('[LeaveBus Error in ' + event + ']', err); }
+      });
+    }
+  };
+
+  var SAVED_ACCS_KEY = 'steam_saved_accounts';
+  var LOCAL_KEY = 'steam_school_user';
+  var SESSION_USER_OBJ_KEY = 'manstat_active_user_session';
+  var SESSION_LOGIN_TIME_KEY = 'manstat_login_time_str';
+
+  // Global collections & application state
+  var g_UsersSummary = [];
+  var g_LeaveLogs = [];
+  window.g_UsersSummary = g_UsersSummary;
+  window.g_LeaveLogs = g_LeaveLogs;
+  var g_Workloads = [];
+  var g_Feedbacks = [];
+  var g_SchoolInfo = {};
+  var g_FiscalData = null;
+  window.g_Workloads = g_Workloads;
+  window.g_Feedbacks = g_Feedbacks;
+  window.g_SchoolInfo = g_SchoolInfo;
+  window.g_FiscalData = g_FiscalData;
+  var g_AdminTeachers = [];
+  var g_ScriptUrl = "#";
+
+  var _confirmCallback = null;
+  var _promptCallback = null;
+  var _loadTimer = null;
+  var _safetyWatchdog = null;
+  var MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+  var ALL_CLASS_GROUPS_MASTER = [
+    { group: "ปฐมวัย", classes: ["อนุบาล 1", "อนุบาล 2", "อนุบาล 3"] },
+    { group: "ประถมศึกษา", classes: ["ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3", "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"] },
+    { group: "มัธยมศึกษาตอนต้น", classes: ["มัธยมศึกษาปีที่ 1", "มัธยมศึกษาปีที่ 2", "มัธยมศึกษาปีที่ 3"] },
+    { group: "มัธยมศึกษาตอนปลาย", classes: ["มัธยมศึกษาปีที่ 4", "มัธยมศึกษาปีที่ 5", "มัธยมศึกษาปีที่ 6"] }
+  ];
+  var ALL_ORDERED_CLASSES_MASTER = [
+    "อนุบาล 1", "อนุบาล 2", "อนุบาล 3",
+    "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3", "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6",
+    "มัธยมศึกษาปีที่ 1", "มัธยมศึกษาปีที่ 2", "มัธยมศึกษาปีที่ 3",
+    "มัธยมศึกษาปีที่ 4", "มัธยมศึกษาปีที่ 5", "มัธยมศึกษาปีที่ 6"
+  ];
+  var g_ActiveClasses = ALL_ORDERED_CLASSES_MASTER.slice();
+  window.ALL_ORDERED_CLASSES_MASTER = ALL_ORDERED_CLASSES_MASTER;
+  window.ALL_CLASS_GROUPS_MASTER = ALL_CLASS_GROUPS_MASTER;
+
+  // =========================================================================
+  // ARCHITECTURE: SELF-HEALING SESSION STORE & REACTIVE GETTER / SETTER
+  // =========================================================================
+  function normalizeRolePermission(input) {
+    var level = input;
+    if (input && typeof input === 'object') {
+      var unwrapped = (typeof SessionManager !== 'undefined' && SessionManager.extractValidUser)
+        ? SessionManager.extractValidUser(input)
+        : (input.user || input);
+      while (unwrapped && unwrapped.user) unwrapped = unwrapped.user;
+      level = unwrapped ? (unwrapped.accessLevel || unwrapped.rolePermission || unwrapped.role) : null;
+    }
+    if (!level || level === 'undefined' || String(level).trim() === '') {
+      var active = (typeof SessionManager !== 'undefined' && SessionManager.getActiveUser)
+        ? SessionManager.getActiveUser()
+        : null;
+      if (active && active.accessLevel) {
+        level = active.accessLevel;
+      }
+    }
+    if (!level || level === 'undefined' || String(level).trim() === '') return 'User';
+    var s = String(level).trim();
+    if (s === 'Super Admin' || s.toLowerCase() === 'superuser') return 'Superuser';
+    if (s.toLowerCase() === 'admin') return 'Admin';
+    return s;
+  }
+  window.normalizeRolePermission = normalizeRolePermission;
+  window.shortRole = shortRole;
+
+  var SessionManager = (function() {
+    var _cachedUser = null;
+
+    /**
+     * Self-healing unwrapper: Recursively unwraps { user: ... } wrappers,
+     * sanitizes properties, and heals accessLevel if missing or undefined
+     * by referencing prior memory or storage sessions.
+     */
+    function extractValidUser(raw) {
+      if (!raw) return null;
+      var target = raw;
+      if (typeof target === 'string') {
+        try { target = JSON.parse(target); } catch (e) { return null; }
+      }
+      var depth = 0;
+      while (target && typeof target === 'object' && target.user && typeof target.user === 'object' && depth < 10) {
+        target = target.user;
+        depth++;
+      }
+      if (!target || typeof target !== 'object') return null;
+      if (!target.name && !target.email && !target.EmpID && !target.id && !target.username) {
+        return null;
+      }
+
+      var user = Object.assign({}, target);
+
+      // Self-healing accessLevel recovery
+      if (!user.accessLevel || user.accessLevel === 'undefined' || String(user.accessLevel).trim() === '') {
+        var currentId = user.EmpID || user.id || user.email || user.username || user.name;
+        if (_cachedUser) {
+          var cachedId = _cachedUser.EmpID || _cachedUser.id || _cachedUser.email || _cachedUser.username || _cachedUser.name;
+          if (currentId === cachedId && _cachedUser.accessLevel) {
+            user.accessLevel = _cachedUser.accessLevel;
+          }
+        }
+        if (!user.accessLevel || user.accessLevel === 'undefined' || String(user.accessLevel).trim() === '') {
+          try {
+            var rawPrev = sessionStorage.getItem(SESSION_USER_OBJ_KEY) || localStorage.getItem(SESSION_USER_OBJ_KEY);
+            if (rawPrev) {
+              var prevData = JSON.parse(rawPrev);
+              var prevUser = prevData.user || prevData;
+              while (prevUser && prevUser.user) prevUser = prevUser.user;
+              if (prevUser && prevUser.accessLevel) {
+                var prevId = prevUser.EmpID || prevUser.id || prevUser.email || prevUser.username || prevUser.name;
+                if (currentId === prevId) {
+                  user.accessLevel = prevUser.accessLevel;
+                }
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      user.accessLevel = normalizeRolePermission(user.accessLevel);
+      return user;
+    }
+
+    /**
+     * Storage-aware session loader:
+     * Checks sessionStorage first (active tab session),
+     * then falls back to localStorage with expiry validation.
+     */
+    function load() {
+      var sessionRaw = null;
+      var sessionData = null;
+      var userObj = null;
+
+      // 1. Check sessionStorage first
+      try {
+        sessionRaw = sessionStorage.getItem(SESSION_USER_OBJ_KEY);
+        if (sessionRaw) {
+          sessionData = JSON.parse(sessionRaw);
+          userObj = extractValidUser(sessionData);
+        }
+      } catch (e) {}
+
+      // 2. If not in sessionStorage, check persistent localStorage with expiry check
+      if (!userObj) {
+        try {
+          sessionRaw = localStorage.getItem(SESSION_USER_OBJ_KEY);
+          if (sessionRaw) {
+            sessionData = JSON.parse(sessionRaw);
+            if (sessionData && sessionData.expiresAt && Date.now() > sessionData.expiresAt) {
+              clear();
+              return null;
+            }
+            userObj = extractValidUser(sessionData);
+            if (userObj) {
+              // Mirror valid persistent session into sessionStorage
+              try { sessionStorage.setItem(SESSION_USER_OBJ_KEY, JSON.stringify(sessionData)); } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (userObj) {
+        _cachedUser = userObj;
+      }
+      return userObj;
+    }
+
+    /**
+     * Storage-aware session saver:
+     * Maintains canonical schema { user, loginTime, issuedAt, expiresAt, rememberMe }.
+     * Respects existing persistence storage location if rememberMe is omitted.
+     */
+    function save(userObj, rememberMe) {
+      var validUser = extractValidUser(userObj);
+      if (!validUser) return null;
+
+      var shouldRemember = false;
+      if (typeof rememberMe === 'boolean') {
+        shouldRemember = rememberMe;
+      } else {
+        try {
+          var existingLocal = localStorage.getItem(SESSION_USER_OBJ_KEY);
+          if (existingLocal) {
+            shouldRemember = true;
+          } else {
+            var sessRaw = sessionStorage.getItem(SESSION_USER_OBJ_KEY);
+            if (sessRaw) {
+              var parsedSess = JSON.parse(sessRaw);
+              shouldRemember = !!parsedSess.rememberMe;
+            }
+          }
+        } catch (e) {}
+      }
+
+      var now = Date.now();
+      var loginTime = '';
+      try {
+        loginTime = sessionStorage.getItem(SESSION_LOGIN_TIME_KEY) ||
+                    localStorage.getItem(SESSION_LOGIN_TIME_KEY) ||
+                    (new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.');
+      } catch (e) {
+        loginTime = '08:30 น.';
+      }
+
+      var payload = {
+        user: validUser,
+        loginTime: loginTime,
+        issuedAt: now,
+        expiresAt: shouldRemember ? (now + 7 * 24 * 60 * 60 * 1000) : null,
+        rememberMe: shouldRemember
+      };
+
+      var payloadStr = JSON.stringify(payload);
+      var identifier = validUser.email || validUser.name || '';
+
+      // Always write active tab session to sessionStorage
+      try {
+        sessionStorage.setItem(SESSION_USER_OBJ_KEY, payloadStr);
+        sessionStorage.setItem(LOCAL_KEY, identifier);
+        sessionStorage.setItem(SESSION_LOGIN_TIME_KEY, loginTime);
+      } catch (e) {}
+
+      // Write or purge localStorage according to rememberMe
+      try {
+        if (shouldRemember) {
+          localStorage.setItem(SESSION_USER_OBJ_KEY, payloadStr);
+          localStorage.setItem(LOCAL_KEY, identifier);
+          localStorage.setItem(SESSION_LOGIN_TIME_KEY, loginTime);
+        } else {
+          localStorage.removeItem(SESSION_USER_OBJ_KEY);
+          localStorage.removeItem(LOCAL_KEY);
+          localStorage.removeItem(SESSION_LOGIN_TIME_KEY);
+        }
+        localStorage.removeItem(SAVED_ACCS_KEY);
+      } catch (e) {}
+
+      _cachedUser = validUser;
+      return validUser;
+    }
+
+    /**
+     * Purges all session records from both storages.
+     */
+    function clear() {
+      try {
+        sessionStorage.removeItem(SESSION_USER_OBJ_KEY);
+        sessionStorage.removeItem(LOCAL_KEY);
+        sessionStorage.removeItem(SESSION_LOGIN_TIME_KEY);
+        localStorage.removeItem(SESSION_USER_OBJ_KEY);
+        localStorage.removeItem(LOCAL_KEY);
+        localStorage.removeItem(SESSION_LOGIN_TIME_KEY);
+        localStorage.removeItem(SAVED_ACCS_KEY);
+      } catch (e) {}
+      _cachedUser = null;
+    }
+
+    function getActiveUser() {
+      return _cachedUser;
+    }
+
+    function setActiveUser(u) {
+      _cachedUser = u;
+    }
+
+    return {
+      extractValidUser: extractValidUser,
+      load: load,
+      save: save,
+      clear: clear,
+      getActiveUser: getActiveUser,
+      setActiveUser: setActiveUser
+    };
+  })();
+  window.SessionManager = SessionManager;
+
+  // Reactive Smart Global Property for g_CurrentUser
+  // Seamlessly intercepts read and write operations across the entire application
+  try {
+    Object.defineProperty(window, 'g_CurrentUser', {
+      get: function() {
+        var cur = SessionManager.getActiveUser();
+        if (!cur) {
+          cur = SessionManager.load();
+        }
+        return cur;
+      },
+      set: function(val) {
+        if (!val) {
+          SessionManager.setActiveUser(null);
+          return;
+        }
+        var valid = SessionManager.extractValidUser(val);
+        SessionManager.setActiveUser(valid);
+        if (valid) {
+          SessionManager.save(valid);
+        }
+      },
+      configurable: true,
+      enumerable: true
+    });
+  } catch (defErr) {
+    console.warn('Could not define reactive g_CurrentUser property:', defErr);
+  }
+
+  function isSuperuserOrAdmin(userObj) {
+    if (!userObj) return false;
+    var lv = normalizeRolePermission(userObj.accessLevel || userObj);
+    return (lv === 'Admin' || lv === 'Superuser');
+  }
+
+  function escapeHtml(str) {
+
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  window.escapeHtml = escapeHtml;
+
+const DIALOG_ICONS = {
+    success: '<svg class="ui-ico-lg" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    confirm: '<svg class="ui-ico-lg" style="color:var(--orange);" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    error: '<svg class="ui-ico-lg" style="color:var(--red);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info: '<svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
+
+  function steamAlert(msg, title, explicitType) {
+    let t = document.getElementById('steamAlertTitle');
+    let m = document.getElementById('steamAlertMessage');
+    let mod = document.getElementById('steamAlertModal');
+    let card = document.getElementById('steamAlertCard');
+    let ring = document.getElementById('steamAlertIconRing');
+    let btn = document.getElementById('steamAlertBtn');
+
+    let type = explicitType || 'info';
+    const lowerTitle = String(title || '').toLowerCase();
+    const lowerMsg = String(msg || '').toLowerCase();
+
+    if (!explicitType) {
+      if (lowerTitle.includes('success') || lowerTitle.includes('updated') || lowerTitle.includes('saved') || lowerTitle.includes('สำเร็จ') || lowerMsg.includes('success') || lowerMsg.includes('saved successfully')) {
+        type = 'success';
+      } else if (lowerTitle.includes('error') || lowerTitle.includes('failed') || lowerTitle.includes('denied') || lowerTitle.includes('invalid') || lowerTitle.includes('ผิดพลาด') || lowerTitle.includes('ล้มเหลว') || lowerMsg.includes('failed') || lowerMsg.includes('error') || lowerMsg.includes('wrong')) {
+        type = 'error';
+      } else if (lowerTitle.includes('warning') || lowerTitle.includes('เตือน') || lowerTitle.includes('required') || lowerTitle.includes('conflict') || lowerTitle.includes('mismatch')) {
+        type = 'confirm';
+      }
+    }
+
+    const defaultTitle = (type === 'success') ? 'สำเร็จ' : ((type === 'error') ? 'เกิดข้อผิดพลาด' : 'แจ้งเตือนจากระบบ');
+    if (t) t.innerText = title || defaultTitle;
+    if (m) m.innerHTML = msg || '';
+
+    if (card) {
+      card.className = 'modal-box steam-dialog-card type-' + type;
+    }
+    if (ring) {
+      ring.className = 'status-icon-ring ring-' + type;
+      ring.innerHTML = DIALOG_ICONS[type] || DIALOG_ICONS.info;
+    }
+    if (btn) {
+      if (type === 'success') {
+        btn.className = 'btn-steam';
+        btn.style.background = 'var(--steam-green)';
+        btn.style.color = '#000';
+      } else if (type === 'error') {
+        btn.className = 'btn-steam-danger';
+        btn.style.background = 'var(--red)';
+        btn.style.color = '#fff';
+      } else if (type === 'confirm') {
+        btn.className = 'btn-steam';
+        btn.style.background = 'var(--orange)';
+        btn.style.color = '#000';
+      } else {
+        btn.className = 'btn-steam';
+        btn.style.background = 'var(--steam-cyan)';
+        btn.style.color = '#000';
+      }
+      btn.innerText = 'ตกลง';
+    }
+
+    if (mod) mod.style.display = 'flex';
+  }
+
+  function closeSteamAlert() {
+    let mod = document.getElementById('steamAlertModal');
+    if (mod) mod.style.display = 'none';
+  }
+
+  function steamConfirm(msg, callback, options = {}) {
+    _confirmCallback = callback;
+    let t = document.getElementById('steamConfirmTitle');
+    let m = document.getElementById('steamConfirmMessage');
+    let mod = document.getElementById('steamConfirmModal');
+    let cancelBtn = document.getElementById('steamConfirmCancelBtn');
+    let okBtn = document.getElementById('steamConfirmOkBtn');
+
+    if (t) t.innerText = options.title || 'ยืนยันการดำเนินการ';
+    if (m) m.innerText = msg;
+    if (cancelBtn) cancelBtn.innerText = options.cancelText || 'ยกเลิก';
+    if (okBtn) okBtn.innerText = options.okText || 'ยืนยัน';
+
+    if (mod) mod.style.display = 'flex';
+  }
+
+  function closeSteamConfirm() {
+    let mod = document.getElementById('steamConfirmModal');
+    if (mod) mod.style.display = 'none';
+    _confirmCallback = null;
+  }
+
+  function executeSteamConfirm() {
+    const cb = _confirmCallback;
+    closeSteamConfirm();
+    if (typeof cb === 'function') cb();
+  }
+
+  function steamPrompt(msg, callback, title = 'โปรดระบุข้อมูล', options = {}) {
+    _promptCallback = callback;
+    let t = document.getElementById('steamPromptTitle');
+    let m = document.getElementById('steamPromptMessage');
+    let inp = document.getElementById('steamPromptInput');
+    let mod = document.getElementById('steamPromptModal');
+
+    if (t) t.innerText = title;
+    if (m) m.innerText = msg;
+    if (inp) {
+      inp.value = options.defaultValue || '';
+      inp.placeholder = options.placeholder || '';
+    }
+    if (mod) mod.style.display = 'flex';
+    if (inp) setTimeout(() => inp.focus(), 50);
+  }
+
+  function closeSteamPrompt() {
+    let mod = document.getElementById('steamPromptModal');
+    if (mod) mod.style.display = 'none';
+    _promptCallback = null;
+  }
+
+  function executeSteamPrompt() {
+    let inp = document.getElementById('steamPromptInput');
+    const val = inp ? inp.value.trim() : '';
+    const cb = _promptCallback;
+    closeSteamPrompt();
+    if (typeof cb === 'function') cb(val);
+  }
+
+  function steamToast(msg, type = 'success') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast-pill toast-' + type;
+
+    let iconSvg = DIALOG_ICONS[type] || DIALOG_ICONS.success;
+    toast.innerHTML = iconSvg + '<span>' + msg + '</span>';
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.transition = 'all 0.3s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 320);
+    }, 3000);
+  }
+  window.steamToast = steamToast;
+
+    function startLoadingBar(title = 'Processing...') {
+    const scr = document.getElementById('loadingScreen') || document.getElementById('loadingOverlay');
+    const bar = document.getElementById('loadingBatteryBar') || document.getElementById('loadBatteryBar');
+    const pct = document.getElementById('loadingPercentText') || document.getElementById('loadPercent');
+    const ttl = document.getElementById('loadingTitleText') || document.getElementById('loadTitle');
+    if (ttl) ttl.innerText = title;
+    if (scr) scr.style.display = 'flex';
+    let val = 15;
+    if (bar) bar.style.width = val + '%';
+    if (pct) pct.innerText = `(${val}%)`;
+    if (_loadTimer) clearInterval(_loadTimer);
+    if (_safetyWatchdog) clearTimeout(_safetyWatchdog);
+
+    _loadTimer = setInterval(() => {
+      if (val < 90) {
+        val += Math.floor(Math.random() * 12) + 4;
+        if (val > 90) val = 90;
+        if (bar) bar.style.width = val + '%';
+        if (pct) pct.innerText = `(${val}%)`;
+      }
+    }, 120);
+
+    _safetyWatchdog = setTimeout(() => {
+      stopLoadingBar();
+    }, 9000);
+  }
+
+  function stopLoadingBar(callback) {
+    if (_loadTimer) { clearInterval(_loadTimer); _loadTimer = null; }
+    if (_safetyWatchdog) { clearTimeout(_safetyWatchdog); _safetyWatchdog = null; }
+    const scr = document.getElementById('loadingScreen') || document.getElementById('loadingOverlay');
+    const bar = document.getElementById('loadingBatteryBar') || document.getElementById('loadBatteryBar');
+    const pct = document.getElementById('loadingPercentText') || document.getElementById('loadPercent');
+    if (bar) bar.style.width = '100%';
+    if (pct) pct.innerText = '(100%)';
+    const ttl = document.getElementById('loadingTitleText') || document.getElementById('loadTitle');
+    if (ttl) ttl.innerText = 'Ready to Go';
+    setTimeout(() => {
+      if (scr) scr.style.display = 'none';
+      if (typeof callback === 'function') callback();
+    }, 120);
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > MAX_FILE_SIZE) {
+        reject(new Error('ขนาดไฟล์ต้องไม่เกิน 5 MB'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  }
+
+  function normalizeYearToBEClient(rawYear) {
+    var y = parseInt(rawYear, 10);
+    if (isNaN(y)) return rawYear;
+    while (y >= 2900) {
+      y -= 543;
+    }
+    if (y > 1800 && y < 2400) {
+      y += 543;
+    }
+    return y;
+  }
+
+  function normalizeYearToCEClient(rawYear) {
+    var y = parseInt(rawYear, 10);
+    if (isNaN(y)) return rawYear;
+    while (y >= 2900) {
+      y -= 543;
+    }
+    if (y >= 2400) {
+      y -= 543;
+    }
+    return y;
+  }
+
+    function calculateStaffTenureText(startDateStr) {
+    if (!startDateStr || startDateStr === '-') return '-';
+    let p = String(startDateStr).trim().split('-');
+    if (p.length !== 3) {
+      p = String(startDateStr).trim().split('/');
+      if (p.length === 3) {
+        let yr = parseInt(p[2], 10);
+        if (yr > 2400) yr -= 543;
+        p = [yr, p[1], p[0]];
+      } else {
+        return '-';
+      }
+    }
+    let yr = parseInt(p[0], 10);
+    if (yr > 2400) yr -= 543;
+    const mo = parseInt(p[1], 10);
+    const day = parseInt(p[2], 10);
+    const sDate = new Date(yr, mo - 1, day, 0, 0, 0);
+    if (isNaN(sDate.getTime())) return '-';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (today < sDate) return 'บรรจุใหม่';
+
+    let years = today.getFullYear() - sDate.getFullYear();
+    let months = today.getMonth() - sDate.getMonth();
+    let days = today.getDate() - sDate.getDate();
+
+    if (days < 0) {
+      months--;
+      const prevMonthLastDay = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+      days += prevMonthLastDay;
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    return years + ' ปี ' + months + ' เดือน ' + days + ' วัน';
+  }
+
+function formatSlashDateBE(dateStr) {
+    if (!dateStr || dateStr === '-') return '-';
+    let str = String(dateStr).trim().split(' ')[0];
+    if (str.includes('-')) {
+      let p = str.split('-');
+      if (p.length === 3) {
+        let yBE = normalizeYearToBEClient(p[0]);
+        return `${String(p[2]).padStart(2, '0')}/${String(p[1]).padStart(2, '0')}/${yBE}`;
+      }
+    }
+    if (str.includes('/')) {
+      let p2 = str.split('/');
+      if (p2.length === 3) {
+        let yBE2 = normalizeYearToBEClient(p2[2]);
+        return `${String(p2[0]).padStart(2, '0')}/${String(p2[1]).padStart(2, '0')}/${yBE2}`;
+      }
+    }
+    return str;
+  }
+
+  function formatThaiRangeDisplay(startStr, endStr, isPermit, startTime, endTime) {
+    const shortMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const parseD = (s) => {
+      if (!s) return null;
+      let str = String(s).trim().split(' ')[0];
+      if (str.includes('/')) {
+        let p = str.split('/');
+        if (p.length === 3) {
+          let y = normalizeYearToBEClient(p[2]);
+          return { d: parseInt(p[0], 10), m: parseInt(p[1], 10) - 1, y: y };
+        }
+      }
+      if (str.includes('-')) {
+        let p = str.split('-');
+        if (p.length === 3) {
+          let y = normalizeYearToBEClient(p[0]);
+          return { d: parseInt(p[2], 10), m: parseInt(p[1], 10) - 1, y: y };
+        }
+      }
+      return null;
+    };
+
+    const sObj = parseD(startStr);
+    const eObj = parseD(endStr || startStr);
+    if (!sObj || isNaN(sObj.d) || isNaN(sObj.m)) return escapeHtml(startStr || '-');
+
+    const sTxt = `${sObj.d} ${shortMonths[sObj.m] || ''}`;
+    if (isPermit) {
+      return `${sTxt} ${sObj.y} (${escapeHtml(startTime || '-')}-${escapeHtml(endTime || '-')} น.)`;
+    }
+    if (!eObj || (sObj.d === eObj.d && sObj.m === eObj.m && sObj.y === eObj.y)) {
+      return `${sTxt} ${sObj.y}`;
+    }
+    const eTxt = `${eObj.d} ${shortMonths[eObj.m] || ''}`;
+    if (sObj.y === eObj.y) {
+      return `${sTxt}–${eTxt} ${eObj.y}`;
+    }
+    return `${sTxt} ${sObj.y} – ${eTxt} ${eObj.y}`;
+  }
+
+  function _dateStrToComparableNum(dateStr) {
+    if (!dateStr || dateStr === '-') return 0;
+    const s = String(dateStr).trim().split(' ')[0];
+    if (s.includes('-')) {
+      const p = s.split('-');
+      if (p.length === 3) {
+        let y = normalizeYearToCEClient(p[0]);
+        return y * 10000 + parseInt(p[1], 10) * 100 + parseInt(p[2], 10);
+      }
+    }
+    if (s.includes('/')) {
+      const p2 = s.split('/');
+      if (p2.length === 3) {
+        let y2 = normalizeYearToCEClient(p2[2]);
+        return y2 * 10000 + parseInt(p2[1], 10) * 100 + parseInt(p2[0], 10);
+      }
+    }
+    return 0;
+  }
+
+  function syncFlatpickrBuddhistYearHeader(instance) {
+    if (!instance || !instance.currentYearElement) return;
+    const ceYear = instance.currentYear;
+    const beYear = normalizeYearToBEClient(ceYear);
+    setTimeout(() => {
+      if (instance.currentYearElement) instance.currentYearElement.value = beYear;
+    }, 10);
+  }
+
+  function initThaiDatePickers() {
+    if (typeof flatpickr === 'undefined') return;
+    document.querySelectorAll('input[type="date"]').forEach(inp => {
+      if (inp._flatpickr) return;
+      flatpickr(inp, {
+        locale: 'th',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altInputClass: 'steam-input',
+        allowInput: false,
+        disableMobile: true,
+        appendTo: document.body,
+        formatDate: (date, format) => {
+          if (format !== 'Y-m-d') {
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const yBE = normalizeYearToBEClient(date.getFullYear());
+            return `${d}/${m}/${yBE}`;
+          }
+          const yyyy = normalizeYearToCEClient(date.getFullYear());
+          const mm = String(date.getMonth() + 1).padStart(2, '0');
+          const dd = String(date.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        },
+        onReady: function(s, d, inst) { syncFlatpickrBuddhistYearHeader(inst); },
+        onOpen: function(s, d, inst) { syncFlatpickrBuddhistYearHeader(inst); },
+        onYearChange: function(s, d, inst) { syncFlatpickrBuddhistYearHeader(inst); },
+        onMonthChange: function(s, d, inst) { syncFlatpickrBuddhistYearHeader(inst); },
+        onChange: function(s, dateStr, inst) {
+          syncFlatpickrBuddhistYearHeader(inst);
+          inp.value = dateStr;
+          if (typeof inp.onchange === 'function') inp.onchange();
+        }
+      });
+    });
+  }
+
+  function setDatePickerVal(id, val) {
+    let el = document.getElementById(id);
+    if (!el) return;
+    let cleanIso = '';
+    if (val && val !== '-') {
+      let str = String(val).trim().split(' ')[0];
+      if (str.includes('-')) {
+        let p = str.split('-');
+        if (p.length === 3) {
+          cleanIso = `${normalizeYearToCEClient(p[0])}-${String(p[1]).padStart(2, '0')}-${String(p[2]).padStart(2, '0')}`;
+        }
+      } else if (str.includes('/')) {
+        let p2 = str.split('/');
+        if (p2.length === 3) {
+          cleanIso = `${normalizeYearToCEClient(p2[2])}-${String(p2[1]).padStart(2, '0')}-${String(p2[0]).padStart(2, '0')}`;
+        }
+      }
+    }
+    el.value = cleanIso;
+    if (el._flatpickr) {
+      el._flatpickr.setDate(cleanIso || '', false);
+      syncFlatpickrBuddhistYearHeader(el._flatpickr);
+    }
+  }
+
+  function shortRole(val) {
+    if (!val) return '-';
+    var s = String(val).trim();
+    if (s.indexOf('ผู้อำนวยการสถานศึกษา') !== -1 || s.indexOf('ผู้อำนวยการโรงเรียน') !== -1) return 'ผอ.รร.';
+    if (s.indexOf('รองผู้อำนวยการ') !== -1) return 'รอง ผอ.';
+    if (s.indexOf('คศ. 5') !== -1 || s.indexOf('เชี่ยวชาญพิเศษ') !== -1) return 'คศ. 5';
+    if (s.indexOf('คศ. 4') !== -1 || s.indexOf('เชี่ยวชาญ') !== -1) return 'คศ. 4';
+    if (s.indexOf('คศ. 3') !== -1 || s.indexOf('ชำนาญการพิเศษ') !== -1) return 'คศ. 3';
+    if (s.indexOf('คศ. 2') !== -1 || s.indexOf('ชำนาญการ') !== -1) return 'คศ. 2';
+    if (s.indexOf('คศ. 1') !== -1) return 'คศ. 1';
+    if (s.indexOf('ครูผู้ช่วย') !== -1) return 'ครูผู้ช่วย';
+    if (s.indexOf('ครูพี่เลี้ยง') !== -1) return 'ครูพี่เลี้ยงฯ';
+    if (s.indexOf('พี่เลี้ยงเด็ก') !== -1) return 'พี่เลี้ยงอนุบาล';
+    if (s.indexOf('ธุรการ') !== -1) return 'ธุรการ';
+    if (s.indexOf('การเงิน') !== -1 || s.indexOf('พัสดุ') !== -1) return 'การเงิน/พัสดุ';
+    if (s.indexOf('ภารโรง') !== -1) return 'ภารโรง';
+    if (s.indexOf('รักษาความปลอดภัย') !== -1 || s.indexOf('รปภ') !== -1) return 'รปภ.';
+    if (s.indexOf('แม่บ้าน') !== -1 || s.indexOf('ทำความสะอาด') !== -1) return 'แม่บ้าน';
+    return s;
+  }
+
+  function shortDept(val) {
+    if (!val) return '-';
+    var s = String(val).trim().replace(/^กลุ่มสาระการเรียนรู้/, '').trim();
+    if (s.indexOf('สังคมศึกษา') !== -1 || s.indexOf('สังคม') !== -1) return 'สังคมฯ';
+    if (s.indexOf('วิทยาศาสตร์') !== -1) return 'วิทย์ฯ';
+    if (s.indexOf('คณิตศาสตร์') !== -1) return 'คณิตฯ';
+    if (s.indexOf('สุขศึกษา') !== -1) return 'สุขศึกษาฯ';
+    if (s.indexOf('การงานอาชีพ') !== -1) return 'การงานฯ';
+    if (s.indexOf('ภาษาต่างประเทศ') !== -1) return 'ต่างประเทศ';
+    if (s.indexOf('การศึกษาปฐมวัย') !== -1 || s.indexOf('ปฐมวัย') !== -1) return 'ปฐมวัย';
+    if (s.indexOf('กิจกรรมนักเรียน') !== -1) return 'กิจกรรมนักเรียน';
+    if (s.indexOf('กิจกรรมเพื่อสังคม') !== -1) return 'เพื่อสังคมฯ';
+    if (s.indexOf('กิจกรรมแนะแนว') !== -1) return 'แนะแนว';
+    if (s.indexOf('สายงานบริหารและสนับสนุน') !== -1 || s.indexOf('บริหารสถานศึกษา') !== -1) return 'บริหาร/สนับสนุน';
+    return s;
+  }
+
+  function _shortSingleDivItem(s) {
+    if (!s) return '';
+    if (s.indexOf('ผู้บริหารสถานศึกษา') !== -1) return 'ผู้บริหาร';
+    if (s.indexOf('หัวหน้าฝ่ายบริหารวิชาการ') !== -1) return 'หน.วิชาการ';
+    if (s.indexOf('เจ้าหน้าที่ฝ่ายบริหารวิชาการ') !== -1 || s === 'ฝ่ายบริหารวิชาการ') return 'ฝ่ายวิชาการ';
+    if (s.indexOf('หัวหน้าฝ่ายบริหารงบประมาณ') !== -1) return 'หน.งบประมาณ';
+    if (s.indexOf('เจ้าหน้าที่ฝ่ายบริหารงบประมาณ') !== -1 || s.indexOf('ฝ่ายบริหารงบประมาณ') !== -1) return 'ฝ่ายงบประมาณ';
+    if (s.indexOf('หัวหน้าฝ่ายบริหารงานบุคคล') !== -1) return 'หน.บุคคล';
+    if (s.indexOf('เจ้าหน้าที่ฝ่ายบริหารงานบุคคล') !== -1 || s.indexOf('ฝ่ายบริหารงานบุคคล') !== -1) return 'ฝ่ายบุคคล';
+    if (s.indexOf('หัวหน้าฝ่ายบริหารทั่วไป') !== -1) return 'หน.บริหารทั่วไป';
+    if (s.indexOf('เจ้าหน้าที่ฝ่ายบริหารทั่วไป') !== -1 || s.indexOf('ฝ่ายบริหารทั่วไป') !== -1) return 'ฝ่ายบริหารทั่วไป';
+    if (s.indexOf('วัดผลและประเมินผล') !== -1) return 'งานวัดผลฯ';
+    if (s.indexOf('ประกันคุณภาพ') !== -1) return 'งานประกันฯ';
+    if (s.indexOf('นโยบายและแผน') !== -1) return 'งานแผนงาน';
+    if (s.indexOf('ระบบดูแลช่วยเหลือนักเรียน') !== -1) return 'กิจการนักเรียน';
+    if (s.indexOf('อาหารกลางวัน') !== -1) return 'อาหารกลางวัน';
+    if (s.indexOf('อาคารสถานที่') !== -1) return 'อาคารสถานที่';
+    if (s.indexOf('ประชาสัมพันธ์') !== -1) return 'ประชาสัมพันธ์';
+    if (s.indexOf('เทคโนโลยีสารสนเทศ') !== -1) return 'งาน ICT';
+    return s;
+  }
+
+  function shortDiv(val) {
+    if (!val) return '-';
+    var parts = String(val).split(',').map(p => _shortSingleDivItem(p.trim())).filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : '-';
+  }
+
+  function shortClass(val) {
+    if (!val) return '';
+    var s = String(val).trim();
+    return s.replace('อนุบาล ', 'อ.').replace('ประถมศึกษาปีที่ ', 'ป.').replace('มัธยมศึกษาปีที่ ', 'ม.');
+  }
+
+  function shortScout(val) {
+    if (!val || val === '-') return '-';
+    var s = String(val).trim();
+    if (s.indexOf('ไม่มีวุฒิลูกเสือ') !== -1) return 'ไม่มีวุฒิฯ';
+    if (s.indexOf('B.T.C.') !== -1) return 'B.T.C.';
+    if (s.indexOf('A.T.C.') !== -1) return 'A.T.C.';
+    if (s.indexOf('W.B.') !== -1) return 'W.B.';
+    if (s.indexOf('A.L.T.') !== -1) return 'A.L.T.';
+    if (s.indexOf('L.T.') !== -1) return 'L.T.';
+    return s;
+  }
+
+  function shortLicType(val) {
+    if (!val || val === '-') return '-';
+    var s = String(val).trim();
+    var lower = s.toLowerCase();
+    if (lower.indexOf('p-license') !== -1 || lower.indexOf('p license') !== -1) return 'P-License';
+    if (lower.indexOf('b-license') !== -1 || lower.indexOf('b license') !== -1) return 'B-License';
+    if (lower.indexOf('a-license') !== -1 || lower.indexOf('a license') !== -1) return 'A-License';
+    if (s.indexOf('ผู้บริหารสถานศึกษา') !== -1) return 'ใบอนุญาตผู้บริหาร';
+    if (s.indexOf('ศึกษานิเทศก์') !== -1) return 'ใบอนุญาตศึกษานิเทศก์';
+    return s;
+  }
+
+  function shortLeaveType(val) {
+    if (!val) return '-';
+    var s = String(val).trim();
+    if (s.indexOf('3 ชม.') !== -1) return 'ขออนุญาต (3 ชม.)';
+    if (s.indexOf('ช่วยเหลือภริยา') !== -1) return 'ช่วยภริยาคลอดฯ';
+    if (s.indexOf('อุปสมบท') !== -1) return 'ลาอุปสมบท/ฮัจย์';
+    if (s.indexOf('ตรวจเลือก') !== -1) return 'ลาตรวจเลือกฯ';
+    if (s.indexOf('ศึกษา ฝึกอบรม') !== -1) return 'ลาศึกษา/อบรม';
+    if (s.indexOf('องค์การระหว่างประเทศ') !== -1) return 'องค์การระหว่างประเทศ';
+    if (s.indexOf('ฟื้นฟูสมรรถภาพ') !== -1) return 'ฟื้นฟูสมรรถภาพฯ';
+    return s;
+  }
+
+  function shortSubInfo(val) {
+    if (!val) return '-';
+    var s = String(val).trim();
+    return s.replace('มอบหมายให้ ', '').replace(' สอนแทน', '').replace('ไม่มีคาบสอนในวันที่ลา', 'ไม่มีคาบสอน').replace('ไม่มีภาระงานสอน', 'ไม่มีภาระงาน');
+  }
+
+  function getStaffCategoryCode(u) {
+    const empId = String(u.EmpID || u.id || '').trim();
+    const pos = String(u.Position || u.role || '').trim();
+    if (empId.indexOf('EXE-') === 0 || pos.indexOf('ผู้อำนวยการ') !== -1 || pos.indexOf('รองผู้อำนวยการ') !== -1) return 'EXE';
+    if (
+      empId.indexOf('STF-') === 0 ||
+      pos.indexOf('ธุรการ') !== -1 || pos.indexOf('การเงิน') !== -1 || pos.indexOf('พัสดุ') !== -1 ||
+      pos.indexOf('ภารโรง') !== -1 || pos.indexOf('รักษาความปลอดภัย') !== -1 || pos.indexOf('รปภ') !== -1 ||
+      pos.indexOf('แม่บ้าน') !== -1 || pos.indexOf('ทำความสะอาด') !== -1 || pos.indexOf('ลูกจ้าง') !== -1
+    ) return 'STF';
+    return 'TCH';
+  }
+  window.getStaffCategoryCode = getStaffCategoryCode;
+
+  function getStaffUserIconSvg(u) {
+    if (!u) return '<svg class="ui-ico-sm ico-staff-tch" style="flex-shrink:0;" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    const cat = getStaffCategoryCode(u);
+    let cls = 'ico-staff-tch';
+    let title = 'ครูผู้สอน / บุคลากรทางการศึกษา';
+    if (cat === 'EXE') {
+      cls = 'ico-staff-exe';
+      title = 'ผู้บริหารสถานศึกษา';
+    } else if (cat === 'STF') {
+      cls = 'ico-staff-stf';
+      title = 'บุคลากรสายสนับสนุน';
+    }
+    return `<svg class="ui-ico-sm ${cls}" title="${title}" style="flex-shrink:0;" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  }
+
+  function extractStandingLabelFromData(rawStandingOrRole) {
+    if (!rawStandingOrRole) return '';
+    const s = String(rawStandingOrRole).trim();
+    if (s.indexOf('เชี่ยวชาญพิเศษ') !== -1 || s.indexOf('คศ. 5') !== -1 || s.indexOf('คศ.5') !== -1) return 'คศ.5';
+    if (s.indexOf('เชี่ยวชาญ') !== -1 || s.indexOf('คศ. 4') !== -1 || s.indexOf('คศ.4') !== -1) return 'คศ.4';
+    if (s.indexOf('ชำนาญการพิเศษ') !== -1 || s.indexOf('คศ. 3') !== -1 || s.indexOf('คศ.3') !== -1) return 'คศ.3';
+    if (s.indexOf('ชำนาญการ') !== -1 || s.indexOf('คศ. 2') !== -1 || s.indexOf('คศ.2') !== -1) return 'คศ.2';
+    if (s.indexOf('คศ. 1') !== -1 || s.indexOf('คศ.1') !== -1) return 'คศ.1';
+    return '';
+  }
+
+  function buildStaffIdentitySubtitle(u) {
+    const empId = escapeHtml(u.EmpID || u.id || '-');
+    const rawPos = String(u.Position || u.role || '').trim();
+    const rawStanding = String(u.HighestStanding || '').trim();
+    const rawDept = String(u.Department || u.department || '').trim();
+    const rawDiv = String(u.Division || u.division || '').trim();
+    const cat = getStaffCategoryCode(u);
+
+    let basePosition = '';
+    let standingTag = '';
+
+    if (cat === 'EXE') {
+      if (rawPos.indexOf('รองผู้อำนวยการ') !== -1) basePosition = 'รองผู้อำนวยการสถานศึกษา';
+      else if (rawPos.indexOf('ผู้อำนวยการ') !== -1) basePosition = 'ผู้อำนวยการสถานศึกษา';
+      else basePosition = rawPos || 'ผู้บริหารสถานศึกษา';
+      standingTag = extractStandingLabelFromData(rawStanding);
+    } else if (cat === 'STF') {
+      basePosition = rawPos || 'บุคลากรสายสนับสนุน';
+      standingTag = '';
+    } else {
+      const explicitNonStandingRoles = ['ครูผู้ช่วย', 'พนักงานราชการ', 'ครูอัตราจ้าง', 'ครูพี่เลี้ยงเด็กพิการเรียนร่วม', 'พี่เลี้ยงเด็กอนุบาล', 'ศึกษานิเทศก์'];
+      const matchedNonStanding = explicitNonStandingRoles.find(r => rawPos.indexOf(r) !== -1);
+      if (matchedNonStanding) {
+        basePosition = matchedNonStanding;
+        standingTag = '';
+      } else {
+        basePosition = 'ครู';
+        standingTag = extractStandingLabelFromData(rawStanding) || extractStandingLabelFromData(rawPos);
+      }
+    }
+
+    let workOrDeptLabel = '';
+    const isGenericSupportDept = (!rawDept || rawDept === '-' || rawDept.indexOf('สายงานบริหารและสนับสนุน') !== -1 || rawDept.indexOf('บริหารสถานศึกษา') !== -1);
+
+    if (cat === 'STF') {
+      if (rawDiv && rawDiv !== '-') workOrDeptLabel = shortDiv(rawDiv);
+      else if (!isGenericSupportDept) workOrDeptLabel = rawDept;
+    } else if (cat === 'EXE') {
+      if (rawDiv && rawDiv !== '-') workOrDeptLabel = rawDiv;
+      else if (rawDept && rawDept !== '-') workOrDeptLabel = rawDept;
+    } else {
+      if (!isGenericSupportDept) {
+        const sDept = shortDept(rawDept);
+        workOrDeptLabel = (rawDept.indexOf('กิจกรรม') === 0 || rawDept.indexOf('การศึกษาปฐมวัย') === 0) ? sDept : `กลุ่มสาระ${sDept}`;
+      } else if (rawDiv && rawDiv !== '-') {
+        workOrDeptLabel = shortDiv(rawDiv);
+      }
+    }
+
+    const segments = [];
+    if (basePosition) segments.push(`<span style="color:#d0d7de;">${escapeHtml(basePosition)}</span>`);
+    if (standingTag) segments.push(`<span style="color:var(--steam-cyan); font-weight:600;">${escapeHtml(standingTag)}</span>`);
+    if (workOrDeptLabel) segments.push(`<span>${escapeHtml(workOrDeptLabel)}</span>`);
+
+    return segments.join(`<span class="emp-meta-sep">·</span>`);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    try {
+      initThaiDatePickers();
+      if (typeof initCustomLeaveTypeSvgDropdown === 'function') initCustomLeaveTypeSvgDropdown();
+    if (typeof MOD_RetroLeave_initView === 'function') MOD_RetroLeave_initView();
+      if (document.getElementById('mainAdminContainer')) {
+        if (typeof bootAdminApp === 'function') bootAdminApp();
+      } else {
+        bootMainApp();
+      }
+    } catch (bootErr) {
+      console.error('Boot Error:', bootErr);
+      stopLoadingBar(() => {
+        let lg = document.getElementById('loginScreen');
+        if (lg) lg.style.display = 'flex';
+      });
+    }
+  });
+
+  if (!window._manstatGlobalListenersBound) {
+    window._manstatGlobalListenersBound = true;
+    document.addEventListener('click', (e) => {
+      const drop = document.getElementById('onlineDropdownBox') || document.getElementById('onlineMinimalDropdown');
+      if (drop && drop.classList.contains('show')) {
+        if (!e.target.closest('.online-presence-wrap')) drop.classList.remove('show');
+      }
+      const cMenu = document.getElementById('customLeaveTypeMenu');
+      if (cMenu && cMenu.classList.contains('show')) {
+        if (!e.target.closest('#customLeaveTypeDropdownWrap')) {
+          cMenu.classList.remove('show');
+          const cBtn = document.getElementById('customLeaveTypeBtn');
+          if (cBtn) cBtn.classList.remove('open');
+        }
+      }
+      const rMenu = document.getElementById('customRetroLeaveTypeMenu');
+      if (rMenu && rMenu.classList.contains('show')) {
+        if (!e.target.closest('#customRetroLeaveTypeDropdownWrap')) {
+          rMenu.classList.remove('show');
+          const rBtn = document.getElementById('customRetroLeaveTypeBtn');
+          if (rBtn) rBtn.classList.remove('open');
+        }
+      }
+      const pop = document.getElementById('accountPopover');
+      const btn = document.getElementById('btnTogglePopover');
+      if (pop && pop.style.display === 'block') {
+        if (!pop.contains(e.target) && (!btn || !btn.contains(e.target))) {
+          closeAccountPopover();
+        }
+      }
+    });
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeAccountPopover();
+      }
+    });
+  }
+
+  function toggleOnlineUsersDropdown(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const drop = document.getElementById("onlineDropdownBox") || document.getElementById("onlineMinimalDropdown");
+    if (drop) drop.classList.toggle("show");
+  }
+
+  function toggleOnlineMinimalBox(e) {
+    if (e) e.stopPropagation();
+    const drop = document.getElementById('onlineMinimalDropdown');
+    if (drop) drop.classList.toggle('show');
+  }
+
+  function applyTopBarUserAndLoginTime(userObj) {
+    if (!userObj) return;
+    userObj.accessLevel = normalizeRolePermission(userObj.accessLevel);
+    let shortLabel = userObj.name || 'User';
+    if (userObj.email === 'superuser' || String(userObj.name || '').includes('ผู้ดูแลระบบสูงสุด') || userObj.name === 'Super Admin' || userObj.name === 'Superuser') {
+      shortLabel = 'Superuser';
+    } else {
+      let parts = String(userObj.name || '').trim().split(/\s+/);
+      shortLabel = parts[0] || userObj.accessLevel || 'User';
+    }
+
+    const profEl = document.getElementById('displayProfileName');
+    if (profEl) profEl.innerText = shortLabel;
+
+    let loginTimeStr = localStorage.getItem(SESSION_LOGIN_TIME_KEY);
+    if (!loginTimeStr) {
+      const now = new Date();
+      loginTimeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ' น.';
+      localStorage.setItem(SESSION_LOGIN_TIME_KEY, loginTimeStr);
+    }
+
+    const fullEl = document.getElementById('minimalUserFullName');
+    if (fullEl) fullEl.innerText = (userObj.name === 'Super Admin' ? 'Superuser' : userObj.name) || shortLabel;
+
+    const roleEl = document.getElementById('minimalUserRole');
+    if (roleEl) roleEl.innerText = `สิทธิ์: ${userObj.accessLevel || 'User'} (${shortRole(userObj.role)})`;
+
+    const timeDetailEl = document.getElementById('minimalLoginTimeDetail');
+    if (timeDetailEl) timeDetailEl.innerText = loginTimeStr;
+
+    const isAdmin = isSuperuserOrAdmin(userObj);
+
+    updateAccountPopover(userObj);
+  }
+
+  // Curated Educational Preset Vector Avatars
+  var PRESET_AVATARS = {
+    'teacher-m': {
+      id: 'teacher-m',
+      name: 'ครูผู้สอน (ชาย)',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_tm" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e3a5f"/><stop offset="100%" stop-color="#0f1e31"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_tm)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#3b82f6"/><path d="M42 64h16l-3 18h-10z" fill="#ffffff"/><polygon points="50,66 53,74 50,77 47,74" fill="#ef4444"/><circle cx="50" cy="42" r="19" fill="#fcd34d"/><path d="M31 38c0-12 9-20 19-20s19 8 19 20c-4-6-14-7-19-4-5-3-15-2-19 4z" fill="#1f2937"/><circle cx="43" cy="42" r="2.5" fill="#1f2937"/><circle cx="57" cy="42" r="2.5" fill="#1f2937"/><path d="M46 51q4 3 8 0" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'teacher-f': {
+      id: 'teacher-f',
+      name: 'ครูผู้สอน (หญิง)',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_tf" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4c1d95"/><stop offset="100%" stop-color="#2e1065"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_tf)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#8b5cf6"/><path d="M40 64h20v14h-20z" fill="#fdf4ff"/><circle cx="50" cy="43" r="18" fill="#fed7aa"/><path d="M28 42c0-14 10-24 22-24s22 10 22 24c0 10-4 16-6 18-2-8-2-14-3-16-4 4-9 6-13 6s-9-2-13-6c-1 2-1 8-3 16-2-2-6-8-6-18z" fill="#451a03"/><circle cx="44" cy="43" r="2.5" fill="#1f2937"/><circle cx="56" cy="43" r="2.5" fill="#1f2937"/><path d="M46 52q4 3 8 0" stroke="#c2410c" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'exec-m': {
+      id: 'exec-m',
+      name: 'ผู้บริหาร (ชาย)',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_em" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_em)"/><path d="M22 92c0-17 13-29 28-29s28 12 28 29" fill="#0f172a"/><path d="M38 63h24l-6 26h-12z" fill="#ffffff"/><polygon points="50,65 54,77 50,86 46,77" fill="#66c0f4"/><circle cx="50" cy="41" r="19" fill="#fde68a"/><path d="M30 36c0-11 9-18 20-18s20 7 20 18c-3-5-12-6-20-4-8-2-17-1-20 4z" fill="#334155"/><rect x="40" y="38" width="8" height="5" rx="1.5" fill="none" stroke="#64748b" stroke-width="1.5"/><rect x="52" y="38" width="8" height="5" rx="1.5" fill="none" stroke="#64748b" stroke-width="1.5"/><line x1="48" y1="40.5" x2="52" y2="40.5" stroke="#64748b" stroke-width="1.5"/><circle cx="44" cy="40.5" r="1.5" fill="#1e293b"/><circle cx="56" cy="40.5" r="1.5" fill="#1e293b"/></svg>'
+    },
+    'exec-f': {
+      id: 'exec-f',
+      name: 'ผู้บริหาร (หญิง)',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_ef" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_ef)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#1e1b4b"/><path d="M42 64h16l-3 15h-10z" fill="#f8fafc"/><path d="M44 65q6 5 12 0" stroke="#f59e0b" stroke-width="2.5" fill="none"/><circle cx="50" cy="42" r="18" fill="#fde68a"/><path d="M29 42c0-14 10-23 21-23s21 9 21 23c-1 8-3 13-5 15-2-7-3-12-4-14-4 3-8 4-12 4s-8-1-12-4c-1 2-2 7-4 14-2-2-4-7-5-15z" fill="#1e293b"/><circle cx="44" cy="42" r="2.5" fill="#1e293b"/><circle cx="56" cy="42" r="2.5" fill="#1e293b"/><path d="M46 51q4 2.5 8 0" stroke="#d97706" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'ict-tech': {
+      id: 'ict-tech',
+      name: 'ครูไอซีที / คอมฯ',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_ict" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0c4a6e"/><stop offset="100%" stop-color="#082f49"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_ict)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#0284c7"/><circle cx="50" cy="43" r="19" fill="#fed7aa"/><path d="M30 38c0-12 9-20 20-20s20 8 20 20c-5-5-14-6-20-4-6-2-15-1-20 4z" fill="#0369a1"/><rect x="38" y="38" width="10" height="7" rx="1.5" fill="none" stroke="#66c0f4" stroke-width="2"/><rect x="52" y="38" width="10" height="7" rx="1.5" fill="none" stroke="#66c0f4" stroke-width="2"/><line x1="48" y1="41.5" x2="52" y2="41.5" stroke="#66c0f4" stroke-width="2"/><circle cx="43" cy="41.5" r="1.5" fill="#0369a1"/><circle cx="57" cy="41.5" r="1.5" fill="#0369a1"/><path d="M47 52q3 2 6 0" stroke="#ea580c" stroke-width="2" fill="none"/></svg>'
+    },
+    'stem-science': {
+      id: 'stem-science',
+      name: 'ครูวิทย์ / การทดลอง',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_sci" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#064e3b"/><stop offset="100%" stop-color="#022c22"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_sci)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#059669"/><path d="M42 64h16l-2 20h-12z" fill="#ffffff"/><circle cx="50" cy="42" r="19" fill="#fde68a"/><path d="M31 38c0-12 9-20 19-20s19 8 19 20c-5-5-14-6-19-4-5-2-14-1-19 4z" fill="#065f46"/><circle cx="43" cy="42" r="2.5" fill="#022c22"/><circle cx="57" cy="42" r="2.5" fill="#022c22"/><path d="M46 51q4 3 8 0" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="68" cy="74" r="7" fill="#10b981"/><path d="M68 64v5" stroke="#a7f3d0" stroke-width="2"/></svg>'
+    },
+    'math-academic': {
+      id: 'math-academic',
+      name: 'ครูคณิต / วิชาการ',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_math" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#78350f"/><stop offset="100%" stop-color="#451a03"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_math)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#d97706"/><circle cx="50" cy="43" r="19" fill="#fef3c7"/><path d="M30 37c0-12 9-19 20-19s20 7 20 19c-4-4-13-5-20-3-7-2-16-1-20 3z" fill="#451a03"/><circle cx="43" cy="43" r="2.5" fill="#451a03"/><circle cx="57" cy="43" r="2.5" fill="#451a03"/><path d="M46 52q4 2.5 8 0" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'language-arts': {
+      id: 'language-arts',
+      name: 'ครูภาษา / สังคม',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_lang" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_lang)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#6366f1"/><circle cx="50" cy="43" r="18" fill="#fed7aa"/><path d="M29 41c0-13 10-23 21-23s21 10 21 23c-2 8-5 13-7 15-2-7-3-11-4-13-4 3-7 4-10 4s-6-1-10-4c-1 2-2 6-4 13-2-2-5-7-7-15z" fill="#312e81"/><circle cx="44" cy="43" r="2.5" fill="#1e1b4b"/><circle cx="56" cy="43" r="2.5" fill="#1e1b4b"/><path d="M46 52q4 2.5 8 0" stroke="#ea580c" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'arts-creative': {
+      id: 'arts-creative',
+      name: 'ครูศิลปะ / ดนตรี',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_art" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#831843"/><stop offset="100%" stop-color="#500724"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_art)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#db2777"/><circle cx="50" cy="43" r="18" fill="#fed7aa"/><path d="M28 40c0-14 10-23 22-23s22 9 22 23c-3 8-6 13-8 15-2-7-3-12-4-14-4 3-7 4-10 4s-6-1-10-4c-1 2-2 7-4 14-2-2-5-7-8-15z" fill="#9d174d"/><circle cx="44" cy="43" r="2.5" fill="#500724"/><circle cx="56" cy="43" r="2.5" fill="#500724"/><path d="M46 52q4 3 8 0" stroke="#db2777" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="68" cy="74" r="5" fill="#f43f5e"/><circle cx="76" cy="78" r="3" fill="#fbbf24"/></svg>'
+    },
+    'sports-coach': {
+      id: 'sports-coach',
+      name: 'ครูพละ / กีฬา',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_sp" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c2d12"/><stop offset="100%" stop-color="#431407"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_sp)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#ea580c"/><circle cx="50" cy="42" r="19" fill="#fcd34d"/><path d="M30 35c0-11 9-18 20-18s20 7 20 18c-4-4-12-5-20-3-8-2-16-1-20 3z" fill="#1c1917"/><rect x="29" y="32" width="42" height="6" rx="3" fill="#f97316"/><circle cx="43" cy="43" r="2.5" fill="#1c1917"/><circle cx="57" cy="43" r="2.5" fill="#1c1917"/><path d="M46 51q4 3 8 0" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'scout-leader': {
+      id: 'scout-leader',
+      name: 'ผู้กำกับลูกเสือ',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_sct" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#14532d"/><stop offset="100%" stop-color="#052e16"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_sct)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#15803d"/><circle cx="50" cy="42" r="19" fill="#fcd34d"/><path d="M26 34c4-12 12-16 24-16s20 4 24 16c-8-4-16-5-24-2-8-3-16-2-24 2z" fill="#78350f"/><polygon points="50,64 54,72 50,78 46,72" fill="#eab308"/><circle cx="43" cy="43" r="2.5" fill="#052e16"/><circle cx="57" cy="43" r="2.5" fill="#052e16"/><path d="M46 51q4 2.5 8 0" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
+    },
+    'smile-scholar': {
+      id: 'smile-scholar',
+      name: 'นักวิชาการ / วิจัย',
+      svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg_sml" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#134e4a"/><stop offset="100%" stop-color="#042f2e"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(#bg_sml)"/><path d="M22 92c0-16 13-28 28-28s28 12 28 28" fill="#0d9488"/><circle cx="50" cy="43" r="19" fill="#fde68a"/><path d="M30 38c0-12 9-20 20-20s20 8 20 20c-5-5-14-6-20-4-6-2-15-1-20 4z" fill="#0f766e"/><circle cx="43" cy="43" r="2.5" fill="#042f2e"/><circle cx="57" cy="43" r="2.5" fill="#042f2e"/><path d="M45 52q5 4 10 0" stroke="#0d9488" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>'
+    }
+  };
+
+  function getUserAvatarStorageKey(userObj) {
+    if (!userObj) return null;
+    const id = userObj.EmpID || userObj.id || userObj.email || 'user';
+    return 'manstat_avatar_' + id;
+  }
+
+  function getSelectedAvatarId(userObj) {
+    const key = getUserAvatarStorageKey(userObj);
+    return key ? localStorage.getItem(key) : null;
+  }
+
+  function selectUserAvatar(avatarId) {
+    if (!g_CurrentUser) return;
+    const key = getUserAvatarStorageKey(g_CurrentUser);
+    if (key) {
+      if (avatarId && PRESET_AVATARS[avatarId]) {
+        localStorage.setItem(key, avatarId);
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+    updateAccountPopover(g_CurrentUser);
+    closeAvatarPickerModal();
+  }
+
+  function openAvatarPickerModal() {
+    closeAccountPopover();
+    renderAvatarPickerGrid();
+    const m = document.getElementById('modalAvatarPicker');
+    if (m) m.style.display = 'flex';
+  }
+
+  function closeAvatarPickerModal() {
+    const m = document.getElementById('modalAvatarPicker');
+    if (m) m.style.display = 'none';
+  }
+
+  function renderAvatarPickerGrid() {
+    const container = document.getElementById('avatarPickerGrid');
+    if (!container) return;
+    const curId = getSelectedAvatarId(g_CurrentUser);
+
+    let html = '';
+    Object.keys(PRESET_AVATARS).forEach(function(k) {
+      const a = PRESET_AVATARS[k];
+      const isActive = (curId === k);
+      html += '<div class="avatar-preset-card ' + (isActive ? 'active' : '') + '" onclick="selectUserAvatar(\'' + escapeHtml(k) + '\')">';
+      html += '  <div class="check-pill"><svg class="ui-ico-sm" style="width:10px; height:10px; color:#000;" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>';
+      html += '  <div class="avatar-preset-thumb">' + a.svg + '</div>';
+      html += '  <div class="avatar-preset-label">' + escapeHtml(a.name) + '</div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function handleTopBarSettingsClick(e) {
+    if (e) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      if (typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+    goToAdminPage(e);
+  }
+
+  function toggleAccountPopover(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const pop = document.getElementById('accountPopover');
+    const btn = document.getElementById('btnTogglePopover');
+    if (!pop) return;
+    const isShown = pop.style.display === 'block';
+    if (isShown) {
+      pop.style.display = 'none';
+      if (btn) btn.classList.remove('active');
+    } else {
+      if (g_CurrentUser) updateAccountPopover(g_CurrentUser);
+      pop.style.display = 'block';
+      if (btn) btn.classList.add('active');
+    }
+  }
+
+  function closeAccountPopover() {
+    const pop = document.getElementById('accountPopover');
+    const btn = document.getElementById('btnTogglePopover');
+    if (pop && pop.style.display === 'block') {
+      pop.style.display = 'none';
+      if (btn) btn.classList.remove('active');
+    }
+  }
+
+  function updateAccountPopover(userObj) {
+    if (!userObj) return;
+    const myId = userObj.EmpID || userObj.id || '';
+    const richUser = (Array.isArray(g_UsersSummary) && g_UsersSummary.find(u => (u.EmpID || u.id) === myId)) || userObj;
+
+    const fullName = richUser.FullName || richUser.name || userObj.name || 'User';
+    const cleanName = fullName.replace(/^(นาย|นางสาว|นาง|ดร\.|ครู)\s*/, '').trim();
+    const firstLetter = (cleanName[0] || fullName.trim()[0] || 'U').toUpperCase();
+
+    // Check preset avatar
+    const selectedAvatarId = getSelectedAvatarId(userObj);
+    const avatarObj = selectedAvatarId ? PRESET_AVATARS[selectedAvatarId] : null;
+
+    // Trigger Avatar Circle
+    const topAvatarCircle = document.querySelector('.avatar-btn .avatar-circle');
+    if (topAvatarCircle) {
+      if (avatarObj) {
+        topAvatarCircle.innerHTML = avatarObj.svg;
+      } else {
+        topAvatarCircle.innerHTML = '<span id="topBarAvatarInitial">' + escapeHtml(firstLetter) + '</span>';
+      }
+    }
+
+    // Popover Avatar Circle
+    const popAvatarBig = document.getElementById('popAvatarBig');
+    if (popAvatarBig) {
+      if (avatarObj) {
+        popAvatarBig.innerHTML = avatarObj.svg;
+      } else {
+        popAvatarBig.innerHTML = '<span id="popAvatarInitial">' + escapeHtml(firstLetter) + '</span>';
+      }
+    }
+
+    // Popover Full Name
+    const popFullName = document.getElementById('popUserFullName');
+    if (popFullName) popFullName.innerText = fullName;
+
+    // Popover Subtitle (Email / EmpID)
+    const popSub = document.getElementById('popUserSubEmail');
+    if (popSub) {
+      const email = richUser.email || userObj.email || '';
+      const empNo = myId ? `รหัส: ${myId}` : '';
+      popSub.innerText = email ? (empNo ? `${email} • ${empNo}` : email) : (empNo || 'บัญชีบุคลากร');
+    }
+
+    // Role badge
+    const popRole = document.getElementById('popUserRoleBadge');
+    if (popRole) {
+      popRole.innerText = richUser.accessLevel || userObj.accessLevel || 'User';
+    }
+
+    // Admin Panel Icon Button
+    const adminPill = document.getElementById('popAdminPanelBtn');
+    if (adminPill) {
+      const isAdmin = isSuperuserOrAdmin(userObj) || isSuperuserOrAdmin(richUser);
+      adminPill.style.display = 'inline-flex';
+    }
+
+    // Quota Bar: Leave & Workload
+    const popLeaveTxt = document.getElementById('popLeaveSummaryText');
+    const popWorkloadTxt = document.getElementById('popWorkloadSummaryText');
+    const popQuotaFill = document.getElementById('popQuotaBarFill');
+    const popQuotaStatus = document.getElementById('popQuotaStatusText');
+
+    const totalLeave = (Number(richUser.SickDays || 0) + Number(richUser.PersonalDays || 0));
+    const maxLeave = (Number(richUser.SickMax || 0) + Number(richUser.PersonalMax || 0)) || 60;
+    if (popLeaveTxt) {
+      popLeaveTxt.innerText = `ลาไปแล้ว ${totalLeave} / ${maxLeave} วัน`;
+    }
+
+    let wlLevel = 1;
+    let wlCount = 0;
+    if (typeof calculateStaffWorkloadScore === 'function') {
+      const customWls = (g_Workloads || []).filter(w => (w.EmpID || w.id) === myId);
+      const wlData = calculateStaffWorkloadScore(richUser, customWls);
+      wlLevel = wlData.level || 1;
+      wlCount = (wlData.primaryCount || 0) + (wlData.secondaryCount || 0);
+    }
+    if (popWorkloadTxt) {
+      popWorkloadTxt.innerText = `ภาระงาน ${wlLevel} (${wlCount} งาน)`;
+    }
+
+    const leavePct = Math.min(100, Math.round((totalLeave / maxLeave) * 100));
+    const workloadPct = Math.min(100, Math.round((wlLevel / 10) * 100));
+    const combinedPct = Math.max(leavePct, workloadPct);
+
+    if (popQuotaFill) {
+      popQuotaFill.style.width = Math.max(12, combinedPct) + '%';
+      if (combinedPct > 80) {
+        popQuotaFill.style.background = 'var(--red)';
+      } else if (combinedPct > 50) {
+        popQuotaFill.style.background = 'var(--orange)';
+      } else {
+        popQuotaFill.style.background = 'linear-gradient(90deg, var(--steam-cyan), var(--steam-green))';
+      }
+    }
+    if (popQuotaStatus) {
+      if (combinedPct > 80) {
+        popQuotaStatus.innerText = 'สูง';
+        popQuotaStatus.style.color = 'var(--red)';
+      } else if (combinedPct > 50) {
+        popQuotaStatus.innerText = 'ปานกลาง';
+        popQuotaStatus.style.color = 'var(--orange)';
+      } else {
+        popQuotaStatus.innerText = 'ปกติ';
+        popQuotaStatus.style.color = 'var(--steam-green)';
+      }
+    }
+  }
+
+  // Note: Account popover listeners unified into primary global block
+
+  function togglePasswordVisibility() {
+    const pwdInput = document.getElementById('txtPassword');
+    const eyeIco = document.getElementById('pwdEyeIco');
+    if (!pwdInput) return;
+    const isPwd = pwdInput.type === 'password';
+    pwdInput.type = isPwd ? 'text' : 'password';
+    if (eyeIco) {
+      eyeIco.innerHTML = isPwd
+        ? '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>'
+        : '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  }
+
+  function bootMainApp() {
+    // Purge any legacy plaintext passwords stored previously
+    try { localStorage.removeItem('steam_saved_accounts'); } catch (e) {}
+
+    // 1. Resolve active session via SessionManager
+    let userObj = SessionManager.load();
+    if (userObj && (userObj.name || userObj.email || userObj.EmpID)) {
+      g_CurrentUser = userObj;
+      let ls = document.getElementById('loadingScreen'); if (ls) ls.style.display = 'none';
+      let lg = document.getElementById('loginScreen'); if (lg) lg.style.display = 'none';
+      let ap = document.getElementById('appScreen'); if (ap) ap.style.display = 'block';
+      applyTopBarUserAndLoginTime(g_CurrentUser);
+      refreshAllData();
+      return;
+    }
+
+    // If no active session, show clean login screen
+    startLoadingBar('กำลังเชื่อมต่อฐานข้อมูล...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          let ls = document.getElementById('loadingScreen'); if (ls) ls.style.display = 'none';
+          let lg = document.getElementById('loginScreen'); if (lg) lg.style.display = 'flex';
+          if (res && res.status === 'success') {
+            g_SchoolInfo = res.schoolInfo || {};
+            let sub = document.getElementById('loginSchoolSubtitle');
+            if (g_SchoolInfo.schoolName && sub) sub.innerText = g_SchoolInfo.schoolName;
+          }
+          let txtU = document.getElementById('txtEmail');
+          if (txtU && !txtU.value) txtU.focus();
+        });
+      })
+      .withFailureHandler(err => {
+        stopLoadingBar(() => {
+          let ls = document.getElementById('loadingScreen'); if (ls) ls.style.display = 'none';
+          let lg = document.getElementById('loginScreen'); if (lg) lg.style.display = 'flex';
+        });
+      })
+      .testDatabaseConnection();
+  }
+
+  function handleLogin() {
+    const emailInput = document.getElementById('txtEmail');
+    const passInput = document.getElementById('txtPassword');
+    const email = emailInput ? emailInput.value.trim() : '';
+    const pass = passInput ? passInput.value.trim() : '';
+
+    if (!email || !pass) {
+      steamAlert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'เข้าสู่ระบบ');
+      if (!email && emailInput) emailInput.focus();
+      else if (!pass && passInput) passInput.focus();
+      return;
+    }
+
+    const btn = document.getElementById('btnLogin');
+    const btnText = document.getElementById('btnLoginText');
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.innerText = 'กำลังเข้าสู่ระบบ...';
+
+    startLoadingBar('กำลังตรวจสอบสิทธิ์เข้าใช้งาน...');
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.innerText = 'เข้าสู่ระบบ';
+
+        if (res && res.success) {
+          const chkRemember = document.getElementById('chkRemember');
+          const isRemember = chkRemember ? chkRemember.checked : true;
+
+          // Persist canonical session via SessionManager
+          SessionManager.save(res.user, isRemember);
+          g_CurrentUser = SessionManager.getActiveUser();
+
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('appScreen').style.display = 'block';
+          applyTopBarUserAndLoginTime(g_CurrentUser);
+          refreshAllData();
+        } else {
+          stopLoadingBar(() => {
+            steamAlert(res && res.message ? res.message : 'ชื่อผู้ใช้ หรือ รหัสผ่านไม่ถูกต้อง', 'เข้าสู่ระบบไม่สำเร็จ');
+            if (passInput) {
+              passInput.value = '';
+              passInput.focus();
+            }
+          });
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.innerText = 'เข้าสู่ระบบ';
+        stopLoadingBar(() => steamAlert('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง', 'ระบบขัดข้อง'));
+      })
+      .processLogin(email, pass);
+  }
+
+  // =========================================================================
+  // SHARED COMPUTER SECURITY: AUTO-LOGOUT AFTER INACTIVITY (45 MINUTES)
+  // =========================================================================
+  var _lastUserActivityTimestamp = window._lastUserActivityTimestamp || Date.now();
+  var INACTIVITY_AUTO_LOGOUT_MS = 45 * 60 * 1000; // 45 minutes
+
+  function _recordSharedUserActivity() {
+    _lastUserActivityTimestamp = Date.now();
+    window._lastUserActivityTimestamp = _lastUserActivityTimestamp;
+  }
+
+  if (!window._manstatActivityListenersBound) {
+    window._manstatActivityListenersBound = true;
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function(evt) {
+      window.addEventListener(evt, _recordSharedUserActivity, { passive: true });
+    });
+  }
+
+  if (window._manstatInactivityTimer) {
+    clearInterval(window._manstatInactivityTimer);
+  }
+  window._manstatInactivityTimer = setInterval(function() {
+    if (!g_CurrentUser) return;
+    if (Date.now() - _lastUserActivityTimestamp > INACTIVITY_AUTO_LOGOUT_MS) {
+      SessionManager.clear();
+      g_CurrentUser = null;
+      var app = document.getElementById('appScreen');
+      if (app) app.style.display = 'none';
+      var pass = document.getElementById('txtPassword');
+      if (pass) pass.value = '';
+      var login = document.getElementById('loginScreen');
+      if (login) login.style.display = 'flex';
+      steamAlert('เซสชั่นหมดอายุเนื่องจากไม่มีการใช้งานเป็นเวลานาน เพื่อความปลอดภัยกรุณาเข้าสู่ระบบใหม่', 'เซสชั่นหมดอายุ');
+    }
+  }, 60 * 1000);
+
+  function handleLogout() {
+    steamConfirm('ต้องการออกจากระบบใช่หรือไม่?', () => {
+      if (window._manstatInactivityTimer) {
+        clearInterval(window._manstatInactivityTimer);
+        window._manstatInactivityTimer = null;
+      }
+      window._manstatActivityListenersBound = false;
+      SessionManager.clear();
+      g_CurrentUser = null;
+
+      const app = document.getElementById('appScreen');
+      if (app) app.style.display = 'none';
+      const pass = document.getElementById('txtPassword');
+      if (pass) pass.value = '';
+      const login = document.getElementById('loginScreen');
+      if (login) login.style.display = 'flex';
+      const emailInput = document.getElementById('txtEmail');
+      if (emailInput) emailInput.focus();
+    });
+  }
+
+  function switchView(viewName) {
+    document.querySelectorAll('.main-view').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById('view_' + viewName);
+    if (target) target.style.display = 'block';
+    const btn = document.getElementById('btnNav_' + viewName);
+    if (btn) btn.classList.add('active');
+
+    if (viewName === 'dashboard') {
+      if (typeof renderMainDashboard === 'function') renderMainDashboard();
+    if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+      window.LeaveBus.emit('LEAVE_UPDATED', { type: 'SYNC', timestamp: Date.now() });
+    }
+    }
+    if (viewName === 'leave') {
+      if (typeof initCustomLeaveTypeSvgDropdown === 'function') initCustomLeaveTypeSvgDropdown();
+      if (typeof checkDirectorLeaveRestrictionOnView === 'function') checkDirectorLeaveRestrictionOnView();
+      if (typeof toggleLeaveTimeFields === 'function') toggleLeaveTimeFields();
+      if (typeof populateSubstituteDropdown === 'function') populateSubstituteDropdown();
+    }
+    if (viewName === 'analytics') {
+      if (typeof window.MOD_Analytics_initView === 'function') {
+        window.MOD_Analytics_initView();
+      } else if (typeof window.renderAnalyticsCharts === 'function') {
+        setTimeout(function() { window.renderAnalyticsCharts(); }, 40);
+      }
+    }
+    if (viewName === 'official_reports') {
+      if (typeof window.MOD_OfficialReports_initView === 'function') {
+        window.MOD_OfficialReports_initView();
+      }
+    }
+    if (viewName === 'requests' && typeof renderRequestsListOnlyTable === 'function') renderRequestsListOnlyTable();
+    if (viewName === 'tracking' && typeof renderTrackingStepByStepTable === 'function') renderTrackingStepByStepTable();
+    if (viewName === 'org_chart' && typeof renderOrgChartTree === 'function') renderOrgChartTree();
+    if (viewName === 'school_board') {
+      if (typeof MOD_SchoolBoard_init === 'function') {
+        MOD_SchoolBoard_init(window.g_MainBundle ? window.g_MainBundle.boardBundle : null);
+      }
+    }
+    if (viewName === 'workload' && typeof renderStaffWorkloadModule === 'function') renderStaffWorkloadModule();
+    if (viewName === 'dir_license' && typeof renderStrictLicenseDirectory === 'function') renderStrictLicenseDirectory();
+    if (viewName === 'dir_standing' && typeof renderStrictStandingDirectory === 'function') renderStrictStandingDirectory();
+    if (viewName === 'retro_leave' && typeof MOD_RetroLeave_initView === 'function') MOD_RetroLeave_initView();
+    if (viewName === 'dir_scout' && typeof renderStrictScoutDirectory === 'function') renderStrictScoutDirectory();
+  }
+  window.switchView = switchView;
+
+  function applyFiscalDisplayToHeader() {
+    if (!g_FiscalData || !g_FiscalData.active) return;
+    const act = g_FiscalData.active;
+    const elFisc = document.getElementById('lblFiscalYear');
+    if (elFisc) {
+      elFisc.textContent = act.yearBE || '2570';
+    }
+    const elRange = document.getElementById('lblFiscalPeriodRange');
+    if (elRange) {
+      var periodMode = act.ActivePeriodMode || 'PERIOD_1';
+      var rangeText = '';
+      var yBE = parseInt(act.yearBE || '2570', 10);
+      var prevBE = yBE - 1;
+      if (periodMode === 'PERIOD_1') {
+        rangeText = act.period1Label || ('รอบที่ 1 (1 ต.ค. ' + prevBE + ' - 31 มี.ค. ' + yBE + ')');
+      } else if (periodMode === 'PERIOD_2') {
+        rangeText = act.period2Label || ('รอบที่ 2 (1 เม.ย. ' + yBE + ' - 30 ก.ย. ' + yBE + ')');
+      } else {
+        rangeText = act.fullPeriodLabel || ('ทั้งปีงบประมาณ ' + yBE + ' (1 ต.ค. ' + prevBE + ' - 30 ก.ย. ' + yBE + ')');
+      }
+      elRange.textContent = rangeText;
+    }
+    const elDir = document.getElementById('lblDirectorHeader');
+    if (elDir && g_SchoolInfo && g_SchoolInfo.directorName) {
+      elDir.textContent = g_SchoolInfo.directorName;
+    }
+  }
+
+  function _applyBundleToStateAndRender(bundle) {
+    if (!bundle) return;
+    if (bundle.status === 'error') {
+      console.error('Database connection error:', bundle.message);
+      var errBox = document.getElementById('employeeRibbonListContainer');
+      if (errBox) {
+        errBox.innerHTML = `
+          <div class="emp-empty-state" style="border-color:var(--red); color:#fff; padding:20px;">
+            <div style="color:var(--red); font-weight:bold; font-size:15px; margin-bottom:6px;">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล Google Sheets</div>
+            <div style="font-size:13px; color:#d0d7de;">${escapeHtml(bundle.message || 'ไม่สามารถอ่านข้อมูลได้')}</div>
+          </div>
+        `;
+      }
+      return;
+    }
+    g_ScriptUrl = bundle.scriptUrl || "#";
+    g_UsersSummary = bundle.usersSummary || [];
+    window.g_UsersSummary = g_UsersSummary;
+    g_LeaveLogs = bundle.logs || [];
+    window.g_LeaveLogs = g_LeaveLogs;
+    g_Workloads = bundle.workloads || [];
+    g_Feedbacks = bundle.feedbacks || [];
+    g_SchoolInfo = bundle.schoolInfo || {};
+    window.g_SchoolInfo = g_SchoolInfo;
+    g_FiscalData = bundle.fiscalData || null;
+    window.g_FiscalData = g_FiscalData;
+    window.g_Workloads = g_Workloads;
+    window.g_Feedbacks = g_Feedbacks;
+    window.g_MainBundle = bundle;
+    try {
+      if (bundle && bundle.boardBundle && typeof MOD_SchoolBoard_init === 'function') {
+        MOD_SchoolBoard_init(bundle.boardBundle);
+      }
+    } catch (eBoard) {
+      console.error('Error initializing school board module:', eBoard);
+    }
+    if (Array.isArray(bundle.activeClasses) && bundle.activeClasses.length > 0) {
+      g_ActiveClasses = bundle.activeClasses.slice();
+    }
+    if (Array.isArray(bundle.usersSummary) && bundle.usersSummary.length > 0) {
+      if (typeof g_ModStaffList !== 'undefined') g_ModStaffList = bundle.usersSummary;
+    }
+    if (Array.isArray(bundle.logs) && bundle.logs.length > 0) {
+      if (typeof g_ModLeaveLogs !== 'undefined') g_ModLeaveLogs = bundle.logs;
+    }
+
+    if (typeof renderMainDashboard === 'function') renderMainDashboard();
+    applyFiscalDisplayToHeader();
+    if (typeof renderSeparateDirectories === 'function') renderSeparateDirectories();
+    if (typeof renderStrictLicenseDirectory === 'function') renderStrictLicenseDirectory();
+    if (typeof renderStrictStandingDirectory === 'function') renderStrictStandingDirectory();
+    if (typeof renderStrictScoutDirectory === 'function') renderStrictScoutDirectory();
+    if (typeof renderFeedbackSection === 'function') renderFeedbackSection();
+    if (typeof populateSubstituteDropdown === 'function') populateSubstituteDropdown();
+    initThaiDatePickers();
+    if (typeof initCustomLeaveTypeSvgDropdown === 'function') initCustomLeaveTypeSvgDropdown();
+
+    if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') { window.LeaveBus.emit('LEAVE_UPDATED', { type: 'SYNC', timestamp: Date.now() }); }
+
+    const viewAnalyticsEl = document.getElementById('view_analytics');
+    if (viewAnalyticsEl && viewAnalyticsEl.style.display !== 'none') {
+      if (typeof window.renderAnalyticsCharts === 'function') {
+        setTimeout(function() { window.renderAnalyticsCharts(); }, 40);
+      } else if (typeof renderAnalyticsCharts === 'function') {
+        setTimeout(function() { renderAnalyticsCharts(); }, 40);
+      } else if (typeof window.MOD_Analytics_fetchData === 'function') {
+        setTimeout(function() { window.MOD_Analytics_fetchData(false); }, 40);
+      }
+    }
+
+    const currentActiveBtn = document.querySelector('.menu-btn.active');
+    if (currentActiveBtn) {
+      const id = currentActiveBtn.id;
+      if (id === 'btnNav_analytics') {
+        if (typeof window.renderAnalyticsCharts === 'function') {
+          setTimeout(function() { window.renderAnalyticsCharts(); }, 40);
+        } else if (typeof renderAnalyticsCharts === 'function') {
+          setTimeout(function() { renderAnalyticsCharts(); }, 40);
+        } else if (typeof window.MOD_Analytics_fetchData === 'function') {
+          setTimeout(function() { window.MOD_Analytics_fetchData(false); }, 40);
+        }
+      }
+      if (id === 'btnNav_requests' && typeof renderRequestsListOnlyTable === 'function') renderRequestsListOnlyTable();
+      if (id === 'btnNav_tracking' && typeof renderTrackingStepByStepTable === 'function') renderTrackingStepByStepTable();
+      if (id === 'btnNav_dashboard' && typeof renderMainDashboard === 'function') renderMainDashboard();
+      if (id === 'btnNav_org_chart' && typeof renderOrgChartTree === 'function') renderOrgChartTree();
+      if (id === 'btnNav_workload' && typeof renderStaffWorkloadModule === 'function') renderStaffWorkloadModule();
+      if (id === 'btnNav_dir_license' && typeof renderStrictLicenseDirectory === 'function') renderStrictLicenseDirectory();
+      if (id === 'btnNav_dir_standing' && typeof renderStrictStandingDirectory === 'function') renderStrictStandingDirectory();
+      if (id === 'btnNav_dir_scout' && typeof renderStrictScoutDirectory === 'function') renderStrictScoutDirectory();
+      if (id === 'btnNav_retro_leave' && typeof MOD_RetroLeave_initView === 'function') MOD_RetroLeave_initView();
+    }
+
+    if (g_CurrentUser) updateAccountPopover(g_CurrentUser);
+  }
+  window._applyBundleToStateAndRender = _applyBundleToStateAndRender;
+
+  function refreshAllData() {
+    startLoadingBar('Syncing Data...');
+    google.script.run
+      .withSuccessHandler(bundle => {
+        stopLoadingBar(() => {
+          if (!bundle) {
+            steamAlert('Unable to sync data.', 'Sync Failed');
+            return;
+          }
+          _applyBundleToStateAndRender(bundle);
+        });
+      })
+      .withFailureHandler(err => {
+        stopLoadingBar(() => steamAlert('Unable to sync data.', 'Sync Failed'));
+      })
+      .getMainBundleData(null, false);
+  }
+
+  function getActiveSignerName() {
+    return (g_SchoolInfo && g_SchoolInfo.directorName) ? g_SchoolInfo.directorName : 'นายธีรศักดิ์ มโนธรรม';
+  }
+
+  var _isUserIdCardUnmasked = false;
+  var _userIdCardMaskTimer = null;
+  var _rawCurrentUserIdCard = '';
+
+  function maskIdCard(id) {
+    if (!id) return '-';
+    const clean = String(id).replace(/\D/g, '');
+    if (clean.length !== 13) return id || '-';
+    return `${clean[0]}-••••-•••••-${clean.slice(10, 12)}-${clean[12]}`;
+  }
+
+  function maskPhoneNumber(phone) {
+    if (!phone) return '-';
+    const clean = String(phone).replace(/\D/g, '');
+    if (clean.length === 10) {
+      return `${clean.slice(0, 3)}-•••-${clean.slice(6)}`;
+    }
+    return phone;
+  }
+
+  function toggleUserIdCardVisibility() {
+    const el = document.getElementById('setProfileIdCard');
+    const lbl = document.getElementById('lblToggleIdCard');
+    if (!el || !_rawCurrentUserIdCard) return;
+
+    if (_userIdCardMaskTimer) {
+      clearTimeout(_userIdCardMaskTimer);
+      _userIdCardMaskTimer = null;
+    }
+
+    const ico = document.getElementById('icoToggleIdCard');
+
+    if (_isUserIdCardUnmasked) {
+      // Re-mask
+      _isUserIdCardUnmasked = false;
+      el.innerText = maskIdCard(_rawCurrentUserIdCard);
+      if (lbl) lbl.innerText = 'แสดงเลขเต็ม';
+      if (ico) ico.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+    } else {
+      // Unmask
+      _isUserIdCardUnmasked = true;
+      const c = _rawCurrentUserIdCard;
+      el.innerText = c.length === 13 ? `${c[0]}-${c.slice(1,5)}-${c.slice(5,10)}-${c.slice(10,12)}-${c[12]}` : c;
+      if (lbl) lbl.innerText = 'ซ่อนเลข (ปิดอัตโนมัติใน 15วิ)';
+      if (ico) ico.innerHTML = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>';
+
+      // Auto-mask after 15 seconds for privacy protection
+      _userIdCardMaskTimer = setTimeout(() => {
+        _isUserIdCardUnmasked = false;
+        if (el) el.innerText = maskIdCard(_rawCurrentUserIdCard);
+        if (lbl) lbl.innerText = 'แสดงเลขเต็ม';
+        if (ico) ico.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+      }, 15000);
+    }
+  }
+
+  function openSettingsModal(section) {
+    if (!g_CurrentUser) return;
+    closeAccountPopover();
+
+    // Find rich profile from g_UsersSummary if available
+    const myId = g_CurrentUser.EmpID || g_CurrentUser.id;
+    const richUser = (g_UsersSummary || []).find(u => (u.EmpID || u.id) === myId) || g_CurrentUser;
+
+    // Populate Read-only profile fields
+    const elName = document.getElementById('setProfileName'); if (elName) elName.innerText = richUser.FullName || richUser.name || '-';
+    const elId = document.getElementById('setProfileEmpId'); if (elId) elId.innerText = myId || '-';
+    const elRole = document.getElementById('setProfileRole'); if (elRole) elRole.innerText = richUser.Position || richUser.role || '-';
+    const elDept = document.getElementById('setProfileDept'); if (elDept) elDept.innerText = richUser.Department || richUser.department || '-';
+    const elPosNo = document.getElementById('setProfilePosNo'); if (elPosNo) elPosNo.innerText = richUser.PositionNo || richUser.positionNo || '-';
+    const elMember = document.getElementById('setProfileMemberId'); if (elMember) elMember.innerText = richUser.MemberID || richUser.memberId || '-';
+
+    _rawCurrentUserIdCard = String(richUser.idCard || richUser.IDCard || g_CurrentUser.idCard || '').replace(/^'+/, '').trim();
+    _isUserIdCardUnmasked = false;
+    const elCard = document.getElementById('setProfileIdCard');
+    if (elCard) elCard.innerText = maskIdCard(_rawCurrentUserIdCard);
+    const lblToggle = document.getElementById('lblToggleIdCard');
+    if (lblToggle) lblToggle.innerText = 'แสดงเลขเต็ม';
+
+    // Retire / Birth info
+    const elRetire = document.getElementById('setProfileRetireInfo');
+    if (elRetire) {
+      const bDate = richUser.BirthDate || richUser.birthDate || '-';
+      let retTxt = '';
+      if (richUser.RetirementInfo && richUser.RetirementInfo.fiscalYear) {
+        retTxt = `ปีงบประมาณ ${richUser.RetirementInfo.fiscalYear} (อายุ ${richUser.RetirementInfo.ageYear} ปี ${richUser.RetirementInfo.ageMonth} เดือน)`;
+      } else {
+        retTxt = '-';
+      }
+      const icoCake = '<svg class="ui-ico-sm" style="color:var(--orange); vertical-align:middle; margin-right:8px;" viewBox="0 0 24 24"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>';
+      const icoMedal = '<svg class="ui-ico-sm" style="color:var(--steam-cyan); vertical-align:middle; margin-right:8px;" viewBox="0 0 24 24"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/><path d="M12 18v-2h-.5"/></svg>';
+      elRetire.innerHTML = `${icoCake}<b>วันเกิด:</b> ${escapeHtml(bDate)} &nbsp;&nbsp;|&nbsp;&nbsp; ${icoMedal}<b>เกษียณอายุราชการ:</b> ${escapeHtml(retTxt)}`;
+    }
+
+    // Editable fields
+    document.getElementById('setPhone').value = richUser.phone || g_CurrentUser.phone || '';
+    document.getElementById('setOldPass').value = '';
+    document.getElementById('setNewPass').value = '';
+    const elConf = document.getElementById('setConfirmPass'); if (elConf) elConf.value = '';
+
+    document.getElementById('modalSettings').style.display = 'flex';
+
+    if (section === 'security') {
+      setTimeout(() => {
+        const sec = document.getElementById('settingsSecSecurity');
+        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const ph = document.getElementById('setPhone');
+        if (ph) ph.focus();
+      }, 60);
+    } else if (section === 'pdpa') {
+      setTimeout(() => {
+        const pdpa = document.getElementById('settingsSecPdpa');
+        if (pdpa) pdpa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    }
+  }
+
+  function closeSettingsModal() {
+    if (_userIdCardMaskTimer) {
+      clearTimeout(_userIdCardMaskTimer);
+      _userIdCardMaskTimer = null;
+    }
+    document.getElementById('modalSettings').style.display = 'none';
+  }
+
+  function saveSettings() {
+    const p = (document.getElementById('setPhone').value || '').trim();
+    const op = document.getElementById('setOldPass').value;
+    const np = document.getElementById('setNewPass').value;
+    const cp = document.getElementById('setConfirmPass') ? document.getElementById('setConfirmPass').value : '';
+
+    if (!op) {
+      steamAlert('Enter your current password to confirm changes.', 'Password Required');
+      return;
+    }
+
+    if (np) {
+      if (np.length < 6) {
+        steamAlert('Password must be at least 6 characters.', 'Weak Password');
+        return;
+      }
+      if (cp && np !== cp) {
+        steamAlert('Passwords do not match.', 'Password Mismatch');
+        return;
+      }
+    }
+
+    closeSettingsModal();
+    startLoadingBar('Saving Personnel...');
+    google.script.run
+      .withSuccessHandler(res => {
+        stopLoadingBar(() => {
+          if (!res || !res.success) {
+            steamAlert('Something went wrong. Please try again.', 'System Error');
+            return;
+          }
+          if (g_CurrentUser) {
+            var updatedUser = Object.assign({}, g_CurrentUser, { phone: p });
+            g_CurrentUser = updatedUser;
+          }
+          // Update in g_UsersSummary
+          const myId = g_CurrentUser ? (g_CurrentUser.EmpID || g_CurrentUser.id) : null;
+          if (myId && Array.isArray(g_UsersSummary)) {
+            const found = g_UsersSummary.find(u => (u.EmpID || u.id) === myId);
+            if (found) found.phone = p;
+          }
+          steamAlert('Changes saved successfully.');
+        });
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .processUpdateProfile(g_CurrentUser.email || g_CurrentUser.name, op, np, p);
+  }
+
+  function _cleanupBeforePageSwitch() {
+    try {
+      // 1. เคลียร์ Interval และ Timeout ทั้งหมด
+      if (window._manstatInactivityTimer) {
+        clearInterval(window._manstatInactivityTimer);
+        window._manstatInactivityTimer = null;
+      }
+      if (window._userIdCardMaskTimer) {
+        clearTimeout(window._userIdCardMaskTimer);
+        window._userIdCardMaskTimer = null;
+      }
+
+      // 2. ทำลายอินสแตนซ์ Flatpickr เพื่อป้องกัน Memory Leak และ Event ค้าง
+      if (typeof flatpickr !== 'undefined') {
+        document.querySelectorAll('.flatpickr-input, [data-flatpickr]').forEach(function(el) {
+          if (el._flatpickr && typeof el._flatpickr.destroy === 'function') {
+            try { el._flatpickr.destroy(); } catch (eFp) {}
+          }
+        });
+      }
+
+      // 3. ทำลายอินสแตนซ์ Chart.js ถ้ามี
+      if (typeof Chart !== 'undefined' && Chart.instances) {
+        Object.keys(Chart.instances).forEach(function(key) {
+          try {
+            if (Chart.instances[key] && typeof Chart.instances[key].destroy === 'function') {
+              Chart.instances[key].destroy();
+            }
+          } catch (eCh) {}
+        });
+      }
+
+      // 4. รีเซ็ตตัวแปรสถานะ Event Listener ของระบบ
+      window._manstatGlobalListenersBound = false;
+      window._manstatActivityListenersBound = false;
+      window._isDashboardBooting = false;
+    } catch (eClean) {
+      console.warn('_cleanupBeforePageSwitch warning:', eClean);
+    }
+  }
+  window._cleanupBeforePageSwitch = _cleanupBeforePageSwitch;
+
+  function goToAdminPage(e, optionalJumpTab) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (!isSuperuserOrAdmin(g_CurrentUser)) {
+      steamAlert("ท่านไม่มีสิทธิ์ในการเข้าถึงส่วนการจัดการระบบนี้", "ปฏิเสธการเข้าถึง");
+      return;
+    }
+    if (g_CurrentUser) {
+      SessionManager.save(g_CurrentUser);
+    }
+    let targetTab = optionalJumpTab;
+    if (targetTab) {
+      try { sessionStorage.setItem('steam_admin_jump_tab', targetTab); } catch (err) {}
+    }
+    startLoadingBar('กำลังเปิดหน้าต่างตั้งค่าระบบ...');
+    google.script.run
+      .withSuccessHandler(bundle => {
+        try { sessionStorage.setItem('steam_prefetch_admin', JSON.stringify(bundle.adminData)); } catch (err) {}
+        stopLoadingBar(() => {
+          if (window._manstatInactivityTimer) {
+            clearInterval(window._manstatInactivityTimer);
+            window._manstatInactivityTimer = null;
+          }
+          window._manstatGlobalListenersBound = false;
+          window._manstatActivityListenersBound = false;
+          document.open();
+          document.write(bundle.htmlContent);
+          document.close();
+          setTimeout(() => { if (typeof bootAdminApp === 'function') bootAdminApp(); }, 50);
+        });
+      })
+      .withFailureHandler(err => {
+        stopLoadingBar(() => steamAlert('ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง', 'ข้อผิดพลาดในการเชื่อมต่อ'));
+      })
+      .getAdminBundle();
+  }
+
+  function goBackHome(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (window._manstatInactivityTimer) {
+      clearInterval(window._manstatInactivityTimer);
+      window._manstatInactivityTimer = null;
+    }
+    window._manstatActivityListenersBound = false;
+    startLoadingBar('กำลังกลับสู่หน้าหลัก...');
+    
+    // Resolve active session user via SessionManager
+    let activeUser = SessionManager.load();
+    let savedEmail = (activeUser && activeUser.email) ? activeUser.email : (localStorage.getItem(LOCAL_KEY) || 'superuser');
+
+    google.script.run
+      .withSuccessHandler(bundle => {
+        stopLoadingBar(() => {
+          document.open();
+          document.write(bundle.htmlContent);
+          document.close();
+          setTimeout(() => {
+            let u = SessionManager.load();
+            if (u && (u.name || u.email || u.EmpID)) {
+              g_CurrentUser = u;
+            } else if (activeUser && (activeUser.name || activeUser.email || activeUser.EmpID)) {
+              g_CurrentUser = activeUser;
+              SessionManager.save(activeUser);
+            } else {
+              g_CurrentUser = { id: 'EXE-001', EmpID: 'EXE-001', positionNo: '10001', name: 'Superuser', email: savedEmail, accessLevel: 'Superuser', role: 'ผู้อำนวยการสถานศึกษา' };
+              SessionManager.save(g_CurrentUser);
+            }
+
+            let ls = document.getElementById('loadingScreen'); if (ls) ls.style.display = 'none';
+            let lg = document.getElementById('loginScreen'); if (lg) lg.style.display = 'none';
+            let ap = document.getElementById('appScreen'); if (ap) ap.style.display = 'block';
+            applyTopBarUserAndLoginTime(g_CurrentUser);
+            if (bundle && bundle.initialData) {
+              _applyBundleToStateAndRender(bundle.initialData);
+            } else {
+              refreshAllData();
+            }
+          }, 50);
+        });
+      })
+      .withFailureHandler(err => {
+        stopLoadingBar(() => steamAlert('Unable to connect. Please try again.', 'Connection Error'));
+      })
+      .getHomeBundle(savedEmail);
+  }
+  </script>

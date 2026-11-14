@@ -1,0 +1,436 @@
+<script>
+  // =========================================================================
+  // MODULE: REGISTRY SCOUT CONTROLLER (JS_Mod_RegScout.html)
+  // แยกอิสระ 100% ควบคุมทะเบียนวุฒิทางลูกเสือและวุฒิบัตร
+  // =========================================================================
+// =========================================================================
+  // SCOUT DIRECTORY MODULE (Modeled after dir_license & Leave Dashboard)
+  // =========================================================================
+  var g_CurrentScoutViewTab = 'PERSONNEL';
+  var g_ExpandedScoutEmpId = null;
+
+  function switchScoutViewTab(tabName) {
+    g_CurrentScoutViewTab = tabName;
+    ['btnSctTab_personnel', 'btnSctTab_allCerts', 'btnSctTab_levels'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.remove('active');
+    });
+    if (tabName === 'PERSONNEL') {
+      const b = document.getElementById('btnSctTab_personnel');
+      if (b) b.classList.add('active');
+    } else if (tabName === 'ALL_CERTS') {
+      const b = document.getElementById('btnSctTab_allCerts');
+      if (b) b.classList.add('active');
+    } else if (tabName === 'LEVELS') {
+      const b = document.getElementById('btnSctTab_levels');
+      if (b) b.classList.add('active');
+    }
+    renderStrictScoutDirectory();
+  }
+
+  function toggleScoutRibbonExpand(empId, event) {
+    if (event) event.stopPropagation();
+    g_ExpandedScoutEmpId = (g_ExpandedScoutEmpId === empId) ? null : empId;
+    renderStrictScoutDirectory();
+  }
+
+  function filterScoutDirectory() {
+    renderStrictScoutDirectory();
+  }
+
+  function resetScoutFilters() {
+    const sInput = document.getElementById('searchScoutInput');
+    const sLevel = document.getElementById('filterScoutLevel');
+    const sType = document.getElementById('filterScoutType');
+    const sDept = document.getElementById('filterScoutDept');
+    if (sInput) sInput.value = '';
+    if (sLevel) sLevel.value = 'ALL';
+    if (sType) sType.value = 'ALL';
+    if (sDept) sDept.value = 'ALL';
+    renderStrictScoutDirectory();
+  }
+
+  function getScoutQualificationBadge(qual) {
+    if (!qual || qual === '-' || qual === 'ไม่มีวุฒิลูกเสือ') {
+      return {
+        badgeClass: 'sct-badge-gray',
+        label: 'ยังไม่มีวุฒิลูกเสือ',
+        desc: 'ยังไม่ผ่านการฝึกอบรม',
+        levelKey: 'NONE'
+      };
+    }
+    const q = String(qual).trim().toUpperCase();
+    if (q.indexOf('L.T.') !== -1) {
+      return {
+        badgeClass: 'sct-badge-gold',
+        label: 'L.T. 4 ท่อน',
+        desc: 'ผู้อำนวยการฝึกอบรมลูกเสือ ขั้นหัวหน้าผู้ให้การฝึกอบรม',
+        levelKey: 'LT'
+      };
+    }
+    if (q.indexOf('A.L.T.') !== -1) {
+      return {
+        badgeClass: 'sct-badge-gold',
+        label: 'A.L.T. 3 ท่อน',
+        desc: 'รองผู้อำนวยการฝึกอบรมลูกเสือ ขั้นผู้ช่วยผู้ให้การฝึกอบรม',
+        levelKey: 'ALT'
+      };
+    }
+    if (q.indexOf('W.B.') !== -1 || q.indexOf('วูดแบดจ์') !== -1) {
+      return {
+        badgeClass: 'sct-badge-green',
+        label: 'W.B. 2 ท่อน',
+        desc: 'ผ่านการตรวจขั้นที่ 5 ได้รับสายหนังและท่อนไม้วูดแบดจ์ 2 ท่อน',
+        levelKey: 'WB'
+      };
+    }
+    if (q.indexOf('A.T.C.') !== -1) {
+      return {
+        badgeClass: 'sct-badge-cyan',
+        label: 'A.T.C. ขั้นสูง',
+        desc: 'ผ่านการอบรมเข้มข้น 7-8 วัน Advanced Training Course',
+        levelKey: 'ATC'
+      };
+    }
+    if (q.indexOf('B.T.C.') !== -1) {
+      return {
+        badgeClass: 'sct-badge-blue',
+        label: 'B.T.C. ขั้นต้น',
+        desc: 'ผ่านการอบรม 3 วัน 2 คืน ได้รับห่วงกิลเวลล์',
+        levelKey: 'BTC'
+      };
+    }
+    return {
+      badgeClass: 'sct-badge-cyan',
+      label: qual,
+      desc: 'คุณวุฒิทางลูกเสือ',
+      levelKey: 'OTHER'
+    };
+  }
+
+  function renderStrictScoutDirectory() {
+    const ribbonContainer = document.getElementById('employeeScoutRibbonContainer');
+    const tableWrap = document.getElementById('scoutAllCertsTableWrap');
+    const sctBody = document.getElementById('dirScoutBody');
+    if (!ribbonContainer) return;
+
+    // 1. Populate Department filter options
+    const sDept = document.getElementById('filterScoutDept');
+    if (sDept && sDept.options && sDept.options.length <= 1 && Array.isArray(g_UsersSummary)) {
+      const deptSet = new Set();
+      g_UsersSummary.forEach(u => {
+        const d = String(u.Department || '').trim();
+        if (d && d !== '-') deptSet.add(d);
+      });
+      deptSet.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        sDept.appendChild(opt);
+      });
+    }
+
+    // 2. Compute Top Summary Stats
+    const totalCount = g_UsersSummary.length;
+    let wbCount = 0;
+    let basicCount = 0;
+    let noneCount = 0;
+
+    g_UsersSummary.forEach(u => {
+      const q = String(u.HighestScout || '').toUpperCase();
+      if (q.indexOf('L.T.') !== -1 || q.indexOf('A.L.T.') !== -1 || q.indexOf('W.B.') !== -1 || q.indexOf('วูดแบดจ์') !== -1) {
+        wbCount++;
+      } else if (q.indexOf('A.T.C.') !== -1 || q.indexOf('B.T.C.') !== -1) {
+        basicCount++;
+      } else {
+        noneCount++;
+      }
+    });
+
+    const elTot = document.getElementById('sctStatTotal');
+    const elWb = document.getElementById('sctStatWb');
+    const elBasic = document.getElementById('sctStatBasic');
+    const elNone = document.getElementById('sctStatNone');
+    if (elTot) elTot.innerText = totalCount;
+    if (elWb) elWb.innerText = wbCount;
+    if (elBasic) elBasic.innerText = basicCount;
+    if (elNone) elNone.innerText = noneCount;
+
+    // 3. Filter Users
+    const qSearch = (document.getElementById('searchScoutInput') ? document.getElementById('searchScoutInput').value : '').trim().toLowerCase();
+    const fLevel = document.getElementById('filterScoutLevel') ? document.getElementById('filterScoutLevel').value : 'ALL';
+    const fType = document.getElementById('filterScoutType') ? document.getElementById('filterScoutType').value : 'ALL';
+    const fDept = document.getElementById('filterScoutDept') ? document.getElementById('filterScoutDept').value : 'ALL';
+
+    const filteredUsers = g_UsersSummary.filter(u => {
+      if (u.status === 'ย้าย/เกษียณ') return false;
+
+      const userQual = String(u.HighestScout || '').toUpperCase();
+      const userType = String(u.ScoutType || '');
+      const userDept = String(u.Department || '');
+
+      // Level filter
+      if (fLevel === 'LT_ALT' && userQual.indexOf('L.T.') === -1 && userQual.indexOf('A.L.T.') === -1) return false;
+      if (fLevel === 'WB' && userQual.indexOf('W.B.') === -1 && userQual.indexOf('วูดแบดจ์') === -1) return false;
+      if (fLevel === 'ATC' && userQual.indexOf('A.T.C.') === -1) return false;
+      if (fLevel === 'BTC' && userQual.indexOf('B.T.C.') === -1) return false;
+      if (fLevel === 'NONE' && (userQual.indexOf('B.T.C.') !== -1 || userQual.indexOf('A.T.C.') !== -1 || userQual.indexOf('W.B.') !== -1 || userQual.indexOf('A.L.T.') !== -1 || userQual.indexOf('L.T.') !== -1)) return false;
+
+      // Type filter
+      if (fType !== 'ALL' && userType.indexOf(fType) === -1) return false;
+
+      // Dept filter
+      if (fDept !== 'ALL' && userDept !== fDept) return false;
+
+      // Text Search
+      if (qSearch) {
+        const empMatch = String(u.EmpID || '').toLowerCase().includes(qSearch);
+        const nameMatch = String(u.FullName || '').toLowerCase().includes(qSearch);
+        const certMatch = String(u.ScoutCert || '').toLowerCase().includes(qSearch);
+        const qualMatch = String(u.HighestScout || '').toLowerCase().includes(qSearch);
+        const typeMatch = String(u.ScoutType || '').toLowerCase().includes(qSearch);
+        const deptMatch = String(u.Department || '').toLowerCase().includes(qSearch);
+        if (!empMatch && !nameMatch && !certMatch && !qualMatch && !typeMatch && !deptMatch) return false;
+      }
+
+      return true;
+    });
+
+    // 4. Render Table for Tab ALL_CERTS & maintain dirScoutBody
+    if (sctBody) {
+      let rowsHtml = '';
+      filteredUsers.forEach(u => {
+        const historyArr = (Array.isArray(u.ScoutsHistory) && u.ScoutsHistory.length > 0)
+          ? u.ScoutsHistory
+          : [{ ScoutQualification: u.HighestScout, ScoutType: u.ScoutType, CertNumber: u.ScoutCert, ApprovedDate: u.ScoutDate }];
+
+        historyArr.forEach(h => {
+          const badgeObj = getScoutQualificationBadge(h.ScoutQualification);
+          rowsHtml += `
+            <tr>
+              <td style="color:var(--steam-cyan); font-weight:bold; font-family:monospace;">${escapeHtml(u.EmpID)}</td>
+              <td style="text-align:left; padding-left:12px; font-weight:bold;">${escapeHtml(u.FullName)}</td>
+              <td><span class="sct-badge ${badgeObj.badgeClass}">${escapeHtml(badgeObj.label)}</span></td>
+              <td><span style="color:var(--text-muted);">${escapeHtml(h.ScoutType || '-')}</span></td>
+              <td style="font-family:monospace; color:var(--steam-cyan);">${escapeHtml(h.CertNumber || '-')}</td>
+              <td>${escapeHtml(formatSlashDateBE(h.ApprovedDate))}</td>
+            </tr>
+          `;
+        });
+      });
+      sctBody.innerHTML = rowsHtml || '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">ไม่พบข้อมูลวุฒิบัตรลูกเสือตามเงื่อนไขที่เลือก</td></tr>';
+    }
+
+    // Toggle between Table View and Ribbon Views
+    if (g_CurrentScoutViewTab === 'ALL_CERTS') {
+      ribbonContainer.style.display = 'none';
+      if (tableWrap) tableWrap.style.display = 'block';
+      return;
+    } else {
+      if (tableWrap) tableWrap.style.display = 'none';
+      ribbonContainer.style.display = 'flex';
+    }
+
+    // 5. Render Tab LEVELS (Grouped by Scout Unit Type)
+    if (g_CurrentScoutViewTab === 'LEVELS') {
+      const types = [
+        { name: 'ลูกเสือสำรอง', title: 'กองลูกเสือสำรอง (Cub Scout: ระดับประถมต้น ป.1–ป.3)', color: 'var(--orange)' },
+        { name: 'ลูกเสือสามัญ', title: 'กองลูกเสือสามัญ (Scout: ระดับประถมปลาย ป.4–ป.6)', color: 'var(--steam-green)' },
+        { name: 'ลูกเสือสามัญรุ่นใหญ่', title: 'กองลูกเสือสามัญรุ่นใหญ่ (Senior Scout: ระดับมัธยมศึกษา ม.1–ม.3)', color: 'var(--steam-cyan)' },
+        { name: 'ลูกเสือวิสามัญ', title: 'กองลูกเสือวิสามัญ (Rover Scout: ระดับมัธยมปลาย ม.4–ม.6 หรืออาชีวศึกษา)', color: '#e6edf3' }
+      ];
+
+      let levelsHtml = '';
+      types.forEach(t => {
+        const staffInType = filteredUsers.filter(u => String(u.ScoutType || '').indexOf(t.name) !== -1);
+        levelsHtml += `
+          <div style="background:rgba(0,0,0,0.22); border:1px solid #2a475e; border-radius:6px; padding:12px 16px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #2a475e; padding-bottom:8px; margin-bottom:10px;">
+              <div style="font-weight:bold; font-size:14px; color:${t.color}; display:flex; align-items:center; gap:0;">
+                <svg class="ui-ico-sm" style="color:${t.color}; margin-right:8px;" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+                <span>${t.title}</span>
+              </div>
+              <span style="background:rgba(102,192,244,0.14); border:1px solid var(--steam-cyan); color:var(--steam-cyan); padding:2px 10px; border-radius:12px; font-size:11.5px; font-weight:bold;">
+                ${staffInType.length} ท่าน
+              </span>
+            </div>
+            ${staffInType.length === 0 ? '<div style="color:var(--text-muted); font-size:12.5px; padding:6px 0;">ยังไม่มีผู้บังคับบัญชาที่ระบุประเภทกองนี้</div>' : `
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:8px;">
+                ${staffInType.map(u => {
+                  const badgeObj = getScoutQualificationBadge(u.HighestScout);
+                  return `
+                    <div style="background:#101822; border:1px solid #23384c; border-radius:4px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                      <div>
+                        <div style="font-weight:bold; color:#fff; font-size:13px;">${escapeHtml(u.FullName)}</div>
+                        <div style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(u.Position || '')} · ${escapeHtml(u.Department || '')}</div>
+                      </div>
+                      <span class="sct-badge ${badgeObj.badgeClass}" style="font-size:11px;">${escapeHtml(badgeObj.label)}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        `;
+      });
+
+      ribbonContainer.innerHTML = levelsHtml;
+      return;
+    }
+
+    // 6. Render Tab PERSONNEL (Default Modern Ribbon Cards)
+    if (filteredUsers.length === 0) {
+      ribbonContainer.innerHTML = `<div class="emp-empty-state">ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไขการค้นหาคุณวุฒิลูกเสือ</div>`;
+      return;
+    }
+
+    const icoBriefcase = `<svg class="ui-ico-sm" style="color:var(--steam-cyan); vertical-align:middle; margin-right:4px;" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>`;
+    const icoIdCard = `<svg class="ui-ico-sm" style="color:var(--steam-green); vertical-align:middle; margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`;
+    const icoStar = `<svg class="ui-ico-sm" style="color:var(--orange); vertical-align:middle; margin-right:4px;" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>`;
+
+    ribbonContainer.innerHTML = filteredUsers.map(u => {
+      const empId = u.EmpID || u.id;
+      const isExpanded = (g_ExpandedScoutEmpId === empId);
+      const identitySubtitleHtml = buildStaffIdentitySubtitle(u);
+
+      const posTxt = u.PositionNo ? escapeHtml(u.PositionNo) : (u.IsPositionUnverified ? `<span class="id-unverified-badge">รอตรวจสอบ</span>` : `<span style="color:var(--text-muted);">-</span>`);
+      const memTxt = u.MemberID ? escapeHtml(u.MemberID) : `<span style="color:var(--text-muted);">-</span>`;
+
+      const badgeObj = getScoutQualificationBadge(u.HighestScout);
+      const sctHistory = u.ScoutsHistory || [];
+      const hasHistory = sctHistory.length > 0;
+      const extraCountTxt = sctHistory.length > 1
+        ? `<span style="background:rgba(210,153,34,0.16); border:1px solid var(--orange); color:var(--orange); padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">+ รวม ${sctHistory.length} วุฒิ</span>`
+        : '';
+
+      const certTxt = u.ScoutCert ? `<span style="color:var(--steam-cyan); font-family:monospace; margin-left:6px;">#${escapeHtml(u.ScoutCert)}</span>` : '';
+      const dateTxt = u.ScoutDate ? `<span style="color:var(--text-muted); font-size:11.5px; margin-left:6px;">(${escapeHtml(formatSlashDateBE(u.ScoutDate))})</span>` : '';
+
+      const arrowIcon = isExpanded
+        ? `<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>`
+        : `<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>`;
+
+      // Build Expanded Details Panel
+      let detailHtml = '';
+      if (isExpanded) {
+        let historyCardsHtml = '';
+        if (sctHistory.length === 0) {
+          historyCardsHtml = `
+            <div class="sct-sub-item">
+              <div>
+                <b>${badgeObj.label}</b> (${escapeHtml(u.ScoutType || 'ไม่ระบุประเภทกอง')})
+                <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">เลขที่วุฒิบัตร: ${escapeHtml(u.ScoutCert || '-')} · วันที่ได้รับ: ${escapeHtml(formatSlashDateBE(u.ScoutDate))}</div>
+              </div>
+              <button type="button" class="btn-table-action edit" onclick="goToAdminPage(event, 'tab2')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>แก้ไขในตั้งค่า</span></button>
+            </div>
+          `;
+        } else {
+          historyCardsHtml = sctHistory.map((s, idx) => {
+            const hBadge = getScoutQualificationBadge(s.ScoutQualification);
+            return `
+              <div class="sct-sub-item">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="sct-badge ${hBadge.badgeClass}">${escapeHtml(hBadge.label)}</span>
+                  <div>
+                    <b style="color:#fff;">${escapeHtml(s.ScoutQualification || '-')}</b>
+                    <span style="color:var(--steam-cyan); margin-left:6px;">(${escapeHtml(s.ScoutType || 'ไม่ระบุประเภทกอง')})</span>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
+                      เลขที่วุฒิบัตร: <b style="color:var(--steam-cyan); font-family:monospace;">${escapeHtml(s.CertNumber || '-')}</b> · วันที่ได้รับ: <b style="color:#fff;">${escapeHtml(formatSlashDateBE(s.ApprovedDate))}</b>
+                      ${s.ScoutPosition ? ` · ตำแหน่ง: ${escapeHtml(s.ScoutPosition)}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-table-action edit" onclick="goToAdminPage(event, 'tab2')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>แก้ไข</span></button>
+              </div>
+            `;
+          }).join('');
+        }
+
+        let dutiesHtml = '-';
+        if (u.Division && u.Division !== '-') {
+          const dParts = String(u.Division).split(/,\s*(?![^()]*\))/).map(s => s.trim()).filter(Boolean);
+          if (dParts.length > 1) {
+            dutiesHtml = dParts.map(p => `• ${escapeHtml(p)}`).join('<br>');
+          } else {
+            dutiesHtml = escapeHtml(u.Division);
+          }
+        }
+
+        detailHtml = `
+          <div class="std-expanded-refs-grid">
+            <div class="std-ref-card std-ref-pos">
+              ${icoBriefcase}
+              <div>เลขที่ตำแหน่ง: <b style="color:#fff; font-family:monospace; font-size:13px;">${posTxt}</b></div>
+            </div>
+            <div class="std-ref-card std-ref-start">
+              ${icoStar}
+              <div>กองลูกเสือ: <b style="color:var(--orange); font-weight:bold;">${escapeHtml(u.ScoutType || '-')}</b></div>
+            </div>
+            <div class="std-ref-card std-ref-tenure">
+              <svg class="ui-ico-sm" style="color:var(--steam-green); flex-shrink:0; width:15px; height:15px; margin-right:4px;" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <div>วุฒิสูงสุด: <b style="color:#fff;">${escapeHtml(badgeObj.label)}</b></div>
+            </div>
+          </div>
+
+          <div class="std-opt2-box" style="margin-bottom:12px;">
+            <div class="std-opt2-box-header" style="color:var(--steam-green);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <span>เกณฑ์มาตรฐานคุณวุฒิลูกเสือไทย</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px; font-size:12px; color:var(--text-muted); line-height:1.5;">
+              <div>• <b style="color:#fff;">B.T.C.</b> ขั้นต้น 3 วัน · ห่วงกิลเวลล์</div>
+              <div>• <b style="color:#fff;">A.T.C.</b> ขั้นสูง 7 วัน</div>
+              <div>• <b style="color:#fff;">W.B.</b> ตรวจประเมินขั้นที่ 5 · วูดแบดจ์ 2 ท่อน ผ้ากิลเวลล์</div>
+              <div>• <b style="color:#fff;">A.L.T. และ L.T.</b> ขั้นวิทยากรแกนนำ · วูดแบดจ์ 3 และ 4 ท่อน</div>
+            </div>
+          </div>
+
+          <div style="font-size:12px; font-weight:bold; color:var(--steam-cyan); margin-bottom:6px;">
+            ประวัติการฝึกอบรมและวุฒิบัตรทางลูกเสือที่บันทึกไว้ในระบบ
+          </div>
+          ${historyCardsHtml}
+        `;
+      }
+
+      return `
+        <div class="sct-ribbon-card ${isExpanded ? 'expanded' : ''}" id="sctRibbonCard_${escapeHtml(empId)}">
+          <div class="sct-ribbon-main" onclick="toggleScoutRibbonExpand('${escapeHtml(empId)}', event)">
+            
+            <div class="sct-ident-zone">
+              <div class="sct-name-line">${escapeHtml(u.FullName)}</div>
+              <div class="sct-meta-line">${identitySubtitleHtml}</div>
+            </div>
+
+            <div class="sct-status-zone">
+              <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                <span class="sct-badge ${badgeObj.badgeClass}">${escapeHtml(badgeObj.label)}</span>
+                ${extraCountTxt}
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                ${certTxt} ${dateTxt}
+              </div>
+            </div>
+
+            <button type="button" class="emp-expand-btn" title="${isExpanded ? 'ซ่อนรายละเอียด' : 'ดูประวัติวุฒิลูกเสือ'}" onclick="toggleScoutRibbonExpand('${escapeHtml(empId)}', event)">
+              ${arrowIcon}
+            </button>
+          </div>
+
+          <div class="sct-detail-panel" id="sctDetailPanel_${escapeHtml(empId)}">
+            ${detailHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // เชื่อมต่อ Event Bus เพื่ออัปเดตทะเบียนวุฒิลูกเสือแบบ Real-time
+  if (window.LeaveBus && typeof window.LeaveBus.on === 'function') {
+    window.LeaveBus.on('LEAVE_UPDATED', function() {
+      const view = document.getElementById('view_dir_scout');
+      if (view && view.style.display !== 'none') {
+        renderStrictScoutDirectory();
+      }
+    });
+  }
+</script>

@@ -1,0 +1,56 @@
+<!-- VIEW: แผนผังการบริหารงาน -->
+<div id="view_org_chart" class="main-view" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a475e; padding-bottom:10px; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="color:var(--steam-cyan); margin:0; font-size:17px; display:flex; align-items:center; gap: 8px;">
+        <svg class="ui-ico-lg" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg><span>แผนผังการบริหารงาน</span>
+      </h3>
+      <div style="color:var(--text-muted); font-size:12.5px; margin-top:3px;">
+        โครงสร้างการบริหารงาน สายการบังคับบัญชา และการมอบหมายงานตามฝ่ายของสถานศึกษา • 
+        <span id="orgHeaderSchoolName" style="color:#fff; font-weight:bold;">โรงเรียนชุมชนบ้านตะขบ</span> (ปีงบประมาณ <span id="orgHeaderFiscalYear" style="color:var(--steam-cyan);">2570</span>)
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <div style="display:inline-flex; align-items:center; background:#101722; border:1px solid #2a475e; border-radius:24px; padding:3px 8px; gap:4px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+        <button type="button" onclick="zoomOrgTree(-0.1)" title="ย่อแผนผัง" aria-label="ย่อแผนผัง" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; transition:all 0.18s;">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <span id="orgZoomPercentLabel" style="font-size:12px; font-weight:700; color:var(--steam-cyan); min-width:42px; text-align:center; user-select:none;">100%</span>
+        <button type="button" onclick="zoomOrgTree(0.1)" title="ขยายแผนผัง" aria-label="ขยายแผนผัง" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; transition:all 0.18s;">
+          <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
+      </div>
+
+      <button type="button" class="btn-circle-glow glow-cyan" onclick="resetOrgTreeZoom()" title="รีเซ็ตขนาด 100%" aria-label="รีเซ็ตขนาด 100%">
+        <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+
+      <button type="button" class="btn-refresh-circle" onclick="refreshAllData()" title="รีเฟรชข้อมูล" aria-label="รีเฟรชข้อมูล">
+        <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="emp-filter-bar" style="margin-bottom:10px;">
+    <input type="text" id="orgSearchInput" class="steam-input" placeholder="ค้นหาชื่อ-นามสกุล หรือ รหัสบุคลากรในแผนผัง..." oninput="filterOrgChartTree()">
+    <select id="orgFilterCategory" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">กลุ่มตำแหน่ง: ทั้งหมด</option>
+      <option value="EXE">ผู้บริหารสถานศึกษา</option>
+      <option value="TCH">ข้าราชการครู</option>
+      <option value="STF">บุคลากรสายสนับสนุน</option>
+    </select>
+    <select id="orgFilterDept" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">ฝ่ายบริหารงาน: ทั้งหมด</option>
+    </select>
+    <select id="orgFilterViewMode" class="steam-input" onchange="filterOrgChartTree()">
+      <option value="ALL">มุมมอง: แสดงทุกฝ่ายและงานย่อย</option>
+      <option value="HEAD_ONLY">แสดงเฉพาะหัวหน้าฝ่ายงาน</option>
+      <option value="VACANT">แสดงเฉพาะงานที่ยังไม่มีผู้รับผิดชอบ</option>
+    </select>
+    <button type="button" class="btn-steam-secondary" style="height:34px;" onclick="resetOrgFilters()"><svg class="ui-ico-xs" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>ล้างตัวกรอง</span></button>
+  </div>
+
+  <div class="org-viewport" id="orgViewportBox">
+    <div class="org-tree" id="orgTreeContainer"></div>
+  </div>
+</div>

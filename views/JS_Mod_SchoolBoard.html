@@ -1,0 +1,1726 @@
+<script>
+// =========================================================================
+// MODULE: SCHOOL BOARD FRONTEND CONTROLLER (JS_Mod_SchoolBoard.html)
+// สถาปัตยกรรม 3 ซับแท็บอิสระ, กฎหมายกระทรวงศึกษาธิการ 9/15 คน,
+// ปลั๊กอินจัดการวาระบุคลากร (ผู้อำนวยการ & ผู้แทนครู) และทำเนียบกรรมการ
+// =========================================================================
+
+// ตัวแปรส่วนกลางสำหรับโมดูล
+var g_BoardBundle = null;
+var g_BoardSearchKeyword = '';
+var g_BoardFilterPosition = 'ALL';
+var g_BoardFilterStatus = 'ดำรงตำแหน่ง';
+
+const SBD_POSITION_TITLES = {
+  CHAIR: 'ประธานกรรมการ',
+  PARENT_REP: 'ผู้แทนผู้ปกครอง',
+  TEACHER_REP: 'ผู้แทนครู',
+  COMMUNITY_REP: 'ผู้แทนองค์กรชุมชน',
+  LOCAL_ADMIN: 'ผู้แทนองค์กรปกครองส่วนท้องถิ่น',
+  ALUMNI_REP: 'ผู้แทนศิษย์เก่า',
+  RELIGION_REP: 'ผู้แทนพระภิกษุสงฆ์และ/หรือผู้แทนองค์กรศาสนา',
+  EXPERT: 'ผู้ทรงคุณวุฒิ',
+  DIRECTOR_SEC: 'กรรมการและเลขานุการ'
+};
+
+const SBD_POSITION_DESCRIPTIONS = {
+  CHAIR: 'คัดเลือกจากผู้ทรงคุณวุฒิ ทำหน้าที่ประธานในที่ประชุมและกำกับทิศทาง',
+  PARENT_REP: 'ตัวแทนผู้ปกครองนักเรียนที่กำลังศึกษาอยู่ในสถานศึกษา',
+  TEACHER_REP: 'ตัวแทนข้าราชการครูที่ปฏิบัติการสอนในสถานศึกษา',
+  COMMUNITY_REP: 'ตัวแทนจากองค์กรชุมชนในเขตพื้นที่บริการของสถานศึกษา',
+  LOCAL_ADMIN: 'ตัวแทนจากเทศบาล หรือองค์การบริหารส่วนตำบล (อบต.) ในพื้นที่',
+  ALUMNI_REP: 'ตัวแทนศิษย์เก่าที่สำเร็จการศึกษาจากสถานศึกษา',
+  RELIGION_REP: 'ตัวแทนพระภิกษุสงฆ์ หรือตัวแทนองค์กรศาสนาอื่นที่มีในเขตพื้นที่',
+  EXPERT: 'ผู้ทรงคุณวุฒิด้านการศึกษา ศาสนา ศิลปะ วัฒนธรรม หรือการบริหาร',
+  DIRECTOR_SEC: 'ผู้อำนวยการสถานศึกษา ทำหน้าที่กรรมการและเลขานุการโดยตำแหน่ง'
+};
+
+/**
+ * สลับแท็บย่อย (Sub-Tabs) ภายในแท็บ คณะกรรมการสถานศึกษา
+ * @param {string} panelId รหัสไอดีของพาเนลเป้าหมาย
+ * @param {HTMLElement} [btnEl] ปุ่มแท็บที่ถูกคลิก
+ */
+function MOD_SchoolBoard_switchSubTab(panelId, btnEl) {
+  var panels = document.querySelectorAll('.sbd-subtab-panel');
+  panels.forEach(function(p) { p.style.display = 'none'; });
+
+  var targetPanel = document.getElementById(panelId);
+  if (targetPanel) targetPanel.style.display = 'block';
+
+  var btns = document.querySelectorAll('.sbd-subtab-btn');
+  btns.forEach(function(b) { b.classList.remove('active'); });
+
+  if (btnEl) {
+    btnEl.classList.add('active');
+  } else {
+    if (panelId === 'sbd_panel_criteria') {
+      var b1 = document.getElementById('sbd_btn_tab1');
+      if (b1) b1.classList.add('active');
+    } else if (panelId === 'sbd_panel_form') {
+      var b2 = document.getElementById('sbd_btn_tab2');
+      if (b2) b2.classList.add('active');
+    } else if (panelId === 'sbd_panel_roster') {
+      var b3 = document.getElementById('sbd_btn_tab3');
+      if (b3) b3.classList.add('active');
+    }
+  }
+
+  if (panelId === 'sbd_panel_roster') {
+    MOD_SchoolBoard_renderMembersTable();
+  }
+}
+window.MOD_SchoolBoard_switchSubTab = MOD_SchoolBoard_switchSubTab;
+
+/**
+ * เริ่มต้นการทำงานของโมดูล School Board
+ * โหลดครั้งเดียวพร้อมระบบหน้าหลัก/แอดมิน ทุกเมนูพร้อมใช้งานทันที ไม่มีการโหลดซ้ำซ้อน
+ * @param {Object|boolean} [bundleOrCache] ข้อมูล boardBundle หรือ flag useCache
+ * @param {Object} [bundleData]
+ */
+function MOD_SchoolBoard_init(bundleOrCache, bundleData) {
+  // 1. ตรวจสอบข้อมูล bundle ที่ส่งมาจากหน้าหลัก/แอดมิน (ทั้งในพารามิเตอร์ 1 และ 2 หรือในตัวแปร Global)
+  var bundle = null;
+  if (bundleOrCache && typeof bundleOrCache === 'object' && bundleOrCache.status === 'success') {
+    bundle = bundleOrCache;
+  } else if (bundleData && typeof bundleData === 'object' && bundleData.status === 'success') {
+    bundle = bundleData;
+  } else if (window.g_AdminData && window.g_AdminData.boardBundle && window.g_AdminData.boardBundle.status === 'success') {
+    bundle = window.g_AdminData.boardBundle;
+  } else if (window.g_MainBundle && window.g_MainBundle.boardBundle && window.g_MainBundle.boardBundle.status === 'success') {
+    bundle = window.g_MainBundle.boardBundle;
+  }
+
+  if (bundle) {
+    g_BoardBundle = bundle;
+    window.g_BoardBundle = g_BoardBundle;
+    try { MOD_SchoolBoard_renderAdminTab(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderAdminTab:', e); }
+    try { MOD_SchoolBoard_renderPublicView(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderPublicView:', e); }
+    return;
+  }
+
+  // 2. ถ้าใน Memory (ตัวแปร window.g_BoardBundle) มีข้อมูลอยู่แล้ว ให้แสดงทันที ไม่ต้องโหลดซ้ำ 0ms
+  if (window.g_BoardBundle && window.g_BoardBundle.status === 'success') {
+    try { MOD_SchoolBoard_renderAdminTab(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderAdminTab:', e); }
+    try { MOD_SchoolBoard_renderPublicView(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderPublicView:', e); }
+    return;
+  }
+
+  // 3. กรณีไม่มีข้อมูลใน bundle เริ่มต้นเลยจริงๆ (Fallback ป้องกันข้อผิดพลาด) จึงค่อยดึงจาก Server 1 ครั้ง
+  if (typeof startLoadingBar === 'function') startLoadingBar('Loading School Board Data...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.status === 'success') {
+        g_BoardBundle = res;
+        window.g_BoardBundle = g_BoardBundle;
+        if (window.g_AdminData) window.g_AdminData.boardBundle = res;
+        if (window.g_MainBundle) window.g_MainBundle.boardBundle = res;
+        try { MOD_SchoolBoard_renderAdminTab(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderAdminTab:', e); }
+        try { MOD_SchoolBoard_renderPublicView(); } catch (e) { console.error('Error in MOD_SchoolBoard_renderPublicView:', e); }
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Unable to load board data: ' + (err.message || err), 'Error');
+    })
+    .SBD_getBoardBundle(true);
+}
+
+// =========================================================================
+// ADMIN TAB: โซน 1 - ตั้งค่าเกณฑ์สถานศึกษา & Live Compliance Bar
+// =========================================================================
+
+function MOD_SchoolBoard_renderAdminTab() {
+  var tabBoardEl = document.getElementById('tab_board');
+  if (!tabBoardEl || !g_BoardBundle) return;
+
+  var comp = g_BoardBundle.compliance || {};
+  var count = comp.studentCount || 0;
+  var members = g_BoardBundle.members || [];
+  var activeMembers = comp.activeMembers || members.filter(function(m) { return m.Status === 'ดำรงตำแหน่ง'; });
+
+  // 1. อัปเดต Executive Dashboard Cards
+  var dashQuota = document.getElementById('sbd_dash_ruleQuota');
+  var dashSub = document.getElementById('sbd_dash_ruleSub');
+  var dashStdDetail = document.getElementById('sbd_dash_studentDetail');
+  var dashActiveVal = document.getElementById('sbd_dash_activeCountVal');
+  var dashCompSub = document.getElementById('sbd_dash_complianceSub');
+  var dashTerm = document.getElementById('sbd_dash_termYears');
+  var dashChair = document.getElementById('sbd_dash_chairName');
+
+  var quota = comp.totalQuota || (count <= 300 ? 9 : 15);
+  if (dashQuota) dashQuota.innerText = quota;
+  if (dashSub) dashSub.innerText = count <= 300 ? '(≤ 300 คน)' : '(> 300 คน)';
+  if (dashStdDetail) {
+    dashStdDetail.innerHTML = 'นักเรียน: <b style="color:#fff;">' + count + '</b> คน' +
+      (comp.studentCountDate ? ' <span style="color:var(--text-muted); font-size:11px;">(' + escapeHtml(comp.studentCountDate) + ')</span>' : '');
+  }
+
+  var activeCount = comp.activeCount !== undefined ? comp.activeCount : activeMembers.length;
+  if (dashActiveVal) {
+    dashActiveVal.innerText = activeCount + ' / ' + quota;
+    dashActiveVal.style.color = (activeCount >= quota) ? 'var(--steam-green)' : 'var(--steam-orange)';
+  }
+
+  var st = comp.overallStatus || 'PENDING_VERIFICATION';
+  if (dashCompSub) {
+    if (st === 'COMPLETE') {
+      dashCompSub.innerHTML = '<span style="color:var(--steam-green); font-weight:600; display:inline-flex; align-items:center; gap:6px;"><svg class="ui-ico-sm" style="width:14px; height:14px; color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>ครบถ้วนตามเกณฑ์</span></span>';
+    } else if (st === 'INCOMPLETE') {
+      var missCount = (comp.missingDetails || []).length;
+      dashCompSub.innerHTML = '<span style="color:var(--steam-orange); font-weight:600; display:inline-flex; align-items:center; gap:6px;"><svg class="ui-ico-sm" style="width:14px; height:14px; color:var(--steam-orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>ขาดอีก ' + missCount + ' ตำแหน่ง</span></span>';
+    } else if (st === 'EXCEED_LIMIT') {
+      dashCompSub.innerHTML = '<span style="color:var(--red); font-weight:600; display:inline-flex; align-items:center; gap:6px;"><svg class="ui-ico-sm" style="width:14px; height:14px; color:var(--red);" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>เกินเกณฑ์ ' + (activeCount - quota) + ' ท่าน</span></span>';
+    } else {
+      dashCompSub.innerHTML = '<span style="color:var(--text-muted);">รอระบุจำนวน นร.</span>';
+    }
+  }
+
+  if (dashTerm) dashTerm.innerText = '4';
+  if (dashChair) dashChair.innerText = comp.chairName || '-';
+
+  // 2. อัปเดต Sub-tab Badges
+  var badgeTab1 = document.getElementById('sbd_badge_tab1');
+  if (badgeTab1) {
+    badgeTab1.innerText = quota + ' คน';
+  }
+  var badgeTab3 = document.getElementById('sbd_badge_tab3');
+  if (badgeTab3) {
+    badgeTab3.innerText = activeCount + '/' + quota;
+  }
+
+  // 3. แสดง Live Compliance Grid
+  var grid = document.getElementById('sbd_complianceGrid');
+  if (grid && comp.breakdown) {
+    var cardsHtml = '';
+    comp.breakdown.forEach(function(item) {
+      var isOk = item.status === 'OK';
+      var isMissing = item.status === 'MISSING';
+      var borderCol = isOk ? 'rgba(52, 168, 83, 0.28)' : (isMissing ? 'rgba(251, 188, 4, 0.28)' : 'rgba(234, 67, 53, 0.28)');
+      var bgCol = isOk ? 'rgba(52, 168, 83, 0.05)' : (isMissing ? 'rgba(251, 188, 4, 0.05)' : 'rgba(234, 67, 53, 0.05)');
+      var statusText = isOk
+        ? '<span style="color:var(--steam-green); font-weight:bold; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;"><svg class="ui-ico-sm" style="width:13px; height:13px; color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>ครบตามเกณฑ์</span></span>'
+        : (isMissing
+          ? '<span style="color:var(--steam-orange); font-weight:bold; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;"><svg class="ui-ico-sm" style="width:13px; height:13px; color:var(--steam-orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>ขาดอีก ' + Math.abs(item.diff) + ' ท่าน</span></span>'
+          : '<span style="color:var(--red); font-weight:bold; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;"><svg class="ui-ico-sm" style="width:13px; height:13px; color:var(--red);" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>เกิน ' + item.diff + ' ท่าน</span></span>');
+
+      cardsHtml += `
+        <div style="background:${bgCol}; border:1px solid ${borderCol}; border-radius:6px; padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+            <div style="font-weight:700; font-size:13px; color:#fff;">${escapeHtml(item.positionTitle)}</div>
+            <div style="font-size:12px; font-weight:bold; color:${isOk ? 'var(--steam-green)' : 'var(--steam-orange)'};">
+              ${item.actual} / ${item.required}
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; line-height:1.3;">
+            ${escapeHtml(SBD_POSITION_DESCRIPTIONS[item.positionKey] || '')}
+          </div>
+          <div style="border-top:1px dashed ${borderCol}; padding-top:6px; display:flex; justify-content:space-between; align-items:center;">
+            ${statusText}
+            <span style="font-size:11px; color:var(--text-muted);">โควตา: ${item.required} คน</span>
+          </div>
+        </div>
+      `;
+    });
+    grid.innerHTML = cardsHtml;
+  }
+
+  // 4. เติมข้อมูลลงฟอร์มกำหนดเกณฑ์จำนวนนักเรียน (DMC 2 รอบ)
+  var dmcRound = g_BoardBundle.dmcRound || 'ROUND_1';
+  var roundSel = document.getElementById('sbd_dmcRoundSelect');
+  if (roundSel) roundSel.value = dmcRound;
+
+  var r1Count = g_BoardBundle.studentCountR1 || (dmcRound === 'ROUND_1' ? count : 0);
+  var r1Date = g_BoardBundle.studentCountDateR1 || (dmcRound === 'ROUND_1' ? (g_BoardBundle.studentCountDate || '') : '');
+  var r2Count = g_BoardBundle.studentCountR2 || (dmcRound === 'ROUND_2' ? count : 0);
+  var r2Date = g_BoardBundle.studentCountDateR2 || (dmcRound === 'ROUND_2' ? (g_BoardBundle.studentCountDate || '') : '');
+
+  var r1CountInput = document.getElementById('sbd_studentCountR1');
+  var r1DateInput = document.getElementById('sbd_studentCountDateR1');
+  var r2CountInput = document.getElementById('sbd_studentCountR2');
+  var r2DateInput = document.getElementById('sbd_studentCountDateR2');
+
+  if (r1CountInput) r1CountInput.value = r1Count;
+  if (r2CountInput) r2CountInput.value = r2Count;
+
+  if (r1DateInput) {
+    if (typeof setDatePickerVal === 'function' && r1Date) {
+      setDatePickerVal('sbd_studentCountDateR1', r1Date);
+    } else {
+      r1DateInput.value = r1Date;
+    }
+  }
+  if (r2DateInput) {
+    if (typeof setDatePickerVal === 'function' && r2Date) {
+      setDatePickerVal('sbd_studentCountDateR2', r2Date);
+    } else {
+      r2DateInput.value = r2Date;
+    }
+  }
+
+  if (typeof initThaiDatePickers === 'function') {
+    try { initThaiDatePickers(); } catch (ePick) {}
+  }
+
+  MOD_SchoolBoard_syncActiveStudentCount();
+
+  var ruleTitleEl = document.getElementById('sbd_legalRuleTitle');
+  if (ruleTitleEl) {
+    ruleTitleEl.innerHTML = '<span style="font-weight:700; color:var(--steam-cyan);">' + escapeHtml(comp.ruleTitle || '-') + '</span>';
+  }
+
+  // โหลดข้อมูลในตารางทำเนียบ (Sub-tab 3)
+  MOD_SchoolBoard_renderMembersTable();
+}
+
+/**
+ * สลับรอบ DMC ที่เลือกใช้งาน
+ */
+function MOD_SchoolBoard_onDmcRoundChange() {
+  MOD_SchoolBoard_syncActiveStudentCount();
+}
+
+/**
+ * ซิงค์จำนวนนักเรียนของรอบที่เลือกเข้าสู่ตัวแปรหลักสำหรับคำนวณ
+ */
+function MOD_SchoolBoard_syncActiveStudentCount() {
+  var roundSel = document.getElementById('sbd_dmcRoundSelect');
+  var round = roundSel ? roundSel.value : 'ROUND_1';
+
+  var r1CountInput = document.getElementById('sbd_studentCountR1');
+  var r1DateInput = document.getElementById('sbd_studentCountDateR1');
+  var r2CountInput = document.getElementById('sbd_studentCountR2');
+  var r2DateInput = document.getElementById('sbd_studentCountDateR2');
+
+  var activeCount = 0;
+  var activeDate = '';
+  var roundLabel = 'รอบที่ 1 (10 มิ.ย.)';
+
+  if (round === 'ROUND_2') {
+    activeCount = r2CountInput ? parseInt(r2CountInput.value, 10) || 0 : 0;
+    activeDate = r2DateInput ? r2DateInput.value : '';
+    roundLabel = 'รอบที่ 2 (10 พ.ย.)';
+  } else {
+    activeCount = r1CountInput ? parseInt(r1CountInput.value, 10) || 0 : 0;
+    activeDate = r1DateInput ? r1DateInput.value : '';
+    roundLabel = 'รอบที่ 1 (10 มิ.ย.)';
+  }
+
+  var countInput = document.getElementById('sbd_studentCountInput');
+  var dateInput = document.getElementById('sbd_studentCountDateInput');
+  if (countInput) countInput.value = activeCount;
+  if (dateInput) dateInput.value = activeDate;
+
+  var roundNameText = document.getElementById('sbd_activeRoundNameText');
+  if (roundNameText) roundNameText.innerText = roundLabel;
+  var roundBadge = document.getElementById('sbd_activeRoundBadge');
+  if (roundBadge) roundBadge.innerText = roundLabel;
+}
+
+/**
+ * สลับการแสดงผลแบบยืด/หด (Accordion) ของกล่องกำหนดเกณฑ์จำนวนนักเรียน DMC
+ */
+function MOD_SchoolBoard_toggleDmcAccordion() {
+  var content = document.getElementById('sbd_dmcAccordionContent');
+  var ico = document.getElementById('sbd_dmcChevronIco');
+  if (!content) return;
+  var isHidden = (content.style.display === 'none' || content.style.display === '');
+  content.style.display = isHidden ? 'block' : 'none';
+  if (ico) ico.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+  if (isHidden && typeof initThaiDatePickers === 'function') {
+    try { initThaiDatePickers(); } catch (e) {}
+  }
+}
+
+/**
+ * บันทึกเกณฑ์จำนวนนักเรียนจากหน้า Admin (รองรับรอบ DMC 2 ช่วง)
+ */
+function MOD_SchoolBoard_saveCriteria(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+  MOD_SchoolBoard_syncActiveStudentCount();
+
+  var roundSel = document.getElementById('sbd_dmcRoundSelect');
+  var round = roundSel ? roundSel.value : 'ROUND_1';
+
+  var r1Count = document.getElementById('sbd_studentCountR1') ? parseInt(document.getElementById('sbd_studentCountR1').value, 10) || 0 : 0;
+  var r1Date = document.getElementById('sbd_studentCountDateR1') ? document.getElementById('sbd_studentCountDateR1').value : '';
+  var r2Count = document.getElementById('sbd_studentCountR2') ? parseInt(document.getElementById('sbd_studentCountR2').value, 10) || 0 : 0;
+  var r2Date = document.getElementById('sbd_studentCountDateR2') ? document.getElementById('sbd_studentCountDateR2').value : '';
+
+  var activeCount = (round === 'ROUND_2') ? r2Count : r1Count;
+  var activeDate = (round === 'ROUND_2') ? r2Date : r1Date;
+
+  var payload = {
+    dmcRound: round,
+    studentCount: activeCount,
+    studentCountDate: activeDate,
+    studentCountR1: r1Count,
+    studentCountDateR1: r1Date,
+    studentCountR2: r2Count,
+    studentCountDateR2: r2Date
+  };
+
+  if (typeof startLoadingBar === 'function') startLoadingBar('Saving Student Criteria...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.success) {
+        if (typeof steamToast === 'function') {
+          steamToast(res.message, 'success');
+        } else if (typeof steamAlert === 'function') {
+          steamAlert(res.message, 'Success');
+        }
+        if (g_BoardBundle) {
+          g_BoardBundle.studentCount = activeCount;
+          g_BoardBundle.studentCountDate = activeDate;
+          g_BoardBundle.dmcRound = round;
+          g_BoardBundle.studentCountR1 = r1Count;
+          g_BoardBundle.studentCountDateR1 = r1Date;
+          g_BoardBundle.studentCountR2 = r2Count;
+          g_BoardBundle.studentCountDateR2 = r2Date;
+          g_BoardBundle.compliance = res.compliance;
+          MOD_SchoolBoard_renderAdminTab();
+        }
+      } else {
+        if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Unknown error', 'Error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+    })
+    .SBD_saveStudentCountCriteria(payload);
+}
+
+/**
+ * ตรวจสอบว่าบุคลากรเป็น "ข้าราชการครู" หรือไม่ (คัดกรองลูกจ้าง/สัญญาจ้างทุกประเภทออก)
+ * @param {Object} t
+ * @returns {boolean}
+ */
+function MOD_SchoolBoard_isCivilServantTeacher(t) {
+  if (!t) return false;
+  var id = String(t.EmpID || t.id || t.Teacher_ID || '').trim();
+  if (id.startsWith('STF-') || id.startsWith('EXE-')) return false;
+
+  var status = String(t.Status || t.status || '').trim();
+  if (status === 'ย้าย/เกษียณ' || status === 'เกษียณ' || status === 'ลาออก') return false;
+
+  var empType = String(t.EmpType || t.empType || '').trim();
+  var pos = String(t.Position || t.role || t.Role || '').trim();
+
+  // ตัดลูกจ้างทุกประเภท
+  var excludeKeywords = [
+    'พนักงานราชการ', 'อัตราจ้าง', 'ชั่วคราว', 'ลูกจ้างประจำ', 'ลูกจ้าง',
+    'พี่เลี้ยง', 'ภารโรง', 'ธุรการ', 'ช่าง', 'คนงาน', 'แม่บ้าน', 'คนขับ'
+  ];
+  for (var i = 0; i < excludeKeywords.length; i++) {
+    var kw = excludeKeywords[i];
+    if (empType.includes(kw) || pos.includes(kw)) return false;
+  }
+
+  // ไม่รวมผู้บริหารสถานศึกษา
+  if (pos.includes('ผู้อำนวยการ') || pos.includes('รองผู้อำนวยการ')) return false;
+
+  var isCivilServant = empType.includes('ข้าราชการ');
+  var isTeacherRole = (pos.includes('ครู') || pos.includes('ครูผู้ช่วย'));
+  return isCivilServant || isTeacherRole;
+}
+
+// =========================================================================
+// PLUG-IN MODAL: จัดการวาระบุคลากรของโรงเรียน (ผู้อำนวยการ & ผู้แทนครู)
+// =========================================================================
+
+/**
+ * เปิด Modal ปลั๊กอินจัดการวาระบุคลากรของโรงเรียน (ผู้อำนวยการ หรือ ผู้แทนครู)
+ * @param {string} position 'DIRECTOR_SEC' หรือ 'TEACHER_REP'
+ */
+/**
+ * สลับแท็บภายใน Modal จัดการบุคลากรภายใน (ผู้อำนวยการ vs ผู้แทนครู)
+ * @param {string} tabKey 'DIRECTOR' หรือ 'TEACHER'
+ */
+function MOD_SchoolBoard_switchModalTab(tabKey) {
+  var isDir = (tabKey === 'DIRECTOR' || tabKey === 'DIRECTOR_SEC');
+  var bDir = document.getElementById('sbd_mtab_btn_dir');
+  var bTch = document.getElementById('sbd_mtab_btn_tch');
+  var pDir = document.getElementById('sbd_mtab_panel_dir');
+  var pTch = document.getElementById('sbd_mtab_panel_tch');
+
+  if (bDir) bDir.classList.toggle('active', isDir);
+  if (bTch) bTch.classList.toggle('active', !isDir);
+  if (pDir) pDir.style.display = isDir ? 'block' : 'none';
+  if (pTch) pTch.style.display = !isDir ? 'block' : 'none';
+}
+
+/**
+ * เปิด Modal จัดการบุคลากรภายใน (ผู้อำนวยการ หรือ ผู้แทนครู)
+ * @param {string} position 'DIRECTOR_SEC' หรือ 'TEACHER_REP'
+ */
+function MOD_SchoolBoard_openStaffTermModal(position) {
+  var modal = document.getElementById('sbd_staffTermPluginModal');
+  if (!modal) return;
+
+  var pos = position || 'DIRECTOR_SEC';
+  var isDirector = (pos === 'DIRECTOR_SEC');
+
+  // ค้นหาสมาชิกที่มีอยู่แล้วใน g_BoardBundle
+  var members = (window.g_BoardBundle && window.g_BoardBundle.members) ? window.g_BoardBundle.members : [];
+  var existingDir = members.find(function(m) { return m.BoardPosition === 'DIRECTOR_SEC'; });
+  var existingTch = members.find(function(m) { return m.BoardPosition === 'TEACHER_REP'; });
+
+  var teachers = window.g_AdminTeachers || window.g_UsersSummary || [];
+
+  // 1. จัดเตรียมข้อมูลแท็บ ผู้อำนวยการ
+  var dirTeacher = teachers.find(function(t) {
+    var p = String(t.Position || t.role || '').trim();
+    var id = String(t.EmpID || t.id || '').trim();
+    return p.includes('ผู้อำนวยการสถานศึกษา') || (id.startsWith('EXE-') && p.includes('ผู้อำนวยการ'));
+  });
+
+  var dirName = (window.g_BoardBundle && window.g_BoardBundle.directorName)
+    ? window.g_BoardBundle.directorName
+    : (existingDir ? existingDir.FullName : (dirTeacher ? (dirTeacher.FullName || dirTeacher.Name) : 'ผู้อำนวยการสถานศึกษา'));
+
+  var dirNameEl = document.getElementById('sbd_modal_dir_name');
+  if (dirNameEl) dirNameEl.innerText = dirName;
+
+  var dirEmpIdEl = document.getElementById('sbd_modal_dir_empId');
+  if (dirEmpIdEl) dirEmpIdEl.value = dirTeacher ? (dirTeacher.EmpID || dirTeacher.id || 'EXE-001') : 'EXE-001';
+
+  var dirStartEl = document.getElementById('sbd_modal_dir_startDate');
+  if (dirStartEl) {
+    dirStartEl.value = (existingDir && existingDir.StartDate) ? existingDir.StartDate : (dirTeacher && dirTeacher.startDate ? dirTeacher.startDate : '');
+  }
+
+  var dirEndEl = document.getElementById('sbd_modal_dir_endDate');
+  if (dirEndEl) dirEndEl.value = 'ย้ายหรือเกษียณอายุราชการ';
+
+  var dirOrderEl = document.getElementById('sbd_modal_dir_orderNo');
+  if (dirOrderEl) {
+    dirOrderEl.value = (existingDir && existingDir.AppointmentOrderNo) ? existingDir.AppointmentOrderNo : '';
+  }
+
+  // 2. จัดเตรียมข้อมูลแท็บ ผู้แทนครู
+  var sel = document.getElementById('sbd_modal_tch_teacherSelect');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- เลือกคุณครูผู้แทน (เฉพาะข้าราชการครู) --</option>';
+    var eligible = teachers.filter(MOD_SchoolBoard_isCivilServantTeacher);
+
+    if (eligible.length === 0) {
+      sel.innerHTML = '<option value="">-- ไม่พบรายชื่อข้าราชการครูในระบบ --</option>';
+    } else {
+      var existingTchId = (existingTch && existingTch.MemberID) ? existingTch.MemberID.replace(/^SBD-TCH-/, '').toLowerCase() : '';
+      eligible.forEach(function(t) {
+        var rawName = t.FullName || t.Name || t.name || '';
+        var cleanName = rawName.replace(/\s*\([^)]*\)/g, '').trim();
+        var id = String(t.EmpID || t.id || t.Teacher_ID || '').trim();
+        var opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = cleanName;
+        if (existingTchId && id.toLowerCase() === existingTchId) {
+          opt.selected = true;
+        }
+        sel.appendChild(opt);
+      });
+    }
+  }
+
+  var tchStartEl = document.getElementById('sbd_modal_tch_startDate');
+  if (tchStartEl) {
+    if (existingTch && existingTch.StartDate) {
+      tchStartEl.value = existingTch.StartDate;
+    } else {
+      var now = new Date();
+      tchStartEl.value = now.toISOString().split('T')[0];
+    }
+  }
+
+  var tchEndEl = document.getElementById('sbd_modal_tch_endDate');
+  if (tchEndEl) {
+    tchEndEl.value = (existingTch && existingTch.EndDate) ? existingTch.EndDate : '';
+  }
+
+  var tchTermSel = document.getElementById('sbd_modal_tch_termNumber');
+  if (tchTermSel && existingTch && existingTch.TermNumber) {
+    tchTermSel.value = existingTch.TermNumber;
+  }
+
+  var tchOrderEl = document.getElementById('sbd_modal_tch_orderNo');
+  if (tchOrderEl) {
+    tchOrderEl.value = (existingTch && existingTch.AppointmentOrderNo) ? existingTch.AppointmentOrderNo : '';
+  }
+
+  var curTchNameEl = document.getElementById('sbd_modal_tch_currentName');
+  if (curTchNameEl) {
+    curTchNameEl.innerText = existingTch ? existingTch.FullName : 'ยังไม่ได้ระบุผู้แทนครู';
+  }
+  var curTchTermEl = document.getElementById('sbd_modal_tch_currentTermInfo');
+  if (curTchTermEl) {
+    curTchTermEl.innerText = existingTch
+      ? ('วาระที่ ' + (existingTch.TermNumber || 1) + ' (' + (existingTch.StartDate || '-') + ' ถึง ' + (existingTch.EndDate || '-') + ')')
+      : 'กรุณาเลือกข้าราชการครูและกำหนดวันเริ่มต้นวาระ';
+  }
+  var changePanel = document.getElementById('sbd_tch_change_panel');
+  if (changePanel) changePanel.style.display = 'none';
+
+  MOD_SchoolBoard_onTeacherRepStartDateChange();
+
+  // สลับไปยังแท็บที่กำหนด
+  MOD_SchoolBoard_switchModalTab(isDirector ? 'DIRECTOR' : 'TEACHER');
+
+  modal.style.display = 'flex';
+}
+
+function MOD_SchoolBoard_closeStaffTermModal() {
+  var modal = document.getElementById('sbd_staffTermPluginModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function MOD_SchoolBoard_onTeacherRepStartDateChange() {
+  var sInput = document.getElementById('sbd_modal_tch_startDate');
+  var eInput = document.getElementById('sbd_modal_tch_endDate');
+  var hintText = document.getElementById('sbd_modal_tch_endDate_hint_text');
+  if (!sInput || !sInput.value) {
+    if (hintText) hintText.innerText = 'วาระดำรงตำแหน่ง 4 ปี: คำนวณวันสิ้นสุดวาระอัตโนมัติ';
+    return;
+  }
+
+  var parts = sInput.value.split('-');
+  if (parts.length === 3) {
+    var y = parseInt(parts[0], 10) + 4;
+    var d = new Date(y, parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    d.setDate(d.getDate() - 1);
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    var dd = ('0' + d.getDate()).slice(-2);
+    var endVal = d.getFullYear() + '-' + mm + '-' + dd;
+    if (eInput) eInput.value = endVal;
+    if (hintText) hintText.innerText = 'วาระดำรงตำแหน่ง 4 ปี: สิ้นสุดวาระอัตโนมัติวันที่ ' + endVal;
+  }
+}
+
+/**
+ * สลับการแสดงผลกล่องบันทึกสิ้นสุดวาระ และเปลี่ยนผู้แทนครูคนใหม่
+ */
+function MOD_SchoolBoard_toggleChangeTeacherRep(force) {
+  var panel = document.getElementById('sbd_tch_change_panel');
+  if (!panel) return;
+  var willShow = (typeof force === 'boolean') ? force : (panel.style.display === 'none' || !panel.style.display);
+  panel.style.display = willShow ? 'block' : 'none';
+
+  if (willShow) {
+    // กำหนดวันที่เริ่มต้น
+    var todayStr = new Date().toISOString().split('T')[0];
+    var oldEndEl = document.getElementById('sbd_tch_change_oldEndDate');
+    if (oldEndEl && !oldEndEl.value) oldEndEl.value = todayStr;
+
+    var newStartEl = document.getElementById('sbd_tch_change_newStartDate');
+    if (newStartEl && !newStartEl.value) newStartEl.value = todayStr;
+
+    // เติมรายชื่อครูทั้งหมดลงใน dropdown ของคนใหม่
+    var sel = document.getElementById('sbd_tch_change_newEmpId');
+    var teachers = window.g_AdminTeachers || window.g_UsersSummary || (window.g_AdminData && window.g_AdminData.teachers) || [];
+    if (sel && teachers.length > 0) {
+      sel.innerHTML = '<option value="">-- เลือกครูผู้แทนคนใหม่ --</option>';
+      var eligible = teachers.filter(MOD_SchoolBoard_isCivilServantTeacher);
+      eligible.forEach(function(t) {
+        var rawName = t.FullName || t.Name || t.name || '';
+        var cleanName = rawName.replace(/\s*\([^)]*\)/g, '').trim();
+        var id = String(t.EmpID || t.id || t.Teacher_ID || '').trim();
+        var opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = cleanName;
+        sel.appendChild(opt);
+      });
+    }
+
+    MOD_SchoolBoard_onNewTeacherStartDateChange();
+  }
+}
+
+function MOD_SchoolBoard_onNewTeacherStartDateChange() {
+  var sInput = document.getElementById('sbd_tch_change_newStartDate');
+  var hint = document.getElementById('sbd_tch_change_newEndDateHint');
+  if (!sInput || !sInput.value) {
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+  var parts = sInput.value.split('-');
+  if (parts.length === 3) {
+    var y = parseInt(parts[0], 10) + 4;
+    var d = new Date(y, parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    d.setDate(d.getDate() - 1);
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    var dd = ('0' + d.getDate()).slice(-2);
+    var endVal = d.getFullYear() + '-' + mm + '-' + dd;
+    if (hint) {
+      hint.style.display = 'block';
+      hint.innerText = 'วาระ 4 ปี ของคนใหม่: สิ้นสุดวาระอัตโนมัติวันที่ ' + endVal;
+    }
+  }
+}
+
+function MOD_SchoolBoard_submitChangeTeacherRep() {
+  var oldEndDate = document.getElementById('sbd_tch_change_oldEndDate') ? document.getElementById('sbd_tch_change_oldEndDate').value : '';
+  if (!oldEndDate) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาระบุวันที่สิ้นสุดวาระของผู้แทนครูคนเดิม', 'ข้อมูลไม่ครบถ้วน');
+    return;
+  }
+
+  var oldReason = document.getElementById('sbd_tch_change_oldReason') ? document.getElementById('sbd_tch_change_oldReason').value : 'ครบวาระ';
+  var newEmpId = document.getElementById('sbd_tch_change_newEmpId') ? document.getElementById('sbd_tch_change_newEmpId').value : '';
+  if (!newEmpId) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาเลือกคุณครูผู้แทนคนใหม่', 'ข้อมูลไม่ครบถ้วน');
+    return;
+  }
+
+  var newStartDate = document.getElementById('sbd_tch_change_newStartDate') ? document.getElementById('sbd_tch_change_newStartDate').value : '';
+  if (!newStartDate) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาระบุวันเริ่มต้นวาระของคนใหม่', 'ข้อมูลไม่ครบถ้วน');
+    return;
+  }
+
+  var newTermNum = document.getElementById('sbd_tch_change_newTermNumber') ? (parseInt(document.getElementById('sbd_tch_change_newTermNumber').value, 10) || 1) : 1;
+  var newOrderNo = document.getElementById('sbd_tch_change_newOrderNo') ? document.getElementById('sbd_tch_change_newOrderNo').value.trim() : '';
+
+  var payload = {
+    oldEndDate: oldEndDate,
+    oldReason: oldReason,
+    newEmpID: newEmpId,
+    newStartDate: newStartDate,
+    newTermNumber: newTermNum,
+    newOrderNo: newOrderNo
+  };
+
+  MOD_SchoolBoard_closeStaffTermModal();
+  if (typeof startLoadingBar === 'function') startLoadingBar('Transitioning Teacher Representative...');
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.success) {
+        if (typeof steamToast === 'function') {
+          steamToast(res.message, 'success');
+        } else if (typeof steamAlert === 'function') {
+          steamAlert(res.message, 'Success');
+        }
+        MOD_SchoolBoard_reload(function() {
+          if (typeof MOD_SchoolBoard_switchSubTab === 'function') {
+            MOD_SchoolBoard_switchSubTab('sbd_panel_roster');
+          }
+        });
+      } else {
+        if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Change failed', 'Error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+    })
+    .SBD_transitionTeacherRep(payload);
+}
+
+function MOD_SchoolBoard_submitDirectorTerm(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+  var sDate = document.getElementById('sbd_modal_dir_startDate') ? document.getElementById('sbd_modal_dir_startDate').value : '';
+  if (!sDate) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาระบุวันที่มาดำรงตำแหน่งผู้อำนวยการ', 'แจ้งเตือน');
+    return;
+  }
+
+  var empId = document.getElementById('sbd_modal_dir_empId') ? document.getElementById('sbd_modal_dir_empId').value : 'EXE-001';
+  var orderNo = document.getElementById('sbd_modal_dir_orderNo') ? document.getElementById('sbd_modal_dir_orderNo').value.trim() : '';
+
+  var payload = {
+    BoardPosition: 'DIRECTOR_SEC',
+    EmpID: empId,
+    StartDate: sDate,
+    EndDate: 'ย้ายหรือเกษียณอายุราชการ',
+    TermNumber: 0,
+    AppointmentOrderNo: orderNo,
+    Status: 'ดำรงตำแหน่ง'
+  };
+
+  MOD_SchoolBoard_closeStaffTermModal();
+  if (typeof startLoadingBar === 'function') startLoadingBar('Saving Director Term...');
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.success) {
+        if (typeof steamToast === 'function') {
+          steamToast(res.message, 'success');
+        } else if (typeof steamAlert === 'function') {
+          steamAlert(res.message, 'Success');
+        }
+        MOD_SchoolBoard_reload(function() {
+          if (typeof MOD_SchoolBoard_switchSubTab === 'function') {
+            MOD_SchoolBoard_switchSubTab('sbd_panel_roster');
+          }
+        });
+      } else {
+        if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Save failed', 'Error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+    })
+    .SBD_saveStaffTerm(payload);
+}
+
+function MOD_SchoolBoard_submitTeacherRepTerm(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+  var sel = document.getElementById('sbd_modal_tch_teacherSelect');
+  var empId = sel ? sel.value : '';
+  if (!empId) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาเลือกคุณครูผู้แทนในโรงเรียน', 'แจ้งเตือน');
+    return;
+  }
+
+  var sDate = document.getElementById('sbd_modal_tch_startDate') ? document.getElementById('sbd_modal_tch_startDate').value : '';
+  if (!sDate) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณาระบุวันเริ่มต้นวาระ', 'แจ้งเตือน');
+    return;
+  }
+
+  var eDate = document.getElementById('sbd_modal_tch_endDate') ? document.getElementById('sbd_modal_tch_endDate').value : '';
+  var termNum = document.getElementById('sbd_modal_tch_termNumber') ? (parseInt(document.getElementById('sbd_modal_tch_termNumber').value, 10) || 1) : 1;
+  if (termNum > 2) {
+    if (typeof steamAlert === 'function') steamAlert('ตามกฎกระทรวงฯ ผู้แทนครูดำรงตำแหน่งติดต่อกันเกิน 2 วาระไม่ได้ (วาระละ 4 ปี)', 'เกินจำนวนวาระตามกฎหมาย');
+    return;
+  }
+  var orderNo = document.getElementById('sbd_modal_tch_orderNo') ? document.getElementById('sbd_modal_tch_orderNo').value.trim() : '';
+
+  var payload = {
+    BoardPosition: 'TEACHER_REP',
+    EmpID: empId,
+    StartDate: sDate,
+    EndDate: eDate,
+    TermNumber: termNum,
+    AppointmentOrderNo: orderNo,
+    Status: 'ดำรงตำแหน่ง'
+  };
+
+  MOD_SchoolBoard_closeStaffTermModal();
+  if (typeof startLoadingBar === 'function') startLoadingBar('Saving Teacher Representative Term...');
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.success) {
+        if (typeof steamToast === 'function') {
+          steamToast(res.message, 'success');
+        } else if (typeof steamAlert === 'function') {
+          steamAlert(res.message, 'Success');
+        }
+        MOD_SchoolBoard_reload(function() {
+          if (typeof MOD_SchoolBoard_switchSubTab === 'function') {
+            MOD_SchoolBoard_switchSubTab('sbd_panel_roster');
+          }
+        });
+      } else {
+        if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Save failed', 'Error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+    })
+    .SBD_saveStaffTerm(payload);
+}
+
+function MOD_SchoolBoard_deleteStaffTerm(memberId) {
+  if (typeof steamConfirm !== 'function') return;
+  steamConfirm('คุณต้องการปลดผู้แทนครูออกจากวาระคณะกรรมการสถานศึกษาหรือไม่?', function() {
+    if (typeof startLoadingBar === 'function') startLoadingBar('Deleting Teacher Representative...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (typeof stopLoadingBar === 'function') stopLoadingBar();
+        if (res && res.success) {
+          if (typeof steamToast === 'function') {
+            steamToast(res.message, 'success');
+          } else if (typeof steamAlert === 'function') {
+            steamAlert(res.message, 'Success');
+          }
+          MOD_SchoolBoard_reload();
+        } else {
+          if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Delete failed', 'Error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (typeof stopLoadingBar === 'function') stopLoadingBar();
+        if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+      })
+      .SBD_deleteStaffTerm(memberId);
+  });
+}
+
+// Compatibility wrapper
+function MOD_SchoolBoard_openTeacherRepModal() {
+  MOD_SchoolBoard_openStaffTermModal('TEACHER_REP');
+}
+
+// =========================================================================
+// SUBTAB 3: รายชื่อกรรมการสถานศึกษา (ตารางทำเนียบ ค้นหา & จัดการ)
+// =========================================================================
+
+function MOD_SchoolBoard_renderMembersTable() {
+  var container = document.getElementById('sbd_membersListBody');
+  if (!container) return;
+
+  if (!g_BoardBundle || !g_BoardBundle.members || g_BoardBundle.members.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:32px 16px; color:#9aa0a6;">
+          <svg class="ui-ico-lg" style="opacity:0.4; margin-bottom:8px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div style="font-size:13px;">ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  var filtered = g_BoardBundle.members.filter(function(m) {
+    if (!m) return false;
+    if (g_BoardFilterPosition !== 'ALL' && m.BoardPosition !== g_BoardFilterPosition) return false;
+    if (g_BoardFilterStatus !== 'ALL') {
+      var st = (m.Status || 'ดำรงตำแหน่ง').trim();
+      if (g_BoardFilterStatus === 'ดำรงตำแหน่ง' && st !== 'ดำรงตำแหน่ง' && st !== 'ACTIVE') return false;
+      if (g_BoardFilterStatus === 'ครบวาระ' && st !== 'ครบวาระ') return false;
+      if (g_BoardFilterStatus === 'พ้นจากตำแหน่งก่อนครบวาระ' && st !== 'พ้นจากตำแหน่งก่อนครบวาระ') return false;
+    }
+    if (g_BoardSearchKeyword) {
+      var kw = g_BoardSearchKeyword.toLowerCase();
+      var hay = [m.FullName, m.BoardPosition, m.Organization, m.AppointmentOrderNo, m.Phone, m.Email].join(' ').toLowerCase();
+      if (hay.indexOf(kw) === -1) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:32px 16px; color:#9aa0a6;">
+          <svg class="ui-ico-lg" style="opacity:0.4; margin-bottom:8px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div style="font-size:13px;">ไม่พบข้อมูลคณะกรรมการตามเงื่อนไขที่เลือก</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  var html = '';
+  filtered.forEach(function(m, idx) {
+    var posTitle = SBD_POSITION_TITLES[m.BoardPosition] || m.BoardPosition;
+    var isChair = m.BoardPosition === 'CHAIR';
+    var isSec = m.BoardPosition === 'DIRECTOR_SEC';
+    var isTeacherRep = m.BoardPosition === 'TEACHER_REP';
+
+    // Google Material Chip สำหรับตำแหน่งกรรมการ
+    var posBadge = '';
+    if (isChair) {
+      posBadge = `<span class="g-chip g-chip-yellow">${escapeHtml(posTitle)}</span>`;
+    } else if (isSec) {
+      posBadge = `<span class="g-chip g-chip-blue">${escapeHtml(posTitle)}</span>`;
+    } else if (isTeacherRep) {
+      posBadge = `<span class="g-chip g-chip-green">${escapeHtml(posTitle)}</span>`;
+    } else {
+      posBadge = `<span class="g-chip g-chip-slate">${escapeHtml(posTitle)}</span>`;
+    }
+
+    // Google Material Status: เครื่องหมายถูกวงกลมสะท้อนแสง สำหรับ 'ดำรงตำแหน่ง'
+    var statusBadge = '';
+    if (m.Status === 'ดำรงตำแหน่ง' || m.Status === 'ACTIVE') {
+      statusBadge = `
+        <div style="display:inline-flex; align-items:center; justify-content:center;" title="ดำรงตำแหน่ง">
+          <button type="button" class="btn-circle-status active" style="cursor:default;" title="ดำรงตำแหน่ง">
+            <svg style="width:14px; height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
+      `;
+    } else if (m.Status === 'พ้นจากตำแหน่งก่อนครบวาระ') {
+      statusBadge = `
+        <div style="display:inline-flex; align-items:center; justify-content:center;" title="พ้นจากตำแหน่งก่อนครบวาระ">
+          <button type="button" class="btn-circle-status inactive" style="cursor:default;" title="พ้นจากตำแหน่งก่อนครบวาระ">
+            <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      `;
+    } else {
+      statusBadge = `
+        <div style="display:inline-flex; align-items:center; justify-content:center;" title="${escapeHtml(m.Status || 'ครบวาระ')}">
+          <button type="button" class="btn-circle-status" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.2); color:#9aa0a6; cursor:default;" title="${escapeHtml(m.Status || 'ครบวาระ')}">
+            <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+          </button>
+        </div>
+      `;
+    }
+
+    // ลิงก์เอกสารสไตล์ Google Pill
+    var docLink = m.DocUrl
+      ? `<a href="${escapeHtml(m.DocUrl)}" target="_blank" class="g-pill-btn g-pill-btn-doc" title="เปิดดูไฟล์ประกาศ / คำสั่ง"><svg class="ui-ico-xs" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>เอกสาร</span></a>`
+      : `<span style="color:#5f6368; font-size:12px;">-</span>`;
+
+    // ข้อมูลวาระและวันที่ (เอาประกาศออก เหลือเพียงวาระ และวันที่ ในรูปแบบ เช่น 1 ม.ค.2569)
+    var termInfoHtml = '';
+    if (isSec) {
+      var secStart = m.StartDate ? MOD_SchoolBoard_formatThaiDate(m.StartDate) : '';
+      termInfoHtml = `
+        <div style="font-weight:600; color:#8ab4f8; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:#4285f4; flex-shrink:0;"></span>
+          <span>โดยตำแหน่ง</span>
+        </div>
+        <div style="font-size:11.5px; color:#9aa0a6; margin-top:2px;">
+          ${secStart ? ('ตั้งแต่ ' + secStart) : 'ตามตำแหน่งราชการ'}
+        </div>
+      `;
+    } else {
+      var termNumText = 'วาระที่ ' + (m.TermNumber || 1);
+      var startFormatted = m.StartDate ? MOD_SchoolBoard_formatThaiDate(m.StartDate) : '';
+      var endFormatted = m.EndDate ? MOD_SchoolBoard_formatThaiDate(m.EndDate) : '';
+      var dateRangeText = '-';
+      if (startFormatted && endFormatted) {
+        dateRangeText = `${startFormatted} - ${endFormatted}`;
+      } else if (endFormatted) {
+        dateRangeText = `ถึง ${endFormatted}`;
+      } else if (startFormatted) {
+        dateRangeText = `ตั้งแต่ ${startFormatted}`;
+      }
+
+      termInfoHtml = `
+        <div style="font-weight:600; color:#e8eaed; display:flex; align-items:center; gap:6px;">
+          <span>${termNumText}</span>
+        </div>
+        <div style="font-size:11.5px; color:#9aa0a6; margin-top:2px;">
+          ${dateRangeText}
+        </div>
+      `;
+    }
+
+    // แถวตารางสไตล์ Google สะอาด เรียบหรู เส้นแบ่งนุ่มนวล
+    var rowBg = 'border-bottom:1px solid rgba(255,255,255,0.06); transition:background 0.15s ease;';
+    if (isSec) {
+      rowBg += ' background:rgba(66,133,244,0.04);';
+    } else if (isTeacherRep) {
+      rowBg += ' background:rgba(52,168,83,0.04);';
+    }
+
+    // ปุ่มจัดการ: ฟันเฟืองวงกลมสะท้อนแสง และ ถังขยะวงกลมสะท้อนแสง
+    var editBtnTooltip = isSec ? 'ตั้งค่า / แก้ไขวาระผู้อำนวยการ' : (isTeacherRep ? 'ตั้งค่า / แก้ไขวาระผู้แทนครู' : 'ตั้งค่า / แก้ไขข้อมูลกรรมการ');
+    var editOnClick = isSec
+      ? `MOD_SchoolBoard_openStaffTermModal('DIRECTOR_SEC')`
+      : (isTeacherRep ? `MOD_SchoolBoard_openStaffTermModal('TEACHER_REP')` : `MOD_SchoolBoard_openEditModal('${escapeHtml(m.MemberID)}')`);
+
+    var editBtn = `
+      <button type="button" class="btn-circle-status settings" title="${editBtnTooltip}" onclick="${editOnClick}">
+        <svg style="width:14px; height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    `;
+
+    var deleteBtn = '';
+    if (isSec) {
+      deleteBtn = `
+        <button type="button" class="btn-circle-status delete" disabled title="ผู้อำนวยการเป็นกรรมการและเลขานุการโดยตำแหน่ง ไม่สามารถลบได้">
+          <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
+      `;
+    } else if (isTeacherRep) {
+      deleteBtn = `
+        <button type="button" class="btn-circle-status delete" title="ปลด/พ้นวาระผู้แทนครู" onclick="MOD_SchoolBoard_deleteStaffTerm('${escapeHtml(m.MemberID)}')">
+          <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
+      `;
+    } else {
+      deleteBtn = `
+        <button type="button" class="btn-circle-status delete" title="ลบข้อมูลกรรมการ" onclick="MOD_SchoolBoard_deleteMember('${escapeHtml(m.MemberID)}', '${escapeHtml(m.FullName)}')">
+          <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
+      `;
+    }
+
+    html += `
+      <tr style="${rowBg}">
+        <td style="padding:12px 14px; text-align:center; color:#9aa0a6; width:48px; font-size:12px;">${idx + 1}</td>
+        <td style="padding:12px 14px;">
+          <div style="font-weight:600; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>${escapeHtml(m.FullName)}</span>
+          </div>
+        </td>
+        <td style="padding:12px 10px;">${posBadge}</td>
+        <td style="padding:12px 10px;">${termInfoHtml}</td>
+        <td style="padding:12px 10px; text-align:center;">${statusBadge}</td>
+        <td style="padding:12px 10px; text-align:center;">${docLink}</td>
+        <td style="padding:12px 14px; text-align:center; white-space:nowrap;">
+          <div style="display:inline-flex; gap:8px; align-items:center; justify-content:center;">
+            ${editBtn}
+            ${deleteBtn}
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function MOD_SchoolBoard_filterChange() {
+  var s = document.getElementById('sbd_searchInput');
+  var p = document.getElementById('sbd_posFilterSelect');
+  var st = document.getElementById('sbd_statusFilterSelect');
+
+  if (s) g_BoardSearchKeyword = s.value;
+  if (p) g_BoardFilterPosition = p.value;
+  if (st) g_BoardFilterStatus = st.value;
+
+  MOD_SchoolBoard_renderMembersTable();
+}
+
+// =========================================================================
+// SUBTAB 2: ฟอร์มเพิ่มข้อมูลกรรมการสถานศึกษาใหม่ (บุคคลภายนอก 7 ตำแหน่งหลัก)
+// =========================================================================
+
+/**
+ * เคลียร์ฟอร์มเพิ่มข้อมูลกรรมการสถานศึกษา
+ */
+function MOD_SchoolBoard_resetForm() {
+  var form = document.getElementById('sbd_memberForm');
+  if (form) form.reset();
+
+  var memberIdInput = document.getElementById('sbd_form_memberId');
+  if (memberIdInput) memberIdInput.value = '';
+
+  var titleEl = document.getElementById('sbd_formTitle');
+  if (titleEl) titleEl.innerText = 'เพิ่มข้อมูลกรรมการสถานศึกษา';
+
+  var btnSubmit = document.getElementById('sbd_btnSubmitForm');
+  if (btnSubmit) btnSubmit.innerHTML = `<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg><span>บันทึก</span>`;
+}
+
+/**
+ * ดึงข้อมูลกรรมการขึ้นแก้ไข (หากเป็น ผอ. หรือ ผู้แทนครู จะเปิด Modal ปลั๊กอินวาระแทน)
+ * @param {string} memberId
+ */
+/**
+ * เปิด Modal Popup สำหรับแก้ไขข้อมูลกรรมการสถานศึกษาเฉพาะบุคคล (ไม่แก้ไขที่ฟอร์มเพิ่ม)
+ * @param {string} memberId
+ */
+function MOD_SchoolBoard_openEditModal(memberId) {
+  if (!g_BoardBundle || !g_BoardBundle.members) return;
+  var m = g_BoardBundle.members.find(function(x) { return x.MemberID === memberId; });
+  if (!m) return;
+
+  // หากเป็น ผอ. หรือ ผู้แทนครู ให้เปิด Modal บุคลากร
+  if (m.BoardPosition === 'DIRECTOR_SEC' || m.BoardPosition === 'TEACHER_REP') {
+    MOD_SchoolBoard_openStaffTermModal(m.BoardPosition);
+    return;
+  }
+
+  var modal = document.getElementById('sbd_editMemberModal');
+  if (!modal) return;
+
+  var subTitle = document.getElementById('sbd_editModal_subTitle');
+  var posTitle = SBD_POSITION_TITLES[m.BoardPosition] || m.BoardPosition;
+  if (subTitle) {
+    subTitle.innerText = m.FullName + ' (' + posTitle + ')';
+  }
+
+  document.getElementById('sbd_edit_memberId').value = m.MemberID || '';
+  document.getElementById('sbd_edit_prefix').value = m.Prefix || 'นาย';
+  document.getElementById('sbd_edit_firstName').value = m.FirstName || '';
+  document.getElementById('sbd_edit_lastName').value = m.LastName || '';
+  document.getElementById('sbd_edit_position').value = m.BoardPosition || 'EXPERT';
+  document.getElementById('sbd_edit_phone').value = m.Phone || '';
+  document.getElementById('sbd_edit_email').value = m.Email || '';
+  document.getElementById('sbd_edit_occupation').value = m.Occupation || '';
+  document.getElementById('sbd_edit_organization').value = m.Organization || '';
+  document.getElementById('sbd_edit_term').value = m.TermNumber || 1;
+  document.getElementById('sbd_edit_orderNo').value = m.AppointmentOrderNo || '';
+  document.getElementById('sbd_edit_startDate').value = m.StartDate || '';
+  document.getElementById('sbd_edit_endDate').value = m.EndDate || '';
+  document.getElementById('sbd_edit_status').value = m.Status || 'ดำรงตำแหน่ง';
+  document.getElementById('sbd_edit_docUrl').value = m.DocUrl || '';
+  document.getElementById('sbd_edit_remark').value = m.Remark || '';
+
+  var fileInput = document.getElementById('sbd_edit_file');
+  if (fileInput) fileInput.value = '';
+
+  MOD_SchoolBoard_onEditStartDateChange();
+
+  modal.style.display = 'flex';
+}
+
+function MOD_SchoolBoard_closeEditModal() {
+  var modal = document.getElementById('sbd_editMemberModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function MOD_SchoolBoard_onEditStartDateChange() {
+  var sInput = document.getElementById('sbd_edit_startDate');
+  var eInput = document.getElementById('sbd_edit_endDate');
+  var hint = document.getElementById('sbd_edit_endDate_hint');
+  if (!sInput || !sInput.value) {
+    if (hint) hint.innerText = '-';
+    return;
+  }
+  var parts = sInput.value.split('-');
+  if (parts.length === 3) {
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    var startDate = new Date(y, m, d);
+    if (!isNaN(startDate.getTime())) {
+      var endDate = new Date(y + 4, m, d - 1);
+      var endY = endDate.getFullYear();
+      var endM = String(endDate.getMonth() + 1).padStart(2, '0');
+      var endD = String(endDate.getDate()).padStart(2, '0');
+      var endVal = `${endY}-${endM}-${endD}`;
+      if (eInput) eInput.value = endVal;
+      if (hint) hint.innerText = 'วาระดำรงตำแหน่ง 4 ปี: สิ้นสุดวาระอัตโนมัติวันที่ ' + endVal;
+    }
+  }
+}
+
+function MOD_SchoolBoard_submitEditModal(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+  var sVal = document.getElementById('sbd_edit_startDate').value;
+  var eVal = document.getElementById('sbd_edit_endDate').value;
+  if (sVal && !eVal) {
+    var parts = sVal.split('-');
+    if (parts.length === 3) {
+      var sy = parseInt(parts[0], 10);
+      var sm = parseInt(parts[1], 10) - 1;
+      var sd = parseInt(parts[2], 10);
+      var calcEnd = new Date(sy + 4, sm, sd - 1);
+      if (!isNaN(calcEnd.getTime())) {
+        var ey = calcEnd.getFullYear();
+        var em = String(calcEnd.getMonth() + 1).padStart(2, '0');
+        var ed = String(calcEnd.getDate()).padStart(2, '0');
+        eVal = `${ey}-${em}-${ed}`;
+      }
+    }
+  }
+
+  var payload = {
+    MemberID: document.getElementById('sbd_edit_memberId').value,
+    Prefix: document.getElementById('sbd_edit_prefix').value,
+    FirstName: document.getElementById('sbd_edit_firstName').value.trim(),
+    LastName: document.getElementById('sbd_edit_lastName').value.trim(),
+    BoardPosition: document.getElementById('sbd_edit_position').value,
+    Occupation: document.getElementById('sbd_edit_occupation').value.trim(),
+    Organization: document.getElementById('sbd_edit_organization').value.trim(),
+    Phone: document.getElementById('sbd_edit_phone').value.trim(),
+    Email: document.getElementById('sbd_edit_email').value.trim(),
+    AppointmentOrderNo: document.getElementById('sbd_edit_orderNo').value.trim(),
+    StartDate: sVal,
+    EndDate: eVal,
+    TermNumber: parseInt(document.getElementById('sbd_edit_term').value, 10) || 1,
+    Status: document.getElementById('sbd_edit_status').value,
+    DocUrl: document.getElementById('sbd_edit_docUrl').value.trim(),
+    Remark: document.getElementById('sbd_edit_remark').value.trim()
+  };
+
+  if (!payload.FirstName) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณากรอกชื่อกรรมการ', 'ข้อมูลไม่ครบถ้วน');
+    return;
+  }
+
+  var isEditChairOrQual = (
+    payload.BoardPosition === 'CHAIR' ||
+    payload.BoardPosition === 'QUALIFIED_CHAIR' ||
+    payload.BoardPosition === 'QUALIFIED' ||
+    String(payload.BoardPosition).indexOf('ประธาน') !== -1 ||
+    String(payload.BoardPosition).indexOf('ผู้ทรงคุณวุฒิ') !== -1
+  );
+
+  if (isEditChairOrQual && payload.TermNumber > 2) {
+    if (typeof steamAlert === 'function') {
+      steamAlert('ตามกฎกระทรวงฯ พ.ศ. 2546 ข้อ 7 วรรคสอง ประธานกรรมการและกรรมการผู้ทรงคุณวุฒิ จะดำรงตำแหน่งติดต่อกันเกิน 2 วาระไม่ได้ (วาระละ 4 ปี)', 'เกินจำนวนวาระตามกฎหมาย');
+    }
+    return;
+  }
+
+  // อัปโหลดไฟล์แนบถ้ามี
+  var fileInput = document.getElementById('sbd_edit_file');
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    var file = fileInput.files[0];
+    if (file.size > 15 * 1024 * 1024) {
+      if (typeof steamAlert === 'function') steamAlert('ไฟล์แนบมีขนาดเกิน 15MB', 'ขนาดไฟล์เกินกำหนด');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var base64 = evt.target.result.split(',')[1];
+      payload.fileBase64 = base64;
+      payload.fileName = file.name;
+      MOD_SchoolBoard_executeSaveMember(payload, true);
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  MOD_SchoolBoard_executeSaveMember(payload, true);
+}
+
+/**
+ * ดึงข้อมูลกรรมการขึ้นแก้ไข (Backward compatible - routes to Modal Popup)
+ * @param {string} memberId
+ */
+function MOD_SchoolBoard_editMember(memberId) {
+  MOD_SchoolBoard_openEditModal(memberId);
+}
+
+/**
+ * คำนวณวันสิ้นสุดวาระอัตโนมัติเมื่อเลือกวันเริ่มวาระ (+4 ปี ลบ 1 วัน)
+ */
+function MOD_SchoolBoard_onStartDateChange() {
+  var sInput = document.getElementById('sbd_form_startDate');
+  var eInput = document.getElementById('sbd_form_endDate');
+  var hint = document.getElementById('sbd_form_endDateHint');
+  if (!sInput || !sInput.value) {
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+
+  var parts = sInput.value.split('-');
+  if (parts.length === 3) {
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+
+    var startDate = new Date(y, m, d);
+    if (!isNaN(startDate.getTime())) {
+      var endDate = new Date(y + 4, m, d - 1);
+      var endY = endDate.getFullYear();
+      var endM = String(endDate.getMonth() + 1).padStart(2, '0');
+      var endD = String(endDate.getDate()).padStart(2, '0');
+      var endVal = `${endY}-${endM}-${endD}`;
+      if (eInput) eInput.value = endVal;
+      if (hint) {
+        hint.style.display = 'block';
+        hint.innerText = 'วาระ 4 ปี: สิ้นสุดวาระอัตโนมัติวันที่ ' + endVal;
+      }
+    }
+  }
+}
+
+/**
+ * ส่งฟอร์มบันทึกกรรมการสถานศึกษา (เฉพาะบุคคลภายนอก)
+ */
+function MOD_SchoolBoard_handleFormSubmit(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+  var payload = {
+    MemberID: document.getElementById('sbd_form_memberId').value,
+    Prefix: document.getElementById('sbd_form_prefix').value,
+    FirstName: document.getElementById('sbd_form_firstName').value.trim(),
+    LastName: document.getElementById('sbd_form_lastName').value.trim(),
+    BoardPosition: document.getElementById('sbd_form_position').value,
+    Occupation: document.getElementById('sbd_form_occupation').value.trim(),
+    Organization: document.getElementById('sbd_form_organization').value.trim(),
+    Phone: document.getElementById('sbd_form_phone').value.trim(),
+    Email: document.getElementById('sbd_form_email').value.trim(),
+    AppointmentOrderNo: document.getElementById('sbd_form_orderNo').value.trim(),
+    StartDate: document.getElementById('sbd_form_startDate').value,
+    EndDate: (function() {
+      var sVal = document.getElementById('sbd_form_startDate').value;
+      var eVal = document.getElementById('sbd_form_endDate') ? document.getElementById('sbd_form_endDate').value : '';
+      if (sVal && !eVal) {
+        var parts = sVal.split('-');
+        if (parts.length === 3) {
+          var sy = parseInt(parts[0], 10);
+          var sm = parseInt(parts[1], 10) - 1;
+          var sd = parseInt(parts[2], 10);
+          var calcEnd = new Date(sy + 4, sm, sd - 1);
+          if (!isNaN(calcEnd.getTime())) {
+            var ey = calcEnd.getFullYear();
+            var em = String(calcEnd.getMonth() + 1).padStart(2, '0');
+            var ed = String(calcEnd.getDate()).padStart(2, '0');
+            eVal = `${ey}-${em}-${ed}`;
+          }
+        }
+      }
+      return eVal;
+    })(),
+    TermNumber: parseInt(document.getElementById('sbd_form_term').value, 10) || 1,
+    Status: document.getElementById('sbd_form_status').value,
+    DocUrl: document.getElementById('sbd_form_docUrl').value.trim(),
+    Remark: document.getElementById('sbd_form_remark').value.trim()
+  };
+
+  if (!payload.FirstName) {
+    if (typeof steamAlert === 'function') steamAlert('กรุณากรอกชื่อกรรมการ', 'ข้อมูลไม่ครบถ้วน');
+    return;
+  }
+
+  var isChairOrQualified = (
+    payload.BoardPosition === 'CHAIR' ||
+    payload.BoardPosition === 'QUALIFIED_CHAIR' ||
+    payload.BoardPosition === 'QUALIFIED' ||
+    String(payload.BoardPosition).indexOf('ประธาน') !== -1 ||
+    String(payload.BoardPosition).indexOf('ผู้ทรงคุณวุฒิ') !== -1
+  );
+
+  if (isChairOrQualified && payload.TermNumber > 2) {
+    if (typeof steamAlert === 'function') {
+      steamAlert('ตามกฎกระทรวงฯ พ.ศ. 2546 ข้อ 7 วรรคสอง ประธานกรรมการและกรรมการผู้ทรงคุณวุฒิ จะดำรงตำแหน่งติดต่อกันเกิน 2 วาระไม่ได้ (วาระละ 4 ปี)', 'เกินจำนวนวาระตามกฎหมาย');
+    }
+    return;
+  }
+
+  // อัปโหลดไฟล์แนบถ้ามี
+  var fileInput = document.getElementById('sbd_form_file');
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    var file = fileInput.files[0];
+    if (file.size > 15 * 1024 * 1024) {
+      if (typeof steamAlert === 'function') steamAlert('ไฟล์แนบมีขนาดเกิน 15MB', 'ขนาดไฟล์เกินกำหนด');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var base64 = evt.target.result.split(',')[1];
+      payload.fileBase64 = base64;
+      payload.fileName = file.name;
+      MOD_SchoolBoard_executeSaveMember(payload);
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  MOD_SchoolBoard_executeSaveMember(payload);
+}
+
+function MOD_SchoolBoard_executeSaveMember(payload, isFromEditModal) {
+  if (typeof startLoadingBar === 'function') startLoadingBar('Saving Board Member...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.success) {
+        if (typeof steamToast === 'function') {
+          steamToast(res.message, 'success');
+        } else if (typeof steamAlert === 'function') {
+          steamAlert(res.message, 'Success');
+        }
+        if (isFromEditModal) {
+          MOD_SchoolBoard_closeEditModal();
+        } else {
+          MOD_SchoolBoard_resetForm();
+        }
+        MOD_SchoolBoard_reload(function() {
+          if (typeof MOD_SchoolBoard_switchSubTab === 'function') {
+            MOD_SchoolBoard_switchSubTab('sbd_panel_roster');
+          }
+        });
+      } else {
+        if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Save failed', 'Error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+    })
+    .SBD_saveMember(payload);
+}
+
+function MOD_SchoolBoard_deleteMember(memberId, memberName) {
+  if (typeof steamConfirm !== 'function') return;
+  steamConfirm('คุณต้องการลบข้อมูลกรรมการ "' + memberName + '" หรือไม่?', function() {
+    if (typeof startLoadingBar === 'function') startLoadingBar('Deleting Board Member...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (typeof stopLoadingBar === 'function') stopLoadingBar();
+        if (res && res.success) {
+          if (typeof steamToast === 'function') {
+            steamToast(res.message, 'success');
+          } else if (typeof steamAlert === 'function') {
+            steamAlert(res.message, 'Success');
+          }
+          MOD_SchoolBoard_reload();
+        } else {
+          if (typeof steamAlert === 'function') steamAlert(res ? res.message : 'Delete failed', 'Error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (typeof stopLoadingBar === 'function') stopLoadingBar();
+        if (typeof steamAlert === 'function') steamAlert('Error: ' + (err.message || err), 'Error');
+      })
+      .SBD_deleteMember(memberId);
+  });
+}
+
+function MOD_SchoolBoard_reload(onDone) {
+  if (typeof startLoadingBar === 'function') startLoadingBar('Refreshing Board Data...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (res && res.status === 'success') {
+        g_BoardBundle = res;
+        window.g_BoardBundle = g_BoardBundle;
+        if (window.g_AdminData) window.g_AdminData.boardBundle = res;
+        if (window.g_MainBundle) window.g_MainBundle.boardBundle = res;
+        MOD_SchoolBoard_renderAdminTab();
+        try { MOD_SchoolBoard_renderPublicView(); } catch (e) {}
+        if (typeof onDone === 'function') onDone();
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+      if (typeof steamAlert === 'function') steamAlert('Unable to load board data: ' + (err.message || err), 'Error');
+    })
+    .SBD_getBoardBundle(false);
+}
+
+// =========================================================================
+// PUBLIC VIEW: ทำเนียบคณะกรรมการในหน้า Index.html (#view_school_board)
+// =========================================================================
+
+/**
+ * แปลงวันที่ ค.ศ./พ.ศ. (YYYY-MM-DD หรือ DD/MM/YYYY) เป็นรูปแบบไทย (วัน เดือนย่อ พ.ศ.)
+ * เช่น 2024-05-24 -> 24 พ.ค. 2567
+ * @param {string} dateStr
+ * @returns {string}
+ */
+function MOD_SchoolBoard_formatThaiDate(dateStr) {
+  if (!dateStr || dateStr === '-') return '-';
+  var str = String(dateStr).trim().split(' ')[0];
+  var shortMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  var d, m, y;
+  if (str.indexOf('-') !== -1) {
+    var parts = str.split('-');
+    if (parts.length === 3) {
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      d = parseInt(parts[2], 10);
+    }
+  } else if (str.indexOf('/') !== -1) {
+    var parts = str.split('/');
+    if (parts.length === 3) {
+      d = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      y = parseInt(parts[2], 10);
+    }
+  }
+  if (!d || isNaN(d) || isNaN(m) || isNaN(y)) return escapeHtml(dateStr);
+  if (y < 2400) y += 543;
+  var mName = shortMonths[m] || '';
+  return d + ' ' + mName + y;
+}
+
+function MOD_SchoolBoard_renderPublicView() {
+  var container = document.getElementById('sbd_publicBoardContainer');
+  if (!container || !g_BoardBundle) return;
+
+  var comp = g_BoardBundle.compliance || {};
+  var members = comp.activeMembers || g_BoardBundle.members || [];
+  var isSuperOrAdmin = (typeof isSuperuserOrAdmin === 'function') ? isSuperuserOrAdmin(window.g_CurrentUser) : false;
+
+  var headerCard = `
+    <div style="background:var(--bg-card); border:1px solid #2a475e; border-radius:10px; padding:18px 22px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="font-size:17px; font-weight:700; color:#fff; display:flex; align-items:center; gap:10px;">
+          <svg class="ui-ico-lg" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>คณะกรรมการสถานศึกษาขั้นพื้นฐาน</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px;">
+          ${escapeHtml((comp.totalQuota > 9) ? 'เกณฑ์ 15 คน (สถานศึกษาที่มีนักเรียนเกิน 300 คน)' : 'เกณฑ์ 9 คน (สถานศึกษาที่มีนักเรียน 300 คนลงมา)')}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${isSuperOrAdmin ? `
+          <button type="button" class="btn-circle-glow glow-orange" title="จัดการข้อมูลในหน้าตั้งค่า" onclick="goToAdminPage(event, 'tab_board')">
+            <svg class="ui-ico" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        ` : ''}
+        <button type="button" class="btn-circle-glow glow-cyan" title="พิมพ์ทำเนียบราชการ" onclick="MOD_SchoolBoard_printBoardRoster()">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        </button>
+        <button type="button" class="btn-refresh-circle" onclick="refreshAllData(); if(typeof MOD_SchoolBoard_init==='function') MOD_SchoolBoard_init(false);" title="รีเฟรชข้อมูล" aria-label="รีเฟรชข้อมูล">
+          <svg class="ui-ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+
+  var cardsHtml = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">';
+  members.forEach(function(m) {
+    var posTitle = SBD_POSITION_TITLES[m.BoardPosition] || m.BoardPosition;
+    var isChair = m.BoardPosition === 'CHAIR';
+    var isSec = m.BoardPosition === 'DIRECTOR_SEC';
+
+    var accentColor = isChair ? 'var(--steam-orange)' : (isSec ? 'var(--steam-cyan)' : 'var(--steam-green)');
+    var phoneDisplay = m.Phone ? (isSuperOrAdmin ? m.Phone : maskPhone(m.Phone)) : '-';
+
+    cardsHtml += `
+      <div style="background:#17212e; border:1px solid #283a4f; border-top:3px solid ${accentColor}; border-radius:8px; padding:16px; box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <span class="g-badge" style="background:rgba(255,255,255,0.06); color:${accentColor}; font-weight:700;">${escapeHtml(posTitle)}</span>
+          <span class="g-badge g-badge-ok">${escapeHtml(m.Status || 'ดำรงตำแหน่ง')}</span>
+        </div>
+        <div style="font-size:15px; font-weight:700; color:#fff; margin-bottom:4px;">${escapeHtml(m.FullName)}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; min-height:18px;">
+          ${escapeHtml(m.Occupation || '-')}${m.Organization ? ' • ' + escapeHtml(m.Organization) : ''}
+        </div>
+        <div style="border-top:1px dashed #283a4f; padding-top:10px; font-size:12px; color:#c7d5e0; display:flex; flex-direction:column; gap:4px;">
+          <div><b style="color:var(--text-muted);">เบอร์โทร:</b> ${escapeHtml(phoneDisplay)}</div>
+          <div><b style="color:var(--text-muted);">วาระการดำรงตำแหน่ง:</b> ${isSec ? (m.StartDate ? `ตั้งแต่ ${MOD_SchoolBoard_formatThaiDate(m.StartDate)} (โดยตำแหน่ง - จนกว่าจะย้าย/เกษียณ)` : 'โดยตำแหน่ง (จนกว่าจะย้าย/เกษียณ)') : (m.StartDate || m.EndDate ? `${MOD_SchoolBoard_formatThaiDate(m.StartDate)} ถึง ${MOD_SchoolBoard_formatThaiDate(m.EndDate)}` : '-')}</div>
+          ${m.AppointmentOrderNo ? `<div><b style="color:var(--text-muted);">ประกาศ:</b> ${escapeHtml(m.AppointmentOrderNo)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  cardsHtml += '</div>';
+
+  container.innerHTML = headerCard + cardsHtml;
+}
+
+function maskPhone(p) {
+  if (!p) return '-';
+  var str = String(p).trim();
+  if (str.length < 7) return str;
+  return str.substring(0, 3) + '-xxx-' + str.substring(str.length - 4);
+}
+
+/**
+ * สั่งพิมพ์ทำเนียบคณะกรรมการสถานศึกษาแบบมาตรฐานราชการ A4
+ */
+function MOD_SchoolBoard_printBoardRoster() {
+  var bundle = window.g_BoardBundle || g_BoardBundle;
+  if (!bundle || !bundle.members || bundle.members.length === 0) {
+    if (typeof steamAlert === 'function') {
+      steamAlert('กำลังโหลดข้อมูลทำเนียบคณะกรรมการ กรุณารอสักครู่แล้วลองอีกครั้ง', 'พิมพ์ทำเนียบ');
+    }
+    if (typeof MOD_SchoolBoard_init === 'function') {
+      MOD_SchoolBoard_init(true);
+    }
+    return;
+  }
+
+  var printBox = document.getElementById('officialPrintContainer');
+  if (!printBox) {
+    printBox = document.createElement('div');
+    printBox.id = 'officialPrintContainer';
+    printBox.style.display = 'none';
+    document.body.appendChild(printBox);
+  }
+
+  var sch = (window.g_SchoolInfo && window.g_SchoolInfo.schoolName) ? window.g_SchoolInfo : (bundle.schoolInfo || {});
+  var comp = bundle.compliance || {};
+  var members = comp.activeMembers || bundle.members || [];
+
+  var rows = '';
+  members.forEach(function(m, idx) {
+    var posTitle = SBD_POSITION_TITLES[m.BoardPosition] || m.BoardPosition;
+    var isSecMember = (m.BoardPosition === 'DIRECTOR_SEC' || m.BoardPosition === SBD_POSITION_TITLES.DIRECTOR_SEC);
+    var termRosterText = isSecMember
+      ? (m.StartDate ? `ตั้งแต่ ${MOD_SchoolBoard_formatThaiDate(m.StartDate)} (โดยตำแหน่ง)` : 'โดยตำแหน่ง')
+      : `${MOD_SchoolBoard_formatThaiDate(m.StartDate)} - ${MOD_SchoolBoard_formatThaiDate(m.EndDate)}`;
+    rows += `
+      <tr>
+        <td style="text-align:center; padding:8px 4px; border:1px solid #000;">${idx + 1}</td>
+        <td style="padding:8px 8px; border:1px solid #000; font-weight:bold;">${escapeHtml(m.FullName)}</td>
+        <td style="padding:8px 8px; border:1px solid #000; text-align:center;">${escapeHtml(posTitle)}</td>
+        <td style="padding:8px 8px; border:1px solid #000;">${escapeHtml(m.Occupation || '-')}${m.Organization ? ' (' + escapeHtml(m.Organization) + ')' : ''}</td>
+        <td style="padding:8px 8px; border:1px solid #000; text-align:center;">${termRosterText}</td>
+        <td style="padding:8px 8px; border:1px solid #000; text-align:center;">${escapeHtml(m.AppointmentOrderNo || '-')}</td>
+      </tr>
+    `;
+  });
+
+  var html = `
+    <div style="font-family:'Sarabun', sans-serif; color:#000; background:#fff; padding:20px; font-size:14px; line-height:1.6;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <h3 style="margin:0; font-size:18px; font-weight:bold;">ทำเนียบคณะกรรมการสถานศึกษาขั้นพื้นฐาน</h3>
+        <div style="font-size:15px; margin-top:4px;">${escapeHtml(sch.schoolName || 'สถานศึกษา')} ${sch.affiliation ? 'สังกัด ' + escapeHtml(sch.affiliation) : ''}</div>
+        <div style="font-size:13px; color:#444; margin-top:2px;">ข้อมูล ณ วันที่ ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}</div>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:20px;">
+        <thead>
+          <tr style="background:#f2f2f2;">
+            <th style="width:40px; border:1px solid #000; padding:8px 4px; text-align:center;">ที่</th>
+            <th style="width:180px; border:1px solid #000; padding:8px; text-align:center;">ชื่อ - สกุล</th>
+            <th style="width:150px; border:1px solid #000; padding:8px; text-align:center;">ตำแหน่งในคณะกรรมการ</th>
+            <th style="border:1px solid #000; padding:8px; text-align:center;">อาชีพ / หน่วยงานต้นสังกัด</th>
+            <th style="width:130px; border:1px solid #000; padding:8px; text-align:center;">ช่วงวาระ</th>
+            <th style="width:120px; border:1px solid #000; padding:8px; text-align:center;">ประกาศ / คำสั่ง</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+      <div style="display:flex; justify-content:space-between; margin-top:40px; padding:0 30px;">
+        <div style="text-align:center;">
+          <div>(ลงชื่อ).........................................................</div>
+          <div style="margin-top:6px;">(${escapeHtml(comp.chairName || '.........................................................')})</div>
+          <div>ประธานคณะกรรมการสถานศึกษาขั้นพื้นฐาน</div>
+        </div>
+        <div style="text-align:center;">
+          <div>(ลงชื่อ).........................................................</div>
+          <div style="margin-top:6px;">(${escapeHtml(comp.secretaryName || sch.directorName || '.........................................................')})</div>
+          <div>ผู้อำนวยการสถานศึกษา / กรรมการและเลขานุการ</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  printBox.innerHTML = html;
+  printBox.style.display = 'block';
+  setTimeout(function() {
+    window.print();
+    setTimeout(function() {
+      if (printBox) printBox.style.display = 'none';
+    }, 1000);
+  }, 100);
+}
+
+// ผูกฟังก์ชันเข้าสู่ window scope
+window.MOD_SchoolBoard_init = MOD_SchoolBoard_init;
+window.MOD_SchoolBoard_saveCriteria = MOD_SchoolBoard_saveCriteria;
+window.MOD_SchoolBoard_onDmcRoundChange = MOD_SchoolBoard_onDmcRoundChange;
+window.MOD_SchoolBoard_syncActiveStudentCount = MOD_SchoolBoard_syncActiveStudentCount;
+window.MOD_SchoolBoard_toggleDmcAccordion = MOD_SchoolBoard_toggleDmcAccordion;
+window.MOD_SchoolBoard_filterChange = MOD_SchoolBoard_filterChange;
+window.MOD_SchoolBoard_resetForm = MOD_SchoolBoard_resetForm;
+window.MOD_SchoolBoard_editMember = MOD_SchoolBoard_editMember;
+  window.MOD_SchoolBoard_openEditModal = MOD_SchoolBoard_openEditModal;
+  window.MOD_SchoolBoard_closeEditModal = MOD_SchoolBoard_closeEditModal;
+  window.MOD_SchoolBoard_onEditStartDateChange = MOD_SchoolBoard_onEditStartDateChange;
+  window.MOD_SchoolBoard_submitEditModal = MOD_SchoolBoard_submitEditModal;
+  window.MOD_SchoolBoard_toggleChangeTeacherRep = MOD_SchoolBoard_toggleChangeTeacherRep;
+  window.MOD_SchoolBoard_onNewTeacherStartDateChange = MOD_SchoolBoard_onNewTeacherStartDateChange;
+  window.MOD_SchoolBoard_submitChangeTeacherRep = MOD_SchoolBoard_submitChangeTeacherRep;
+
+window.MOD_SchoolBoard_deleteMember = MOD_SchoolBoard_deleteMember;
+window.MOD_SchoolBoard_onStartDateChange = MOD_SchoolBoard_onStartDateChange;
+window.MOD_SchoolBoard_handleFormSubmit = MOD_SchoolBoard_handleFormSubmit;
+window.MOD_SchoolBoard_printBoardRoster = MOD_SchoolBoard_printBoardRoster;
+window.MOD_SchoolBoard_isCivilServantTeacher = MOD_SchoolBoard_isCivilServantTeacher;
+window.MOD_SchoolBoard_openStaffTermModal = MOD_SchoolBoard_openStaffTermModal;
+window.MOD_SchoolBoard_closeStaffTermModal = MOD_SchoolBoard_closeStaffTermModal;
+window.MOD_SchoolBoard_switchModalTab = MOD_SchoolBoard_switchModalTab;
+window.MOD_SchoolBoard_submitDirectorTerm = MOD_SchoolBoard_submitDirectorTerm;
+window.MOD_SchoolBoard_submitTeacherRepTerm = MOD_SchoolBoard_submitTeacherRepTerm;
+window.MOD_SchoolBoard_onTeacherRepStartDateChange = MOD_SchoolBoard_onTeacherRepStartDateChange;
+window.MOD_SchoolBoard_deleteStaffTerm = MOD_SchoolBoard_deleteStaffTerm;
+window.MOD_SchoolBoard_openTeacherRepModal = MOD_SchoolBoard_openTeacherRepModal;
+</script>

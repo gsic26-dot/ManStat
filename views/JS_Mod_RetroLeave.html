@@ -1,0 +1,1317 @@
+<script>
+// =========================================================================
+// MODULE: RETROACTIVE LEAVE FRONTEND LOGIC (JS_Mod_RetroLeave.html)
+// ระบบบันทึกการลาย้อนหลังแบบแยกโมดูลอิสระ (Single Entry & Batch Queue)
+// ออกแบบตามมาตรฐาน Steam Dark Theme และ Zero-Emoji UI Standard 100%
+// =========================================================================
+
+(function() {
+  var g_retroQueue = [];
+  var _retroCachedStaffList = [];
+  var _retroInitRetryCount = 0;
+
+  // =========================================================================
+  // QUEUE PERSISTENCE: Save/Load queue from sessionStorage (Step 5 Fix)
+  // Ensures queue survives tab switching, navigation, and page refreshes
+  // =========================================================================
+  var RETRO_QUEUE_STORAGE_KEY = 'manstat_retro_queue_draft';
+
+  function _persistQueue() {
+    try {
+      sessionStorage.setItem(RETRO_QUEUE_STORAGE_KEY, JSON.stringify(g_retroQueue));
+    } catch (e) {}
+  }
+
+  function _restoreQueue() {
+    try {
+      var raw = sessionStorage.getItem(RETRO_QUEUE_STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          g_retroQueue = parsed;
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function _clearPersistedQueue() {
+    try {
+      sessionStorage.removeItem(RETRO_QUEUE_STORAGE_KEY);
+    } catch (e) {}
+  }
+
+  /**
+   * ไอคอน SVG มาตรฐานสำหรับโมดูลบันทึกย้อนหลัง (Zero Emoji Policy)
+   */
+  var RETRO_ICO = {
+    trash: '<svg class="ui-ico-sm" style="margin:0 !important;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    print: '<svg class="ui-ico-sm" style="margin:0 !important;" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+    check: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+    clock: '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    user: '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    info: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    alert: '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  };
+
+  /**
+   * รายการตัวเลือกประเภทการลาพร้อมไอคอน SVG มาตรฐาน (ถอดแบบจากระบบยื่นคำร้องขอลา 100%)
+   */
+  var RETRO_LEAVE_TYPE_SVG_OPTIONS = [
+    {
+      group: "ประเภทการลาของข้าราชการครูและบุคลากรทางการศึกษา",
+      items: [
+        { value: "ลาป่วย", label: "ลาป่วย", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
+        { value: "ลากิจ", label: "ลากิจส่วนตัว", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>' },
+        { value: "ลาคลอดบุตร", label: "ลาคลอดบุตร", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>' },
+        { value: "ลาไปช่วยเหลือภริยาที่คลอดบุตร", label: "ลาไปช่วยเหลือภริยาที่คลอดบุตร", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>' },
+        { value: "ลาพักผ่อน", label: "ลาพักผ่อน ตามระเบียบ", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/></svg>' },
+        { value: "ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์", label: "ลาอุปสมบท หรือลาไปประกอบพิธีฮัจย์", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"/></svg>' },
+        { value: "ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล", label: "ลาเข้ารับการตรวจเลือก หรือเข้ารับการเตรียมพล", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>' },
+        { value: "ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน", label: "ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>' },
+        { value: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ", label: "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>' },
+        { value: "ลาติดตามคู่สมรส", label: "ลาติดตามคู่สมรส", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>' },
+        { value: "ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ", label: "ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ", color: "var(--steam-cyan)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>' }
+      ]
+    },
+    {
+      divider: true,
+      group: "การขออนุญาตออกนอกบริเวณสถานศึกษา",
+      items: [
+        { value: "ขออนุญาต (ไม่เกิน 3 ชม.)", label: "ขออนุญาตออกนอกบริเวณโรงเรียน (ไม่เกิน 3 ชั่วโมง)", color: "var(--steam-green)", svg: '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' }
+      ]
+    }
+  ];
+
+  /**
+   * สร้างและปรับแต่ง Dropdown ประเภทการลาด้วย SVG Icon และ Steam Dark UI
+   */
+  function initCustomRetroLeaveTypeDropdown() {
+    var nativeSel = document.getElementById('retroLeaveType');
+    if (!nativeSel) return;
+
+    var existingWrap = document.getElementById('customRetroLeaveTypeDropdownWrap');
+    if (existingWrap) {
+      setCustomRetroLeaveTypeValue(nativeSel.value || 'ลาป่วย');
+      return;
+    }
+
+    nativeSel.style.display = 'none';
+    var wrap = document.createElement('div');
+    wrap.id = 'customRetroLeaveTypeDropdownWrap';
+    wrap.className = 'c-svg-dd-wrap';
+
+    var menuHtml = '';
+    RETRO_LEAVE_TYPE_SVG_OPTIONS.forEach(function(grp) {
+      if (grp.divider) menuHtml += '<hr class="c-svg-dd-divider">';
+      menuHtml += '<div class="c-svg-dd-group">' + escapeHtml(grp.group) + '</div>';
+      grp.items.forEach(function(it) {
+        menuHtml += '<div class="c-svg-dd-item ' + (it.value === 'ลาป่วย' ? 'active' : '') + '" data-val="' + escapeHtml(it.value) + '" onclick="onSelectCustomRetroLeaveType(\'' + escapeHtml(it.value) + '\', event)">'
+          + it.svg + '<span style="margin-left: 8px;">' + escapeHtml(it.label) + '</span>'
+          + '</div>';
+      });
+    });
+
+    var chevDownSvg = '<svg class="ui-ico-sm" style="color:var(--text-muted);" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+    var firstOpt = RETRO_LEAVE_TYPE_SVG_OPTIONS[0].items[0];
+
+    wrap.innerHTML = '<button type="button" class="c-svg-dd-btn" id="customRetroLeaveTypeBtn" onclick="toggleCustomRetroLeaveTypeMenu(event)">'
+      + '<span id="customRetroLeaveTypeSelectedContent" style="display:inline-flex; align-items:center; gap:0;">'
+      + firstOpt.svg + '<span style="margin-left: 8px;">' + firstOpt.label + '</span>'
+      + '</span>'
+      + chevDownSvg
+      + '</button>'
+      + '<div class="c-svg-dd-menu" id="customRetroLeaveTypeMenu">' + menuHtml + '</div>';
+
+    nativeSel.parentNode.insertBefore(wrap, nativeSel.nextSibling);
+
+    setCustomRetroLeaveTypeValue(nativeSel.value || 'ลาป่วย');
+  }
+
+  function toggleCustomRetroLeaveTypeMenu(e) {
+    if (e) e.stopPropagation();
+    var menu = document.getElementById('customRetroLeaveTypeMenu');
+    var btn = document.getElementById('customRetroLeaveTypeBtn');
+    var subMenu = document.getElementById('customRetroSubTeacherMenu');
+    if (subMenu) subMenu.classList.remove('show');
+    if (!menu) return;
+    var isShow = menu.classList.toggle('show');
+    if (btn) btn.classList.toggle('open', isShow);
+  }
+
+  function onSelectCustomRetroLeaveType(val, e) {
+    if (e) e.stopPropagation();
+    var menu = document.getElementById('customRetroLeaveTypeMenu');
+    var btn = document.getElementById('customRetroLeaveTypeBtn');
+    if (menu) menu.classList.remove('show');
+    if (btn) btn.classList.remove('open');
+    setCustomRetroLeaveTypeValue(val);
+    MOD_RetroLeave_onLeaveTypeChange();
+  }
+
+  function setCustomRetroLeaveTypeValue(val) {
+    var nativeSel = document.getElementById('retroLeaveType');
+    if (nativeSel) nativeSel.value = val;
+
+    var foundItem = null;
+    RETRO_LEAVE_TYPE_SVG_OPTIONS.forEach(function(g) {
+      g.items.forEach(function(it) {
+        if (it.value === val) foundItem = it;
+      });
+    });
+
+    if (foundItem) {
+      var disp = document.getElementById('customRetroLeaveTypeSelectedContent');
+      if (disp) {
+        disp.innerHTML = foundItem.svg + '<span style="margin-left: 8px;">' + escapeHtml(foundItem.label) + '</span>';
+      }
+      var items = document.querySelectorAll('#customRetroLeaveTypeMenu .c-svg-dd-item');
+      items.forEach(function(el) {
+        el.classList.toggle('active', el.getAttribute('data-val') === val);
+      });
+    }
+  }
+
+  /**
+   * สร้างและปรับแต่ง Dropdown ผู้สอนแทนด้วย SVG Icon และระบบสถานะติดลา
+   */
+  function initCustomRetroSubstituteDropdown() {
+    var nativeSubSel = document.getElementById('retroSubstituteSelect');
+    if (!nativeSubSel) return;
+
+    nativeSubSel.style.display = 'none';
+    var wrap = document.getElementById('customRetroSubTeacherDropdownWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'customRetroSubTeacherDropdownWrap';
+      wrap.className = 'c-svg-dd-wrap';
+      nativeSubSel.parentNode.insertBefore(wrap, nativeSubSel.nextSibling);
+    }
+
+    var staffSelect = document.getElementById('retroStaffSelect');
+    var curApplicantId = staffSelect ? staffSelect.value.trim() : '';
+
+    var startDateInput = document.getElementById('retroStartDate');
+    var startVal = startDateInput ? startDateInput.value : '';
+    var endDateInput = document.getElementById('retroEndDate');
+    var endVal = (endDateInput && endDateInput.value) ? endDateInput.value : startVal;
+
+    // คำนวณรายชื่อที่ติดลาในวันดังกล่าว
+    var onLeaveIds = new Set();
+    var logs = (Array.isArray(window.g_LeaveLogs) && window.g_LeaveLogs.length > 0)
+      ? window.g_LeaveLogs
+      : ((Array.isArray(window.g_ModLeaveLogs) && window.g_ModLeaveLogs.length > 0) ? window.g_ModLeaveLogs : []);
+
+    if (startVal && logs.length > 0) {
+      logs.forEach(function(l) {
+        if (l && l.Status !== 'ไม่อนุมัติ') {
+          var lStart = l.StartDate || '';
+          var lEnd = l.EndDate || lStart;
+          if (lStart <= endVal && lEnd >= startVal) {
+            onLeaveIds.add(l.EmpID);
+          }
+        }
+      });
+    }
+
+    var icoCheck = '<svg class="ui-ico-sm" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>';
+    var icoUserOk = '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    var icoUserBusy = '<svg class="ui-ico-sm" style="color:var(--orange);" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></svg>';
+
+    var itemsHtml = `
+      <div class="c-svg-dd-group">กรณีไม่มีคาบสอน</div>
+      <div class="c-svg-dd-item" onclick="onSelectCustomRetroSubTeacher('ไม่มีคาบสอนในวันที่ลา', 'ไม่มีคาบสอนในวันที่ลา', event)">
+        ${icoCheck}<span style="margin-left: 8px;">ไม่มีคาบสอนในวันที่ลา</span>
+      </div>
+      <hr class="c-svg-dd-divider">
+      <div class="c-svg-dd-group">รายชื่อบุคลากรในโรงเรียน (เลือกผู้สอนแทน)</div>
+    `;
+
+    var staffList = (Array.isArray(_retroCachedStaffList) && _retroCachedStaffList.length > 0)
+      ? _retroCachedStaffList
+      : ((Array.isArray(window.g_UsersSummary) && window.g_UsersSummary.length > 0) ? window.g_UsersSummary : []);
+
+    staffList.forEach(function(u) {
+      var uId = u.EmpID || u.id || u.Teacher_ID || '';
+      if (uId && uId === curApplicantId) return;
+
+      var pos = String(u.Position || u.role || '').toLowerCase();
+      var dept = String(u.Department || u.department || '').toLowerCase();
+      var div = String(u.Division || u.division || '').toLowerCase();
+      var combined = pos + ' ' + dept + ' ' + div;
+
+      if (u.status === 'ย้าย/เกษียณ' || combined.indexOf('ผู้อำนวยการ') !== -1 ||
+          combined.indexOf('ภารโรง') !== -1 || combined.indexOf('นักการ') !== -1 ||
+          combined.indexOf('แม่บ้าน') !== -1 || combined.indexOf('รปภ') !== -1 ||
+          combined.indexOf('คนสวน') !== -1) {
+        return;
+      }
+
+      var uName = u.name || u.FullName || '-';
+      var isBusy = onLeaveIds.has(uId);
+      var val = 'มอบหมายให้ ' + uName + ' สอนแทน';
+      var label = uName + (isBusy ? ' — ติดลาวันนี้' : '');
+
+      itemsHtml += `
+        <div class="c-svg-dd-item ${isBusy ? 'locked-opt' : ''}" onclick="onSelectCustomRetroSubTeacher('${escapeHtml(val)}', '${escapeHtml(label)}', event)">
+          ${isBusy ? icoUserBusy : icoUserOk}<span style="margin-left: 8px;">${escapeHtml(label)}</span>
+        </div>
+      `;
+    });
+
+    var curVal = nativeSubSel.value || 'ไม่มีคาบสอนในวันที่ลา';
+    nativeSubSel.value = curVal;
+    var chevDownSvg = '<svg class="ui-ico-sm" style="color:var(--text-muted);" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+
+    wrap.innerHTML = `
+      <button type="button" class="c-svg-dd-btn" id="customRetroSubTeacherBtn" onclick="toggleCustomRetroSubTeacherMenu(event)">
+        <span id="customRetroSubTeacherSelectedContent" style="display:inline-flex; align-items:center; gap:0;">
+          ${icoUserOk}<span style="margin-left: 8px;">${escapeHtml(curVal)}</span>
+        </span>
+        ${chevDownSvg}
+      </button>
+      <div class="c-svg-dd-menu" id="customRetroSubTeacherMenu">${itemsHtml}</div>
+    `;
+  }
+
+  function toggleCustomRetroSubTeacherMenu(e) {
+    if (e) e.stopPropagation();
+    var menu = document.getElementById('customRetroSubTeacherMenu');
+    var btn = document.getElementById('customRetroSubTeacherBtn');
+    var typeMenu = document.getElementById('customRetroLeaveTypeMenu');
+    if (typeMenu) typeMenu.classList.remove('show');
+    if (!menu) return;
+    var isShow = menu.classList.toggle('show');
+    if (btn) btn.classList.toggle('open', isShow);
+  }
+
+  function onSelectCustomRetroSubTeacher(val, label, e) {
+    if (e) e.stopPropagation();
+    var nativeSubSel = document.getElementById('retroSubstituteSelect');
+    if (nativeSubSel) nativeSubSel.value = val;
+    var disp = document.getElementById('customRetroSubTeacherSelectedContent');
+    if (disp) {
+      disp.innerHTML = `<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span style="margin-left: 8px;">${escapeHtml(label)}</span>`;
+    }
+    var menu = document.getElementById('customRetroSubTeacherMenu');
+    var btn = document.getElementById('customRetroSubTeacherBtn');
+    if (menu) menu.classList.remove('show');
+    if (btn) btn.classList.remove('open');
+  }
+
+  // ปิดเมนูเมื่อคลิกนอกพื้นที่ Dropdown
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('customRetroLeaveTypeMenu');
+    if (menu && menu.classList.contains('show')) {
+      if (!e.target.closest('#customRetroLeaveTypeDropdownWrap')) {
+        menu.classList.remove('show');
+        var btn = document.getElementById('customRetroLeaveTypeBtn');
+        if (btn) btn.classList.remove('open');
+      }
+    }
+    var subMenu = document.getElementById('customRetroSubTeacherMenu');
+    if (subMenu && subMenu.classList.contains('show')) {
+      if (!e.target.closest('#customRetroSubTeacherDropdownWrap')) {
+        subMenu.classList.remove('show');
+        var subBtn = document.getElementById('customRetroSubTeacherBtn');
+        if (subBtn) subBtn.classList.remove('open');
+      }
+    }
+  });
+
+  /**
+   * เริ่มต้นการทำงานของหน้า View บันทึกการลาย้อนหลัง
+   */
+  function MOD_RetroLeave_initView() {
+    // ดึงข้อมูลผู้ใช้ปัจจุบันอย่างแม่นยำ พร้อม Fallback ไปยัง Session Storage
+    var curUser = window.g_CurrentUser || (typeof g_CurrentUser !== 'undefined' ? g_CurrentUser : null);
+    if (!curUser) {
+      try {
+        var sess = sessionStorage.getItem('manstat_active_user_session') || localStorage.getItem('manstat_active_user_session');
+        if (sess) {
+          var parsed = JSON.parse(sess);
+          curUser = parsed.user || parsed;
+          if (curUser) {
+            window.g_CurrentUser = curUser;
+            if (typeof g_CurrentUser !== 'undefined') g_CurrentUser = curUser;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 1. ดึงรายชื่อบุคลากรจากตัวแปรส่วนกลาง (ครอบคลุมทุกแหล่งข้อมูล)
+    var staffList = (Array.isArray(window.g_UsersSummary) && window.g_UsersSummary.length > 0)
+      ? window.g_UsersSummary
+      : ((Array.isArray(window.g_ModStaffList) && window.g_ModStaffList.length > 0)
+        ? window.g_ModStaffList
+        : ((Array.isArray(window.g_AdminTeachers) && window.g_AdminTeachers.length > 0)
+          ? window.g_AdminTeachers
+          : ((window.g_AdminData && Array.isArray(window.g_AdminData.teachers) && window.g_AdminData.teachers.length > 0)
+            ? window.g_AdminData.teachers
+            : [])));
+
+    if (!curUser) {
+      curUser = window.g_CurrentUser || window.g_UserInfo || null;
+    }
+
+    // กรณีข้อมูลผู้ใช้หรือรายชื่อบุคลากรยังโหลดไม่เสร็จ ให้ตั้งตัวหน่วงเวลาดึงใหม่อัตโนมัติ (Safety Auto-Recovery)
+    if ((!curUser || !staffList || staffList.length === 0) && _retroInitRetryCount < 20) {
+      _retroInitRetryCount++;
+      setTimeout(function() {
+        MOD_RetroLeave_initView();
+      }, 250);
+      return;
+    }
+    _retroInitRetryCount = 0;
+    _retroCachedStaffList = staffList;
+
+    // ตรวจสอบสิทธิ์ผู้ดูแลระบบ (Admin / Superuser) รอบด้าน
+    var isAdm = false;
+    if (typeof isSuperuserOrAdmin === 'function') {
+      isAdm = isSuperuserOrAdmin(curUser);
+    } else if (typeof window.isSuperuserOrAdmin === 'function') {
+      isAdm = window.isSuperuserOrAdmin(curUser);
+    }
+    if (!isAdm && curUser) {
+      var access = String(curUser.accessLevel || curUser.role || curUser.Role || '').toLowerCase();
+      var email = String(curUser.email || '').toLowerCase();
+      if (access === 'admin' || access === 'superuser' || access === 'super admin' || email === 'superuser' || email === 'admin') {
+        isAdm = true;
+      }
+    }
+
+    // 2. เติมรายชื่อลง Dropdown บุคลากรผู้ขอลา
+    var staffSelect = document.getElementById('retroStaffSelect');
+    var histStaffFilter = document.getElementById('retroHistoryStaffFilter');
+    var curSelectedEmpId = staffSelect ? staffSelect.value : '';
+
+    if (staffSelect && staffList.length > 0) {
+      staffSelect.innerHTML = '<option value="">-- คลิกเลือกบุคลากร --</option>';
+      staffList.forEach(function(u) {
+        var uId = u.EmpID || u.id || u.Teacher_ID || '';
+        var uName = u.name || u.FullName || '-';
+        var opt = document.createElement('option');
+        opt.value = uId;
+        opt.textContent = uName;
+        staffSelect.appendChild(opt);
+      });
+      if (curSelectedEmpId) {
+        staffSelect.value = curSelectedEmpId;
+      }
+    }
+
+    if (histStaffFilter && staffList.length > 0) {
+      var curHistFilter = histStaffFilter.value;
+      histStaffFilter.innerHTML = '<option value="ALL">-- บุคลากรทั้งหมด --</option>';
+      staffList.forEach(function(u) {
+        var uId = u.EmpID || u.id || u.Teacher_ID || '';
+        var uName = u.name || u.FullName || '-';
+        var opt = document.createElement('option');
+        opt.value = uId;
+        opt.textContent = uName;
+        histStaffFilter.appendChild(opt);
+      });
+      if (curHistFilter) histStaffFilter.value = curHistFilter;
+    }
+
+    // 3. ตรวจสอบสิทธิ์และเปิด/ปิดฟีเจอร์ผู้ดูแลระบบ & คิวบันทึกแบบกลุ่ม
+    var roleHint = document.getElementById('retroStaffRoleHint');
+    var batchTabBtn = document.getElementById('retroSubTab_batch_btn');
+    var appModeWrap = document.getElementById('retroApprovalModeWrap');
+    var btnAddQueue = document.getElementById('btnRetroAddToQueue');
+    var btnSubmitSingle = document.getElementById('btnRetroSubmitSingle');
+
+    // แสดงปุ่มคิวบันทึกย้อนหลังและปุ่มเพิ่มเข้าคิวเสมอ ไม่ซ่อน ไม่ต้องรีเฟรช
+    if (batchTabBtn) batchTabBtn.style.display = 'inline-flex';
+    if (btnAddQueue) btnAddQueue.style.display = 'inline-flex';
+    if (btnSubmitSingle) {
+      btnSubmitSingle.disabled = false;
+      btnSubmitSingle.innerHTML = '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกการลาย้อนหลัง</span>';
+    }
+
+    if (isAdm) {
+      if (staffSelect) {
+        staffSelect.disabled = false;
+        if (!staffSelect.value && curUser) {
+          staffSelect.value = curUser.id || curUser.EmpID || '';
+        }
+      }
+      if (appModeWrap) appModeWrap.style.display = 'block';
+      if (roleHint) {
+        roleHint.innerHTML = '<span style="color:var(--steam-cyan); font-weight:bold;">สิทธิ์ผู้ดูแลระบบ (Admin/Superuser):</span> สามารถเลือกบันทึกให้บุคลากรทุกคน และกำหนดโหมดอนุมัติทันทีได้';
+      }
+    } else {
+      if (staffSelect && curUser) {
+        staffSelect.value = curUser.id || curUser.EmpID || '';
+        staffSelect.disabled = true;
+      }
+      if (appModeWrap) appModeWrap.style.display = 'none';
+      if (roleHint) {
+        roleHint.innerHTML = '<span style="color:var(--text-muted);">บันทึกคำร้องย้อนหลังในนามตนเอง (คำร้องจะถูกส่งเข้ากระบวนการอนุมัติตามสายงานปกติ)</span>';
+      }
+    }
+
+    // 4. สร้าง Dropdown ประเภทการลาแบบ Custom SVG สไตล์โมเดิร์น
+    initCustomRetroLeaveTypeDropdown();
+
+    // 5. ตั้งค่าวันที่เริ่มต้นเป็นวันทำการก่อนหน้า หรือวันปัจจุบันอย่างปลอดภัยผ่าน setDatePickerVal
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    var defaultDate = yyyy + '-' + mm + '-' + dd;
+
+    var startDateInput = document.getElementById('retroStartDate');
+    var endDateInput = document.getElementById('retroEndDate');
+    var permitDateInput = document.getElementById('retroPermitDate');
+
+    if (startDateInput && !startDateInput.value) {
+      if (typeof setDatePickerVal === 'function') {
+        setDatePickerVal('retroStartDate', defaultDate);
+        setDatePickerVal('retroEndDate', defaultDate);
+        setDatePickerVal('retroPermitDate', defaultDate);
+      } else {
+        startDateInput.value = defaultDate;
+        if (endDateInput) endDateInput.value = defaultDate;
+        if (permitDateInput) permitDateInput.value = defaultDate;
+      }
+    }
+
+    // 6. ผูก Flatpickr พ.ศ. ถ้ามีฟังก์ชันกลาง
+    try {
+      if (typeof initThaiDatePickers === 'function') {
+        initThaiDatePickers();
+      }
+    } catch (eF) {}
+
+    // 7. สลับโหมดฟอร์ม (ลาทั่วไป vs ขออนุญาตออกนอก รร.) และคำนวณวันทำการ
+    MOD_RetroLeave_onLeaveTypeChange();
+
+    // 8. เติมรายชื่อผู้สอนแทน
+    MOD_RetroLeave_populateSubstituteSelect();
+
+    // 9. อัปเดตแบนเนอร์แสดงโควตาวันลาสะสมคงเหลือและระเบียบการลา
+    updateRetroLeavePolicyBanner();
+
+    // 10. กู้คืนคิวจาก Storage และเรนเดอร์ตารางคิว/ประวัติย้อนหลัง
+    _restoreQueue();
+    MOD_RetroLeave_renderQueueTable();
+    MOD_RetroLeave_renderHistoryTable();
+  }
+
+  /**
+   * เติมตัวเลือกรายชื่อผู้สอนแทน โดยคัดชื่อบุคลากรผู้ขอลาออก
+   */
+  function MOD_RetroLeave_populateSubstituteSelect() {
+    initCustomRetroSubstituteDropdown();
+  }
+
+  /**
+   * สลับแท็บ Sub-Ribbon: รายบุคคล vs คิวแบบกลุ่ม
+   */
+  function MOD_RetroLeave_switchSubTab(tabName) {
+    var singleBtn = document.getElementById('retroSubTab_single_btn');
+    var batchBtn = document.getElementById('retroSubTab_batch_btn');
+    var singleSec = document.getElementById('retroSingleEntrySection');
+    var batchSec = document.getElementById('retroBatchQueueSection');
+
+    if (tabName === 'single') {
+      if (singleBtn) singleBtn.classList.add('active');
+      if (batchBtn) batchBtn.classList.remove('active');
+      if (singleSec) singleSec.style.display = 'block';
+      if (batchSec) batchSec.style.display = 'none';
+    } else if (tabName === 'batch') {
+      if (batchBtn) batchBtn.classList.add('active');
+      if (singleBtn) singleBtn.classList.remove('active');
+      if (batchSec) batchSec.style.display = 'block';
+      if (singleSec) singleSec.style.display = 'none';
+      MOD_RetroLeave_renderQueueTable();
+    }
+  }
+
+  /**
+   * เมื่อผู้ใช้เปลี่ยนบุคลากรผู้ขอลา
+   */
+  function MOD_RetroLeave_onStaffChange() {
+    MOD_RetroLeave_populateSubstituteSelect();
+    updateRetroLeavePolicyBanner();
+  }
+
+  /**
+   * เมื่อผู้ใช้เปลี่ยนประเภทการลา (สลับระหว่างลาทั่วไป กับ ขออนุญาตออกนอก รร.)
+   */
+  function MOD_RetroLeave_onLeaveTypeChange() {
+    var tSelect = document.getElementById('retroLeaveType');
+    var leaveType = tSelect ? tSelect.value : 'ลาป่วย';
+
+    var leaveDatesZone = document.getElementById('retroLeaveDatesZone');
+    var permitZone = document.getElementById('retroPermitZone');
+
+    if (leaveType === 'ขออนุญาต (ไม่เกิน 3 ชม.)') {
+      if (leaveDatesZone) leaveDatesZone.style.display = 'none';
+      if (permitZone) permitZone.style.display = 'block';
+
+      var permitDate = document.getElementById('retroPermitDate');
+      if (permitDate && !permitDate.value) {
+        var startInput = document.getElementById('retroStartDate');
+        var initVal = startInput ? startInput.value : '';
+        if (initVal) {
+          if (typeof setDatePickerVal === 'function') setDatePickerVal('retroPermitDate', initVal);
+          else permitDate.value = initVal;
+        }
+      }
+      MOD_RetroLeave_calcPermitHours();
+    } else {
+      if (leaveDatesZone) leaveDatesZone.style.display = 'block';
+      if (permitZone) permitZone.style.display = 'none';
+      MOD_RetroLeave_onDateChange();
+    }
+
+    var portionWrap = document.getElementById('retroDayPortionWrap');
+    if (portionWrap) {
+      portionWrap.style.display = (leaveType === 'ลาป่วย' || leaveType === 'ลากิจ') ? 'block' : 'none';
+    }
+
+    updateRetroLeavePolicyBanner();
+    MOD_RetroLeave_populateSubstituteSelect();
+  }
+
+  function MOD_RetroLeave_onPortionChange() {
+    var pEl = document.querySelector('input[name="retroDayPortion"]:checked');
+    var portion = pEl ? pEl.value : 'FULL';
+    var daysInput = document.getElementById('retroTotalDays');
+    var sInput = document.getElementById('retroStartDate');
+    var eInput = document.getElementById('retroEndDate');
+
+    if (portion === 'MORNING' || portion === 'AFTERNOON') {
+      if (daysInput) daysInput.value = '0.5';
+      if (sInput && eInput && sInput.value) {
+        if (typeof setDatePickerVal === 'function') setDatePickerVal('retroEndDate', sInput.value);
+        else eInput.value = sInput.value;
+      }
+      updateRetroLeavePolicyBanner();
+    } else {
+      MOD_RetroLeave_onDateChange();
+    }
+  }
+  window.MOD_RetroLeave_onPortionChange = MOD_RetroLeave_onPortionChange;
+
+  /**
+   * คำนวณชั่วโมงการขออนุญาตออกนอกบริเวณสถานศึกษา
+   */
+  function MOD_RetroLeave_calcPermitHours() {
+    var stEl = document.getElementById('retroStartTime');
+    var etEl = document.getElementById('retroEndTime');
+    var box = document.getElementById('retroPermitHoursPreviewText');
+    if (!stEl || !etEl || !box) return;
+
+    var st = stEl.value;
+    var et = etEl.value;
+    if (!st || !et) {
+      box.innerText = '';
+      return;
+    }
+
+    var sParts = st.split(':');
+    var eParts = et.split(':');
+    var mins = (parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10)) - (parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10));
+    var hrs = Number((mins / 60).toFixed(2));
+    var icoCheck = '<svg class="ui-ico-sm" style="color:var(--steam-green);" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+
+    if (hrs <= 0) {
+      box.style.color = 'var(--red)';
+      box.innerText = 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
+    } else if (hrs > 3) {
+      box.style.color = 'var(--red)';
+      box.innerText = 'รวมเวลา ' + hrs + ' ชั่วโมง (เกินขีดจำกัด 3 ชั่วโมง)';
+    } else {
+      box.style.color = 'var(--steam-green)';
+      box.innerHTML = '<span style="display:inline-flex; align-items:center; gap:0;">' + icoCheck + '<span style="margin-left: 8px;">ระยะเวลารวมที่ขออนุญาต: ' + hrs + ' ชั่วโมง</span></span>';
+    }
+  }
+
+  /**
+   * อัปเดตแบนเนอร์แสดงโควตาวันลาสะสมคงเหลือและระเบียบการลา
+   */
+  function updateRetroLeavePolicyBanner() {
+    var banner = document.getElementById('retroLeavePolicyAlertBanner');
+    var btnRule = document.getElementById('btnRetroDirectorLeaveRuleIco');
+    if (!banner) return;
+
+    var staffSelect = document.getElementById('retroStaffSelect');
+    var empId = staffSelect ? staffSelect.value.trim() : '';
+
+    var typeSelect = document.getElementById('retroLeaveType');
+    var leaveType = typeSelect ? typeSelect.value : 'ลาป่วย';
+
+    var staffList = (Array.isArray(_retroCachedStaffList) && _retroCachedStaffList.length > 0)
+      ? _retroCachedStaffList
+      : ((Array.isArray(window.g_UsersSummary) && window.g_UsersSummary.length > 0) ? window.g_UsersSummary : []);
+
+    var selUser = staffList.find(function(x) { return (x.EmpID || x.id || x.Teacher_ID) === empId; });
+
+    // 1. ตรวจสอบกรณีผู้ขอลาเป็นผู้อำนวยการสถานศึกษา
+    var isDirector = false;
+    if (selUser) {
+      var pStr = String(selUser.Position || selUser.role || '').toLowerCase();
+      if (empId === 'EXE-001' || pStr.indexOf('ผู้อำนวยการสถานศึกษา') !== -1) {
+        isDirector = true;
+      }
+    }
+
+    if (isDirector) {
+      if (btnRule) btnRule.style.display = 'inline-flex';
+    } else {
+      if (btnRule) btnRule.style.display = 'none';
+    }
+
+    if (!selUser) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // 2. แสดงข้อมูลโควตาวันลาสะสมของบุคลากรที่เลือก
+    var sickUsed = selUser.SickDays || 0;
+    var sickMax = selUser.SickMax || 60;
+    var sickLeft = Math.max(0, sickMax - sickUsed);
+
+    var perUsed = selUser.PersonalDays || 0;
+    var perMax = selUser.PersonalMax || 45;
+    var perLeft = Math.max(0, perMax - perUsed);
+
+    var extraNotice = '';
+    if (leaveType === 'ลาป่วย') {
+      var daysInput = document.getElementById('retroTotalDays');
+      var totalD = daysInput ? parseFloat(daysInput.value) || 0 : 0;
+      if (totalD >= 30) {
+        extraNotice = '<div style="color:var(--red); margin-top:4px; font-weight:bold;">คำเตือนตามระเบียบฯ: ลาป่วยตั้งแต่ 30 วันขึ้นไป ต้องแนบใบรับรองแพทย์จากแพทย์แผนปัจจุบันชั้น 1</div>';
+      }
+    } else if (leaveType === 'ลาพักผ่อน') {
+      extraNotice = '<div style="color:var(--orange); margin-top:4px;">หมายเหตุ: ข้าราชการครูผู้มีวันหยุดภาคเรียนไม่มีสิทธิลาพักผ่อนระหว่างเปิดภาคการศึกษา</div>';
+    } else if (leaveType === 'ขออนุญาต (ไม่เกิน 3 ชม.)') {
+      extraNotice = '<div style="color:var(--steam-green); margin-top:4px;">การขออนุญาตออกนอกโรงเรียนไม่เกิน 3 ชั่วโมง ไม่นับเป็นวันลาและไม่ตัดโควตาวันลา</div>';
+    }
+
+    banner.style.display = 'block';
+    banner.style.borderColor = 'var(--steam-cyan)';
+    banner.style.borderLeftColor = 'var(--steam-cyan)';
+    banner.style.background = 'rgba(102, 192, 244, 0.1)';
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <b>สถิติและโควตาวันลาสะสม (${escapeHtml(selUser.name || selUser.FullName || '-')}):</b>
+          <span style="margin-left: 8px;">ลาป่วยใช้ไป <b>${sickUsed}</b> / ${sickMax} วัน (คงเหลือ <span style="color:var(--steam-green); font-weight:bold;">${sickLeft}</span> วัน)</span>
+          <span style="margin-left: 12px;">|</span>
+          <span style="margin-left: 12px;">ลากิจส่วนตัวใช้ไป <b>${perUsed}</b> / ${perMax} วัน (คงเหลือ <span style="color:var(--steam-green); font-weight:bold;">${perLeft}</span> วัน)</span>
+        </div>
+      </div>
+      ${extraNotice}
+    `;
+  }
+
+  /**
+   * เมื่อมีการเปลี่ยนวันที่ เริ่มลา - สิ้นสุดลา ให้คำนวณวันทำการอัตโนมัติ
+   */
+  function MOD_RetroLeave_onDateChange() {
+    var sInput = document.getElementById('retroStartDate');
+    var eInput = document.getElementById('retroEndDate');
+    var tSelect = document.getElementById('retroLeaveType');
+    var daysInput = document.getElementById('retroTotalDays');
+
+    if (!sInput || !eInput || !daysInput) return;
+    var startVal = sInput.value;
+    var endVal = eInput.value || startVal;
+    var leaveType = tSelect ? tSelect.value : 'ลาป่วย';
+
+    if (!startVal) return;
+
+    var pEl = document.querySelector('input[name="retroDayPortion"]:checked');
+    var portion = pEl ? pEl.value : 'FULL';
+    if (portion === 'MORNING' || portion === 'AFTERNOON') {
+      daysInput.value = '0.5';
+      if (sInput && eInput && sInput.value) {
+        if (typeof setDatePickerVal === 'function') setDatePickerVal('retroEndDate', sInput.value);
+        else eInput.value = sInput.value;
+      }
+      updateRetroLeavePolicyBanner();
+      return;
+    }
+
+    if (endVal < startVal) {
+      if (typeof setDatePickerVal === 'function') setDatePickerVal('retroEndDate', startVal);
+      else eInput.value = startVal;
+      endVal = startVal;
+    }
+
+    if (window.google && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(workingDays) {
+          if (typeof workingDays === 'number' && workingDays >= 0) {
+            daysInput.value = workingDays;
+            updateRetroLeavePolicyBanner();
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.warn('MOD_RetroLeave_calcWorkingDays failed:', err);
+        })
+        .MOD_RetroLeave_calcWorkingDays(startVal, endVal, leaveType);
+    } else {
+      daysInput.value = 1;
+      updateRetroLeavePolicyBanner();
+    }
+  }
+
+  /**
+   * สกัดข้อมูลจากฟอร์มบันทึกรายบุคคลและแปลงไฟล์แนบเป็น Base64
+   */
+  function _modRetroExtractFormData(callback) {
+    var staffSelect = document.getElementById('retroStaffSelect');
+    var typeSelect = document.getElementById('retroLeaveType');
+    var appModeSelect = document.getElementById('retroApprovalMode');
+    var daysInput = document.getElementById('retroTotalDays');
+    var reasonInput = document.getElementById('retroReason');
+    var remarkInput = document.getElementById('retroRemarkReason');
+    var subSelect = document.getElementById('retroSubstituteSelect');
+    var fileInput = document.getElementById('retroAttachFile');
+
+    var empId = staffSelect ? staffSelect.value.trim() : '';
+    if (!empId) {
+      steamAlert('Please select a staff member.', 'Missing Information');
+      if (staffSelect) staffSelect.focus();
+      return;
+    }
+
+    var fullName = '-';
+    var foundUser = _retroCachedStaffList.find(function(x) { return (x.EmpID || x.id || x.Teacher_ID) === empId; });
+    if (foundUser) {
+      fullName = foundUser.name || foundUser.FullName || '-';
+    } else if (staffSelect && staffSelect.selectedOptions && staffSelect.selectedOptions[0]) {
+      fullName = staffSelect.selectedOptions[0].textContent.split(' (')[0].trim();
+    }
+
+    var leaveType = typeSelect ? typeSelect.value : 'ลาป่วย';
+    var isAdm = (typeof isSuperuserOrAdmin === 'function' && isSuperuserOrAdmin(window.g_CurrentUser));
+    var approvalMode = (isAdm && appModeSelect) ? appModeSelect.value : 'SEND_FLOW';
+
+    var startDate = '', endDate = '', startTime = '-', endTime = '-', totalDays = 0, totalHours = 0;
+
+    if (leaveType === 'ขออนุญาต (ไม่เกิน 3 ชม.)') {
+      var pDateInput = document.getElementById('retroPermitDate');
+      var stInput = document.getElementById('retroStartTime');
+      var etInput = document.getElementById('retroEndTime');
+      var placeInput = document.getElementById('retroPermitPlace');
+
+      startDate = pDateInput ? pDateInput.value : '';
+      endDate = startDate;
+      if (!startDate) {
+        steamAlert('Please specify the permission date.', 'Missing Information');
+        return;
+      }
+      startTime = stInput ? stInput.value : '';
+      endTime = etInput ? etInput.value : '';
+      if (!startTime || !endTime) {
+        steamAlert('Please specify start and end time.', 'Missing Information');
+        return;
+      }
+      var sP = startTime.split(':');
+      var eP = endTime.split(':');
+      var mins = (parseInt(eP[0], 10) * 60 + parseInt(eP[1], 10)) - (parseInt(sP[0], 10) * 60 + parseInt(sP[1], 10));
+      totalHours = Number((mins / 60).toFixed(2));
+      if (totalHours <= 0 || totalHours > 3) {
+        steamAlert('Permission hours must be greater than 0 and not exceed 3 hours.', 'Invalid Duration');
+        return;
+      }
+      totalDays = 0;
+      var place = placeInput ? placeInput.value.trim() : '';
+      if (!place) {
+        steamAlert('Please specify the destination location.', 'Missing Information');
+        if (placeInput) placeInput.focus();
+        return;
+      }
+    } else {
+      var sInput = document.getElementById('retroStartDate');
+      var eInput = document.getElementById('retroEndDate');
+      startDate = sInput ? sInput.value : '';
+      endDate = eInput ? (eInput.value || startDate) : startDate;
+      if (!startDate) {
+        steamAlert('Please specify the start date.', 'Missing Information');
+        return;
+      }
+      totalDays = daysInput ? parseFloat(daysInput.value) : 1;
+      if (isNaN(totalDays) || totalDays <= 0) totalDays = 1;
+      totalHours = 0;
+    }
+
+    var reason = reasonInput ? reasonInput.value.trim() : '';
+    var pEl = document.querySelector('input[name="retroDayPortion"]:checked');
+    var portion = pEl ? pEl.value : 'FULL';
+    if ((portion === 'MORNING' || portion === 'AFTERNOON') && (leaveType === 'ลาป่วย' || leaveType === 'ลากิจ')) {
+      totalDays = 0.5;
+      var tag = (portion === 'MORNING') ? '(ครึ่งวันเช้า)' : '(ครึ่งวันบ่าย)';
+      if (reason.indexOf(tag) === -1) {
+        reason = reason + ' ' + tag;
+      }
+    }
+    if (!reason) {
+      steamAlert('Please provide a reason for leave.', 'Missing Information');
+      if (reasonInput) reasonInput.focus();
+      return;
+    }
+
+    var retroReason = remarkInput ? remarkInput.value.trim() : '';
+    if (!retroReason) {
+      steamAlert('Please enter the retroactive leave reason or reference number.', 'Missing Information');
+      if (remarkInput) remarkInput.focus();
+      return;
+    }
+
+    var substituteInfo = subSelect ? subSelect.value : 'ไม่มีคาบสอนในวันที่ลา';
+
+    var recordItem = {
+      empId: empId,
+      fullName: fullName,
+      leaveType: leaveType,
+      approvalMode: approvalMode,
+      startDate: startDate,
+      endDate: endDate,
+      startTime: startTime,
+      endTime: endTime,
+      totalDays: totalDays,
+      totalHours: totalHours,
+      reason: reason,
+      retroReason: retroReason,
+      substituteInfo: substituteInfo,
+      attachUrl: '-'
+    };
+
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      var file = fileInput.files[0];
+      if (file.size > 15 * 1024 * 1024) {
+        steamAlert('Attachment exceeds 15MB limit. Please choose a smaller file.', 'File Too Large');
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        recordItem.fileData = evt.target.result;
+        recordItem.fileName = file.name;
+        callback(recordItem);
+      };
+      reader.onerror = function() {
+        console.warn('FileReader error, proceeding without file');
+        callback(recordItem);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      callback(recordItem);
+    }
+  }
+
+  /**
+   * บันทึกคำร้องขอลาย้อนหลังรายการเดียว (Single Entry)
+   */
+  function MOD_RetroLeave_submitSingle() {
+    _modRetroExtractFormData(function(item) {
+      var btnSubmit = document.getElementById('btnRetroSubmitSingle');
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span>กำลังบันทึกข้อมูล...</span>';
+      }
+      if (typeof startLoadingBar === 'function') startLoadingBar();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกการลาย้อนหลัง</span>';
+          }
+          if (typeof stopLoadingBar === 'function') stopLoadingBar();
+
+          if (res && res.status === 'success') {
+            steamAlert('Retroactive leave record saved successfully (' + (res.savedCount || 1) + ' record).', 'Success');
+
+            var reasonInput = document.getElementById('retroReason');
+            var remarkInput = document.getElementById('retroRemarkReason');
+            var fileInput = document.getElementById('retroAttachFile');
+            if (reasonInput) reasonInput.value = '';
+            if (remarkInput) remarkInput.value = '';
+            if (fileInput) fileInput.value = '';
+            var lblFile = document.getElementById('lblRetroAttachFileName');
+            if (lblFile) lblFile.innerText = 'ยังไม่ได้เลือกไฟล์ (.pdf, .jpg, .png)';
+
+            if (typeof refreshAllData === 'function') refreshAllData();
+            if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+              window.LeaveBus.emit('LEAVE_UPDATED', { type: 'RETRO_SAVED', timestamp: Date.now() });
+            }
+          } else {
+            var msg = (res && res.message) ? res.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+            steamAlert(msg, 'Error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>บันทึกการลาย้อนหลัง</span>';
+          }
+          if (typeof stopLoadingBar === 'function') stopLoadingBar();
+          var errStr = String(err && err.message ? err.message : err);
+          steamAlert('Server connection error: ' + errStr, 'Connection Error');
+        })
+        .MOD_RetroLeave_saveBatch([item], window.g_CurrentUser);
+    });
+  }
+
+  /**
+   * เพิ่มรายการปัจจุบันเข้าคิวแบบกลุ่ม (Staging Queue)
+   */
+  function MOD_RetroLeave_addToQueue() {
+    _modRetroExtractFormData(function(item) {
+      g_retroQueue.push(item);
+      _persistQueue();
+      var bBtn = document.getElementById('retroSubTab_batch_btn');
+      if (bBtn) bBtn.style.display = 'inline-flex';
+
+      var reasonInput = document.getElementById('retroReason');
+      var remarkInput = document.getElementById('retroRemarkReason');
+      var fileInput = document.getElementById('retroAttachFile');
+      if (reasonInput) reasonInput.value = '';
+      if (remarkInput) remarkInput.value = '';
+      if (fileInput) fileInput.value = '';
+
+      MOD_RetroLeave_renderQueueTable();
+
+      if (typeof steamToast === 'function') {
+        steamToast('เพิ่มรายการเข้าคิวเรียบร้อย (รวม ' + g_retroQueue.length + ' รายการ)');
+      }
+    });
+  }
+
+  /**
+   * ลบรายการออกจากคิวแบบกลุ่มตาม Index
+   */
+  function MOD_RetroLeave_removeFromQueue(index) {
+    if (index >= 0 && index < g_retroQueue.length) {
+      g_retroQueue.splice(index, 1);
+      _persistQueue();
+      MOD_RetroLeave_renderQueueTable();
+    }
+  }
+
+  /**
+   * ล้างรายการในคิวทั้งหมด
+   */
+  function MOD_RetroLeave_clearQueue() {
+    if (g_retroQueue.length === 0) return;
+    var confirmFn = (typeof steamConfirm === 'function') ? steamConfirm : function(msg, ok) { if (confirm(msg)) ok(); };
+    confirmFn('คุณต้องการล้างรายการในคิวทั้งหมดใช่หรือไม่?', function() {
+      g_retroQueue = [];
+      _clearPersistedQueue();
+      MOD_RetroLeave_renderQueueTable();
+    });
+  }
+
+  /**
+   * เรนเดอร์ตารางคิวแบบกลุ่ม
+   */
+  function MOD_RetroLeave_renderQueueTable() {
+    var tbody = document.getElementById('retroQueueTableBody');
+    var badge = document.getElementById('badgeRetroQueueCount');
+    var totalLbl = document.getElementById('lblRetroQueueTotal');
+    var confirmCountLbl = document.getElementById('lblRetroConfirmCount');
+    var btnConfirm = document.getElementById('btnRetroConfirmBatch');
+
+    var count = g_retroQueue.length;
+    if (totalLbl) totalLbl.textContent = count;
+    if (confirmCountLbl) confirmCountLbl.textContent = count;
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    var bBtn = document.getElementById('retroSubTab_batch_btn');
+    if (bBtn && count > 0) {
+      bBtn.style.display = 'inline-flex';
+    }
+    if (btnConfirm) {
+      btnConfirm.disabled = (count === 0);
+      btnConfirm.style.opacity = count === 0 ? '0.5' : '1';
+    }
+
+    if (!tbody) return;
+
+    if (count === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align:center; color:var(--text-muted); padding:30px;">
+            ยังไม่มีรายการในคิว กดเลือกแท็บ "บันทึกรายบุคคล" แล้วคลิกปุ่ม "เพิ่มเข้าคิวแบบกลุ่ม"
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < g_retroQueue.length; i++) {
+      var item = g_retroQueue[i];
+      var dateRange = (item.startDate === item.endDate)
+        ? item.startDate
+        : (item.startDate + ' ถึง ' + item.endDate);
+
+      var durDisplay = (item.leaveType && item.leaveType.indexOf('3 ชม.') !== -1)
+        ? (item.totalHours + ' ชม.')
+        : (item.totalDays + ' วัน');
+
+      var modeBadge = (item.approvalMode === 'AUTO_APPROVE')
+        ? '<span class="perm-badge perm-admin" style="font-size:11px;">อนุมัติทันที</span>'
+        : '<span class="perm-badge perm-user-cls" style="font-size:11px;">ส่งตามขั้นตอน</span>';
+
+      html += `
+        <tr>
+          <td style="text-align:center; color:var(--text-muted); font-size:12px;">${i + 1}</td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold; color:#fff;">
+            ${escapeHtml(item.fullName)}
+            <div style="font-size:11px; color:var(--text-muted); font-weight:normal;">รหัส: ${escapeHtml(item.empId)}</div>
+          </td>
+          <td><span style="color:var(--steam-cyan); font-weight:bold;">${escapeHtml(item.leaveType)}</span></td>
+          <td style="font-size:12px;">${escapeHtml(dateRange)}</td>
+          <td style="text-align:center; font-weight:bold; color:var(--steam-green);">${durDisplay}</td>
+          <td style="text-align:center;">${modeBadge}</td>
+          <td style="text-align:left; padding-left:8px; font-size:12px; color:#d0d7de;">
+            <div>${escapeHtml(item.retroReason)}</div>
+            <div style="font-size:11px; color:var(--text-muted);">สาเหตุ: ${escapeHtml(item.reason)}</div>
+          </td>
+          <td style="text-align:center;">
+            <button type="button" class="btn-save-sm btn-del-sm" onclick="MOD_RetroLeave_removeFromQueue(${i})" title="ลบออกจากคิว" style="padding:4px 8px;">
+              ${RETRO_ICO.trash}
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  /**
+   * ยืนยันบันทึกรายการในคิวแบบกลุ่มทั้งหมดลงฐานข้อมูล
+   */
+  function MOD_RetroLeave_submitBatchQueue() {
+    if (g_retroQueue.length === 0) {
+      steamAlert('Queue is empty. Please add items before submitting.', 'Queue Empty');
+      return;
+    }
+
+    var confirmFn = (typeof steamConfirm === 'function') ? steamConfirm : function(msg, ok) { if (confirm(msg)) ok(); };
+    var count = g_retroQueue.length;
+
+    confirmFn('ยืนยันการบันทึกรายการลาย้อนหลังทั้งหมด ' + count + ' รายการลงฐานข้อมูลใช่หรือไม่?', function() {
+      var btnConfirm = document.getElementById('btnRetroConfirmBatch');
+      if (btnConfirm) {
+        btnConfirm.disabled = true;
+        btnConfirm.innerHTML = '<span>กำลังบันทึกข้อมูลแบบ Batch...</span>';
+      }
+      if (typeof startLoadingBar === 'function') startLoadingBar();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.innerHTML = '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>ยืนยันบันทึกทั้งหมดลงฐานข้อมูล (' + g_retroQueue.length + ')</span>';
+          }
+          if (typeof stopLoadingBar === 'function') stopLoadingBar();
+
+          if (res && res.status === 'success') {
+            steamAlert('All retroactive records saved successfully (' + (res.savedCount || count) + ' records).', 'Success');
+
+            g_retroQueue = [];
+            _clearPersistedQueue();
+            MOD_RetroLeave_renderQueueTable();
+            MOD_RetroLeave_switchSubTab('single');
+
+            if (typeof refreshAllData === 'function') refreshAllData();
+            if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+              window.LeaveBus.emit('LEAVE_UPDATED', { type: 'RETRO_SAVED', timestamp: Date.now() });
+            }
+          } else {
+            var msg = (res && res.message) ? res.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูลแบบกลุ่ม';
+            steamAlert(msg, 'Error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.innerHTML = '<svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>ยืนยันบันทึกทั้งหมดลงฐานข้อมูล (' + g_retroQueue.length + ')</span>';
+          }
+          if (typeof stopLoadingBar === 'function') stopLoadingBar();
+          var errStr = String(err && err.message ? err.message : err);
+          steamAlert('An error occurred: ' + errStr, 'Error');
+        })
+        .MOD_RetroLeave_saveBatch(g_retroQueue, window.g_CurrentUser);
+    });
+  }
+
+  /**
+   * เรนเดอร์ตารางประวัติการลาย้อนหลัง (กรองเฉพาะรายการที่รหัสขึ้นต้นด้วย RETRO- หรือ Remark มี [บันทึกย้อนหลัง)
+   */
+  function MOD_RetroLeave_renderHistoryTable() {
+    var tbody = document.getElementById('retroHistoryTableBody');
+    var badge = document.getElementById('badgeRetroHistoryCount');
+    if (!tbody) return;
+
+    var logs = (Array.isArray(window.g_LeaveLogs) && window.g_LeaveLogs.length > 0)
+      ? window.g_LeaveLogs
+      : ((Array.isArray(window.g_ModLeaveLogs) && window.g_ModLeaveLogs.length > 0) ? window.g_ModLeaveLogs : []);
+
+    var retroLogs = logs.filter(function(l) {
+      if (!l) return false;
+      var lId = String(l.LeaveID || '');
+      var rem = String(l.Remark || '');
+      return (lId.indexOf('RETRO-') === 0 || rem.indexOf('[บันทึกย้อนหลัง') !== -1);
+    });
+
+    if (badge) badge.textContent = retroLogs.length;
+
+    var searchTxt = (document.getElementById('retroHistorySearch') ? document.getElementById('retroHistorySearch').value : '').trim().toLowerCase();
+    var filterStaff = document.getElementById('retroHistoryStaffFilter') ? document.getElementById('retroHistoryStaffFilter').value : 'ALL';
+
+    var filtered = retroLogs.filter(function(l) {
+      if (filterStaff !== 'ALL' && (l.EmpID !== filterStaff && l.id !== filterStaff)) {
+        return false;
+      }
+      if (!searchTxt) return true;
+      var matchId = String(l.LeaveID || '').toLowerCase().indexOf(searchTxt) !== -1;
+      var matchName = String(l.FullName || l.name || '').toLowerCase().indexOf(searchTxt) !== -1;
+      var matchReason = String(l.Reason || '').toLowerCase().indexOf(searchTxt) !== -1;
+      var matchRem = String(l.Remark || '').toLowerCase().indexOf(searchTxt) !== -1;
+      var matchType = String(l.LeaveType || '').toLowerCase().indexOf(searchTxt) !== -1;
+      return (matchId || matchName || matchReason || matchRem || matchType);
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; color:var(--text-muted); padding:30px;">
+            ${retroLogs.length === 0 ? 'ยังไม่พบประวัติการลาย้อนหลังในระบบ' : 'ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    var isAdm = (typeof isSuperuserOrAdmin === 'function' && isSuperuserOrAdmin(window.g_CurrentUser));
+    var curUserId = window.g_CurrentUser ? (window.g_CurrentUser.id || window.g_CurrentUser.EmpID) : '';
+
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var l = filtered[i];
+      var dateRange = (l.StartDate === l.EndDate || !l.EndDate)
+        ? (l.StartDate || '-')
+        : (l.StartDate + ' ถึง ' + l.EndDate);
+
+      var durDisplay = (l.LeaveType && String(l.LeaveType).indexOf('3 ชม.') !== -1)
+        ? ((parseFloat(l.TotalHours) || 0) + ' ชม.')
+        : ((parseFloat(l.TotalDays) || 0) + ' วัน');
+
+      var status = l.Status || 'รออนุมัติ';
+      var statusBadge = '';
+      if (status === 'อนุมัติแล้ว' || status === 'อนุมัติ') {
+        statusBadge = '<span class="status-badge badge-approved" style="font-size:11.5px;">อนุมัติแล้ว</span>';
+      } else if (status === 'ไม่อนุมัติ') {
+        statusBadge = '<span class="status-badge badge-rejected" style="font-size:11.5px;">ไม่อนุมัติ</span>';
+      } else {
+        statusBadge = '<span class="status-badge badge-pending" style="font-size:11.5px;">รออนุมัติ</span>';
+      }
+
+      var canDelete = isAdm || (curUserId && (l.EmpID === curUserId) && status === 'รออนุมัติ');
+
+      html += `
+        <tr>
+          <td style="font-family:monospace; font-size:12px; color:var(--steam-cyan); font-weight:bold;">
+            ${escapeHtml(l.LeaveID || '-')}
+          </td>
+          <td style="font-size:11.5px; color:var(--text-muted);">
+            ${escapeHtml((l.Timestamp || '').split(' ')[0] || '-')}
+          </td>
+          <td style="text-align:left; padding-left:10px; font-weight:bold; color:#fff;">
+            ${escapeHtml(l.FullName || '-')}
+            <div style="font-size:11px; color:var(--text-muted); font-weight:normal;">รหัส: ${escapeHtml(l.EmpID || '-')}</div>
+          </td>
+          <td>
+            <span style="font-weight:bold; color:var(--text-normal);">${escapeHtml(l.LeaveType || '-')}</span>
+          </td>
+          <td style="font-size:12px; color:#d0d7de;">${escapeHtml(dateRange)}</td>
+          <td style="text-align:center; font-weight:bold; color:var(--steam-green);">
+            ${durDisplay}
+          </td>
+          <td style="text-align:center;">${statusBadge}</td>
+          <td style="text-align:left; padding-left:8px; font-size:11.5px; color:#cbd5e1; max-width:200px; word-break:break-word;">
+            <div>${escapeHtml(l.Remark || '-')}</div>
+            <div style="font-size:10.5px; color:var(--text-muted);">เหตุผล: ${escapeHtml(l.Reason || '-')}</div>
+          </td>
+          <td style="text-align:center;">
+            <div style="display:inline-flex; gap:4px; align-items:center;">
+              <button type="button" class="btn-save-sm" onclick="if (typeof openPrintPreview === 'function') openPrintPreview('${escapeHtml(l.LeaveID)}');" title="พิมพ์ใบคำร้อง" style="padding:4px 6px;">
+                ${RETRO_ICO.print}
+              </button>
+              ${canDelete ? `
+                <button type="button" class="btn-save-sm btn-del-sm" onclick="if (typeof handleDeleteLeave === 'function') handleDeleteLeave('${escapeHtml(l.LeaveID)}');" title="ลบคำร้อง" style="padding:4px 6px;">
+                  ${RETRO_ICO.trash}
+                </button>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  // ผูกตัวฟัง Event Bus เพื่ออัปเดตตารางประวัติและรีโหลดรายชื่อบุคลากรทันทีที่มีการเปลี่ยนแปลงข้อมูลคำร้อง
+  if (window.LeaveBus && typeof window.LeaveBus.on === 'function') {
+    window.LeaveBus.on('LEAVE_UPDATED', function() {
+      var staffList = (Array.isArray(window.g_UsersSummary) && window.g_UsersSummary.length > 0)
+        ? window.g_UsersSummary
+        : ((Array.isArray(window.g_ModStaffList) && window.g_ModStaffList.length > 0) ? window.g_ModStaffList : []);
+      if (staffList.length > 0) {
+        _retroCachedStaffList = staffList;
+      }
+      MOD_RetroLeave_renderHistoryTable();
+      updateRetroLeavePolicyBanner();
+    });
+    window.LeaveBus.on('SYNC', function() {
+      var staffList = (Array.isArray(window.g_UsersSummary) && window.g_UsersSummary.length > 0)
+        ? window.g_UsersSummary
+        : ((Array.isArray(window.g_ModStaffList) && window.g_ModStaffList.length > 0) ? window.g_ModStaffList : []);
+      if (staffList.length > 0 && (!_retroCachedStaffList || _retroCachedStaffList.length === 0)) {
+        _retroCachedStaffList = staffList;
+        MOD_RetroLeave_initView();
+      }
+    });
+  }
+
+  // ส่งออกฟังก์ชันเข้า Global Scope เพื่อให้ View และ Core เรียกใช้งานได้
+  window.MOD_RetroLeave_initView = MOD_RetroLeave_initView;
+  window.toggleCustomRetroLeaveTypeMenu = toggleCustomRetroLeaveTypeMenu;
+  window.onSelectCustomRetroLeaveType = onSelectCustomRetroLeaveType;
+  window.setCustomRetroLeaveTypeValue = setCustomRetroLeaveTypeValue;
+  window.initCustomRetroLeaveTypeDropdown = initCustomRetroLeaveTypeDropdown;
+  window.initCustomRetroSubstituteDropdown = initCustomRetroSubstituteDropdown;
+  window.toggleCustomRetroSubTeacherMenu = toggleCustomRetroSubTeacherMenu;
+  window.onSelectCustomRetroSubTeacher = onSelectCustomRetroSubTeacher;
+  window.MOD_RetroLeave_switchSubTab = MOD_RetroLeave_switchSubTab;
+  window.MOD_RetroLeave_onStaffChange = MOD_RetroLeave_onStaffChange;
+  window.MOD_RetroLeave_onLeaveTypeChange = MOD_RetroLeave_onLeaveTypeChange;
+  window.MOD_RetroLeave_calcPermitHours = MOD_RetroLeave_calcPermitHours;
+  window.MOD_RetroLeave_onDateChange = MOD_RetroLeave_onDateChange;
+  window.MOD_RetroLeave_submitSingle = MOD_RetroLeave_submitSingle;
+  window.MOD_RetroLeave_addToQueue = MOD_RetroLeave_addToQueue;
+  window.MOD_RetroLeave_removeFromQueue = MOD_RetroLeave_removeFromQueue;
+  window.MOD_RetroLeave_clearQueue = MOD_RetroLeave_clearQueue;
+  window.MOD_RetroLeave_renderQueueTable = MOD_RetroLeave_renderQueueTable;
+  window.MOD_RetroLeave_submitBatchQueue = MOD_RetroLeave_submitBatchQueue;
+  window.MOD_RetroLeave_renderHistoryTable = MOD_RetroLeave_renderHistoryTable;
+  window.updateRetroLeavePolicyBanner = updateRetroLeavePolicyBanner;
+
+})();
+</script>

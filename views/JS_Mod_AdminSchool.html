@@ -1,0 +1,635 @@
+<script>
+  // =========================================================
+  // MODULE: ADMIN SCHOOL & FISCAL (School Profile, Fiscal Year, Active Classes, GPS, Logo, Delegation)
+  // =========================================================
+  var currentLogoFile = null;
+  var currentLogoBase64Full = "";
+
+  // Bridge Helpers for Modals and Notifications
+  function showSteamConfirm(msg, callback) {
+    if (typeof steamConfirm === 'function') {
+      steamConfirm(msg, callback);
+    } else if (typeof window.confirm === 'function' && window.confirm(msg)) {
+      callback();
+    }
+  }
+
+  function showSteamAlert(msg, title) {
+    if (typeof steamAlert === 'function') {
+      steamAlert(msg, title || 'Notice');
+    } else {
+      alert(msg);
+    }
+  }
+
+  function showGlobalLoading(show, title) {
+    if (show) {
+      if (typeof startLoadingBar === 'function') startLoadingBar(title || 'กำลังประมวลผล...');
+    } else {
+      if (typeof stopLoadingBar === 'function') stopLoadingBar();
+    }
+  }
+
+  // =========================================================
+  // FISCAL YEAR MANAGEMENT ENGINE (Tab 3)
+  // =========================================================
+
+  function renderFiscalYearManagementTab() {
+    var banner = document.getElementById('adm_fiscalActiveBanner');
+    var yearSel = document.getElementById('adm_fiscalYearSelect');
+
+    if (!g_AdminFiscalData || !g_AdminFiscalData.active) {
+      if (banner) banner.innerHTML = '<span style="color:var(--text-muted);">กำลังเชื่อมต่อข้อมูลรอบเวลาสถานศึกษา...</span>';
+      return;
+    }
+
+    var act = g_AdminFiscalData.active;
+    var autoFY = g_AdminFiscalData.autoDetected || act;
+    var years = g_AdminFiscalData.years || [act.yearBE || '2570'];
+
+    // 1. Render Active Banner & Live Quota Sync Box
+    if (banner) {
+      var prevBE = parseInt(act.yearBE || '2570', 10) - 1;
+      var yBE = parseInt(act.yearBE || '2570', 10);
+      var modeTxt = (act.ActivePeriodMode === 'PERIOD_1')
+        ? ('รอบที่ 1 (1 ต.ค. ' + prevBE + ' – 31 มี.ค. ' + yBE + ')')
+        : ((act.ActivePeriodMode === 'PERIOD_2') ? ('รอบที่ 2 (1 เม.ย. ' + yBE + ' – 30 ก.ย. ' + yBE + ')') : 'ทั้งปีงบประมาณ');
+      var rangeSpanTxt = (act.ActivePeriodMode === 'PERIOD_1')
+        ? (act.period1Label || ('1 ต.ค. ' + prevBE + ' – 31 มี.ค. ' + yBE))
+        : ((act.ActivePeriodMode === 'PERIOD_2') ? (act.period2Label || ('1 เม.ย. ' + yBE + ' – 30 ก.ย. ' + yBE)) : (act.fullPeriodLabel || ('1 ต.ค. ' + prevBE + ' – 30 ก.ย. ' + yBE)));
+
+      banner.innerHTML = `
+        <div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="background:var(--steam-green); color:#000; font-weight:bold; font-size:13px; padding:3px 12px; border-radius:12px; display:inline-flex; align-items:center; gap:6px;">
+              ${ADM_SVG.check}<span>ปีงบประมาณ ${escapeHtml(act.yearBE || act.FiscalYear)} (ACTIVE)</span>
+            </span>
+            <span style="background:rgba(102,192,244,0.15); border:1px solid var(--steam-cyan); color:var(--steam-cyan); font-weight:bold; font-size:12.5px; padding:3px 10px; border-radius:12px;">
+              ${escapeHtml(modeTxt)}
+            </span>
+            <span style="background:rgba(210,153,34,0.18); border:1px solid var(--steam-orange); color:var(--steam-orange); font-size:11.5px; padding:2px 8px; border-radius:10px;">
+              ระบบคำนวณอัตโนมัติตามวันเวลาจริง
+            </span>
+          </div>
+          <div style="font-size:13.5px; color:#fff; font-weight:600; margin-top:8px;">
+            กรอบเวลาปฏิบัติงาน: <span style="color:var(--steam-cyan);">${escapeHtml(rangeSpanTxt)}</span>
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:3px;">
+            ช่วงที่ 1: ${escapeHtml(act.Period1_Start || '-')} ถึง ${escapeHtml(act.Period1_End || '-')} • ช่วงที่ 2: ${escapeHtml(act.Period2_Start || '-')} ถึง ${escapeHtml(act.Period2_End || '-')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. Populate Dropdown Years
+    if (yearSel) {
+      yearSel.innerHTML = '';
+      var curSelectedYear = yearSel.value || act.yearBE || '2570';
+      var yearSet = {};
+      years.forEach(function(y) { if (y) yearSet[y] = true; });
+      if (act.yearBE) yearSet[act.yearBE] = true;
+      if (autoFY.yearBE) yearSet[autoFY.yearBE] = true;
+
+      var sortedY = Object.keys(yearSet).map(function(y) { return parseInt(y, 10); }).sort(function(a, b) { return b - a; });
+      sortedY.forEach(function(y) {
+        var opt = document.createElement('option');
+        opt.value = String(y);
+        opt.text = 'ปีงบประมาณ พ.ศ. ' + y;
+        if (String(y) === String(curSelectedYear)) {
+          opt.selected = true;
+        }
+        yearSel.appendChild(opt);
+      });
+      onAdminFiscalYearChange(true);
+    }
+
+    // 3. Render Fiscal Years Management Table
+    renderFiscalYearsManagementTable();
+  }
+
+  function renderFiscalYearsManagementTable() {
+    var tbody = document.getElementById('adm_fiscalYearsTableBody');
+    if (!tbody || !g_AdminFiscalData) return;
+
+    var list = g_AdminFiscalData.list || [];
+    var act = g_AdminFiscalData.active || {};
+
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">ไม่พบข้อมูลปีงบประมาณ</td></tr>';
+      return;
+    }
+
+    // เรียงจากปีมากไปหาน้อย
+    var sorted = list.slice().sort(function(a, b) {
+      return parseInt(b.yearBE, 10) - parseInt(a.yearBE, 10);
+    });
+
+    var rowsHtml = '';
+    sorted.forEach(function(item) {
+      var isAct = String(item.Status).toLowerCase() === 'active' || String(item.yearBE) === String(act.yearBE);
+      var statusBadge = isAct
+        ? '<span style="background:var(--steam-green); color:#000; font-weight:bold; font-size:11px; padding:2px 8px; border-radius:10px; display:inline-block;">ACTIVE</span>'
+        : '<span style="background:rgba(255,255,255,0.08); color:var(--text-muted); font-size:11px; padding:2px 8px; border-radius:10px; display:inline-block;">Inactive</span>';
+
+      var actionBtn = '';
+      if (isAct) {
+        // เครื่องหมายถูก ครอบด้วยวงกลม สะท้อนแสง สไตล์ Google (ดำเนินการอยู่)
+        actionBtn = `
+          <button type="button" class="btn-circle-status active" title="ดำเนินการอยู่ (ปีหลักของระบบ)">
+            <svg style="width:15px; height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        `;
+      } else {
+        // เครื่องหมายผิด (X) ครอบด้วยวงกลม สะท้อนแสง สไตล์ Google (ไม่ได้ดำเนินการ / คลิกเพื่อเปิดใช้งาน)
+        actionBtn = `
+          <button type="button" class="btn-circle-status inactive" onclick="handleSetActiveFiscalYearDirect('${item.yearBE}')" title="ไม่ได้ดำเนินการ (คลิกเพื่อเปิดใช้งานปีงบประมาณ ${item.yearBE})">
+            <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        `;
+      }
+
+      var deleteBtn = '';
+      if (sorted.length > 1) {
+        deleteBtn = `
+          <button type="button" class="btn-circle-status delete" onclick="handleDeleteFiscalYear('${item.yearBE}')" title="ลบปีงบประมาณ ${item.yearBE}">
+            <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        `;
+      } else {
+        deleteBtn = `
+          <button type="button" class="btn-circle-status delete" disabled title="ไม่สามารถลบได้ เนื่องจากเป็นปีเดียวที่เหลืออยู่ในระบบ">
+            <svg style="width:13px; height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        `;
+      }
+
+      var actions = `
+        <div style="display:inline-flex; align-items:center; justify-content:center; gap:12px;">
+          ${actionBtn}
+          ${deleteBtn}
+        </div>
+      `;
+
+      rowsHtml += `
+        <tr style="border-bottom:1px solid rgba(42,71,94,0.4);">
+          <td style="font-weight:bold; color:#fff;">${escapeHtml(item.yearBE)}</td>
+          <td style="font-size:12px; color:var(--text-muted);">${escapeHtml(item.period1Label || '-')}</td>
+          <td style="font-size:12px; color:var(--text-muted);">${escapeHtml(item.period2Label || '-')}</td>
+          <td style="text-align:center;">${statusBadge}</td>
+          <td style="text-align:center;">${actions}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = rowsHtml;
+  }
+
+  function handleAddNewFiscalYear() {
+    var input = document.getElementById('adm_newFiscalYearInput');
+    if (!input) return;
+    var val = parseInt(String(input.value || '').trim(), 10);
+    if (!val || val < 2500 || val > 2650) {
+      showSteamAlert('Please enter a valid Buddhist calendar fiscal year (e.g. 2571).', 'Invalid Year');
+      return;
+    }
+
+    showSteamConfirm('Are you sure you want to add fiscal year ' + val + ' to the database?', function() {
+      showGlobalLoading(true, 'กำลังสร้างข้อมูลปีงบประมาณ ' + val + '...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          showGlobalLoading(false);
+          if (res && res.status === 'success') {
+            input.value = '';
+            g_AdminFiscalData = res.fiscalData;
+            renderFiscalYearManagementTab();
+            showSteamAlert(res.message || 'Fiscal year added successfully.', 'Success');
+            if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+              window.LeaveBus.emit('LEAVE_UPDATED', { type: 'FISCAL_YEAR_ADDED' });
+            }
+          } else {
+            showSteamAlert('An error occurred: ' + (res ? res.message : 'Unknown error'), 'Error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          showGlobalLoading(false);
+          showSteamAlert('Connection error: ' + err.message, 'Connection Error');
+        })
+        .addNewFiscalYear(val);
+    });
+  }
+
+  function handleDeleteFiscalYear(yearBE) {
+    if (!yearBE) return;
+    var list = (g_AdminFiscalData && g_AdminFiscalData.list) ? g_AdminFiscalData.list : [];
+    if (list.length <= 1) {
+      showSteamAlert('Cannot delete fiscal year ' + yearBE + ' because it is the only remaining fiscal year in the system.', 'Action Denied');
+      return;
+    }
+    showSteamConfirm('Are you sure you want to delete fiscal year ' + yearBE + ' from the system?\n(If active, the system will switch to another available fiscal year automatically.)', function() {
+      showGlobalLoading(true, 'กำลังลบปีงบประมาณ ' + yearBE + '...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          showGlobalLoading(false);
+          if (res && res.status === 'success') {
+            g_AdminFiscalData = res.fiscalData;
+            renderFiscalYearManagementTab();
+            showSteamAlert(res.message || 'Fiscal year deleted successfully.', 'Success');
+            if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+              window.LeaveBus.emit('LEAVE_UPDATED', { type: 'FISCAL_YEAR_DELETED' });
+            }
+          } else {
+            showSteamAlert('An error occurred: ' + (res ? res.message : 'Unknown error'), 'Error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          showGlobalLoading(false);
+          showSteamAlert('Connection error: ' + err.message, 'Connection Error');
+        })
+        .deleteFiscalYear(yearBE);
+    });
+  }
+
+  // Export fiscal functions to global window scope
+  window.handleAddNewFiscalYear = handleAddNewFiscalYear;
+  window.handleDeleteFiscalYear = handleDeleteFiscalYear;
+  window.handleSetActiveFiscalYearDirect = handleSetActiveFiscalYearDirect;
+  window.handleSaveActiveFiscalConfig = handleSaveActiveFiscalConfig;
+  window.handleSyncLeaveQuotaNow = handleSyncLeaveQuotaNow;
+  window.renderFiscalYearManagementTab = renderFiscalYearManagementTab;
+
+  function handleSetActiveFiscalYearDirect(yearBE) {
+    if (!yearBE) return;
+    var yearSel = document.getElementById('adm_fiscalYearSelect');
+    if (yearSel) {
+      yearSel.value = String(yearBE);
+      onAdminFiscalYearChange(true);
+      handleSaveActiveFiscalConfig();
+    }
+  }
+
+  function handleSyncLeaveQuotaNow() {
+    var act = g_AdminFiscalData ? g_AdminFiscalData.active : null;
+    var yBE = act ? (act.yearBE || act.FiscalYear) : '2570';
+
+    showGlobalLoading(true, 'กำลังคำนวณและซิงค์โควตาวันลาปีงบประมาณ ' + yBE + '...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        showGlobalLoading(false);
+        if (res && res.status === 'success') {
+          var elTxt = document.getElementById('adm_quotaStatusText');
+          if (elTxt) {
+            elTxt.textContent = 'ซิงค์สำเร็จ (' + res.syncedCount + ' คน) ' + (res.timestamp || '');
+            elTxt.style.color = 'var(--steam-green)';
+          }
+          showSteamAlert(res.message || 'Leave quotas synchronized successfully.', 'Success');
+        } else {
+          showSteamAlert('An error occurred: ' + (res ? res.message : 'Unknown error'), 'Error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showGlobalLoading(false);
+        showSteamAlert('Error synchronizing leave quotas: ' + err.message, 'Sync Error');
+      })
+      .reconcileAndSyncLeaveQuota(yBE);
+  }
+
+  function onAdminFiscalYearChange(keepSelectedMode) {
+    var yearSel = document.getElementById('adm_fiscalYearSelect');
+    var periodSel = document.getElementById('adm_fiscalPeriodSelect');
+    if (!yearSel || !periodSel) return;
+
+    var yBE = parseInt(yearSel.value, 10) || 2570;
+    var prevBE = yBE - 1;
+
+    var curMode = periodSel.value || 'PERIOD_1';
+    periodSel.innerHTML = `
+      <option value="PERIOD_1">รอบที่ 1 (1 ต.ค. ${prevBE} – 31 มี.ค. ${yBE})</option>
+      <option value="PERIOD_2">รอบที่ 2 (1 เม.ย. ${yBE} – 30 ก.ย. ${yBE})</option>
+      <option value="FULL">ทั้งปีงบประมาณ ${yBE} (1 ต.ค. ${prevBE} – 30 ก.ย. ${yBE})</option>
+    `;
+
+    if (keepSelectedMode && (curMode === 'PERIOD_2' || curMode === 'FULL')) {
+      periodSel.value = curMode;
+    } else {
+      periodSel.value = 'PERIOD_1';
+    }
+
+    onAdminFiscalPeriodChange();
+  }
+
+  function onAdminFiscalPeriodChange() {
+    var hint = document.getElementById('adm_fiscalPeriodPreviewHint');
+    var yearSel = document.getElementById('adm_fiscalYearSelect');
+    var periodSel = document.getElementById('adm_fiscalPeriodSelect');
+    if (!hint || !yearSel || !periodSel) return;
+
+    var yBE = yearSel.value;
+    var prevBE = parseInt(yBE, 10) - 1;
+    var mode = periodSel.value;
+    var desc = '';
+
+    if (mode === 'PERIOD_1') {
+      desc = 'รอบการประเมินที่ 1: ตั้งแต่วันที่ 1 ตุลาคม พ.ศ. ' + prevBE + ' ถึง 31 มีนาคม พ.ศ. ' + yBE;
+    } else if (mode === 'PERIOD_2') {
+      desc = 'รอบการประเมินที่ 2: ตั้งแต่วันที่ 1 เมษายน พ.ศ. ' + yBE + ' ถึง 30 กันยายน พ.ศ. ' + yBE;
+    } else {
+      desc = 'ทั้งปีงบประมาณ: ตั้งแต่วันที่ 1 ตุลาคม พ.ศ. ' + prevBE + ' ถึง 30 กันยายน พ.ศ. ' + yBE;
+    }
+
+    hint.innerHTML = ADM_SVG.info + '<span>' + escapeHtml(desc) + '</span>';
+  }
+
+  function handleSaveActiveFiscalConfig() {
+    var yearSel = document.getElementById('adm_fiscalYearSelect');
+    var periodSel = document.getElementById('adm_fiscalPeriodSelect');
+    if (!yearSel || !periodSel) return;
+
+    var yBE = yearSel.value;
+    var pMode = periodSel.value;
+
+    showGlobalLoading(true, 'กำลังบันทึกการตั้งค่าปีงบประมาณ ' + yBE + '...');
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        showGlobalLoading(false);
+        if (res && res.status === 'success') {
+          g_AdminFiscalData = res.fiscalData;
+          if (res.schoolInfo) g_SchoolInfo = res.schoolInfo;
+          renderFiscalYearManagementTab();
+          showSteamAlert(res.message || 'Evaluation periods saved successfully.', 'Success');
+          if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+            window.LeaveBus.emit('LEAVE_UPDATED', { type: 'FISCAL_CONFIG_SAVED' });
+          }
+        } else {
+          showSteamAlert('An error occurred: ' + (res ? res.message : 'Unknown error'), 'Error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showGlobalLoading(false);
+        showSteamAlert('Server connection error: ' + err.message, 'Connection Error');
+      })
+      .saveActiveFiscalConfig(yBE, pMode);
+  }
+
+  function renderFiscalYearAdminPanel() {
+    renderFiscalYearManagementTab();
+  }
+
+  // =========================================================
+  function toggleClassConfigPanel() {
+    let body = document.getElementById('activeClassConfigBody');
+    let btn = document.getElementById('btnToggleClassConfigBox');
+    if (!body) return;
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      if (btn) btn.innerHTML = `${ADM_SVG.chevUp}<span>ซ่อนแผงเลือกชั้นเรียน</span>`;
+      renderActiveClassPills();
+    } else {
+      body.style.display = 'none';
+      if (btn) btn.innerHTML = `${ADM_SVG.chevDown}<span>เลือกเปิด-ปิดชั้นเรียน</span>`;
+    }
+  }
+
+  function renderActiveClassPills() {
+    let container = document.getElementById('activeClassPillsContainer');
+    let badge = document.getElementById('activeClassCountBadge');
+    if (badge) {
+      badge.innerHTML = `${ADM_SVG.check}<span>เปิดสอน ${g_ActiveClasses.length} ชั้นเรียน</span>`;
+    }
+    if (!container) return;
+
+    container.innerHTML = ALL_CLASS_GROUPS_MASTER.map(g => {
+      let pills = g.classes.map(cName => {
+        let isOn = g_ActiveClasses.includes(cName);
+        return `
+        <div class="cls-toggle-pill ${isOn ? 'active' : ''}" onclick="toggleActiveClassPill('${cName}')">
+          ${isOn ? ADM_SVG.check : ADM_SVG.circleOff}&nbsp;<span>${cName}</span>
+        </div>`;
+      }).join('');
+
+      let allInGrpOn = g.classes.every(c => g_ActiveClasses.includes(c));
+      return `
+      <div class="cls-config-row">
+        <div style="color:var(--orange); font-weight:bold; font-size:13px;">ระดับ${g.group}</div>
+        <div class="cls-pills-grid">${pills}</div>
+        <div style="text-align:right;">
+          <button type="button" class="btn-save-sm" style="width:100%; padding:5px 8px; font-size:11.5px; display:inline-flex; align-items:center; justify-content:center; gap:10px;" onclick="toggleWholeClassGroup('${g.group}')">
+            ${allInGrpOn ? ADM_SVG.circleOff : ADM_SVG.check}<span>${allInGrpOn ? 'ปิดทั้งระดับ' : 'เปิดทั้งระดับ'}</span>
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleActiveClassPill(className) {
+    let pos = g_ActiveClasses.indexOf(className);
+    if (pos === -1) {
+      g_ActiveClasses.push(className);
+    } else {
+      if (g_ActiveClasses.length <= 1) {
+        steamAlert('Please complete all required fields.', 'Missing Information');
+        return;
+      }
+      g_ActiveClasses.splice(pos, 1);
+    }
+    g_ActiveClasses = ALL_ORDERED_CLASSES_MASTER.filter(c => g_ActiveClasses.includes(c));
+    renderActiveClassPills();
+    let saveBtn = document.getElementById('btnSaveActiveClasses');
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  function toggleWholeClassGroup(groupName) {
+    let grpObj = ALL_CLASS_GROUPS_MASTER.find(g => g.group === groupName);
+    if (!grpObj) return;
+    let allOn = grpObj.classes.every(c => g_ActiveClasses.includes(c));
+    if (allOn) {
+      let remaining = g_ActiveClasses.filter(c => !grpObj.classes.includes(c));
+      if (remaining.length === 0) {
+        steamAlert('Please complete all required fields.', 'Missing Information');
+        return;
+      }
+      g_ActiveClasses = remaining;
+    } else {
+      grpObj.classes.forEach(c => {
+        if (!g_ActiveClasses.includes(c)) g_ActiveClasses.push(c);
+      });
+    }
+    g_ActiveClasses = ALL_ORDERED_CLASSES_MASTER.filter(c => g_ActiveClasses.includes(c));
+    renderActiveClassPills();
+    let saveBtn = document.getElementById('btnSaveActiveClasses');
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  function saveActiveClassesConfig() {
+    startLoadingBar('Saving School Details...');
+    google.script.run
+      .withSuccessHandler(res => {
+        g_ActiveClasses = res.activeClasses || g_ActiveClasses;
+        let saveBtn = document.getElementById('btnSaveActiveClasses');
+        if (saveBtn) saveBtn.style.display = 'none';
+        renderActiveClassPills();
+        stopLoadingBar(() => steamAlert(res.message));
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .saveAdminActiveClasses(g_ActiveClasses);
+  }
+
+
+  function loadAdminDelegationDropdowns() {
+    let sel1 = document.getElementById('adminSettingDep1');
+    let sel2 = document.getElementById('adminSettingDep2');
+    if (!sel1 || !sel2) return;
+
+    // กรองเฉพาะรองผู้อำนวยการ หรือข้าราชการครู ตาม พ.ร.บ.ระเบียบบริหารราชการ ศธ. พ.ศ. 2546 มาตรา 44
+    let eligibleTeachers = (g_AdminTeachers || []).filter(t => {
+      if (!t) return false;
+      let eType = String(t.EmpType || t.empType || '').trim();
+      let pos = String(t.Position || t.role || t.Role || '').trim();
+      let isCivilServant = (eType.indexOf('ข้าราชการ') !== -1);
+      let isTeacherOrDeputy = (
+        pos.indexOf('รองผู้อำนวยการ') !== -1 ||
+        pos === 'ครู' ||
+        pos === 'ครูผู้ช่วย' ||
+        pos === 'ครูชำนาญการ' ||
+        pos === 'ครูชำนาญการพิเศษ' ||
+        pos === 'ครูเชี่ยวชาญ' ||
+        pos === 'ครูเชี่ยวชาญพิเศษ'
+      );
+      let isDirector = (pos.indexOf('ผู้อำนวยการสถานศึกษา') !== -1 && pos.indexOf('รอง') === -1);
+      return !isDirector && (isCivilServant || isTeacherOrDeputy);
+    });
+
+    let options = '<option value="">-- เลือกผู้รักษาราชการแทน (เฉพาะข้าราชการครู) --</option>' + eligibleTeachers.map(t => '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + ' (' + escapeHtml(t.role || 'ข้าราชการครู') + ')</option>').join('');
+    sel1.innerHTML = options;
+    sel2.innerHTML = options;
+    sel1.value = g_SchoolInfo.deputy1 || localStorage.getItem('steam_dep1') || '';
+    sel2.value = g_SchoolInfo.deputy2 || localStorage.getItem('steam_dep2') || '';
+  }
+
+  function saveAdminDelegation() {
+    const d1 = document.getElementById('adminSettingDep1').value;
+    const d2 = document.getElementById('adminSettingDep2').value;
+    localStorage.setItem('steam_dep1', d1);
+    localStorage.setItem('steam_dep2', d2);
+    startLoadingBar('Saving Acting Assignment...');
+    google.script.run
+      .withSuccessHandler(res => stopLoadingBar(() => steamAlert('Authorized signatory updated.', 'Updated')))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .School_saveInfo({ deputy1: d1, deputy2: d2 });
+  }
+
+  function getLocationGPS() {
+    const status = document.getElementById('gpsStatus');
+    if (!status) return;
+    status.innerText = "กำลังค้นหาตำแหน่งจากพิกัดดาวเทียม GPS...";
+    status.style.color = "var(--steam-cyan)";
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(position => {
+        document.getElementById('sch_lat').value = position.coords.latitude.toFixed(6);
+        document.getElementById('sch_lng').value = position.coords.longitude.toFixed(6);
+        status.innerText = "ดึงพิกัดสำเร็จ! กดปุ่ม 'บันทึกข้อมูลสถานศึกษา' ด้านบนเพื่อยืนยัน";
+        status.style.color = "var(--steam-green)";
+      }, err => {
+        status.innerText = "ไม่สามารถดึงตำแหน่งได้ กรุณาอนุญาตสิทธิ์การเข้าถึงตำแหน่งบนเบราว์เซอร์";
+        status.style.color = "var(--red)";
+      });
+    } else {
+      status.innerText = "เบราว์เซอร์ไม่รองรับ GPS";
+      status.style.color = "var(--red)";
+    }
+  }
+
+  function previewLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    currentLogoFile = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 240;
+        let width = img.width, height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+        } else {
+          if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        currentLogoBase64Full = canvas.toDataURL(file.type);
+        const prev = document.getElementById('logoPreview');
+        prev.src = currentLogoBase64Full;
+        prev.style.display = 'block';
+        document.getElementById('logoPlaceholder').style.display = 'none';
+        document.getElementById('btnUploadLogo').disabled = false;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function uploadLogo() {
+    if (!currentLogoBase64Full) return;
+    document.getElementById('btnUploadLogo').disabled = true;
+    startLoadingBar('Uploading School Logo...');
+    google.script.run
+      .withSuccessHandler(res => {
+        g_SchoolLogoBase64 = currentLogoBase64Full;
+        stopLoadingBar(() => steamAlert(res.message));
+      })
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .uploadSchoolLogo(currentLogoFile ? currentLogoFile.name : 'logo.png', 'image/png', currentLogoBase64Full);
+  }
+
+  function saveSchoolData() {
+    const payload = {
+      schoolName: document.getElementById('sch_schoolName').value,
+      affiliation: document.getElementById('sch_affiliation').value,
+      schoolCode10: document.getElementById('sch_schoolCode10').value,
+      schoolCode8: document.getElementById('sch_schoolCode8').value,
+      systemName: 'ManStat',
+      directorName: document.getElementById('sch_directorName').value,
+      directorPosition: document.getElementById('sch_directorPosition').value,
+      contactPhone: document.getElementById('sch_contactPhone').value,
+      contactEmail: document.getElementById('sch_contactEmail').value,
+      address: document.getElementById('sch_address').value,
+      lat: document.getElementById('sch_lat').value,
+      lng: document.getElementById('sch_lng').value
+    };
+    startLoadingBar('Saving School Details...');
+    google.script.run
+      .withSuccessHandler(res => stopLoadingBar(() => {
+        steamAlert(res.message);
+        if (window.LeaveBus && typeof window.LeaveBus.emit === 'function') {
+          window.LeaveBus.emit('LEAVE_UPDATED', { type: 'SCHOOL_SAVED' });
+        }
+      }))
+      .withFailureHandler(err => stopLoadingBar(() => steamAlert('Something went wrong. Please try again.', 'System Error')))
+      .saveAdminSchoolInfo(payload);
+  }
+
+  function triggerDatabaseBackupNow() {
+    steamConfirm('Are you sure you want to create a database backup?', function() {
+      startLoadingBar('Creating Backup...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          stopLoadingBar(function() {
+            if (res && res.status === 'success') {
+              steamAlert('Backup created successfully.<br><br><a href="' + res.backupUrl + '" target="_blank" style="color:var(--steam-cyan); text-decoration:underline;">Open Google Drive Backup</a>', 'Success');
+            } else {
+              steamAlert('Something went wrong. Please try again.', 'System Error');
+            }
+          });
+        })
+        .withFailureHandler(function(err) {
+          stopLoadingBar(function() {
+            steamAlert('Something went wrong. Please try again.', 'System Error');
+          });
+        })
+        .createDatabaseBackupSnapshot();
+    });
+  }
+
+</script>
