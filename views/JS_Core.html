@@ -1368,9 +1368,11 @@ function formatSlashDateBE(dateStr) {
       }
     }
 
-    // Popover Full Name
+    // Popover Full Name & Dashboard Greeting
     const popFullName = document.getElementById('popUserFullName');
     if (popFullName) popFullName.innerText = fullName;
+    const dashGreeting = document.getElementById('dashGreetingName');
+    if (dashGreeting) dashGreeting.innerText = fullName;
 
     // Popover Subtitle (Email / EmpID)
     const popSub = document.getElementById('popUserSubEmail');
@@ -2106,4 +2108,28 @@ function formatSlashDateBE(dateStr) {
       })
       .getHomeBundle(savedEmail);
   }
+
+  // Quick Command Search Bar Handler (Linear / Modern Dashboard)
+  function handleTopCommandSearch(val) {
+    var searchInput = document.getElementById('searchStaffInput');
+    if (searchInput) {
+      searchInput.value = val;
+      if (typeof MOD_LeaveDashboard_renderList === 'function') {
+        MOD_LeaveDashboard_renderList();
+      }
+    }
+  }
+  window.handleTopCommandSearch = handleTopCommandSearch;
+
+  // Keyboard shortcut Ctrl+K / Cmd+K to focus search
+  window.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      var topSearch = document.getElementById('topCommandSearchInput');
+      if (topSearch) {
+        topSearch.focus();
+        topSearch.select();
+      }
+    }
+  });
   </script>
