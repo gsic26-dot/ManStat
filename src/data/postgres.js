@@ -300,6 +300,23 @@ async function initTables() {
       approved_year VARCHAR(50),
       timestamp TEXT
     );
+
+    ALTER TABLE school_info ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE fiscal_data ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE active_classes ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE leave_quota ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE leave_logs ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE board_members ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE school_board_staff_terms ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE board_meetings ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE staff_workloads ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE system_feedback ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE history_standing ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE history_education ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE history_licenses ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE history_scout ENABLE ROW LEVEL SECURITY;
   `;
 
   try {

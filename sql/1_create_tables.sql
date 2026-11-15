@@ -274,4 +274,68 @@ INSERT INTO active_classes (class_name) VALUES
 ('มัธยมศึกษาปีที่ 3')
 ON CONFLICT (class_name) DO NOTHING;
 
+-- =========================================================================
+-- ROW LEVEL SECURITY (RLS) & SECURITY POLICIES (Supabase Security Advisor 0 Issues)
+-- =========================================================================
+ALTER TABLE school_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fiscal_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE active_classes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leave_quota ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leave_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE board_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE school_board_staff_terms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE board_meetings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_workloads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE system_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history_standing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history_education ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history_licenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history_scout ENABLE ROW LEVEL SECURITY;
+
+-- 1. Full Access for backend (service_role)
+CREATE POLICY "service_role_all_school_info" ON school_info FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_fiscal_data" ON fiscal_data FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_active_classes" ON active_classes FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_teachers" ON teachers FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_leave_quota" ON leave_quota FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_leave_logs" ON leave_logs FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_holidays" ON holidays FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_board_members" ON board_members FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_school_board_staff_terms" ON school_board_staff_terms FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_board_meetings" ON board_meetings FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_staff_workloads" ON staff_workloads FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_system_feedback" ON system_feedback FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_history_standing" ON history_standing FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_history_education" ON history_education FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_history_licenses" ON history_licenses FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all_history_scout" ON history_scout FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- 2. Read Access for authenticated users
+CREATE POLICY "auth_read_school_info" ON school_info FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_fiscal_data" ON fiscal_data FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_active_classes" ON active_classes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_teachers" ON teachers FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_leave_quota" ON leave_quota FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_leave_logs" ON leave_logs FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_holidays" ON holidays FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_board_members" ON board_members FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_school_board_staff_terms" ON school_board_staff_terms FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_board_meetings" ON board_meetings FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_staff_workloads" ON staff_workloads FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_system_feedback" ON system_feedback FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_history_standing" ON history_standing FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_history_education" ON history_education FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_history_licenses" ON history_licenses FOR SELECT TO authenticated USING (true);
+CREATE POLICY "auth_read_history_scout" ON history_scout FOR SELECT TO authenticated USING (true);
+
+-- 3. Safe Public / Anon Read for non-sensitive public metadata
+CREATE POLICY "anon_read_school_info" ON school_info FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_read_fiscal_data" ON fiscal_data FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_read_active_classes" ON active_classes FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_read_holidays" ON holidays FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_read_board_members" ON board_members FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_read_board_meetings" ON board_meetings FOR SELECT TO anon USING (true);
+
 COMMIT;
