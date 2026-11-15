@@ -112,10 +112,6 @@ const handlers = {
     }
   },
 
-  getAdminBundle: async function(args) {
-    return await handlers.getAdminData(args);
-  },
-
   // 2. Authentication & IAM
   processLogin: async function(args) {
     return await handlers.Staff_login(args);
@@ -301,18 +297,23 @@ const handlers = {
   },
 
   updateAdminTeacherStatus: function(args) {
-    const email = String(args[0] || '').trim().toLowerCase();
-    const name = String(args[1] || '').trim().toLowerCase();
-    const newStatus = args[2] || 'ปกติ';
     const db = getDatabase();
+    let empIdOrEmail = String(args[0] || '').trim().toLowerCase();
+    let name = String(args[1] || '').trim().toLowerCase();
+    let newStatus = args[2] || args[1] || 'ปกติ';
 
-    const user = db.teachers.find(t => (t.email && t.email.toLowerCase() === email) || (t.name && t.name.toLowerCase() === name));
+    const user = db.teachers.find(t => 
+      (t.email && t.email.toLowerCase() === empIdOrEmail) ||
+      (t.id && t.id.toLowerCase() === empIdOrEmail) ||
+      (t.EmpID && String(t.EmpID).toLowerCase() === empIdOrEmail) ||
+      (t.name && t.name.toLowerCase() === name)
+    );
     if (user) {
       user.status = newStatus;
       saveDatabase();
-      return { success: true, message: 'อัปเดตสถานะเรียบร้อย' };
+      return { success: true, status: 'success', message: 'อัปเดตสถานะเรียบร้อย' };
     }
-    return { success: false, message: 'ไม่พบบุคลากรรายนี้' };
+    return { success: false, status: 'error', message: 'ไม่พบบุคลากรรายนี้' };
   },
 
   // 4. Leave Management
@@ -469,18 +470,6 @@ const handlers = {
       saveDatabase();
     }
     return { success: true, status: 'success', message: 'ลบปีงบประมาณเรียบร้อยแล้ว' };
-  },
-
-  updateAdminTeacherStatus: async function(args) {
-    const [empId, newStatus] = args;
-    const db = getDatabase();
-    const t = db.teachers.find(tch => (tch.id === empId || tch.EmpID === empId));
-    if (t) {
-      t.status = newStatus;
-      saveDatabase();
-      return { success: true, status: 'success', message: 'อัปเดตสถานะบุคลากรเรียบร้อยแล้ว' };
-    }
-    return { success: false, status: 'error', message: 'ไม่พบบุคลากร' };
   },
 
   isSuperuserOrAdmin: async function(args) {
