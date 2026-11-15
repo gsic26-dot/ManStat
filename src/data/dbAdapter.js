@@ -233,188 +233,192 @@ async function getMainBundle() {
 async function importFullDatabase(dump) {
   if (!dump) throw new Error('No import data provided');
 
-  // If Postgres is not active, write to fallback store
+  // Always update in-memory / local fallback store first for instant availability
+  const db = fallbackStore.getDatabase();
+  const teachersList = dump.usersSummary || dump.teachers || [];
+  const logsList = dump.logs || [];
+  if (Array.isArray(teachersList) && teachersList.length > 0) db.teachers = teachersList;
+  if (Array.isArray(logsList) && logsList.length > 0) db.logs = logsList;
+  if (dump.schoolInfo) db.schoolInfo = dump.schoolInfo;
+  if (dump.fiscalData) db.fiscalData = dump.fiscalData;
+  if (dump.workloads && Array.isArray(dump.workloads)) db.workloads = dump.workloads;
+  fallbackStore.saveDatabase();
+
+  let teacherCount = teachersList.length;
+  let logCount = logsList.length;
+
   if (!isPostgresActive()) {
-    const db = fallbackStore.getDatabase();
-    if (dump.usersSummary && Array.isArray(dump.usersSummary)) db.teachers = dump.usersSummary;
-    if (dump.logs && Array.isArray(dump.logs)) db.logs = dump.logs;
-    if (dump.schoolInfo) db.schoolInfo = dump.schoolInfo;
-    if (dump.fiscalData) db.fiscalData = dump.fiscalData;
-    if (dump.workloads && Array.isArray(dump.workloads)) db.workloads = dump.workloads;
-    fallbackStore.saveDatabase();
-    return { success: true, count: (dump.usersSummary || []).length, mode: 'store' };
+    return { success: true, teacherCount, logCount, mode: 'store' };
   }
 
-  await ensurePostgresReady();
+  try {
+    await ensurePostgresReady();
 
-  let teacherCount = 0;
-  let logCount = 0;
+    // 1. Import School Info
+    if (dump.schoolInfo) {
+      const s = dump.schoolInfo;
+      await query(`
+        INSERT INTO school_info (id, school_name, school_code10, school_code8, director_name, contact_phone, address, fiscal_year, logo_base64)
+        VALUES ('current', $1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (id) DO UPDATE SET
+          school_name = EXCLUDED.school_name,
+          school_code10 = EXCLUDED.school_code10,
+          school_code8 = EXCLUDED.school_code8,
+          director_name = EXCLUDED.director_name,
+          contact_phone = EXCLUDED.contact_phone,
+          address = EXCLUDED.address,
+          fiscal_year = EXCLUDED.fiscal_year,
+          logo_base64 = EXCLUDED.logo_base64,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        s.schoolName || 'โรงเรียนมโนธรรมวิทยาคาร',
+        s.schoolCode10 || '',
+        s.schoolCode8 || '',
+        s.directorName || '',
+        s.contactPhone || '',
+        s.address || '',
+        s.fiscalYear || '2570',
+        s.logoBase64 || ''
+      ]);
+    }
 
-  // 1. Import School Info
-  if (dump.schoolInfo) {
-    const s = dump.schoolInfo;
-    await query(`
-      INSERT INTO school_info (id, school_name, school_code10, school_code8, director_name, contact_phone, address, fiscal_year, logo_base64)
-      VALUES ('current', $1, $2, $3, $4, $5, $6, $7, $8)
-      ON CONFLICT (id) DO UPDATE SET
-        school_name = EXCLUDED.school_name,
-        school_code10 = EXCLUDED.school_code10,
-        school_code8 = EXCLUDED.school_code8,
-        director_name = EXCLUDED.director_name,
-        contact_phone = EXCLUDED.contact_phone,
-        address = EXCLUDED.address,
-        fiscal_year = EXCLUDED.fiscal_year,
-        logo_base64 = EXCLUDED.logo_base64,
-        updated_at = CURRENT_TIMESTAMP
-    `, [
-      s.schoolName || 'โรงเรียนมโนธรรมวิทยาคาร',
-      s.schoolCode10 || '',
-      s.schoolCode8 || '',
-      s.directorName || '',
-      s.contactPhone || '',
-      s.address || '',
-      s.fiscalYear || '2570',
-      s.logoBase64 || ''
-    ]);
+    // 2. Import Teachers into PostgreSQL
+    for (const t of teachersList) {
+      const teacherId = t.id || t.EmpID || t.Teacher_ID || ('TCH-' + Math.random().toString(36).substring(2, 7));
+      const meta = {
+        ActiveLicenses: t.ActiveLicenses || [],
+        StandingsHistory: t.StandingsHistory || [],
+        EducationsHistory: t.EducationsHistory || [],
+        ScoutsHistory: t.ScoutsHistory || [],
+        TimelineEvents: t.TimelineEvents || []
+      };
+
+      await query(`
+        INSERT INTO teachers (
+          id, emp_id, position_no, member_id, name, full_name, email, phone, class_level,
+          role, position, duty_day, password, is_password_hashed, access_level, status,
+          start_date, department, division, emp_type, id_card, id_card_masked,
+          sick_count, sick_days, sick_max, personal_count, personal_days, personal_max,
+          permit_count, permit_hours, meta_json
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          emp_id = EXCLUDED.emp_id,
+          position_no = EXCLUDED.position_no,
+          member_id = EXCLUDED.member_id,
+          name = EXCLUDED.name,
+          full_name = EXCLUDED.full_name,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone,
+          class_level = EXCLUDED.class_level,
+          role = EXCLUDED.role,
+          position = EXCLUDED.position,
+          duty_day = EXCLUDED.duty_day,
+          password = CASE WHEN EXCLUDED.password IS NOT NULL AND EXCLUDED.password != '' THEN EXCLUDED.password ELSE teachers.password END,
+          access_level = EXCLUDED.access_level,
+          status = EXCLUDED.status,
+          start_date = EXCLUDED.start_date,
+          department = EXCLUDED.department,
+          division = EXCLUDED.division,
+          emp_type = EXCLUDED.emp_type,
+          id_card = EXCLUDED.id_card,
+          id_card_masked = EXCLUDED.id_card_masked,
+          sick_count = EXCLUDED.sick_count,
+          sick_days = EXCLUDED.sick_days,
+          sick_max = EXCLUDED.sick_max,
+          personal_count = EXCLUDED.personal_count,
+          personal_days = EXCLUDED.personal_days,
+          personal_max = EXCLUDED.personal_max,
+          permit_count = EXCLUDED.permit_count,
+          permit_hours = EXCLUDED.permit_hours,
+          meta_json = EXCLUDED.meta_json,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        teacherId,
+        t.EmpID || t.id || teacherId,
+        t.positionNo || t.PositionNo || '',
+        t.memberId || t.MemberID || '',
+        t.name || t.FullName || '',
+        t.FullName || t.name || '',
+        t.email || '',
+        t.phone || '',
+        t.classLevel || '',
+        t.role || t.Position || '',
+        t.Position || t.role || '',
+        t.dutyDay || '',
+        t.password || '',
+        Boolean(t.isPasswordHashed),
+        t.accessLevel || 'User',
+        t.status || 'ปกติ',
+        t.startDate || '',
+        t.department || '',
+        t.division || '',
+        t.empType || '',
+        t.idCard || '',
+        t.IDCardMasked || '',
+        Number(t.SickCount || 0),
+        Number(t.SickDays || 0),
+        Number(t.SickMax || 60),
+        Number(t.PersonalCount || 0),
+        Number(t.PersonalDays || 0),
+        Number(t.PersonalMax || 45),
+        Number(t.PermitCount || 0),
+        Number(t.PermitHours || 0),
+        JSON.stringify(meta)
+      ]);
+    }
+
+    // 3. Import Leave Logs into PostgreSQL
+    for (const l of logsList) {
+      const leaveId = l.leaveId || l.LeaveID || ('LV-' + Date.now() + Math.random().toString(36).substring(2, 5));
+      await query(`
+        INSERT INTO leave_logs (
+          leave_id, emp_id, full_name, leave_type, start_date, end_date, start_time, end_time,
+          total_days, total_hours, reason, substitute_info, attach_url, status, step_hr,
+          step_academic, step_director, signer_name, form_meta_json, remark, timestamp
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+        )
+        ON CONFLICT (leave_id) DO UPDATE SET
+          status = EXCLUDED.status,
+          step_hr = EXCLUDED.step_hr,
+          step_academic = EXCLUDED.step_academic,
+          step_director = EXCLUDED.step_director,
+          signer_name = EXCLUDED.signer_name
+      `, [
+        leaveId,
+        l.empId || l.EmpID || '',
+        l.fullName || l.FullName || '',
+        l.leaveType || l.LeaveType || '',
+        l.startDate || l.StartDate || '',
+        l.endDate || l.EndDate || '',
+        l.startTime || l.StartTime || '-',
+        l.endTime || l.EndTime || '-',
+        Number(l.totalDays || l.TotalDays || 0),
+        Number(l.totalHours || l.TotalHours || 0),
+        l.reason || l.Reason || '',
+        l.substituteInfo || l.SubstituteInfo || '',
+        l.attachUrl || l.AttachUrl || '',
+        l.status || l.Status || 'อนุมัติ',
+        l.stepHr || l.Step1_HR || 'อนุมัติแล้ว',
+        l.stepAcademic || l.Step2_Academic || 'อนุมัติแล้ว',
+        l.stepDirector || l.Step3_Director || 'อนุมัติแล้ว',
+        l.signerName || l.SignerName || '',
+        l.formMetaJson || '',
+        l.remark || '',
+        l.timestamp || l.Timestamp || ''
+      ]);
+    }
+
+    return { success: true, teacherCount, logCount, mode: 'postgres' };
+  } catch (pgErr) {
+    console.warn('[dbAdapter Postgres Write Warning]', pgErr.message);
+    return { success: true, teacherCount, logCount, mode: 'store-fallback', notice: pgErr.message };
   }
-
-  // 2. Import Teachers
-  const teachers = dump.usersSummary || dump.teachers || [];
-  for (const t of teachers) {
-    const teacherId = t.id || t.EmpID || t.Teacher_ID || ('TCH-' + Math.random().toString(36).substring(2, 7));
-    const meta = {
-      ActiveLicenses: t.ActiveLicenses || [],
-      StandingsHistory: t.StandingsHistory || [],
-      EducationsHistory: t.EducationsHistory || [],
-      ScoutsHistory: t.ScoutsHistory || [],
-      TimelineEvents: t.TimelineEvents || []
-    };
-
-    await query(`
-      INSERT INTO teachers (
-        id, emp_id, position_no, member_id, name, full_name, email, phone, class_level,
-        role, position, duty_day, password, is_password_hashed, access_level, status,
-        start_date, department, division, emp_type, id_card, id_card_masked,
-        sick_count, sick_days, sick_max, personal_count, personal_days, personal_max,
-        permit_count, permit_hours, meta_json
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        emp_id = EXCLUDED.emp_id,
-        position_no = EXCLUDED.position_no,
-        member_id = EXCLUDED.member_id,
-        name = EXCLUDED.name,
-        full_name = EXCLUDED.full_name,
-        email = EXCLUDED.email,
-        phone = EXCLUDED.phone,
-        class_level = EXCLUDED.class_level,
-        role = EXCLUDED.role,
-        position = EXCLUDED.position,
-        duty_day = EXCLUDED.duty_day,
-        password = CASE WHEN EXCLUDED.password IS NOT NULL AND EXCLUDED.password != '' THEN EXCLUDED.password ELSE teachers.password END,
-        access_level = EXCLUDED.access_level,
-        status = EXCLUDED.status,
-        start_date = EXCLUDED.start_date,
-        department = EXCLUDED.department,
-        division = EXCLUDED.division,
-        emp_type = EXCLUDED.emp_type,
-        id_card = EXCLUDED.id_card,
-        id_card_masked = EXCLUDED.id_card_masked,
-        sick_count = EXCLUDED.sick_count,
-        sick_days = EXCLUDED.sick_days,
-        sick_max = EXCLUDED.sick_max,
-        personal_count = EXCLUDED.personal_count,
-        personal_days = EXCLUDED.personal_days,
-        personal_max = EXCLUDED.personal_max,
-        permit_count = EXCLUDED.permit_count,
-        permit_hours = EXCLUDED.permit_hours,
-        meta_json = EXCLUDED.meta_json,
-        updated_at = CURRENT_TIMESTAMP
-    `, [
-      teacherId,
-      t.EmpID || t.id || teacherId,
-      t.positionNo || t.PositionNo || '',
-      t.memberId || t.MemberID || '',
-      t.name || t.FullName || '',
-      t.FullName || t.name || '',
-      t.email || '',
-      t.phone || '',
-      t.classLevel || '',
-      t.role || t.Position || '',
-      t.Position || t.role || '',
-      t.dutyDay || '',
-      t.password || '',
-      Boolean(t.isPasswordHashed),
-      t.accessLevel || 'User',
-      t.status || 'ปกติ',
-      t.startDate || '',
-      t.department || '',
-      t.division || '',
-      t.empType || '',
-      t.idCard || '',
-      t.IDCardMasked || '',
-      Number(t.SickCount || 0),
-      Number(t.SickDays || 0),
-      Number(t.SickMax || 60),
-      Number(t.PersonalCount || 0),
-      Number(t.PersonalDays || 0),
-      Number(t.PersonalMax || 45),
-      Number(t.PermitCount || 0),
-      Number(t.PermitHours || 0),
-      JSON.stringify(meta)
-    ]);
-    teacherCount++;
-  }
-
-  // 3. Import Leave Logs
-  const logs = dump.logs || [];
-  for (const l of logs) {
-    const leaveId = l.leaveId || l.LeaveID || ('LV-' + Date.now() + Math.random().toString(36).substring(2, 5));
-    await query(`
-      INSERT INTO leave_logs (
-        leave_id, emp_id, full_name, leave_type, start_date, end_date, start_time, end_time,
-        total_days, total_hours, reason, substitute_info, attach_url, status, step_hr,
-        step_academic, step_director, signer_name, form_meta_json, remark, timestamp
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
-      )
-      ON CONFLICT (leave_id) DO UPDATE SET
-        status = EXCLUDED.status,
-        step_hr = EXCLUDED.step_hr,
-        step_academic = EXCLUDED.step_academic,
-        step_director = EXCLUDED.step_director,
-        signer_name = EXCLUDED.signer_name
-    `, [
-      leaveId,
-      l.empId || l.EmpID || '',
-      l.fullName || l.FullName || '',
-      l.leaveType || l.LeaveType || '',
-      l.startDate || l.StartDate || '',
-      l.endDate || l.EndDate || '',
-      l.startTime || l.StartTime || '-',
-      l.endTime || l.EndTime || '-',
-      Number(l.totalDays || l.TotalDays || 0),
-      Number(l.totalHours || l.TotalHours || 0),
-      l.reason || l.Reason || '',
-      l.substituteInfo || l.SubstituteInfo || '',
-      l.attachUrl || l.AttachUrl || '',
-      l.status || l.Status || 'อนุมัติ',
-      l.stepHr || l.Step1_HR || 'อนุมัติแล้ว',
-      l.stepAcademic || l.Step2_Academic || 'อนุมัติแล้ว',
-      l.stepDirector || l.Step3_Director || 'อนุมัติแล้ว',
-      l.signerName || l.SignerName || '',
-      l.formMetaJson || '',
-      l.remark || '',
-      l.timestamp || l.Timestamp || ''
-    ]);
-    logCount++;
-  }
-
-  return { success: true, teacherCount, logCount, mode: 'postgres' };
 }
 
 module.exports = {
