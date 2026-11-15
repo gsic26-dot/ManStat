@@ -382,6 +382,26 @@ let sql = `-- ==================================================================
 -- Copy & Run in Supabase SQL Editor
 -- =========================================================================
 
+-- Drop any previous draft tables to guarantee 100% schema alignment
+DROP TABLE IF EXISTS school_info CASCADE;
+DROP TABLE IF EXISTS fiscal_data CASCADE;
+DROP TABLE IF EXISTS active_classes CASCADE;
+DROP TABLE IF EXISTS teachers CASCADE;
+DROP TABLE IF EXISTS leave_quota CASCADE;
+DROP TABLE IF EXISTS leave_logs CASCADE;
+DROP TABLE IF EXISTS holidays CASCADE;
+DROP TABLE IF EXISTS board_members CASCADE;
+DROP TABLE IF EXISTS school_board_staff_terms CASCADE;
+DROP TABLE IF EXISTS board_meetings CASCADE;
+DROP TABLE IF EXISTS staff_workloads CASCADE;
+DROP TABLE IF EXISTS workloads CASCADE;
+DROP TABLE IF EXISTS system_feedback CASCADE;
+DROP TABLE IF EXISTS feedbacks CASCADE;
+DROP TABLE IF EXISTS history_standing CASCADE;
+DROP TABLE IF EXISTS history_education CASCADE;
+DROP TABLE IF EXISTS history_licenses CASCADE;
+DROP TABLE IF EXISTS history_scout CASCADE;
+
 -- 1. school_info (Vertical Key-Value 20 rows)
 CREATE TABLE IF NOT EXISTS school_info (
   key VARCHAR(100) PRIMARY KEY,
