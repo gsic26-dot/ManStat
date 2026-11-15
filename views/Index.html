@@ -652,27 +652,26 @@
           <!-- Modern Bento Grid Cards -->
           <div class="bento-grid">
             
-            <!-- Bento 1: Daily Attendance -->
+            <!-- Bento 1: Total Personnel -->
             <div class="bento-card glow-cyan">
               <div class="bento-head">
                 <span class="bento-title" style="color:var(--steam-cyan);">
                   <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                  <span>การปฏิบัติราชการวันนี้</span>
+                  <span>บุคลากรทั้งหมด</span>
                 </span>
-                <span style="display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--steam-green); background:rgba(164,208,7,0.1); border:1px solid rgba(164,208,7,0.3); padding:2px 8px; border-radius:12px; font-weight:700;">
-                  <span class="live-dot"></span>
-                  <span>ปกติ 100%</span>
+                <span style="font-size:11px; color:var(--steam-cyan); background:rgba(102,192,244,0.1); border:1px solid rgba(102,192,244,0.3); padding:2px 8px; border-radius:12px; font-weight:700;">
+                  <span>โรงเรียนชุมชนบ้านตะขบ</span>
                 </span>
               </div>
               <div>
                 <div style="display:flex; align-items:baseline;">
                   <span class="bento-val" id="cardTotalUsers">15</span>
-                  <span class="bento-unit">/ 15 คน</span>
+                  <span class="bento-unit">ท่าน</span>
                 </div>
-                <div class="bento-subtext">มาปฏิบัติราชการปกติครบทุกท่านในวันนี้</div>
+                <div class="bento-subtext">ผู้บริหาร 1 • ข้าราชการครู 11 • บุคลากรสายสนับสนุน 3</div>
               </div>
               <div class="bento-foot">
-                <span style="color:var(--text-muted);">ครู 11 • ผู้บริหาร 1 • บุคลากร 3</span>
+                <span style="color:var(--text-muted);">โครงสร้างสถานศึกษา</span>
                 <span style="color:var(--steam-cyan); font-weight:600; cursor:pointer;" onclick="switchView('org_chart')">ผังองค์กร</span>
               </div>
             </div>
@@ -682,7 +681,7 @@
               <div class="bento-head">
                 <span class="bento-title" style="color:var(--orange);">
                   <svg class="ui-ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span>คำร้องรอการพิจารณา</span>
+                  <span>คำร้องรอการอนุมัติ</span>
                 </span>
                 <span style="width:8px; height:8px; border-radius:50%; background:var(--orange);"></span>
               </div>
@@ -691,7 +690,7 @@
                   <span class="bento-val" id="cardPendingLeaves" style="color:var(--orange);">0</span>
                   <span class="bento-unit">รายการ</span>
                 </div>
-                <div class="bento-subtext">ไม่มีคำร้องค้างตรวจสอบในระบบ ทุกรายการได้รับการพิจารณาแล้ว</div>
+                <div class="bento-subtext">คำร้องขอลาและขออนุญาตที่รอพิจารณาในระบบ</div>
               </div>
               <div class="bento-foot">
                 <span style="color:var(--text-muted);">กล่องคำร้องขอลา</span>
@@ -702,28 +701,28 @@
               </div>
             </div>
 
-            <!-- Bento 3: Approved Leaves & PA Workload -->
-            <div class="bento-card glow-green" style="cursor:pointer;" onclick="switchView('workload')">
+            <!-- Bento 3: Approved Leaves -->
+            <div class="bento-card glow-green" style="cursor:pointer;" onclick="switchView('official_reports')">
               <div class="bento-head">
                 <span class="bento-title" style="color:var(--steam-green);">
-                  <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
-                  <span>ภาระงานสอนและงานฝ่าย (PA)</span>
+                  <svg class="ui-ico-sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                  <span>อนุมัติสำเร็จแล้ว</span>
                 </span>
-                <span style="font-size:10.5px; font-weight:700; color:var(--steam-green); background:rgba(164,208,7,0.1); border:1px solid rgba(164,208,7,0.3); padding:2px 6px; border-radius:4px;">ว9/2564</span>
+                <span style="font-size:10.5px; font-weight:700; color:var(--steam-green); background:rgba(164,208,7,0.1); border:1px solid rgba(164,208,7,0.3); padding:2px 6px; border-radius:4px;">ปีงบประมาณ 2570</span>
               </div>
               <div>
                 <div style="display:flex; align-items:baseline;">
-                  <span class="bento-val">21.4</span>
-                  <span class="bento-unit">ชม./สัปดาห์ (เฉลี่ย)</span>
+                  <span class="bento-val" id="cardApprovedLeaves">0</span>
+                  <span class="bento-unit">รายการ</span>
                 </div>
                 <div class="bento-subtext">
-                  อนุมัติแล้ว <b id="cardApprovedLeaves" style="color:var(--steam-green);">0</b> รายการ • ผ่านเกณฑ์ขั้นต่ำ 20 ชม. ครบทุกท่าน
+                  ประวัติการลาที่ผ่านการอนุมัติและลงนามเรียบร้อยในรอบปีงบประมาณ
                 </div>
               </div>
               <div class="bento-foot">
-                <span style="color:var(--text-muted);">งานฝ่ายหลัก 10 งาน</span>
+                <span style="color:var(--text-muted);">รายงานการลาทางการ</span>
                 <span style="color:var(--steam-green); font-weight:600; display:inline-flex; align-items:center; gap:4px;">
-                  <span>วิเคราะห์ภาระงาน</span>
+                  <span>ดูสรุปวันลา</span>
                   <svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
                 </span>
               </div>

@@ -227,6 +227,83 @@ function buildBoardBundle(rawMembers, rawStaffTerms, rawMeetings, schoolInfo) {
   };
 }
 
+function normalizeTeacherHistories(t) {
+  if (!t) return t;
+  const clone = Object.assign({}, t);
+  clone.ActiveLicenses = (t.ActiveLicenses || []).map(l => ({
+    recordId: l.recordId || l.RecordID || l.record_id,
+    RecordID: l.recordId || l.RecordID || l.record_id,
+    type: l.type || l.LicenseType || l.license_type,
+    LicenseType: l.type || l.LicenseType || l.license_type,
+    number: l.number || l.LicenseNumber || l.license_number,
+    LicenseNumber: l.number || l.LicenseNumber || l.license_number,
+    licenseCategory: l.licenseCategory || l.LicenseCategory || l.license_category,
+    LicenseCategory: l.licenseCategory || l.LicenseCategory || l.license_category,
+    issueDate: l.issueDate || l.IssueDate || l.issue_date,
+    rawIssueDate: l.rawIssueDate || l.IssueDate || l.issue_date,
+    IssueDate: l.issueDate || l.IssueDate || l.issue_date,
+    expiryDate: l.expiryDate || l.ExpiryDate || l.expiry_date,
+    rawExpiryDate: l.rawExpiryDate || l.ExpiryDate || l.expiry_date,
+    ExpiryDate: l.expiryDate || l.ExpiryDate || l.expiry_date,
+    status: l.status || 'ปกติ'
+  }));
+  clone.StandingsHistory = (t.StandingsHistory || []).map(s => ({
+    recordId: s.recordId || s.RecordID || s.record_id,
+    RecordID: s.recordId || s.RecordID || s.record_id,
+    standingLevel: s.standingLevel || s.StandingLevel || s.standing_level,
+    StandingLevel: s.standingLevel || s.StandingLevel || s.standing_level,
+    effectiveDate: s.effectiveDate || s.EffectiveDate || s.effective_date,
+    EffectiveDate: s.effectiveDate || s.EffectiveDate || s.effective_date,
+    rawEffectiveDate: s.rawEffectiveDate || s.EffectiveDate || s.effective_date,
+    RawEffectiveDate: s.rawEffectiveDate || s.EffectiveDate || s.effective_date,
+    orderNumber: s.orderNumber || s.OrderNumber || s.order_number,
+    OrderNumber: s.orderNumber || s.OrderNumber || s.order_number,
+    docLink: s.docLink || s.docUrl || s.doc_link || '',
+    docUrl: s.docLink || s.docUrl || s.doc_link || '',
+    formattedDate: s.formattedDate || s.FormattedDate || s.effective_date,
+    FormattedDate: s.formattedDate || s.FormattedDate || s.effective_date
+  }));
+  clone.EducationsHistory = (t.EducationsHistory || []).map(e => ({
+    recordId: e.recordId || e.RecordID || e.record_id,
+    RecordID: e.recordId || e.RecordID || e.record_id,
+    degreeLevel: e.degreeLevel || e.DegreeLevel || e.degree_level,
+    DegreeLevel: e.degreeLevel || e.DegreeLevel || e.degree_level,
+    degreeShort: e.degreeShort || e.DegreeShort || e.degree_short,
+    DegreeShort: e.degreeShort || e.DegreeShort || e.degree_short,
+    major: e.major || e.Major,
+    Major: e.major || e.Major,
+    institute: e.institute || e.Institute,
+    Institute: e.institute || e.Institute,
+    gradYear: e.gradYear || e.GradYear || e.grad_year,
+    GradYear: e.gradYear || e.GradYear || e.grad_year
+  }));
+  clone.ScoutsHistory = (t.ScoutsHistory || []).map(sc => ({
+    recordId: sc.recordId || sc.RecordID || sc.record_id,
+    RecordID: sc.recordId || sc.RecordID || sc.record_id,
+    qualification: sc.qualification || sc.scoutQualification || sc.ScoutQualification || sc.scout_qualification || sc.scoutQual,
+    scoutQualification: sc.qualification || sc.scoutQualification || sc.ScoutQualification || sc.scout_qualification || sc.scoutQual,
+    ScoutQualification: sc.qualification || sc.scoutQualification || sc.ScoutQualification || sc.scout_qualification || sc.scoutQual,
+    scoutQual: sc.qualification || sc.scoutQualification || sc.ScoutQualification || sc.scout_qualification || sc.scoutQual,
+    ScoutQual: sc.qualification || sc.scoutQualification || sc.ScoutQualification || sc.scout_qualification || sc.scoutQual,
+    type: sc.type || sc.scoutType || sc.ScoutType || sc.scout_type || '-',
+    scoutType: sc.type || sc.scoutType || sc.ScoutType || sc.scout_type || '-',
+    ScoutType: sc.type || sc.scoutType || sc.ScoutType || sc.scout_type || '-',
+    position: sc.position || sc.scoutPosition || sc.ScoutPosition || sc.scout_position || 'ผู้กำกับลูกเสือ',
+    scoutPosition: sc.position || sc.scoutPosition || sc.ScoutPosition || sc.scout_position || 'ผู้กำกับลูกเสือ',
+    ScoutPosition: sc.position || sc.scoutPosition || sc.ScoutPosition || sc.scout_position || 'ผู้กำกับลูกเสือ',
+    certNo: sc.certNo || sc.certNumber || sc.CertNumber || sc.cert_number || '',
+    certNumber: sc.certNo || sc.certNumber || sc.CertNumber || sc.cert_number || '',
+    CertNumber: sc.certNo || sc.certNumber || sc.CertNumber || sc.cert_number || '',
+    approvedDate: sc.approvedDate || sc.rawApprovedDate || sc.ApprovedDate || sc.approved_year || '',
+    rawApprovedDate: sc.approvedDate || sc.rawApprovedDate || sc.ApprovedDate || sc.approved_year || '',
+    ApprovedDate: sc.approvedDate || sc.rawApprovedDate || sc.ApprovedDate || sc.approved_year || '',
+    RawApprovedDate: sc.approvedDate || sc.rawApprovedDate || sc.ApprovedDate || sc.approved_year || '',
+    approvedYear: sc.approvedYear || sc.ApprovedYear || sc.approved_year || '',
+    ApprovedYear: sc.approvedYear || sc.ApprovedYear || sc.approved_year || ''
+  }));
+  return clone;
+}
+
 /**
  * Fetch the complete application bundle (getMainBundleData)
  */
@@ -234,14 +311,15 @@ async function getMainBundle() {
   const storeDb = fallbackStore.getDatabase();
 
   if (!isPostgresActive()) {
+    const rawTeachers = (storeDb.teachers || []).map(normalizeTeacherHistories);
     return {
       status: 'success',
       scriptUrl: '#',
       logs: storeDb.logs || [],
       feedbacks: storeDb.feedbacks || [],
       workloads: storeDb.workloads || [],
-      teachers: storeDb.teachers || [],
-      usersSummary: storeDb.teachers || [],
+      teachers: rawTeachers,
+      usersSummary: rawTeachers,
       schoolInfo: storeDb.schoolInfo || {},
       fiscalData: storeDb.fiscalData || {},
       activeClasses: storeDb.activeClasses || [],
@@ -328,7 +406,7 @@ async function getMainBundle() {
     }
 
     // 4. Fetch Teachers & Quota & Histories
-    let usersSummary = storeDb.teachers || [];
+    let usersSummary = (storeDb.teachers || []).map(normalizeTeacherHistories);
     try {
       const teachersRes = await query(`SELECT * FROM teachers ORDER BY id ASC`);
       if (teachersRes && teachersRes.rows.length > 0) {
@@ -415,31 +493,75 @@ async function getMainBundle() {
             PermitCount: 0,
             PermitHours: 0,
             ActiveLicenses: teacherLicenses.map(l => ({
-              licenseNo: l.license_number,
-              licenseType: l.license_type,
-              licenseCategory: l.license_category,
-              issueDate: l.issue_date,
-              expireDate: l.expiry_date
+              recordId: l.record_id || l.RecordID,
+              RecordID: l.record_id || l.RecordID,
+              type: l.license_type || l.LicenseType,
+              LicenseType: l.license_type || l.LicenseType,
+              number: l.license_number || l.LicenseNumber,
+              LicenseNumber: l.license_number || l.LicenseNumber,
+              licenseCategory: l.license_category || l.LicenseCategory,
+              LicenseCategory: l.license_category || l.LicenseCategory,
+              issueDate: l.issue_date || l.IssueDate,
+              rawIssueDate: l.issue_date || l.IssueDate,
+              IssueDate: l.issue_date || l.IssueDate,
+              expiryDate: l.expiry_date || l.ExpiryDate,
+              rawExpiryDate: l.expiry_date || l.ExpiryDate,
+              ExpiryDate: l.expiry_date || l.ExpiryDate,
+              status: 'ปกติ'
             })),
             StandingsHistory: teacherStandings.map(s => ({
-              standingLevel: s.standing_level,
-              effectiveDate: s.effective_date,
-              orderNumber: s.order_number,
-              docLink: s.doc_link
+              recordId: s.record_id || s.RecordID,
+              RecordID: s.record_id || s.RecordID,
+              standingLevel: s.standing_level || s.StandingLevel,
+              StandingLevel: s.standing_level || s.StandingLevel,
+              effectiveDate: s.effective_date || s.EffectiveDate,
+              EffectiveDate: s.effective_date || s.EffectiveDate,
+              rawEffectiveDate: s.effective_date || s.EffectiveDate,
+              RawEffectiveDate: s.effective_date || s.EffectiveDate,
+              orderNumber: s.order_number || s.OrderNumber,
+              OrderNumber: s.order_number || s.OrderNumber,
+              docLink: s.doc_link || s.docUrl || '',
+              docUrl: s.doc_link || s.docUrl || '',
+              formattedDate: s.effective_date || s.EffectiveDate,
+              FormattedDate: s.effective_date || s.EffectiveDate
             })),
             EducationsHistory: teacherEducations.map(e => ({
-              degreeLevel: e.degree_level,
-              degreeShort: e.degree_short,
-              major: e.major,
-              institute: e.institute,
-              gradYear: e.grad_year
+              recordId: e.record_id || e.RecordID,
+              RecordID: e.record_id || e.RecordID,
+              degreeLevel: e.degree_level || e.DegreeLevel,
+              DegreeLevel: e.degree_level || e.DegreeLevel,
+              degreeShort: e.degree_short || e.DegreeShort,
+              DegreeShort: e.degree_short || e.DegreeShort,
+              major: e.major || e.Major,
+              Major: e.major || e.Major,
+              institute: e.institute || e.Institute,
+              Institute: e.institute || e.Institute,
+              gradYear: e.grad_year || e.GradYear,
+              GradYear: e.grad_year || e.GradYear
             })),
             ScoutsHistory: teacherScouts.map(sc => ({
-              qualification: sc.scout_qualification,
-              type: sc.scout_type,
-              position: sc.scout_position,
-              certNo: sc.cert_number,
-              approvedYear: sc.approved_year
+              recordId: sc.record_id || sc.RecordID,
+              RecordID: sc.record_id || sc.RecordID,
+              qualification: sc.scout_qualification || sc.ScoutQualification || sc.scoutQual,
+              scoutQualification: sc.scout_qualification || sc.ScoutQualification || sc.scoutQual,
+              ScoutQualification: sc.scout_qualification || sc.ScoutQualification || sc.scoutQual,
+              scoutQual: sc.scout_qualification || sc.ScoutQualification || sc.scoutQual,
+              ScoutQual: sc.scout_qualification || sc.ScoutQualification || sc.scoutQual,
+              type: sc.scout_type || sc.ScoutType || '-',
+              scoutType: sc.scout_type || sc.ScoutType || '-',
+              ScoutType: sc.scout_type || sc.ScoutType || '-',
+              position: sc.scout_position || sc.ScoutPosition || 'ผู้กำกับลูกเสือ',
+              scoutPosition: sc.scout_position || sc.ScoutPosition || 'ผู้กำกับลูกเสือ',
+              ScoutPosition: sc.scout_position || sc.ScoutPosition || 'ผู้กำกับลูกเสือ',
+              certNo: sc.cert_number || sc.CertNumber || '',
+              certNumber: sc.cert_number || sc.CertNumber || '',
+              CertNumber: sc.cert_number || sc.CertNumber || '',
+              approvedDate: sc.approved_year || sc.ApprovedDate || sc.ApprovedYear || '',
+              rawApprovedDate: sc.approved_year || sc.ApprovedDate || sc.ApprovedYear || '',
+              ApprovedDate: sc.approved_year || sc.ApprovedDate || sc.ApprovedYear || '',
+              RawApprovedDate: sc.approved_year || sc.ApprovedDate || sc.ApprovedYear || '',
+              approvedYear: sc.approved_year || sc.ApprovedYear || '',
+              ApprovedYear: sc.approved_year || sc.ApprovedYear || ''
             })),
             TimelineEvents: []
           };
@@ -624,5 +746,6 @@ module.exports = {
   getMainBundle,
   buildBoardBundle,
   importFullDatabase,
-  ensurePostgresReady
+  ensurePostgresReady,
+  normalizeTeacherHistories
 };
