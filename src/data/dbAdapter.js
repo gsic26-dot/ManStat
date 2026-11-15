@@ -382,9 +382,12 @@ async function getMainBundle() {
             email: t.email || '',
             phone: t.phone || '',
             classLevel: t.class_level || '',
+            Class_Level: t.class_level || '',
             role: t.role || '',
+            Role: t.role || '',
             Position: t.role || '',
             dutyDay: t.duty_day || '',
+            Duty_Day: t.duty_day || '',
             accessLevel: t.access_level || 'User',
             status: t.status || 'ปกติ',
             startDate: t.start_date || '',
@@ -482,21 +485,38 @@ async function getMainBundle() {
     // 6. Fetch Workloads & Feedbacks
     let workloads = storeDb.workloads || [];
     try {
-      const wlRes = await query(`SELECT * FROM staff_workloads ORDER BY workload_id ASC`);
+      let wlRes;
+      try {
+        wlRes = await query(`SELECT * FROM staff_workloads ORDER BY workload_id ASC`);
+      } catch (err1) {
+        wlRes = await query(`SELECT * FROM workloads ORDER BY workload_id ASC`);
+      }
       if (wlRes && wlRes.rows.length > 0) {
         workloads = wlRes.rows.map(w => ({
           workloadId: w.workload_id,
+          WorkloadID: w.workload_id,
           empId: w.emp_id,
-          coEmpIds: w.co_emp_ids,
+          EmpID: w.emp_id,
+          coEmpIds: w.co_emp_ids || '',
+          CoEmpIDs: w.co_emp_ids || '',
           category: w.category,
+          Category: w.category,
           title: w.title,
-          subGroupOrLevel: w.sub_group_or_level,
+          Title: w.title,
+          subGroupOrLevel: w.sub_group_or_level || '',
+          SubGroupOrLevel: w.sub_group_or_level || '',
           hoursPerWeek: Number(w.hours_per_week || 0),
-          roleInTask: w.role_in_task,
-          academicTerm: w.academic_term,
-          orderOrRef: w.order_or_ref,
-          effectivePeriod: w.effective_period,
-          status: w.status
+          HoursPerWeek: Number(w.hours_per_week || 0),
+          roleInTask: w.role_in_task || '',
+          RoleInTask: w.role_in_task || '',
+          academicTerm: w.academic_term || '',
+          AcademicTerm: w.academic_term || '',
+          orderOrRef: w.order_or_ref || '',
+          OrderOrRef: w.order_or_ref || '',
+          effectivePeriod: w.effective_period || '',
+          EffectivePeriod: w.effective_period || '',
+          status: w.status || 'ปกติ',
+          Status: w.status || 'ปกติ'
         }));
       }
     } catch (e) {

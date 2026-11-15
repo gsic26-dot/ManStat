@@ -268,40 +268,107 @@ const handlers = {
   },
 
   // 3. Personnel Management (Admin)
-  saveAdminTeacher: function(args) {
+  saveAdminTeacher: async function(args) {
     const payload = args[0] || {};
     const db = getDatabase();
     const email = String(payload.email || '').trim().toLowerCase();
     const empId = String(payload.id || payload.EmpID || '').trim();
 
-    let existing = db.teachers.find(t => (email && t.email && t.email.toLowerCase() === email) || (empId && t.id === empId));
+    // Harmonize case-sensitive and aliases
+    payload.id = empId;
+    payload.EmpID = empId;
+    payload.role = payload.role || payload.Position || '';
+    payload.Role = payload.role;
+    payload.Position = payload.role;
+    payload.department = payload.department || payload.Department || '';
+    payload.Department = payload.department;
+    payload.division = payload.division || payload.Division || '';
+    payload.Division = payload.division;
+    payload.classLevel = payload.classLevel || payload.Class_Level || '';
+    payload.Class_Level = payload.classLevel;
+    payload.dutyDay = payload.dutyDay || payload.Duty_Day || '';
+    payload.Duty_Day = payload.dutyDay;
+
+    let existing = db.teachers.find(t => (email && t.email && t.email.toLowerCase() === email) || (empId && (t.id === empId || t.EmpID === empId)));
     if (existing) {
       Object.assign(existing, payload);
     } else {
-      if (!payload.id) payload.id = 'TCH-' + Date.now();
+      if (!payload.id) {
+        payload.id = 'TCH-' + Date.now();
+        payload.EmpID = payload.id;
+      }
       if (!payload.password) payload.password = _hashPassword('123456');
       db.teachers.push(payload);
     }
 
     saveDatabase();
+
+    if (isPostgresActive()) {
+      try {
+        await query(`
+          UPDATE teachers SET
+            name = COALESCE($1, name),
+            email = COALESCE($2, email),
+            phone = COALESCE($3, phone),
+            class_level = COALESCE($4, class_level),
+            role = COALESCE($5, role),
+            department = COALESCE($6, department),
+            division = COALESCE($7, division),
+            position_no = COALESCE($8, position_no),
+            member_id = COALESCE($9, member_id),
+            duty_day = COALESCE($10, duty_day),
+            access_level = COALESCE($11, access_level),
+            status = COALESCE($12, status),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $13
+        `, [
+          payload.name || payload.FullName || null,
+          payload.email || null,
+          payload.phone || null,
+          payload.classLevel || null,
+          payload.role || null,
+          payload.department || null,
+          payload.division || null,
+          payload.positionNo || payload.PositionNo || null,
+          payload.memberId || payload.MemberID || null,
+          payload.dutyDay || null,
+          payload.accessLevel || null,
+          payload.status || null,
+          empId
+        ]);
+      } catch (err) {
+        console.error('[saveAdminTeacher PG Error]', err.message);
+      }
+    }
+
     return { success: true, message: 'บันทึกข้อมูลบุคลากรเรียบร้อยแล้ว' };
   },
 
-  deleteAdminTeacher: function(args) {
+  deleteAdminTeacher: async function(args) {
     const email = String(args[0] || '').trim().toLowerCase();
     const name = String(args[1] || '').trim().toLowerCase();
     const db = getDatabase();
 
     const idx = db.teachers.findIndex(t => (t.email && t.email.toLowerCase() === email) || (t.name && t.name.toLowerCase() === name));
+    let targetEmpId = null;
     if (idx !== -1) {
+      targetEmpId = db.teachers[idx].id;
       db.teachers.splice(idx, 1);
       saveDatabase();
-      return { success: true, message: 'ลบข้อมูลบุคลากรเรียบร้อยแล้ว' };
     }
-    return { success: false, message: 'ไม่พบบุคลากรรายนี้' };
+
+    if (isPostgresActive() && targetEmpId) {
+      try {
+        await query(`DELETE FROM teachers WHERE id = $1`, [targetEmpId]);
+      } catch (err) {
+        console.error('[deleteAdminTeacher PG Error]', err.message);
+      }
+    }
+
+    return { success: true, message: 'ลบข้อมูลบุคลากรเรียบร้อยแล้ว' };
   },
 
-  updateAdminTeacherStatus: function(args) {
+  updateAdminTeacherStatus: async function(args) {
     const db = getDatabase();
     let empIdOrEmail = String(args[0] || '').trim().toLowerCase();
     let name = String(args[1] || '').trim().toLowerCase();
@@ -316,6 +383,14 @@ const handlers = {
     if (user) {
       user.status = newStatus;
       saveDatabase();
+
+      if (isPostgresActive()) {
+        try {
+          await query(`UPDATE teachers SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [newStatus, user.id]);
+        } catch (err) {
+          console.error('[updateAdminTeacherStatus PG Error]', err.message);
+        }
+      }
       return { success: true, status: 'success', message: 'อัปเดตสถานะเรียบร้อย' };
     }
     return { success: false, status: 'error', message: 'ไม่พบบุคลากรรายนี้' };
@@ -618,30 +693,119 @@ const handlers = {
     return { status: 'success', message: 'ลบรายการประวัติเรียบร้อยแล้ว' };
   },
 
-  saveStaffWorkloadRecord: function(args) {
+  saveStaffWorkloadRecord: async function(args) {
     const payload = args[0] || {};
+    const actor = args[1] || 'Admin';
     const db = getDatabase();
-    const wlId = payload.workloadId || ('WL-' + Date.now());
-    let wl = db.workloads.find(w => w.workloadId === wlId);
+    const wlId = payload.workloadId || payload.WorkloadID || ('WL-' + Date.now());
+
+    const norm = {
+      workloadId: wlId,
+      WorkloadID: wlId,
+      empId: payload.empId || payload.EmpID || '',
+      EmpID: payload.empId || payload.EmpID || '',
+      coEmpIds: payload.coEmpIds || payload.CoEmpIDs || '',
+      CoEmpIDs: payload.coEmpIds || payload.CoEmpIDs || '',
+      category: payload.category || payload.Category || '',
+      Category: payload.category || payload.Category || '',
+      title: payload.title || payload.Title || '',
+      Title: payload.title || payload.Title || '',
+      subGroupOrLevel: payload.subGroupOrLevel || payload.SubGroupOrLevel || '',
+      SubGroupOrLevel: payload.subGroupOrLevel || payload.SubGroupOrLevel || '',
+      hoursPerWeek: Number(payload.hoursPerWeek || payload.HoursPerWeek || 0),
+      HoursPerWeek: Number(payload.hoursPerWeek || payload.HoursPerWeek || 0),
+      roleInTask: payload.roleInTask || payload.RoleInTask || 'ผู้รับผิดชอบหลัก',
+      RoleInTask: payload.roleInTask || payload.RoleInTask || 'ผู้รับผิดชอบหลัก',
+      academicTerm: payload.academicTerm || payload.AcademicTerm || '2570',
+      AcademicTerm: payload.academicTerm || payload.AcademicTerm || '2570',
+      orderOrRef: payload.orderOrRef || payload.OrderOrRef || '',
+      OrderOrRef: payload.orderOrRef || payload.OrderOrRef || '',
+      effectivePeriod: payload.effectivePeriod || payload.EffectivePeriod || '',
+      EffectivePeriod: payload.effectivePeriod || payload.EffectivePeriod || '',
+      status: payload.status || payload.Status || 'ปกติ',
+      Status: payload.status || payload.Status || 'ปกติ',
+      assignedBy: payload.assignedBy || 'Admin',
+      updatedBy: actor,
+      timestamp: new Date().toISOString()
+    };
+
+    let wl = db.workloads.find(w => w.workloadId === wlId || w.WorkloadID === wlId);
     if (wl) {
-      Object.assign(wl, payload);
+      Object.assign(wl, norm);
     } else {
-      db.workloads.push(Object.assign({ workloadId: wlId }, payload));
+      db.workloads.push(norm);
     }
     saveDatabase();
+
+    if (isPostgresActive()) {
+      try {
+        await query(`
+          INSERT INTO staff_workloads (
+            workload_id, emp_id, co_emp_ids, category, title, sub_group_or_level,
+            hours_per_week, role_in_task, academic_term, order_or_ref, effective_period,
+            status, assigned_by, updated_by, timestamp
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          ON CONFLICT (workload_id) DO UPDATE SET
+            emp_id = EXCLUDED.emp_id,
+            co_emp_ids = EXCLUDED.co_emp_ids,
+            category = EXCLUDED.category,
+            title = EXCLUDED.title,
+            sub_group_or_level = EXCLUDED.sub_group_or_level,
+            hours_per_week = EXCLUDED.hours_per_week,
+            role_in_task = EXCLUDED.role_in_task,
+            academic_term = EXCLUDED.academic_term,
+            order_or_ref = EXCLUDED.order_or_ref,
+            effective_period = EXCLUDED.effective_period,
+            status = EXCLUDED.status,
+            assigned_by = EXCLUDED.assigned_by,
+            updated_by = EXCLUDED.updated_by,
+            timestamp = EXCLUDED.timestamp
+        `, [
+          norm.workloadId, norm.empId, norm.coEmpIds, norm.category, norm.title,
+          norm.subGroupOrLevel, norm.hoursPerWeek, norm.roleInTask, norm.academicTerm,
+          norm.orderOrRef, norm.effectivePeriod, norm.status, norm.assignedBy, norm.updatedBy, norm.timestamp
+        ]);
+      } catch (err) {
+        // Fallback if table is named workloads in old schema
+        try {
+          await query(`
+            INSERT INTO workloads (
+              workload_id, emp_id, subject_name, hours_per_week, remark
+            ) VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (workload_id) DO UPDATE SET
+              emp_id = EXCLUDED.emp_id,
+              subject_name = EXCLUDED.subject_name,
+              hours_per_week = EXCLUDED.hours_per_week
+          `, [norm.workloadId, norm.empId, norm.title, norm.hoursPerWeek, norm.roleInTask]);
+        } catch (e2) {
+          console.error('[saveStaffWorkloadRecord PG Error]', err.message);
+        }
+      }
+    }
+
     return { status: 'success', message: 'บันทึกภาระงานเรียบร้อยแล้ว' };
   },
 
-  deleteStaffWorkloadRecord: function(args) {
+  deleteStaffWorkloadRecord: async function(args) {
     const wlId = args[0];
     const db = getDatabase();
-    const idx = db.workloads.findIndex(w => w.workloadId === wlId);
+    const idx = db.workloads.findIndex(w => w.workloadId === wlId || w.WorkloadID === wlId);
     if (idx !== -1) {
       db.workloads.splice(idx, 1);
       saveDatabase();
-      return { status: 'success', message: 'ลบภาระงานเรียบร้อยแล้ว' };
     }
-    return { status: 'error', message: 'ไม่พบรายการภาระงาน' };
+    if (isPostgresActive()) {
+      try {
+        await query(`DELETE FROM staff_workloads WHERE workload_id = $1`, [wlId]);
+      } catch (err) {
+        try {
+          await query(`DELETE FROM workloads WHERE workload_id = $1`, [wlId]);
+        } catch (e2) {
+          console.error('[deleteStaffWorkloadRecord PG Error]', err.message);
+        }
+      }
+    }
+    return { status: 'success', message: 'ลบภาระงานเรียบร้อยแล้ว' };
   },
 
   // 7. Feedback & School Board

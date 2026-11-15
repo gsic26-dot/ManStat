@@ -41,14 +41,17 @@
 
     const divSet = new Set();
     g_UsersSummary.forEach(u => {
-      if (u.Division && u.Division !== '-') {
-        u.Division.split(',').forEach(p => {
+      const uDiv = u.Division || u.division || '';
+      if (uDiv && uDiv !== '-') {
+        uDiv.split(',').forEach(p => {
           let c = p.trim();
+          c = c.replace(/^\[(หลัก|รอง)\]\s*/, '').replace(/\((หลัก|รอง)\)\s*/, '').trim();
           if (c) divSet.add(c);
         });
       }
-      if (u.Department && u.Department !== '-') {
-        divSet.add(u.Department.trim());
+      const uDept = u.Department || u.department || '';
+      if (uDept && uDept !== '-') {
+        divSet.add(uDept.trim());
       }
     });
 
@@ -98,17 +101,19 @@
 
   function calculateStaffWorkloadScore(u, customWls) {
     let points = 2.0; // base workload
-    const advisorTxt = u.classLevel && u.classLevel !== '-' ? u.classLevel : null;
+    const advisorTxt = (u.classLevel && u.classLevel !== '-') ? u.classLevel : ((u.Class_Level && u.Class_Level !== '-') ? u.Class_Level : null);
     if (advisorTxt) points += 2.5;
 
-    const isLeader = (u.Division && (u.Division.includes('หัวหน้า') || u.Division.includes('รักษาราชการ') || u.Division.includes('ผู้บริหาร'))) || (u.Role && (u.Role.includes('ผู้อำนวยการ') || u.Role.includes('รอง')));
+    const divStr = String(u.Division || u.division || '').trim();
+    const roleStr = String(u.Role || u.role || u.Position || '').trim();
+    const isLeader = (divStr && (divStr.includes('หัวหน้า') || divStr.includes('รักษาราชการ') || divStr.includes('ผู้บริหาร'))) || (roleStr && (roleStr.includes('ผู้อำนวยการ') || roleStr.includes('รอง')));
     if (isLeader) points += 3.0;
 
     let primaryCount = 0;
     let secondaryCount = 0;
 
-    if (u.Division && u.Division !== '-') {
-      const parts = u.Division.split(',');
+    if (divStr && divStr !== '-') {
+      const parts = divStr.split(',');
       parts.forEach(p => {
         const clean = p.trim();
         if (!clean) return;
@@ -154,7 +159,7 @@
     const userWorkloadMap = {};
     activeUsers.forEach(u => {
       const empId = u.EmpID || u.id;
-      const customWls = g_Workloads.filter(w => w.EmpID === empId);
+      const customWls = g_Workloads.filter(w => (w.EmpID || w.empId) === empId);
       const wlData = calculateStaffWorkloadScore(u, customWls);
       userWorkloadMap[empId] = wlData;
 
@@ -173,7 +178,7 @@
     // 2. Filter users
     const filteredUsers = activeUsers.filter(u => {
       const empId = u.EmpID || u.id;
-      const customWls = g_Workloads.filter(w => w.EmpID === empId);
+      const customWls = g_Workloads.filter(w => (w.EmpID || w.empId) === empId);
       const wlData = userWorkloadMap[empId] || { points: 2, level: 1 };
 
       const activeTier = (tierSel !== 'ALL') ? tierSel : g_WorkloadTierFilter;
@@ -183,12 +188,14 @@
       if (activeTier === 'HEAVY' && wlData.level < 9) return false;
 
       if (q) {
-        const hay = `${u.FullName || ''} ${empId} ${u.Position || ''} ${u.Department || ''} ${u.Division || ''}`.toLowerCase();
+        const hay = `${u.FullName || u.name || ''} ${empId} ${u.Position || u.role || ''} ${u.Department || u.department || ''} ${u.Division || u.division || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (deptFilter !== 'ALL') {
-        const divs = String(u.Division || '').split(',').map(s => s.trim());
-        if (!divs.includes(deptFilter) && String(u.Department || '') !== deptFilter) return false;
+        const userDiv = u.Division || u.division || '';
+        const userDept = u.Department || u.department || '';
+        const divs = String(userDiv).split(',').map(s => s.trim());
+        if (!divs.includes(deptFilter) && String(userDept) !== deptFilter) return false;
       }
 
       return true;
@@ -199,7 +206,7 @@
     // Calculate total duty assignments across all staff Division fields + custom workloads
     let totalDutyAssignments = 0;
     activeUsers.forEach(u => {
-      const divStr = String(u.Division || '').trim();
+      const divStr = String(u.Division || u.division || '').trim();
       if (divStr && divStr !== '-') {
         divStr.split(',').forEach(part => {
           if (part.trim()) totalDutyAssignments++;
@@ -225,7 +232,7 @@
     const vacantTasksList = [];
     CORE_SCHOOL_TASKS.forEach(t => {
       const isFilled = activeUsers.some(u => {
-        const div = String(u.Division || '');
+        const div = String(u.Division || u.division || '');
         return div.includes(t.name);
       });
       if (!isFilled) {
@@ -312,7 +319,7 @@
       const isExpanded = (g_ExpandedWlEmpId === empId);
       const identitySubtitleHtml = buildStaffIdentitySubtitle(u);
 
-      const customWls = g_Workloads.filter(w => w.EmpID === empId);
+      const customWls = g_Workloads.filter(w => (w.EmpID || w.empId) === empId);
       const wlData = userWorkloadMap[empId] || calculateStaffWorkloadScore(u, customWls);
 
       // Status Block & Circle Badge (สเกล 1 - 10)
@@ -342,7 +349,7 @@
           <div class="wl-ribbon-main" onclick="toggleWorkloadRibbonExpand('${escapeHtml(empId)}', event)">
             
             <div class="std-ident-zone">
-              <div class="std-name-line">${escapeHtml(u.FullName)}</div>
+              <div class="std-name-line">${escapeHtml(u.FullName || u.name)}</div>
               <div class="std-meta-line">${identitySubtitleHtml}</div>
             </div>
 
@@ -377,14 +384,15 @@
     const empId = u.EmpID || u.id;
     const isAdmin = g_CurrentUser && (g_CurrentUser.accessLevel === 'Admin' || g_CurrentUser.accessLevel === 'Super Admin');
     const wlData = calculateStaffWorkloadScore(u, customWls);
-    const advisorClass = u.classLevel && u.classLevel !== '-' ? u.classLevel : 'ไม่มีชั้นที่ปรึกษา';
-    const dutyDayTxt = u.dutyDay && u.dutyDay !== '-' ? u.dutyDay : 'ตามคำสั่งโรงเรียน';
+    const advisorClass = (u.classLevel && u.classLevel !== '-') ? u.classLevel : ((u.Class_Level && u.Class_Level !== '-') ? u.Class_Level : 'ไม่มีชั้นที่ปรึกษา');
+    const dutyDayTxt = (u.dutyDay && u.dutyDay !== '-') ? u.dutyDay : ((u.Duty_Day && u.Duty_Day !== '-') ? u.Duty_Day : 'ตามคำสั่งโรงเรียน');
+    const userDept = u.Department || u.department || '-';
 
     const topCardsHtml = `
       <div class="std-expanded-refs-grid">
         <div class="std-ref-card std-ref-pos">
           <svg class="ui-ico-sm" style="color:var(--steam-cyan); flex-shrink:0; width:15px; height:15px; margin-right:4px;" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
-          <div>กลุ่มสาระ: <b style="color:#66c0f4;">${escapeHtml(u.Department || '-')}</b></div>
+          <div>กลุ่มสาระ: <b style="color:#66c0f4;">${escapeHtml(userDept)}</b></div>
         </div>
         <div class="std-ref-card std-ref-start">
           <svg class="ui-ico-sm" style="color:var(--amber, #f59e0b); flex-shrink:0; width:15px; height:15px; margin-right:4px;" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
@@ -398,24 +406,38 @@
     `;
 
     // 1. หมวดที่ 1: งานสอนและการจัดการเรียนรู้
-    const teachingTasks = customWls.filter(w => w.Category === 'งานสอน' || w.Category === 'งานสอนและการจัดการเรียนรู้');
-    const totalTeachingHours = teachingTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek) || 0), 0);
-    const isEarlyChildhood = (u.classLevel && (u.classLevel.includes('ปฐมวัย') || u.classLevel.includes('อนุบาล'))) || 
-                             (u.Department && (u.Department.includes('ปฐมวัย') || u.Department.includes('อนุบาล')));
+    const teachingTasks = (customWls || []).filter(w => {
+      const c = w.Category || w.category || '';
+      return c === 'งานสอน' || c === 'งานสอนและการจัดการเรียนรู้';
+    });
+    const totalTeachingHours = teachingTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek || w.hoursPerWeek) || 0), 0);
+    const isEarlyChildhood = (advisorClass.includes('ปฐมวัย') || advisorClass.includes('อนุบาล')) || 
+                             (userDept.includes('ปฐมวัย') || userDept.includes('อนุบาล'));
     const minTeachingHours = isEarlyChildhood ? 14 : 12; // ชั่วโมงสอนขั้นต่ำตามเกณฑ์ ว9/2564
+    const minRequiredHours = minTeachingHours;
     const isTeachingHoursMet = totalTeachingHours >= minTeachingHours;
+    const isHoursMet = isTeachingHoursMet;
 
     // 2. หมวดที่ 2: งานสนับสนุนการจัดการเรียนรู้ / งานประจำฝ่าย
-    const deptCustomTasks = customWls.filter(w => w.Category === 'งานประจำฝ่าย' || w.Category === 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน');
-    const totalDeptHours = deptCustomTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek) || 0), 0);
+    const deptCustomTasks = (customWls || []).filter(w => {
+      const c = w.Category || w.category || '';
+      return c === 'งานประจำฝ่าย' || c === 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน';
+    });
+    const totalDeptHours = deptCustomTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek || w.hoursPerWeek) || 0), 0);
 
     // 3. หมวดที่ 3: งานพัฒนาคุณภาพการจัดการศึกษา / โครงการ
-    const extraTasks = customWls.filter(w => w.Category === 'งานที่ได้รับมอบหมาย' || w.Category === 'งานโครงการ' || w.Category === 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ');
-    const totalExtraHours = extraTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek) || 0), 0);
+    const extraTasks = (customWls || []).filter(w => {
+      const c = w.Category || w.category || '';
+      return c === 'งานที่ได้รับมอบหมาย' || c === 'งานโครงการ' || c === 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ';
+    });
+    const totalExtraHours = extraTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek || w.hoursPerWeek) || 0), 0);
 
     // 4. หมวดที่ 4: งานตอบสนองนโยบายและจุดเน้น / งานดูแลช่วยเหลือ
-    const careDutyCustomTasks = customWls.filter(w => w.Category === 'งานอื่น ๆ' || w.Category === 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่');
-    const totalCareHours = careDutyCustomTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek) || 0), 0);
+    const careDutyCustomTasks = (customWls || []).filter(w => {
+      const c = w.Category || w.category || '';
+      return c === 'งานอื่น ๆ' || c === 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่';
+    });
+    const totalCareHours = careDutyCustomTasks.reduce((sum, w) => sum + (parseFloat(w.HoursPerWeek || w.hoursPerWeek) || 0), 0);
 
     // รวมภาระงานทุกหมวดเทียบเกณฑ์ขั้นต่ำ 20 ชม./สัปดาห์ (ก.ค.ศ. ว9/2564 PA และ ว21/2564)
     const totalWeeklyHours = totalTeachingHours + totalDeptHours + totalExtraHours + totalCareHours;
@@ -446,38 +468,47 @@
     `;
     let m1Html = '';
     if (teachingTasks.length > 0) {
-      m1Html = teachingTasks.map(w => `
+      m1Html = teachingTasks.map(w => {
+        const wlId = w.WorkloadID || w.workloadId || '';
+        const title = w.Title || w.title || '';
+        const subGroup = w.SubGroupOrLevel || w.subGroupOrLevel || '';
+        const hours = w.HoursPerWeek || w.hoursPerWeek || 0;
+        const roleInTask = w.RoleInTask || w.roleInTask || 'ผู้สอน';
+        const term = w.AcademicTerm || w.academicTerm || '-';
+        return `
         <div class="std-sub-item">
           <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap;">
             <span class="std-badge std-badge-cyan">งานสอน</span>
             <div>
               <div style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
-                <b style="color:#fff;">${escapeHtml(w.Title)}</b>
-                <span style="color:var(--steam-cyan); font-weight:600;">${escapeHtml(w.SubGroupOrLevel || '')}</span>
-                <span style="color:var(--orange); font-weight:700;">${escapeHtml(w.HoursPerWeek)} ชม.ต่อสัปดาห์</span>
+                <b style="color:#fff;">${escapeHtml(title)}</b>
+                <span style="color:var(--steam-cyan); font-weight:600;">${escapeHtml(subGroup)}</span>
+                <span style="color:var(--orange); font-weight:700;">${escapeHtml(hours)} ชม.ต่อสัปดาห์</span>
               </div>
               <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
-                ${escapeHtml(w.RoleInTask || 'ผู้สอน')} · รอบปีงบประมาณ ${escapeHtml(w.AcademicTerm || '-')}
+                ${escapeHtml(roleInTask)} · รอบปีงบประมาณ ${escapeHtml(term)}
               </div>
             </div>
           </div>
           <div>
-            ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
+            ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(wlId)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     } else {
-      m1Html = `<div style="color:var(--text-muted); font-size:12.5px; padding:6px 0;">กลุ่มสาระ: <b style="color:#fff;">${escapeHtml(u.Department || '-')}</b> · ยังไม่มีการบันทึกรายวิชาและชั่วโมงสอนรายสัปดาห์</div>`;
+      m1Html = `<div style="color:var(--text-muted); font-size:12.5px; padding:6px 0;">กลุ่มสาระ: <b style="color:#fff;">${escapeHtml(userDept)}</b> · ยังไม่มีการบันทึกรายวิชาและชั่วโมงสอนรายสัปดาห์</div>`;
     }
 
-    const divisionTasks = u.Division && u.Division !== '-' ? u.Division.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const userDiv = u.Division || u.division || '';
+    const divisionTasks = userDiv && userDiv !== '-' ? userDiv.split(',').map(s => s.trim()).filter(Boolean) : [];
     let m2Html = '';
     const allM2Items = [];
     if (divisionTasks.length > 0) {
       divisionTasks.forEach(rawTName => {
         const isSec = rawTName.startsWith('[รอง]') || rawTName.includes('(รอง)');
         const cleanName = rawTName.replace(/^\[(หลัก|รอง)\]\s*/, '').replace(/\((หลัก|รอง)\)\s*/, '').trim();
-        const coStaff = g_UsersSummary.filter(other => other.EmpID !== empId && other.Division && other.Division.includes(cleanName)).map(o => o.FullName);
+        const coStaff = g_UsersSummary.filter(other => (other.EmpID || other.id) !== empId && (other.Division || other.division) && (other.Division || other.division).includes(cleanName)).map(o => o.FullName || o.name);
         const coStaffTxt = coStaff.length > 0 ? `ผู้ร่วมรับผิดชอบ: ${coStaff.join(', ')}` : 'ผู้รับผิดชอบหลัก';
         const roleBadge = isSec
           ? '<span class="std-badge std-badge-cyan">หน้าที่รอง</span>'
@@ -503,23 +534,29 @@
     }
     if (deptCustomTasks.length > 0) {
       deptCustomTasks.forEach(w => {
+        const wlId = w.WorkloadID || w.workloadId || '';
+        const roleInTask = w.RoleInTask || w.roleInTask || 'งานฝ่าย';
+        const title = w.Title || w.title || '';
+        const subGroup = w.SubGroupOrLevel || w.subGroupOrLevel || '';
+        const orderRef = w.OrderOrRef || w.orderOrRef || '-';
+        const status = w.Status || w.status || 'งานประจำต่อเนื่อง';
         allM2Items.push(`
           <div class="std-sub-item">
             <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap;">
-              <span class="std-badge std-badge-green">${escapeHtml(w.RoleInTask || 'งานฝ่าย')}</span>
+              <span class="std-badge std-badge-green">${escapeHtml(roleInTask)}</span>
               <div>
                 <div style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
-                  <b style="color:#fff;">${escapeHtml(w.Title)}</b>
-                  <span style="color:var(--steam-cyan); font-size:12px;">${escapeHtml(w.SubGroupOrLevel || '')}</span>
-                  <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(w.OrderOrRef || '-')}</span>
+                  <b style="color:#fff;">${escapeHtml(title)}</b>
+                  <span style="color:var(--steam-cyan); font-size:12px;">${escapeHtml(subGroup)}</span>
+                  <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(orderRef)}</span>
                 </div>
                 <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
-                  สถานะ: ${escapeHtml(w.Status || 'งานประจำต่อเนื่อง')}
+                  สถานะ: ${escapeHtml(status)}
                 </div>
               </div>
             </div>
             <div>
-              ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
+              ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(wlId)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
             </div>
           </div>
         `);
@@ -532,25 +569,32 @@
 
     let m3Html = '';
     if (extraTasks.length > 0) {
-      m3Html = extraTasks.map(w => `
+      m3Html = extraTasks.map(w => {
+        const wlId = w.WorkloadID || w.workloadId || '';
+        const status = w.Status || w.status || 'มอบหมาย';
+        const title = w.Title || w.title || '';
+        const orderRef = w.OrderOrRef || w.orderOrRef || '-';
+        const coEmp = w.CoEmpIDs || w.coEmpIds || '-';
+        return `
         <div class="std-sub-item">
           <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap;">
-            <span class="std-badge std-badge-green">${escapeHtml(w.Status || 'มอบหมาย')}</span>
+            <span class="std-badge std-badge-green">${escapeHtml(status)}</span>
             <div>
               <div style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
-                <b style="color:#fff;">${escapeHtml(w.Title)}</b>
-                <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(w.OrderOrRef || '-')}</span>
+                <b style="color:#fff;">${escapeHtml(title)}</b>
+                <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(orderRef)}</span>
               </div>
               <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
-                ผู้ร่วมงาน: ${escapeHtml(w.CoEmpIDs || '-')}
+                ผู้ร่วมงาน: ${escapeHtml(coEmp)}
               </div>
             </div>
           </div>
           <div>
-            ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
+            ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(wlId)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     } else {
       m3Html = `<div style="color:var(--text-muted); font-size:12.5px; padding:6px 0;">ยังไม่มีรายการโครงการหรืองานมอบหมายพิเศษเพิ่มเติม</div>`;
     }
@@ -605,25 +649,33 @@
             <span style="font-weight:700; color:var(--steam-cyan);">${escapeHtml(dutyDayTxt)}</span>
           </div>
         </div>
-        ${careDutyCustomTasks.length > 0 ? careDutyCustomTasks.map(w => `
+        ${careDutyCustomTasks.length > 0 ? careDutyCustomTasks.map(w => {
+          const wlId = w.WorkloadID || w.workloadId || '';
+          const roleInTask = w.RoleInTask || w.roleInTask || 'เวร/ดูแล';
+          const title = w.Title || w.title || '';
+          const orderRef = w.OrderOrRef || w.orderOrRef || '-';
+          const coEmp = w.CoEmpIDs || w.coEmpIds || '-';
+          const status = w.Status || w.status || 'ปกติ';
+          return `
           <div class="std-sub-item">
             <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap;">
-              <span class="std-badge std-badge-cyan">${escapeHtml(w.RoleInTask || 'เวร/ดูแล')}</span>
+              <span class="std-badge std-badge-cyan">${escapeHtml(roleInTask)}</span>
               <div>
                 <div style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
-                  <b style="color:#fff;">${escapeHtml(w.Title)}</b>
-                  <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(w.OrderOrRef || '-')}</span>
+                  <b style="color:#fff;">${escapeHtml(title)}</b>
+                  <span style="color:var(--orange); font-size:12px; margin-left:6px;">คำสั่ง: ${escapeHtml(orderRef)}</span>
                 </div>
                 <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">
-                  ผู้ร่วมงาน: ${escapeHtml(w.CoEmpIDs || '-')} · ${escapeHtml(w.Status || 'ปกติ')}
+                  ผู้ร่วมงาน: ${escapeHtml(coEmp)} · ${escapeHtml(status)}
                 </div>
               </div>
             </div>
             <div>
-              ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(w.WorkloadID)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
+              ${isAdmin ? `<button type="button" class="btn-table-action delete" onclick="handleDeleteWorkloadItem('${escapeHtml(wlId)}')"><svg class="ui-ico-xs" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>ลบ</span></button>` : ''}
             </div>
           </div>
-        `).join('') : ''}
+        `;
+        }).join('') : ''}
       </div>
     `;
   }
