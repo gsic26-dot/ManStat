@@ -4,10 +4,12 @@
  * =========================================================================
  * Production-grade PostgreSQL client powered by node-postgres (pg).
  * Seamlessly connects to Supabase / Vercel Postgres / Neon.
- * Automatically provisions tables and initial seed data on startup.
+ * Automatically provisions 15 ground-truth tables on startup.
  * =========================================================================
  */
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 function getConnectionString() {
   return process.env.SUPABASE_DB_URL || 
@@ -61,81 +63,91 @@ async function query(text, params) {
 }
 
 /**
- * Automatically create all tables and populate initial records if missing.
+ * Automatically create all 15 tables and populate initial records if missing.
  */
 async function initTables() {
   if (!initPool()) return;
+
+  // Try reading supabase-seed.sql if present on disk
+  const seedPath = path.join(__dirname, '../../supabase-seed.sql');
+  if (fs.existsSync(seedPath)) {
+    try {
+      const seedSql = fs.readFileSync(seedPath, 'utf8');
+      await query(seedSql);
+      console.log('[Postgres] Executed supabase-seed.sql successfully.');
+      return;
+    } catch (e) {
+      console.warn('[Postgres Seed Warning]', e.message);
+    }
+  }
+
+  // Fallback embedded 15-table DDL schema
   const schema = `
     CREATE TABLE IF NOT EXISTS school_info (
-      id VARCHAR(50) PRIMARY KEY DEFAULT 'current',
-      school_name TEXT DEFAULT 'โรงเรียนมโนธรรมวิทยาคาร',
-      school_code10 VARCHAR(50) DEFAULT '',
-      school_code8 VARCHAR(50) DEFAULT '',
-      director_name TEXT DEFAULT '',
-      contact_phone VARCHAR(50) DEFAULT '',
-      address TEXT DEFAULT '',
-      fiscal_year VARCHAR(20) DEFAULT '2570',
-      logo_base64 TEXT DEFAULT '',
+      key VARCHAR(100) PRIMARY KEY,
+      val TEXT,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS fiscal_data (
-      id SERIAL PRIMARY KEY,
-      year_be INT,
-      year_ce INT,
-      period_mode VARCHAR(20) DEFAULT 'PERIOD_1',
-      status VARCHAR(20) DEFAULT 'Active',
-      updated_at VARCHAR(50) DEFAULT CURRENT_TIMESTAMP::text
+      fiscal_year INT PRIMARY KEY,
+      period1_start TEXT,
+      period1_end TEXT,
+      period2_start TEXT,
+      period2_end TEXT,
+      active_period_mode VARCHAR(50),
+      status VARCHAR(50),
+      updated_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS active_classes (
       id SERIAL PRIMARY KEY,
-      class_name VARCHAR(100) UNIQUE
+      class_name VARCHAR(100) UNIQUE NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS teachers (
       id VARCHAR(50) PRIMARY KEY,
-      emp_id VARCHAR(50),
-      position_no VARCHAR(50),
-      member_id VARCHAR(50),
       name TEXT NOT NULL,
-      full_name TEXT NOT NULL,
       email VARCHAR(150),
       phone VARCHAR(50),
       class_level VARCHAR(100),
       role TEXT,
-      position TEXT,
       duty_day VARCHAR(50),
       password TEXT,
-      is_password_hashed BOOLEAN DEFAULT false,
+      is_password_hashed BOOLEAN DEFAULT true,
       access_level VARCHAR(50) DEFAULT 'User',
       status VARCHAR(50) DEFAULT 'ปกติ',
-      start_date VARCHAR(50),
+      start_date TEXT,
       department TEXT,
-      division TEXT,
       emp_type TEXT,
       id_card VARCHAR(50),
-      id_card_masked VARCHAR(50),
-      sick_count INT DEFAULT 0,
-      sick_days NUMERIC(5,2) DEFAULT 0,
-      sick_max NUMERIC(5,2) DEFAULT 60,
-      personal_count INT DEFAULT 0,
-      personal_days NUMERIC(5,2) DEFAULT 0,
-      personal_max NUMERIC(5,2) DEFAULT 45,
-      permit_count INT DEFAULT 0,
-      permit_hours NUMERIC(5,2) DEFAULT 0,
-      meta_json JSONB DEFAULT '{}'::jsonb,
+      division TEXT,
+      position_no VARCHAR(50),
+      member_id VARCHAR(50),
+      birth_date TEXT,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS leave_quota (
+      emp_id VARCHAR(50) NOT NULL,
+      fiscal_year INT NOT NULL,
+      sick_max NUMERIC(5,2) DEFAULT 60,
+      sick_used NUMERIC(5,2) DEFAULT 0,
+      personal_max NUMERIC(5,2) DEFAULT 45,
+      personal_used NUMERIC(5,2) DEFAULT 0,
+      vacation_max NUMERIC(5,2) DEFAULT 10,
+      vacation_used NUMERIC(5,2) DEFAULT 0,
+      PRIMARY KEY (emp_id, fiscal_year)
     );
 
     CREATE TABLE IF NOT EXISTS leave_logs (
       leave_id VARCHAR(100) PRIMARY KEY,
       emp_id VARCHAR(50),
-      full_name TEXT NOT NULL,
-      leave_type VARCHAR(100) NOT NULL,
-      start_date VARCHAR(50),
-      end_date VARCHAR(50),
+      full_name TEXT,
+      leave_type VARCHAR(100),
+      start_date TEXT,
+      end_date TEXT,
       start_time VARCHAR(20) DEFAULT '-',
       end_time VARCHAR(20) DEFAULT '-',
       total_days NUMERIC(5,2) DEFAULT 1,
@@ -148,29 +160,93 @@ async function initTables() {
       step_academic VARCHAR(50) DEFAULT 'รอตรวจสอบ',
       step_director VARCHAR(50) DEFAULT 'รอลงนาม',
       signer_name TEXT DEFAULT '',
-      form_meta_json TEXT DEFAULT '',
       remark TEXT DEFAULT '',
-      timestamp VARCHAR(50),
+      form_meta_json TEXT DEFAULT '',
+      timestamp TEXT DEFAULT '',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS workloads (
-      workload_id VARCHAR(100) PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS holidays (
+      holiday_date TEXT PRIMARY KEY,
+      reason_type TEXT,
+      note TEXT,
+      director_name TEXT,
+      timestamp TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS board_members (
+      member_id VARCHAR(100) PRIMARY KEY,
+      prefix VARCHAR(50),
+      first_name TEXT,
+      last_name TEXT,
+      full_name TEXT NOT NULL,
+      board_position VARCHAR(100),
+      occupation TEXT,
+      organization TEXT,
+      phone VARCHAR(50),
+      email VARCHAR(150),
+      appointment_order_no TEXT,
+      order_date TEXT,
+      start_date TEXT,
+      end_date TEXT,
+      term_number INT DEFAULT 1,
+      status VARCHAR(50) DEFAULT 'ดำรงตำแหน่ง',
+      doc_url TEXT,
+      remark TEXT,
+      updated_by TEXT,
+      timestamp TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS school_board_staff_terms (
+      term_id VARCHAR(100) PRIMARY KEY,
       emp_id VARCHAR(50),
       full_name TEXT,
-      term VARCHAR(20),
-      year VARCHAR(20),
-      subject_code VARCHAR(50),
-      subject_name TEXT,
-      class_level VARCHAR(50),
-      hours_per_week NUMERIC(5,2),
-      remark TEXT,
-      meta_json JSONB DEFAULT '{}'::jsonb,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      board_position VARCHAR(100),
+      start_date TEXT,
+      end_date TEXT,
+      term_number INT DEFAULT 1,
+      appointment_order_no TEXT,
+      status VARCHAR(50),
+      updated_by TEXT,
+      timestamp TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS feedbacks (
-      id VARCHAR(100) PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS board_meetings (
+      meeting_id VARCHAR(100) PRIMARY KEY,
+      meeting_no VARCHAR(50),
+      fiscal_year VARCHAR(20),
+      meeting_date TEXT,
+      meeting_time VARCHAR(50),
+      location TEXT,
+      agenda_summary TEXT,
+      present_member_ids TEXT,
+      absent_member_ids TEXT,
+      resolutions TEXT,
+      report_doc_url TEXT,
+      recorded_by TEXT,
+      timestamp TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS staff_workloads (
+      workload_id VARCHAR(100) PRIMARY KEY,
+      emp_id VARCHAR(50),
+      co_emp_ids TEXT,
+      category VARCHAR(100),
+      title TEXT,
+      sub_group_or_level TEXT,
+      hours_per_week NUMERIC(5,2),
+      role_in_task TEXT,
+      academic_term VARCHAR(50),
+      order_or_ref TEXT,
+      effective_period TEXT,
+      status VARCHAR(50) DEFAULT 'ปกติ',
+      assigned_by TEXT,
+      updated_by TEXT,
+      timestamp TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS system_feedback (
+      feedback_id VARCHAR(100) PRIMARY KEY,
       emp_id VARCHAR(50),
       full_name TEXT,
       category VARCHAR(100),
@@ -179,60 +255,56 @@ async function initTables() {
       status VARCHAR(50) DEFAULT 'รอการตอบรับ',
       admin_reply TEXT,
       updated_by TEXT,
-      timestamp VARCHAR(50)
+      timestamp TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS board_members (
-      id VARCHAR(100) PRIMARY KEY,
-      name TEXT NOT NULL,
-      position TEXT,
-      role TEXT,
-      phone VARCHAR(50),
-      status VARCHAR(50) DEFAULT 'Active'
+    CREATE TABLE IF NOT EXISTS history_standing (
+      record_id VARCHAR(100) PRIMARY KEY,
+      emp_id VARCHAR(50),
+      standing_level TEXT,
+      effective_date TEXT,
+      order_number TEXT,
+      doc_link TEXT,
+      timestamp TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS board_meetings (
-      id VARCHAR(100) PRIMARY KEY,
-      meeting_no VARCHAR(50),
-      fiscal_year VARCHAR(20),
-      date VARCHAR(50),
-      attendees_count INT DEFAULT 0,
-      status VARCHAR(50) DEFAULT 'Completed'
+    CREATE TABLE IF NOT EXISTS history_education (
+      record_id VARCHAR(100) PRIMARY KEY,
+      emp_id VARCHAR(50),
+      degree_level TEXT,
+      degree_short TEXT,
+      major TEXT,
+      institute TEXT,
+      grad_year VARCHAR(50),
+      timestamp TEXT
     );
 
-    -- Auto-seed initial records
-    INSERT INTO school_info (id, school_name, director_name, fiscal_year)
-    VALUES ('current', 'โรงเรียนมโนธรรมวิทยาคาร', 'นายธีรศักดิ์ มโนธรรม', '2570')
-    ON CONFLICT (id) DO NOTHING;
+    CREATE TABLE IF NOT EXISTS history_licenses (
+      record_id VARCHAR(100) PRIMARY KEY,
+      emp_id VARCHAR(50),
+      license_category TEXT,
+      license_type TEXT,
+      license_number VARCHAR(100),
+      issue_date TEXT,
+      expiry_date TEXT,
+      timestamp TEXT
+    );
 
-    INSERT INTO fiscal_data (year_be, year_ce, period_mode, status)
-    VALUES (2570, 2027, 'PERIOD_1', 'Active')
-    ON CONFLICT DO NOTHING;
-
-    INSERT INTO active_classes (class_name) VALUES
-    ('มัธยมศึกษาปีที่ 1'),
-    ('มัธยมศึกษาปีที่ 2'),
-    ('มัธยมศึกษาปีที่ 3'),
-    ('มัธยมศึกษาปีที่ 4'),
-    ('มัธยมศึกษาปีที่ 5'),
-    ('มัธยมศึกษาปีที่ 6')
-    ON CONFLICT DO NOTHING;
-
-    INSERT INTO teachers (
-      id, emp_id, position_no, name, full_name, email, role, position,
-      access_level, status, password, department, division
-    )
-    VALUES (
-      'EXE-001', 'EXE-001', '10001', 'Superuser (ผู้ดูแลระบบสูงสุด)', 'Superuser (ผู้ดูแลระบบสูงสุด)',
-      'superuser', 'ผู้อำนวยการสถานศึกษา', 'ผู้อำนวยการสถานศึกษา', 'Superuser', 'ปกติ',
-      '44123130114', 'บริหารสถานศึกษา', 'ผู้บริหารสถานศึกษา'
-    )
-    ON CONFLICT (id) DO NOTHING;
+    CREATE TABLE IF NOT EXISTS history_scout (
+      record_id VARCHAR(100) PRIMARY KEY,
+      emp_id VARCHAR(50),
+      scout_qualification TEXT,
+      scout_type TEXT,
+      scout_position TEXT,
+      cert_number VARCHAR(100),
+      approved_year VARCHAR(50),
+      timestamp TEXT
+    );
   `;
 
   try {
     await query(schema);
-    console.log('[Postgres] Auto-installed schema tables and seed data successfully.');
+    console.log('[Postgres] 15 tables verified / created successfully.');
   } catch (e) {
     console.error('[Postgres Schema Init Error]', e.message);
   }
