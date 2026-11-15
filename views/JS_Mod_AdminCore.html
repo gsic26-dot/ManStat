@@ -785,9 +785,11 @@
   }
 
   function initAdminData(data) {
-    window.g_AdminData = data;
-    g_AdminTeachers = data.teachers || [];
-    g_UsersSummary = data.teachers || []; // Sync global staff state across all portal modules
+    window.g_AdminData = data || {};
+    g_AdminTeachers = (Array.isArray(data.teachers) && data.teachers.length > 0)
+      ? data.teachers
+      : ((Array.isArray(data.usersSummary) && data.usersSummary.length > 0) ? data.usersSummary : []);
+    g_UsersSummary = g_AdminTeachers; // Sync global staff state across all portal modules
     g_SchoolInfo = data.schoolInfo || {};
     g_AdminFiscalData = data.fiscalData || null;
     if (Array.isArray(data.activeClasses) && data.activeClasses.length > 0) {

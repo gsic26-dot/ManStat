@@ -89,9 +89,11 @@ const handlers = {
   getAdminData: async function(args) {
     try {
       const bundle = await getMainBundle();
+      const staffList = bundle.teachers || bundle.usersSummary || [];
       return {
         status: 'success',
-        usersSummary: bundle.usersSummary || [],
+        teachers: staffList,
+        usersSummary: staffList,
         schoolInfo: bundle.schoolInfo || {},
         activeClasses: bundle.activeClasses || [],
         fiscalData: bundle.fiscalData || {},
@@ -101,9 +103,11 @@ const handlers = {
     } catch (e) {
       const db = getDatabase();
       const boardBundle = buildBoardBundle(db.boardMembers, db.schoolBoardStaffTerms, db.boardMeetings, db.schoolInfo);
+      const staffList = db.teachers || [];
       return {
         status: 'success',
-        usersSummary: db.teachers || [],
+        teachers: staffList,
+        usersSummary: staffList,
         schoolInfo: db.schoolInfo || {},
         activeClasses: db.activeClasses || [],
         fiscalData: db.fiscalData || {},
@@ -910,3 +914,4 @@ router.post('/:action', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.handlers = handlers;
