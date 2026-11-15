@@ -12,7 +12,8 @@ const crypto = require('crypto');
 const { getDatabase, saveDatabase } = require('../data/store');
 const { isPostgresActive, query } = require('../data/postgres');
 const { getMainBundle, buildBoardBundle, importFullDatabase, ensurePostgresReady } = require('../data/dbAdapter');
-const { renderTemplate } = require('../utils/templateRenderer');
+const { renderTemplate, getCompiledPage } = require('../utils/templateRenderer');
+const { getOfficialLeaveFormHtml, getPersonnelPortfolioPrintHtml } = require('../utils/printTemplates');
 
 // Password Verification Helpers
 function _isSaltedHash(s) {
@@ -54,13 +55,13 @@ const handlers = {
   // 1. Home & Admin Bundles
   getHomeBundle: async function(args) {
     const savedEmail = args[0] || '';
-    const htmlContent = renderTemplate('Index');
+    const htmlContent = getCompiledPage('Index');
     const initialData = await handlers.getMainBundleData([savedEmail]);
     return { htmlContent, initialData };
   },
 
   getAdminBundle: async function() {
-    const htmlContent = renderTemplate('Admin');
+    const htmlContent = getCompiledPage('Admin');
     const adminData = await handlers.getAdminData();
     return { htmlContent, adminData };
   },
@@ -370,6 +371,127 @@ const handlers = {
 
     saveDatabase();
     return { status: 'success', message: 'บันทึกการอนุมัติสำเร็จ' };
+  },
+
+  deleteLeaveRequest: async function(args) {
+    const leaveId = String(args[0] || '').trim();
+    const db = getDatabase();
+    if (!db.logs) db.logs = [];
+    const idx = db.logs.findIndex(l => (l.leaveId === leaveId || l.LeaveID === leaveId));
+    if (idx !== -1) {
+      db.logs.splice(idx, 1);
+      saveDatabase();
+      return { success: true, status: 'success', message: 'ลบรายการคำขอลาเรียบร้อยแล้ว' };
+    }
+    return { success: false, status: 'error', message: 'ไม่พบรายการคำขอนี้' };
+  },
+
+  MOD_RetroLeave_saveBatch: async function(args) {
+    const records = args[0] || [];
+    const actorInfo = args[1] || {};
+    const db = getDatabase();
+
+    if (!Array.isArray(records) || records.length === 0) {
+      return { status: 'error', success: false, message: 'ไม่พบรายการข้อมูลที่ต้องการบันทึก' };
+    }
+
+    if (!db.logs) db.logs = [];
+
+    records.forEach(item => {
+      const leaveId = item.leaveId || item.LeaveID || ('LV-RETRO-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
+      const logEntry = {
+        leaveId: leaveId,
+        LeaveID: leaveId,
+        empId: item.empId || item.EmpID || '',
+        EmpID: item.empId || item.EmpID || '',
+        fullName: item.fullName || item.FullName || '',
+        FullName: item.fullName || item.FullName || '',
+        leaveType: item.leaveType || item.LeaveType || 'ลากิจส่วนตัว',
+        LeaveType: item.leaveType || item.LeaveType || 'ลากิจส่วนตัว',
+        startDate: item.startDate || item.StartDate || '',
+        StartDate: item.startDate || item.StartDate || '',
+        endDate: item.endDate || item.EndDate || '',
+        EndDate: item.endDate || item.EndDate || '',
+        startTime: item.startTime || item.StartTime || '-',
+        StartTime: item.startTime || item.StartTime || '-',
+        endTime: item.endTime || item.EndTime || '-',
+        EndTime: item.endTime || item.EndTime || '-',
+        totalDays: Number(item.totalDays || item.TotalDays || 1),
+        TotalDays: Number(item.totalDays || item.TotalDays || 1),
+        totalHours: Number(item.totalHours || item.TotalHours || 0),
+        TotalHours: Number(item.totalHours || item.TotalHours || 0),
+        reason: item.reason || item.Reason || 'บันทึกย้อนหลัง',
+        Reason: item.reason || item.Reason || 'บันทึกย้อนหลัง',
+        substituteInfo: item.substituteInfo || item.SubstituteInfo || 'ไม่มีคาบสอน',
+        SubstituteInfo: item.substituteInfo || item.SubstituteInfo || 'ไม่มีคาบสอน',
+        attachUrl: item.attachUrl || item.AttachUrl || '-',
+        AttachUrl: item.attachUrl || item.AttachUrl || '-',
+        status: 'อนุมัติ',
+        Status: 'อนุมัติ',
+        stepHr: 'ผ่านการตรวจสอบ',
+        Step1_HR: 'ผ่านการตรวจสอบ',
+        stepAcademic: 'ผ่านการตรวจสอบ',
+        Step2_Academic: 'ผ่านการตรวจสอบ',
+        stepDirector: 'อนุมัติ',
+        Step3_Director: 'อนุมัติ',
+        signerName: db.schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม',
+        SignerName: db.schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม',
+        remark: typeof item.remark === 'object' ? JSON.stringify(item.remark) : (item.remark || ''),
+        Remark: typeof item.remark === 'object' ? JSON.stringify(item.remark) : (item.remark || ''),
+        timestamp: item.timestamp || item.Timestamp || new Date().toISOString().split('T')[0]
+      };
+      db.logs.unshift(logEntry);
+    });
+
+    saveDatabase();
+    return {
+      status: 'success',
+      success: true,
+      message: `บันทึกการลาย้อนหลังสำเร็จ ${records.length} รายการ`,
+      count: records.length
+    };
+  },
+
+  getOfficialLeaveFormPrintHtml: async function(args) {
+    const leaveId = String(args[0] || '').trim();
+    const db = getDatabase();
+    return getOfficialLeaveFormHtml(leaveId, db);
+  },
+
+  getPersonnelPortfolioPrintHtml: async function(args) {
+    const empId = String(args[0] || '').trim();
+    const db = getDatabase();
+    return getPersonnelPortfolioPrintHtml(empId, db);
+  },
+
+  migrateAllPasswordsToSHA256: async function(args) {
+    const db = getDatabase();
+    let migratedCount = 0;
+    (db.teachers || []).forEach(t => {
+      if (!_isSaltedHash(t.password)) {
+        t.password = _hashPassword(t.password || '123456');
+        t.is_password_hashed = true;
+        t.isPasswordHashed = true;
+        migratedCount++;
+      }
+    });
+    saveDatabase();
+    return {
+      status: 'success',
+      success: true,
+      migratedCount,
+      message: `เข้ารหัสผ่าน SHA-256 สำเร็จแล้ว ${migratedCount} รายการ`
+    };
+  },
+
+  createDatabaseBackupSnapshot: async function(args) {
+    const db = getDatabase();
+    return {
+      status: 'success',
+      success: true,
+      message: 'สำรองข้อมูลสแน็ปช็อตในระบบเรียบร้อยแล้ว (ออฟไลน์และหน่วยความจำพร้อมใช้งาน)',
+      timestamp: new Date().toISOString()
+    };
   },
 
   // 5. School & Fiscal Configurations

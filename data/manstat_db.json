@@ -85,7 +85,7 @@
       "role": "ผู้อำนวยการสถานศึกษา",
       "Position": "ผู้อำนวยการสถานศึกษา",
       "dutyDay": "",
-      "password": "sha256$7801b4d69cc1c1fc7793775ee89a0483330a595c9b1d181428e97da50f2ef46d",
+      "password": "sha256$3d34690719aa43b2$a9758ac571045283b03eb883bc599908b800702681ab510c6193dc978c7c804c",
       "isPasswordHashed": true,
       "accessLevel": "Superuser",
       "status": "ปกติ",
@@ -142,7 +142,8 @@
         }
       ],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-003",
@@ -159,7 +160,7 @@
       "role": "ครูชำนาญการพิเศษ",
       "Position": "ครูชำนาญการพิเศษ",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$c9747790f363100b$ee6f0ca433a0591fe85e50ee7731f555b41b260df0a00778b39117fc7896404a",
       "isPasswordHashed": true,
       "accessLevel": "Admin",
       "status": "ปกติ",
@@ -194,7 +195,8 @@
       ],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-004",
@@ -211,7 +213,7 @@
       "role": "ครูชำนาญการพิเศษ",
       "Position": "ครูชำนาญการพิเศษ",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$997aa7360f499617$10e8d0f10b1a15a8c2149f616980e707eafd77b320c286191d43e3871f77b9f9",
       "isPasswordHashed": true,
       "accessLevel": "Admin",
       "status": "ปกติ",
@@ -236,7 +238,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-005",
@@ -253,7 +256,7 @@
       "role": "ครูชำนาญการพิเศษ",
       "Position": "ครูชำนาญการพิเศษ",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$ab1f468399d610fb$bf0a19e58abf17a31b63bb03b4a0b1fdf961673ae7b8e300e1b2521c9a057681",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -278,7 +281,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-006",
@@ -295,7 +299,7 @@
       "role": "ครูชำนาญการพิเศษ",
       "Position": "ครูชำนาญการพิเศษ",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$21650320fac5f065$3cf8dfc5c4e9533811f232a7669a12288f34c555ec4920d71e7608492c8056a0",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -320,7 +324,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-007",
@@ -337,7 +342,7 @@
       "role": "ครูชำนาญการพิเศษ",
       "Position": "ครูชำนาญการพิเศษ",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$0c0b8bb9cc67cebb$85be102c7bf88f6a0916717ec1d95f617b93d9e8488a3ba78dfff1882185c5da",
       "isPasswordHashed": true,
       "accessLevel": "Admin",
       "status": "ปกติ",
@@ -362,7 +367,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-008",
@@ -379,7 +385,7 @@
       "role": "ครู คศ. 1",
       "Position": "ครู คศ. 1",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$41b9ed97bd7157e5$238e6805f665c296e473ae174ec260dc6997b58ba5394d8c585e270253b1101f",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -404,7 +410,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-009",
@@ -421,7 +428,7 @@
       "role": "ครู คศ. 1",
       "Position": "ครู คศ. 1",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$452f24496cf6427e$f88dd0a94fe1b7f2959ec76f588bacb6f1fa3dbde6a5cfbcccdcc65b293b60fa",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -446,7 +453,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-010",
@@ -463,7 +471,7 @@
       "role": "ครู คศ. 1",
       "Position": "ครู คศ. 1",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$b6b5b55e3962aa16$60807f969c6fe63228ddbce9c8eb0d4ed6227ec1238876fc095d56ae404a0c9e",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -488,7 +496,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-011",
@@ -505,7 +514,7 @@
       "role": "ครู คศ. 1",
       "Position": "ครู คศ. 1",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$a36e555b69442c7a$5d36d0a07154cad20e9fd13cac2b559835a8ebf784841c35664e1f140dd9451d",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -530,7 +539,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-012",
@@ -547,7 +557,7 @@
       "role": "ครู คศ. 1",
       "Position": "ครู คศ. 1",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$e7c95e594956cdde$fec379f0d9a4be2d818924b51ff35247402f5c968c19a9c446f566d9d0bb5e75",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -572,7 +582,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-013",
@@ -589,7 +600,7 @@
       "role": "ครูผู้ช่วย",
       "Position": "ครูผู้ช่วย",
       "dutyDay": "",
-      "password": "123456",
+      "password": "sha256$ffa0e7d81eb1a217$1f1a75372d822b7c1aa1978b31502c5f76df06786230954a187846d63cd1afa1",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -614,7 +625,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "TCH-014",
@@ -631,7 +643,7 @@
       "role": "พี่เลี้ยงเด็กพิการโรงเรียนทั่วไปจัดการเรียนรวม",
       "Position": "พี่เลี้ยงเด็กพิการโรงเรียนทั่วไปจัดการเรียนรวม",
       "dutyDay": "",
-      "password": "sha256$8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "password": "sha256$04906c886a13cc2a$653232ac73c8956db95617ce9e1859c494d8d6ad4c93f10e0c6e7707ae379ed1",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -656,7 +668,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "STF-001",
@@ -673,7 +686,7 @@
       "role": "เจ้าหน้าที่ธุรการโรงเรียน",
       "Position": "เจ้าหน้าที่ธุรการโรงเรียน",
       "dutyDay": "",
-      "password": "123456",
+      "password": "sha256$ac1439defbf40b45$e5ec02900e7b319a8dc554fc00bbb57fafbe5be9ed579c3c3462007abbb0b4cc",
       "isPasswordHashed": true,
       "accessLevel": "Admin",
       "status": "ปกติ",
@@ -698,7 +711,8 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     },
     {
       "id": "STF-002",
@@ -715,7 +729,7 @@
       "role": "นักการภารโรง",
       "Position": "นักการภารโรง",
       "dutyDay": "",
-      "password": "123456",
+      "password": "sha256$150bac6e1b94dfe8$d68087310374d7480890b00a662b0b949c342bf3421e6ea572d2700c3ba968b8",
       "isPasswordHashed": true,
       "accessLevel": "User",
       "status": "ปกติ",
@@ -740,10 +754,53 @@
       "StandingsHistory": [],
       "EducationsHistory": [],
       "ScoutsHistory": [],
-      "TimelineEvents": []
+      "TimelineEvents": [],
+      "is_password_hashed": true
     }
   ],
-  "logs": [],
+  "logs": [
+    {
+      "leaveId": "LV-RETRO-1794747268691-784",
+      "LeaveID": "LV-RETRO-1794747268691-784",
+      "empId": "TCH-003",
+      "EmpID": "TCH-003",
+      "fullName": "นายธวัชชัย เหลืองโอฬาร",
+      "FullName": "นายธวัชชัย เหลืองโอฬาร",
+      "leaveType": "ลากิจส่วนตัว",
+      "LeaveType": "ลากิจส่วนตัว",
+      "startDate": "2026-11-10",
+      "StartDate": "2026-11-10",
+      "endDate": "2026-11-10",
+      "EndDate": "2026-11-10",
+      "startTime": "-",
+      "StartTime": "-",
+      "endTime": "-",
+      "EndTime": "-",
+      "totalDays": 1,
+      "TotalDays": 1,
+      "totalHours": 0,
+      "TotalHours": 0,
+      "reason": "ติดธุระส่วนตัว",
+      "Reason": "ติดธุระส่วนตัว",
+      "substituteInfo": "ไม่มีคาบสอน",
+      "SubstituteInfo": "ไม่มีคาบสอน",
+      "attachUrl": "-",
+      "AttachUrl": "-",
+      "status": "อนุมัติ",
+      "Status": "อนุมัติ",
+      "stepHr": "ผ่านการตรวจสอบ",
+      "Step1_HR": "ผ่านการตรวจสอบ",
+      "stepAcademic": "ผ่านการตรวจสอบ",
+      "Step2_Academic": "ผ่านการตรวจสอบ",
+      "stepDirector": "อนุมัติ",
+      "Step3_Director": "อนุมัติ",
+      "signerName": "นายธีรศักดิ์ มโนธรรม",
+      "SignerName": "นายธีรศักดิ์ มโนธรรม",
+      "remark": "",
+      "Remark": "",
+      "timestamp": "2026-11-15"
+    }
+  ],
   "feedbacks": [],
   "workloads": [],
   "holidays": [

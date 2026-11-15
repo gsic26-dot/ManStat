@@ -757,10 +757,6 @@ const dataPath = path.join(sqlDir, '2_insert_data.sql');
 fs.writeFileSync(schemaPath, schemaSql, 'utf8');
 fs.writeFileSync(dataPath, dataSql, 'utf8');
 
-// Also write to root for convenience
-fs.writeFileSync(path.join(__dirname, '../1_create_tables.sql'), schemaSql, 'utf8');
-fs.writeFileSync(path.join(__dirname, '../2_insert_data.sql'), dataSql, 'utf8');
-
 // Also write combined supabase-seed.sql
 const fullSql = schemaSql + '\n\n' + dataSql;
 fs.writeFileSync(SQL_OUTPUT_PATH, fullSql, 'utf8');
