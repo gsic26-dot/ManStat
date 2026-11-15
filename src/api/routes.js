@@ -10,6 +10,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getDatabase, saveDatabase } = require('../data/store');
+const { isPostgresActive, query } = require('../data/postgres');
 const { getMainBundle, importFullDatabase, ensurePostgresReady } = require('../data/dbAdapter');
 const { renderTemplate } = require('../utils/templateRenderer');
 
@@ -463,11 +464,37 @@ const handlers = {
   // 8. One-Click Cloud Migration & Google Sheets Import
   importDatabaseFromGoogleSheets: async function(args) {
     let payload = args[0];
-    if (typeof payload === 'string') {
+    const defaultGASUrl = 'https://script.google.com/macros/s/AKfycbx9tVM8qitSnnjoHNEl0cHFtTu8XYp5Fp_aA7-mIFIhM17TSwWSsB_D_tkG48TlEfrK/exec?action=export&key=44123130114';
+
+    // 1. If payload is a URL or empty, fetch directly via HTTP
+    if (!payload || (typeof payload === 'string' && (payload.startsWith('http://') || payload.startsWith('https://')))) {
+      const targetUrl = (payload && payload.startsWith('http')) ? payload : defaultGASUrl;
+      console.log('[Auto-Sync] Fetching real data from Google Sheets endpoint:', targetUrl);
+      const response = await fetch(targetUrl, { redirect: 'follow' });
+      if (!response.ok) {
+        throw new Error('ไม่สามารถเชื่อมต่อ Google Sheets Web App ได้ (HTTP ' + response.status + ')');
+      }
+      payload = await response.json();
+    } else if (typeof payload === 'string') {
       try {
         payload = JSON.parse(payload);
       } catch (err) {
-        throw new Error('รูปแบบข้อมูล JSON ไม่ถูกต้อง กรุณาคัดลอกข้อมูลทั้งหมดให้ครบถ้วน');
+        throw new Error('ข้อมูลไม่ถูกต้อง กรุณาระบุ URL ของ Google Sheets หรือเลือกไฟล์');
+      }
+    }
+
+    // 2. Validate payload
+    if (!payload || (!payload.usersSummary && !payload.teachers)) {
+      throw new Error('ไม่พบข้อมูลบุคลากรในชุดข้อมูลที่ดึงมา กรุณาตรวจสอบสิทธิ์การเข้าถึง');
+    }
+
+    // 3. Clear mock dummy data from PostgreSQL
+    if (isPostgresActive()) {
+      try {
+        await query(`DELETE FROM teachers WHERE id = 'TCH-001' OR email = 'director@school.ac.th' OR email = 'somjai@school.ac.th'`);
+        await query(`DELETE FROM leave_logs WHERE leave_id = 'LV-1731600000000'`);
+      } catch (e) {
+        console.warn('[Auto-Sync Notice] Cleanup mock data:', e.message);
       }
     }
 
@@ -475,7 +502,7 @@ const handlers = {
     return {
       status: 'success',
       success: true,
-      message: `นำเข้าข้อมูลลงสู่ Cloud PostgreSQL เรียบร้อยแล้ว (บุคลากร ${res.teacherCount || 0} คน, ประวัติการลา ${res.logCount || 0} รายการ)`,
+      message: `นำเข้าข้อมูลจริงจาก Google Sheets สู่ Cloud PostgreSQL สำเร็จแล้ว (บุคลากร ${res.teacherCount || 0} คน, ประวัติการลา ${res.logCount || 0} รายการ)`,
       details: res
     };
   }

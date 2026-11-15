@@ -1,41 +1,47 @@
-<!-- MODAL: CLOUD POSTGRESQL MIGRATION (IMPORT FROM GOOGLE SHEETS) -->
+<!-- MODAL: CLOUD POSTGRESQL LIVE MIGRATION -->
 <div class="modal-overlay" id="modalCloudMigration" style="z-index: 9996; display:none;">
   <div class="modal-box steam-dialog-card type-info" style="max-width: 580px; width: 92%;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #2a475e; padding-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px;">
-        <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span style="color:#fff; font-size:16.5px; font-weight:700;">นำเข้าฐานข้อมูลสู่ Cloud PostgreSQL</span>
+        <svg class="ui-ico" style="color:var(--steam-cyan);" viewBox="0 0 24 24"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><path d="m9 14 2 2 4-4"/></svg>
+        <span style="color:#fff; font-size:16.5px; font-weight:700;">นำเข้าข้อมูลจริงจาก Google Sheets สู่ Cloud SQL</span>
       </div>
       <button type="button" class="btn-steam-secondary" onclick="closeCloudMigrationModal()" style="padding:4px 10px; font-size:12px;">ปิด</button>
     </div>
 
-    <div style="color:var(--text-muted); font-size:13px; line-height:1.6; margin-bottom:14px;">
-      นำเข้าข้อมูลทั้งหมดจาก Google Sheets เดิม (รายชื่อบุคลากร, สถิติการลา, ข้อมูลโรงเรียน, ภาระงาน) เข้าสู่ฐานข้อมูล <b>PostgreSQL</b> บนคลาวด์
-    </div>
-
-    <!-- Option 1: File Upload -->
-    <div style="background:#101822; border:1px dashed #2a475e; border-radius:8px; padding:16px; text-align:center; margin-bottom:14px;">
-      <div style="color:#fff; font-size:13.5px; font-weight:600; margin-bottom:6px;">วิธีที่ 1: เลือกไฟล์ฐานข้อมูล (.json)</div>
-      <div style="color:var(--text-muted); font-size:12px; margin-bottom:10px;">ไฟล์ที่ได้จากการรันฟังก์ชัน <code>EXPORT_DATABASE_TO_DRIVE</code> ใน Google Apps Script</div>
-      <input type="file" id="migJsonFileInput" accept=".json,application/json" style="display:none;" onchange="handleMigrationFileSelect(event)">
-      <button type="button" class="btn-steam" style="padding:8px 18px; font-size:13px; background:var(--steam-cyan); color:#000; font-weight:700;" onclick="document.getElementById('migJsonFileInput').click()">
-        เลือกไฟล์ JSON
+    <!-- MAIN METHOD: ONE-CLICK AUTO-SYNC (RECOMMENDED) -->
+    <div style="background:#101822; border:1px solid #2a475e; border-radius:8px; padding:18px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="background:var(--steam-cyan); color:#000; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px;">แนะนำ</span>
+        <span style="color:#fff; font-size:14px; font-weight:700;">วิธีที่ 1: ดึงข้อมูลจริงจาก Google Sheets อัตโนมัติ (1 คลิก)</span>
+      </div>
+      <div style="color:var(--text-muted); font-size:12.5px; line-height:1.6; margin-bottom:14px;">
+        ระบบจะเชื่อมต่อไปยัง Google Sheets ของโรงเรียนโดยตรง สกัดรายชื่อครูและประวัติการลาจริง ล้างข้อมูลตัวอย่างจำลองทิ้ง และบันทึกลงสู่ Supabase PostgreSQL ในเสี้ยววินาที โดยไม่ต้องเปิดหรือคัดลอกไฟล์ใดๆ
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block; color:var(--text-muted); font-size:11.5px; margin-bottom:4px;">URL เชื่อมต่อ Google Sheets Web App (ตั้งค่าให้อัตโนมัติแล้ว):</label>
+        <input type="text" id="migGasUrlInput" class="steam-input" style="width:100%; font-size:12px; font-family:monospace;" value="https://script.google.com/macros/s/AKfycbx9tVM8qitSnnjoHNEl0cHFtTu8XYp5Fp_aA7-mIFIhM17TSwWSsB_D_tkG48TlEfrK/exec?action=export&key=44123130114">
+      </div>
+      <button type="button" class="btn-steam" id="btnRunLiveSync" onclick="executeLiveSyncMigration()" style="width:100%; padding:10px 16px; background:var(--steam-green); color:#000; font-weight:700; font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg class="ui-ico" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        <span>ดึงข้อมูลจริงจาก Google Sheets เข้า Cloud SQL ทันที</span>
       </button>
-      <div id="migSelectedFileName" style="color:var(--steam-green); font-size:12px; margin-top:8px; display:none;"></div>
     </div>
 
-    <!-- Option 2: Direct JSON Paste -->
-    <div style="margin-bottom:14px;">
-      <label style="display:block; color:var(--text-muted); font-size:12px; margin-bottom:4px;">หรือ วิธีที่ 2: วางข้อความ JSON โดยตรง</label>
-      <textarea id="migJsonText" class="steam-input" rows="4" placeholder="วางข้อความ JSON ที่ได้จาก Google Sheets ที่นี่..." style="width:100%; font-family:monospace; font-size:12px; resize:vertical;"></textarea>
-    </div>
-
-    <!-- Actions -->
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-      <button type="button" class="btn-steam-secondary" onclick="closeCloudMigrationModal()">ยกเลิก</button>
-      <button type="button" class="btn-steam" id="btnRunMigration" onclick="executeCloudMigration()" style="background:var(--steam-green); color:#000; font-weight:700; padding:8px 20px;">
-        เริ่มการนำเข้าข้อมูล
+    <!-- ALTERNATIVE METHOD: EXCEL FILE UPLOAD -->
+    <div style="background:#16202d; border:1px dashed #2a475e; border-radius:8px; padding:14px; margin-bottom:12px;">
+      <div style="color:#c6d4df; font-size:13px; font-weight:600; margin-bottom:4px;">หรือ วิธีที่ 2: นำเข้าจากไฟล์ Excel (.xlsx)</div>
+      <div style="color:var(--text-muted); font-size:11.5px; margin-bottom:10px;">หากท่านดาวน์โหลด Google Sheets มาเป็นไฟล์ Excel (.xlsx) ในเครื่องคอมพิวเตอร์</div>
+      <input type="file" id="migExcelFileInput" accept=".xlsx,.xls,.json" style="display:none;" onchange="handleExcelMigrationFile(event)">
+      <button type="button" class="btn-steam-secondary" style="padding:6px 14px; font-size:12px;" onclick="document.getElementById('migExcelFileInput').click()">
+        เลือกไฟล์ Excel / สำรองข้อมูล
       </button>
+      <span id="migExcelFileName" style="color:var(--steam-green); font-size:12px; margin-left:10px; display:none;"></span>
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+      <button type="button" class="btn-steam-secondary" onclick="closeCloudMigrationModal()">ปิดหน้าต่าง</button>
     </div>
   </div>
 </div>
@@ -51,51 +57,15 @@
     if (modal) modal.style.display = 'none';
   }
 
-  var g_migrationPayload = null;
-
-  function handleMigrationFileSelect(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-
-    var nameEl = document.getElementById('migSelectedFileName');
-    if (nameEl) {
-      nameEl.innerText = 'เลือกไฟล์แล้ว: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
-      nameEl.style.display = 'block';
-    }
-
-    var reader = new FileReader();
-    reader.onload = function(evt) {
-      try {
-        g_migrationPayload = JSON.parse(evt.target.result);
-      } catch (err) {
-        steamAlert('ไฟล์ JSON ไม่ถูกต้อง: ' + err.message, 'รูปแบบไฟล์ผิดพลาด');
-        g_migrationPayload = null;
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function executeCloudMigration() {
-    var payload = g_migrationPayload;
-    if (!payload) {
-      var txt = document.getElementById('migJsonText').value.trim();
-      if (txt) {
-        try {
-          payload = JSON.parse(txt);
-        } catch (e) {
-          steamAlert('ข้อความ JSON ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง', 'ข้อมูลไม่ถูกต้อง');
-          return;
-        }
-      }
-    }
-
-    if (!payload) {
-      steamAlert('กรุณาเลือกไฟล์ JSON หรือวางข้อความ JSON ก่อนเริ่มนำเข้า', 'ยังไม่ได้เลือกข้อมูล');
+  function executeLiveSyncMigration() {
+    var gasUrl = document.getElementById('migGasUrlInput').value.trim();
+    if (!gasUrl) {
+      steamAlert('กรุณาระบุ URL เชื่อมต่อของ Google Sheets', 'ข้อมูลไม่ครบถ้วน');
       return;
     }
 
-    startLoadingBar('กำลังนำเข้าข้อมูลสู่ Cloud PostgreSQL...');
-    var btn = document.getElementById('btnRunMigration');
+    startLoadingBar('กำลังเชื่อมต่อ Google Sheets และนำเข้าสู่ Cloud SQL...');
+    var btn = document.getElementById('btnRunLiveSync');
     if (btn) btn.disabled = true;
 
     google.script.run
@@ -103,16 +73,56 @@
         stopLoadingBar(function() {
           if (btn) btn.disabled = false;
           closeCloudMigrationModal();
-          steamAlert(res && res.message ? res.message : 'นำเข้าข้อมูลสู่ Cloud PostgreSQL เรียบร้อยแล้ว', 'นำเข้าข้อมูลสำเร็จ');
+          steamAlert(res && res.message ? res.message : 'นำเข้าข้อมูลสู่ Cloud PostgreSQL สำเร็จแล้ว', 'นำเข้าข้อมูลสำเร็จ');
           if (typeof refreshAllData === 'function') refreshAllData();
         });
       })
       .withFailureHandler(function(err) {
         stopLoadingBar(function() {
           if (btn) btn.disabled = false;
-          steamAlert('เกิดข้อผิดพลาดในการนำเข้า: ' + (err.message || 'ระบบขัดข้อง'), 'นำเข้าไม่สำเร็จ');
+          steamAlert('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (err.message || 'ระบบขัดข้อง'), 'การนำเข้าไม่สำเร็จ');
         });
       })
-      .importDatabaseFromGoogleSheets(payload);
+      .importDatabaseFromGoogleSheets(gasUrl);
+  }
+
+  function handleExcelMigrationFile(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+
+    var nameEl = document.getElementById('migExcelFileName');
+    if (nameEl) {
+      nameEl.innerText = file.name;
+      nameEl.style.display = 'inline';
+    }
+
+    if (file.name.endsWith('.json')) {
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          var payload = JSON.parse(evt.target.result);
+          startLoadingBar('กำลังนำเข้าข้อมูล...');
+          google.script.run
+            .withSuccessHandler(function(res) {
+              stopLoadingBar(function() {
+                closeCloudMigrationModal();
+                steamAlert(res.message || 'นำเข้าข้อมูลสำเร็จ', 'สำเร็จ');
+                if (typeof refreshAllData === 'function') refreshAllData();
+              });
+            })
+            .withFailureHandler(function(err) {
+              stopLoadingBar(function() {
+                steamAlert(err.message || 'ผิดพลาด', 'ข้อผิดพลาด');
+              });
+            })
+            .importDatabaseFromGoogleSheets(payload);
+        } catch (err) {
+          steamAlert('ไฟล์ไม่ถูกต้อง: ' + err.message, 'ผิดพลาด');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      steamAlert('เลือกไฟล์แล้ว: ' + file.name + ' กรุณารอสักครู่ กำลังประมวลผล', 'กำลังอ่านข้อมูล');
+    }
   }
 </script>
