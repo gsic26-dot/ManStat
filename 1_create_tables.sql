@@ -1,8 +1,8 @@
 -- =========================================================================
 -- MANSTAT GROUND-TRUTH PRODUCTION DATABASE SCHEMA (15 TABLES)
--- Generated automatically from ManStat.xlsx
--- Copy & Run in Supabase SQL Editor
+-- Step 1: Run this file first in Supabase SQL Editor
 -- =========================================================================
+BEGIN;
 
 -- Drop any previous draft tables to guarantee 100% schema alignment
 DROP TABLE IF EXISTS school_info CASCADE;
@@ -268,6 +268,4 @@ INSERT INTO active_classes (class_name) VALUES
 ('มัธยมศึกษาปีที่ 6')
 ON CONFLICT (class_name) DO NOTHING;
 
--- =========================================================================
--- DML: INSERTING GROUND-TRUTH DATA FROM MANSTAT.XLSX
--- =========================================================================
+COMMIT;

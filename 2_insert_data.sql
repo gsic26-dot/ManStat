@@ -1,3 +1,9 @@
+-- =========================================================================
+-- MANSTAT GROUND-TRUTH PRODUCTION DATA (15 SHEETS)
+-- Step 2: Run this file second in Supabase SQL Editor
+-- =========================================================================
+BEGIN;
+
 -- 1. Insert SchoolInfo (20 rows)
 INSERT INTO school_info (key, val) VALUES ('ชื่อสถานศึกษา', 'โรงเรียนชุมชนบ้านตะขบ') ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val;
 INSERT INTO school_info (key, val) VALUES ('หน่วยงานต้นสังกัด', 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3') ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val;
@@ -306,3 +312,5 @@ ON CONFLICT (holiday_date) DO UPDATE SET reason_type = EXCLUDED.reason_type;
 INSERT INTO holidays (holiday_date, reason_type, note, director_name, timestamp)
 VALUES ('2026-12-10', 'วันรัฐธรรมนูญ', '', '', '')
 ON CONFLICT (holiday_date) DO UPDATE SET reason_type = EXCLUDED.reason_type;
+
+COMMIT;

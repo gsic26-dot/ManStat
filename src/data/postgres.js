@@ -31,9 +31,9 @@ function initPool() {
         ssl: {
           rejectUnauthorized: false
         },
-        max: 10,
+        max: 5,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000
+        connectionTimeoutMillis: 10000
       });
       console.log('[Postgres] Connected to Cloud PostgreSQL / Supabase.');
     } catch (err) {

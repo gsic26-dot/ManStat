@@ -376,11 +376,11 @@ console.log(`Parsed Board_Meetings: ${boardMeetings.length} rows`);
 // =========================================================================
 // GENERATE SUPABASE SQL SEED FILE (DDL + DML FOR 15 TABLES)
 // =========================================================================
-let sql = `-- =========================================================================
+let schemaSql = `-- =========================================================================
 -- MANSTAT GROUND-TRUTH PRODUCTION DATABASE SCHEMA (15 TABLES)
--- Generated automatically from ManStat.xlsx
--- Copy & Run in Supabase SQL Editor
+-- Step 1: Run this file first in Supabase SQL Editor
 -- =========================================================================
+BEGIN;
 
 -- Drop any previous draft tables to guarantee 100% schema alignment
 DROP TABLE IF EXISTS school_info CASCADE;
@@ -646,96 +646,122 @@ INSERT INTO active_classes (class_name) VALUES
 ('มัธยมศึกษาปีที่ 6')
 ON CONFLICT (class_name) DO NOTHING;
 
+COMMIT;
+`;
+
+let dataSql = `-- =========================================================================
+-- MANSTAT GROUND-TRUTH PRODUCTION DATA (15 SHEETS)
+-- Step 2: Run this file second in Supabase SQL Editor
 -- =========================================================================
--- DML: INSERTING GROUND-TRUTH DATA FROM MANSTAT.XLSX
--- =========================================================================
+BEGIN;
 `;
 
 // Insert SchoolInfo
-sql += `\n-- 1. Insert SchoolInfo (20 rows)\n`;
+dataSql += `\n-- 1. Insert SchoolInfo (20 rows)\n`;
 for (const s of schoolRows) {
-  sql += `INSERT INTO school_info (key, val) VALUES (${sqlEscape(s.key)}, ${sqlEscape(s.val)}) ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val;\n`;
+  dataSql += `INSERT INTO school_info (key, val) VALUES (${sqlEscape(s.key)}, ${sqlEscape(s.val)}) ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val;\n`;
 }
 
 // Insert Teachers
-sql += `\n-- 2. Insert Teachers (15 rows)\n`;
+dataSql += `\n-- 2. Insert Teachers (15 rows)\n`;
 for (const t of teachers) {
-  sql += `INSERT INTO teachers (id, name, email, phone, class_level, role, duty_day, password, is_password_hashed, access_level, status, start_date, department, emp_type, id_card, division, position_no, member_id, birth_date)
+  dataSql += `INSERT INTO teachers (id, name, email, phone, class_level, role, duty_day, password, is_password_hashed, access_level, status, start_date, department, emp_type, id_card, division, position_no, member_id, birth_date)
 VALUES (${sqlEscape(t.id)}, ${sqlEscape(t.name)}, ${sqlEscape(t.email)}, ${sqlEscape(t.phone)}, ${sqlEscape(t.class_level)}, ${sqlEscape(t.role)}, ${sqlEscape(t.duty_day)}, ${sqlEscape(t.password)}, TRUE, ${sqlEscape(t.access_level)}, ${sqlEscape(t.status)}, ${sqlEscape(t.start_date)}, ${sqlEscape(t.department)}, ${sqlEscape(t.emp_type)}, ${sqlEscape(t.id_card)}, ${sqlEscape(t.division)}, ${sqlEscape(t.position_no)}, ${sqlEscape(t.member_id)}, ${sqlEscape(t.birth_date)})
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone, class_level = EXCLUDED.class_level, role = EXCLUDED.role, duty_day = EXCLUDED.duty_day, password = EXCLUDED.password, access_level = EXCLUDED.access_level, status = EXCLUDED.status, start_date = EXCLUDED.start_date, department = EXCLUDED.department, emp_type = EXCLUDED.emp_type, id_card = EXCLUDED.id_card, division = EXCLUDED.division, position_no = EXCLUDED.position_no, member_id = EXCLUDED.member_id, birth_date = EXCLUDED.birth_date;\n`;
 }
 
 // Insert Leave_Quota
-sql += `\n-- 3. Insert Leave_Quota (34 rows)\n`;
+dataSql += `\n-- 3. Insert Leave_Quota (34 rows)\n`;
 for (const q of leaveQuotas) {
-  sql += `INSERT INTO leave_quota (emp_id, fiscal_year, sick_max, sick_used, personal_max, personal_used, vacation_max, vacation_used)
+  dataSql += `INSERT INTO leave_quota (emp_id, fiscal_year, sick_max, sick_used, personal_max, personal_used, vacation_max, vacation_used)
 VALUES (${sqlEscape(q.emp_id)}, ${q.fiscal_year}, ${q.sick_max}, ${q.sick_used}, ${q.personal_max}, ${q.personal_used}, ${q.vacation_max}, ${q.vacation_used})
 ON CONFLICT (emp_id, fiscal_year) DO UPDATE SET
   sick_max = EXCLUDED.sick_max, sick_used = EXCLUDED.sick_used, personal_max = EXCLUDED.personal_max, personal_used = EXCLUDED.personal_used, vacation_max = EXCLUDED.vacation_max, vacation_used = EXCLUDED.vacation_used;\n`;
 }
 
 // Insert FiscalYear
-sql += `\n-- 4. Insert FiscalYear (2 rows)\n`;
+dataSql += `\n-- 4. Insert FiscalYear (2 rows)\n`;
 for (const f of fiscalYears) {
-  sql += `INSERT INTO fiscal_data (fiscal_year, period1_start, period1_end, period2_start, period2_end, active_period_mode, status, updated_at)
+  dataSql += `INSERT INTO fiscal_data (fiscal_year, period1_start, period1_end, period2_start, period2_end, active_period_mode, status, updated_at)
 VALUES (${f.fiscal_year}, ${sqlEscape(f.period1_start)}, ${sqlEscape(f.period1_end)}, ${sqlEscape(f.period2_start)}, ${sqlEscape(f.period2_end)}, ${sqlEscape(f.active_period_mode)}, ${sqlEscape(f.status)}, ${sqlEscape(f.updated_at)})
 ON CONFLICT (fiscal_year) DO UPDATE SET
   period1_start = EXCLUDED.period1_start, period1_end = EXCLUDED.period1_end, period2_start = EXCLUDED.period2_start, period2_end = EXCLUDED.period2_end, active_period_mode = EXCLUDED.active_period_mode, status = EXCLUDED.status, updated_at = EXCLUDED.updated_at;\n`;
 }
 
 // Insert Board_Members
-sql += `\n-- 5. Insert Board_Members (9 rows)\n`;
+dataSql += `\n-- 5. Insert Board_Members (9 rows)\n`;
 for (const b of boardMembers) {
-  sql += `INSERT INTO board_members (member_id, prefix, first_name, last_name, full_name, board_position, occupation, organization, phone, email, appointment_order_no, order_date, start_date, end_date, term_number, status, doc_url, remark, updated_by, timestamp)
+  dataSql += `INSERT INTO board_members (member_id, prefix, first_name, last_name, full_name, board_position, occupation, organization, phone, email, appointment_order_no, order_date, start_date, end_date, term_number, status, doc_url, remark, updated_by, timestamp)
 VALUES (${sqlEscape(b.member_id)}, ${sqlEscape(b.prefix)}, ${sqlEscape(b.first_name)}, ${sqlEscape(b.last_name)}, ${sqlEscape(b.full_name)}, ${sqlEscape(b.board_position)}, ${sqlEscape(b.occupation)}, ${sqlEscape(b.organization)}, ${sqlEscape(b.phone)}, ${sqlEscape(b.email)}, ${sqlEscape(b.appointment_order_no)}, ${sqlEscape(b.order_date)}, ${sqlEscape(b.start_date)}, ${sqlEscape(b.end_date)}, ${b.term_number}, ${sqlEscape(b.status)}, ${sqlEscape(b.doc_url)}, ${sqlEscape(b.remark)}, ${sqlEscape(b.updated_by)}, ${sqlEscape(b.timestamp)})
 ON CONFLICT (member_id) DO UPDATE SET
   full_name = EXCLUDED.full_name, board_position = EXCLUDED.board_position, status = EXCLUDED.status, phone = EXCLUDED.phone, email = EXCLUDED.email;\n`;
 }
 
 // Insert SchoolBoard_StaffTerms
-sql += `\n-- 6. Insert SchoolBoard_StaffTerms (2 rows)\n`;
+dataSql += `\n-- 6. Insert SchoolBoard_StaffTerms (2 rows)\n`;
 for (const s of staffTerms) {
-  sql += `INSERT INTO school_board_staff_terms (term_id, emp_id, full_name, board_position, start_date, end_date, term_number, appointment_order_no, status, updated_by, timestamp)
+  dataSql += `INSERT INTO school_board_staff_terms (term_id, emp_id, full_name, board_position, start_date, end_date, term_number, appointment_order_no, status, updated_by, timestamp)
 VALUES (${sqlEscape(s.term_id)}, ${sqlEscape(s.emp_id)}, ${sqlEscape(s.full_name)}, ${sqlEscape(s.board_position)}, ${sqlEscape(s.start_date)}, ${sqlEscape(s.end_date)}, ${s.term_number}, ${sqlEscape(s.appointment_order_no)}, ${sqlEscape(s.status)}, ${sqlEscape(s.updated_by)}, ${sqlEscape(s.timestamp)})
 ON CONFLICT (term_id) DO UPDATE SET
   full_name = EXCLUDED.full_name, board_position = EXCLUDED.board_position, end_date = EXCLUDED.end_date, status = EXCLUDED.status;\n`;
 }
 
 // Insert History_Standing
-sql += `\n-- 7. Insert History_Standing (1 row)\n`;
+dataSql += `\n-- 7. Insert History_Standing (1 row)\n`;
 for (const s of standings) {
-  sql += `INSERT INTO history_standing (record_id, emp_id, standing_level, effective_date, order_number, doc_link, timestamp)
+  dataSql += `INSERT INTO history_standing (record_id, emp_id, standing_level, effective_date, order_number, doc_link, timestamp)
 VALUES (${sqlEscape(s.record_id)}, ${sqlEscape(s.emp_id)}, ${sqlEscape(s.standing_level)}, ${sqlEscape(s.effective_date)}, ${sqlEscape(s.order_number)}, ${sqlEscape(s.doc_link)}, ${sqlEscape(s.timestamp)})
 ON CONFLICT (record_id) DO UPDATE SET standing_level = EXCLUDED.standing_level;\n`;
 }
 
 // Insert History_Education
-sql += `\n-- 8. Insert History_Education (1 row)\n`;
+dataSql += `\n-- 8. Insert History_Education (1 row)\n`;
 for (const e of educations) {
-  sql += `INSERT INTO history_education (record_id, emp_id, degree_level, degree_short, major, institute, grad_year, timestamp)
+  dataSql += `INSERT INTO history_education (record_id, emp_id, degree_level, degree_short, major, institute, grad_year, timestamp)
 VALUES (${sqlEscape(e.record_id)}, ${sqlEscape(e.emp_id)}, ${sqlEscape(e.degree_level)}, ${sqlEscape(e.degree_short)}, ${sqlEscape(e.major)}, ${sqlEscape(e.institute)}, ${sqlEscape(e.grad_year)}, ${sqlEscape(e.timestamp)})
 ON CONFLICT (record_id) DO UPDATE SET institute = EXCLUDED.institute;\n`;
 }
 
 // Insert History_Licenses
-sql += `\n-- 9. Insert History_Licenses (2 rows)\n`;
+dataSql += `\n-- 9. Insert History_Licenses (2 rows)\n`;
 for (const l of licenses) {
-  sql += `INSERT INTO history_licenses (record_id, emp_id, license_category, license_type, license_number, issue_date, expiry_date, timestamp)
+  dataSql += `INSERT INTO history_licenses (record_id, emp_id, license_category, license_type, license_number, issue_date, expiry_date, timestamp)
 VALUES (${sqlEscape(l.record_id)}, ${sqlEscape(l.emp_id)}, ${sqlEscape(l.license_category)}, ${sqlEscape(l.license_type)}, ${sqlEscape(l.license_number)}, ${sqlEscape(l.issue_date)}, ${sqlEscape(l.expiry_date)}, ${sqlEscape(l.timestamp)})
 ON CONFLICT (record_id) DO UPDATE SET license_number = EXCLUDED.license_number;\n`;
 }
 
 // Insert Holidays
-sql += `\n-- 10. Insert Holidays (3 rows)\n`;
+dataSql += `\n-- 10. Insert Holidays (3 rows)\n`;
 for (const h of holidays) {
-  sql += `INSERT INTO holidays (holiday_date, reason_type, note, director_name, timestamp)
+  dataSql += `INSERT INTO holidays (holiday_date, reason_type, note, director_name, timestamp)
 VALUES (${sqlEscape(h.holiday_date)}, ${sqlEscape(h.reason_type)}, ${sqlEscape(h.note)}, ${sqlEscape(h.director_name)}, ${sqlEscape(h.timestamp)})
 ON CONFLICT (holiday_date) DO UPDATE SET reason_type = EXCLUDED.reason_type;\n`;
 }
 
-fs.writeFileSync(SQL_OUTPUT_PATH, sql, 'utf8');
-console.log(`[Success] Written Supabase Seed SQL file: ${SQL_OUTPUT_PATH} (${(fs.statSync(SQL_OUTPUT_PATH).size / 1024).toFixed(1)} KB)`);
+dataSql += `\nCOMMIT;\n`;
+
+// Ensure sql directory exists
+const sqlDir = path.join(__dirname, '../sql');
+fs.mkdirSync(sqlDir, { recursive: true });
+
+// Write split files
+const schemaPath = path.join(sqlDir, '1_create_tables.sql');
+const dataPath = path.join(sqlDir, '2_insert_data.sql');
+fs.writeFileSync(schemaPath, schemaSql, 'utf8');
+fs.writeFileSync(dataPath, dataSql, 'utf8');
+
+// Also write to root for convenience
+fs.writeFileSync(path.join(__dirname, '../1_create_tables.sql'), schemaSql, 'utf8');
+fs.writeFileSync(path.join(__dirname, '../2_insert_data.sql'), dataSql, 'utf8');
+
+// Also write combined supabase-seed.sql
+const fullSql = schemaSql + '\n\n' + dataSql;
+fs.writeFileSync(SQL_OUTPUT_PATH, fullSql, 'utf8');
+
+console.log(`[Success] Written SQL Schema: ${schemaPath} (${(fs.statSync(schemaPath).size / 1024).toFixed(1)} KB)`);
+console.log(`[Success] Written SQL Data:   ${dataPath} (${(fs.statSync(dataPath).size / 1024).toFixed(1)} KB)`);
+console.log(`[Success] Written Seed SQL:   ${SQL_OUTPUT_PATH} (${(fs.statSync(SQL_OUTPUT_PATH).size / 1024).toFixed(1)} KB)`);
 
 // =========================================================================
 // UPDATE LOCAL IN-MEMORY / JSON STORE (data/manstat_db.json)
