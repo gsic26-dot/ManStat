@@ -23,6 +23,210 @@ async function ensurePostgresReady() {
   }
 }
 
+const SBD_POSITION_KEYS = [
+  'CHAIR',
+  'PARENT_REP',
+  'TEACHER_REP',
+  'COMMUNITY_REP',
+  'LOCAL_ADMIN',
+  'ALUMNI_REP',
+  'RELIGION_REP',
+  'EXPERT',
+  'DIRECTOR_SEC'
+];
+
+const SBD_POSITION_TITLES = {
+  CHAIR: 'ประธานกรรมการ',
+  PARENT_REP: 'ผู้แทนผู้ปกครอง',
+  TEACHER_REP: 'ผู้แทนครู',
+  COMMUNITY_REP: 'ผู้แทนองค์กรชุมชน',
+  LOCAL_ADMIN: 'ผู้แทนองค์กรปกครองส่วนท้องถิ่น',
+  ALUMNI_REP: 'ผู้แทนศิษย์เก่า',
+  RELIGION_REP: 'ผู้แทนพระภิกษุสงฆ์และ/หรือผู้แทนองค์กรศาสนา',
+  EXPERT: 'ผู้ทรงคุณวุฒิ',
+  DIRECTOR_SEC: 'กรรมการและเลขานุการ'
+};
+
+function buildBoardBundle(rawMembers, rawStaffTerms, rawMeetings, schoolInfo) {
+  const sch = schoolInfo || {};
+  const studentCount = parseInt(sch.studentCount, 10) || 94;
+  const isOver300 = studentCount > 300;
+  const totalQuota = isOver300 ? 15 : 9;
+  const ruleType = isOver300 ? 'LARGE' : 'SMALL';
+  const ruleTitle = isOver300
+    ? 'เกณฑ์ 15 คน (สถานศึกษาที่มีนักเรียนเกิน 300 คน)'
+    : 'เกณฑ์ 9 คน (สถานศึกษาที่มีนักเรียน 300 คนลงมา)';
+
+  const quotas = {
+    CHAIR: 1,
+    PARENT_REP: 1,
+    TEACHER_REP: 1,
+    COMMUNITY_REP: 1,
+    LOCAL_ADMIN: 1,
+    ALUMNI_REP: 1,
+    RELIGION_REP: isOver300 ? 2 : 1,
+    EXPERT: isOver300 ? 6 : 1,
+    DIRECTOR_SEC: 1
+  };
+
+  const normalizedMembers = (rawMembers || []).map(m => {
+    return {
+      MemberID: String(m.MemberID || m.member_id || '').trim(),
+      Prefix: String(m.Prefix || m.prefix || '').trim(),
+      FirstName: String(m.FirstName || m.first_name || '').trim(),
+      LastName: String(m.LastName || m.last_name || '').trim(),
+      FullName: String(m.FullName || m.full_name || '').trim(),
+      BoardPosition: String(m.BoardPosition || m.board_position || '').trim(),
+      Occupation: String(m.Occupation || m.occupation || '').trim(),
+      Organization: String(m.Organization || m.organization || '').trim(),
+      Phone: String(m.Phone || m.phone || '').trim(),
+      Email: String(m.Email || m.email || '').trim(),
+      AppointmentOrderNo: String(m.AppointmentOrderNo || m.appointment_order_no || '').trim(),
+      OrderDate: String(m.OrderDate || m.order_date || '').trim(),
+      StartDate: String(m.StartDate || m.start_date || '').trim(),
+      EndDate: String(m.EndDate || m.end_date || '').trim(),
+      TermNumber: Number(m.TermNumber !== undefined ? m.TermNumber : (m.term_number || 1)),
+      Status: String(m.Status || m.status || 'ดำรงตำแหน่ง').trim(),
+      DocUrl: String(m.DocUrl || m.doc_url || '').trim(),
+      Remark: String(m.Remark || m.remark || '').trim(),
+      UpdatedBy: String(m.UpdatedBy || m.updated_by || '').trim(),
+      Timestamp: String(m.Timestamp || m.timestamp || '').trim(),
+      member_id: String(m.MemberID || m.member_id || '').trim(),
+      full_name: String(m.FullName || m.full_name || '').trim(),
+      board_position: String(m.BoardPosition || m.board_position || '').trim(),
+      status: String(m.Status || m.status || 'ดำรงตำแหน่ง').trim()
+    };
+  });
+
+  const activeMembers = normalizedMembers.filter(m => m.Status === 'ดำรงตำแหน่ง' || m.Status === 'ACTIVE');
+
+  const positionCounts = {};
+  SBD_POSITION_KEYS.forEach(k => { positionCounts[k] = 0; });
+  activeMembers.forEach(m => {
+    const pos = m.BoardPosition;
+    if (positionCounts[pos] !== undefined) {
+      positionCounts[pos]++;
+    } else {
+      for (const k in SBD_POSITION_TITLES) {
+        if (SBD_POSITION_TITLES[k] === pos) {
+          positionCounts[k]++;
+          break;
+        }
+      }
+    }
+  });
+
+  const breakdown = [];
+  const missingDetails = [];
+  let isComplete = true;
+
+  SBD_POSITION_KEYS.forEach(k => {
+    const req = quotas[k] || 0;
+    const act = positionCounts[k] || 0;
+    const diff = act - req;
+    let st = 'OK';
+    if (diff < 0) {
+      st = 'MISSING';
+      isComplete = false;
+      missingDetails.push({
+        positionKey: k,
+        positionTitle: SBD_POSITION_TITLES[k],
+        required: req,
+        actual: act,
+        missing: Math.abs(diff)
+      });
+    } else if (diff > 0) {
+      st = 'EXCEEDED';
+    }
+    breakdown.push({
+      positionKey: k,
+      positionTitle: SBD_POSITION_TITLES[k],
+      required: req,
+      actual: act,
+      diff: diff,
+      status: st
+    });
+  });
+
+  const totalActive = activeMembers.length;
+  let overallStatus = 'COMPLETE';
+  if (studentCount <= 0) {
+    overallStatus = 'PENDING_STUDENT_COUNT';
+  } else if (!isComplete) {
+    overallStatus = 'INCOMPLETE';
+  } else if (totalActive > totalQuota) {
+    overallStatus = 'EXCEED_LIMIT';
+  }
+
+  const chair = activeMembers.find(m => m.BoardPosition === 'CHAIR');
+  const secretary = activeMembers.find(m => m.BoardPosition === 'DIRECTOR_SEC');
+
+  const compliance = {
+    studentCount: studentCount,
+    studentCountDate: sch.studentDataDate || sch.studentCountDate || '',
+    ruleType: ruleType,
+    ruleTitle: ruleTitle,
+    totalQuota: totalQuota,
+    activeCount: totalActive,
+    isComplete: isComplete && (totalActive === totalQuota),
+    overallStatus: overallStatus,
+    missingDetails: missingDetails,
+    breakdown: breakdown,
+    chairName: chair ? chair.FullName : (sch.chairName || 'นางเสาวนีย์ ศิริวรรณโยธา'),
+    secretaryName: secretary ? secretary.FullName : (sch.directorName || 'นายธีรศักดิ์ มโนธรรม'),
+    activeMembers: activeMembers
+  };
+
+  const normalizedStaffTerms = (rawStaffTerms || []).map(t => ({
+    TermID: String(t.TermID || t.term_id || '').trim(),
+    EmpID: String(t.EmpID || t.emp_id || '').trim(),
+    FullName: String(t.FullName || t.full_name || '').trim(),
+    BoardPosition: String(t.BoardPosition || t.board_position || '').trim(),
+    StartDate: String(t.StartDate || t.start_date || '').trim(),
+    EndDate: String(t.EndDate || t.end_date || '').trim(),
+    TermNumber: Number(t.TermNumber !== undefined ? t.TermNumber : (t.term_number || 0)),
+    AppointmentOrderNo: String(t.AppointmentOrderNo || t.appointment_order_no || '').trim(),
+    Status: String(t.Status || t.status || 'ดำรงตำแหน่ง').trim(),
+    UpdatedBy: String(t.UpdatedBy || t.updated_by || '').trim(),
+    Timestamp: String(t.Timestamp || t.timestamp || '').trim(),
+    term_id: String(t.TermID || t.term_id || '').trim(),
+    emp_id: String(t.EmpID || t.emp_id || '').trim(),
+    full_name: String(t.FullName || t.full_name || '').trim(),
+    board_position: String(t.BoardPosition || t.board_position || '').trim(),
+    status: String(t.Status || t.status || 'ดำรงตำแหน่ง').trim()
+  }));
+
+  const normalizedMeetings = (rawMeetings || []).map(m => ({
+    MeetingID: String(m.MeetingID || m.meeting_id || '').trim(),
+    MeetingNo: String(m.MeetingNo || m.meeting_no || '').trim(),
+    FiscalYear: Number(m.FiscalYear || m.fiscal_year || 2570),
+    MeetingDate: String(m.MeetingDate || m.meeting_date || '').trim(),
+    Title: String(m.Title || m.title || '').trim(),
+    AttendeesCount: Number(m.AttendeesCount || m.attendees_count || 0),
+    SummaryDocUrl: String(m.SummaryDocUrl || m.summary_doc_url || '').trim(),
+    Status: String(m.Status || m.status || 'เสร็จสิ้น').trim()
+  }));
+
+  return {
+    status: 'success',
+    studentCount: studentCount,
+    studentCountDate: sch.studentDataDate || sch.studentCountDate || '',
+    dmcRound: sch.dmcRound || 'ROUND_1',
+    studentCountR1: String(sch.studentCountR1 || studentCount),
+    studentCountDateR1: sch.studentCountDateR1 || (sch.studentDataDate || ''),
+    studentCountR2: String(sch.studentCountR2 || '0'),
+    studentCountDateR2: sch.studentCountDateR2 || '',
+    directorFound: !!(secretary || sch.directorName),
+    directorName: secretary ? secretary.FullName : (sch.directorName || 'นายธีรศักดิ์ มโนธรรม'),
+    directorPosition: sch.directorPosition || 'ผู้อำนวยการสถานศึกษา',
+    compliance: compliance,
+    members: normalizedMembers,
+    staffTerms: normalizedStaffTerms,
+    meetings: normalizedMeetings,
+    positionTitles: SBD_POSITION_TITLES
+  };
+}
+
 /**
  * Fetch the complete application bundle (getMainBundleData)
  */
@@ -40,13 +244,7 @@ async function getMainBundle() {
       schoolInfo: storeDb.schoolInfo || {},
       fiscalData: storeDb.fiscalData || {},
       activeClasses: storeDb.activeClasses || [],
-      boardBundle: {
-        status: 'success',
-        members: storeDb.boardMembers || [],
-        staffTerms: storeDb.schoolBoardStaffTerms || [],
-        meetings: storeDb.boardMeetings || [],
-        compliance: { isCompliant: true, validCount: (storeDb.boardMembers || []).length || 9 }
-      },
+      boardBundle: buildBoardBundle(storeDb.boardMembers, storeDb.schoolBoardStaffTerms, storeDb.boardMeetings, storeDb.schoolInfo),
       holidays: storeDb.holidays || []
     };
   }
@@ -353,13 +551,7 @@ async function getMainBundle() {
       schoolInfo,
       fiscalData,
       activeClasses,
-      boardBundle: {
-        status: 'success',
-        members: boardMembers,
-        staffTerms,
-        meetings: boardMeetings,
-        compliance: { isCompliant: true, validCount: boardMembers.length || 9 }
-      },
+      boardBundle: buildBoardBundle(boardMembers, staffTerms, boardMeetings, schoolInfo),
       holidays
     };
   } catch (err) {
@@ -374,13 +566,7 @@ async function getMainBundle() {
       schoolInfo: storeDb.schoolInfo || {},
       fiscalData: storeDb.fiscalData || {},
       activeClasses: storeDb.activeClasses || [],
-      boardBundle: {
-        status: 'success',
-        members: storeDb.boardMembers || [],
-        staffTerms: storeDb.schoolBoardStaffTerms || [],
-        meetings: storeDb.boardMeetings || [],
-        compliance: { isCompliant: true, validCount: (storeDb.boardMembers || []).length || 9 }
-      },
+      boardBundle: buildBoardBundle(storeDb.boardMembers, storeDb.schoolBoardStaffTerms, storeDb.boardMeetings, storeDb.schoolInfo),
       holidays: storeDb.holidays || []
     };
   }
@@ -407,6 +593,7 @@ async function importFullDatabase(dump) {
 
 module.exports = {
   getMainBundle,
+  buildBoardBundle,
   importFullDatabase,
   ensurePostgresReady
 };
