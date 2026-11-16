@@ -72,21 +72,21 @@ export const ViewStaffDirectory: React.FC = () => {
           </p>
         </div>
 
-        {/* Search & Filter Controls */}
+        {/* Search & Filter Controls (Standard 40px Height) */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="ค้นหาชื่อ, ตำแหน่ง, รหัส..."
-              className="bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-48 sm:w-60"
+              className="h-10 bg-[#101822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 w-52 sm:w-64 transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#101822] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300">
-            <Filter className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <div className="h-10 flex items-center gap-2 bg-[#101822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-300 focus-within:border-sky-500 transition-all">
+            <Filter className="w-4 h-4 text-sky-400 shrink-0" />
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}

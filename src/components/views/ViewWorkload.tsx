@@ -86,14 +86,14 @@ export const ViewWorkload: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative max-w-xs">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="relative w-full sm:w-64">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="ค้นหาชื่อครู หรือฝ่าย..."
-            className="bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-full"
+            className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
           />
         </div>
       </div>
@@ -137,13 +137,13 @@ export const ViewWorkload: React.FC = () => {
                   </td>
                   <td className="px-4 py-3.5 text-right whitespace-nowrap">
                     {w.evalResult.isAllPassed ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[105px]">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>ผ่านเกณฑ์ PA</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[105px]">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>ไม่ครบเกณฑ์</span>
                       </span>
                     )}
