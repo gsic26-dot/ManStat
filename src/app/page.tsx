@@ -31,6 +31,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
+  Printer,
+  FileCheck,
 } from 'lucide-react';
 import { PersonnelSummaryCards } from '@/components/dashboard/PersonnelSummaryCards';
 import { LeaveProgressRings } from '@/components/dashboard/LeaveProgressRings';
@@ -38,6 +40,7 @@ import { PromotionRadarCard } from '@/components/dashboard/PromotionRadarCard';
 import { PendingApprovalQueue } from '@/components/dashboard/PendingApprovalQueue';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { SmartLeaveForm } from '@/components/leave/SmartLeaveForm';
+import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
 
 export default function DashboardPage() {
@@ -97,6 +100,9 @@ export default function DashboardPage() {
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>ยื่นแบบฟอร์มขอลา</span>
             </button>
+
+            {/* OBEC Standard Excel Export Button */}
+            <ExcelExportButton fiscalYear={fiscalYearBE} />
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
@@ -207,10 +213,30 @@ export default function DashboardPage() {
 
             {/* Legal References & Regulatory Note */}
             <div className="glass-panel p-5 rounded-xl border border-slate-800 bg-[#131b26]/60">
-              <h4 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>การปฏิบัติตามมาตรฐานกฎหมายราชการไทย (Compliance Verification)</span>
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>การปฏิบัติตามมาตรฐานกฎหมายราชการไทย (Zero-GAS Engine)</span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/leave/print/req-sample-01"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1b2838] hover:bg-[#2a475e] text-[11px] text-sky-300 border border-slate-700 transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5 shrink-0" />
+                    <span>ตัวอย่างพิมพ์ A4</span>
+                  </Link>
+                  <Link
+                    href="/verify/leave/DOC-2570-K00201"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1b2838] hover:bg-[#2a475e] text-[11px] text-emerald-300 border border-slate-700 transition-colors"
+                  >
+                    <FileCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span>ตัวอย่างสแกน QR</span>
+                  </Link>
+                </div>
+              </div>
               <ul className="space-y-2 text-xs text-slate-400 font-sans">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />

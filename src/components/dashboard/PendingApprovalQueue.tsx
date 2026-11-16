@@ -12,6 +12,7 @@
  */
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   ClipboardCheck,
   Check,
@@ -23,6 +24,7 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
+  Printer,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateLeaveStatus } from '@/lib/supabase/queries';
@@ -231,6 +233,16 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
 
                   <td className="px-4 py-3.5 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-2">
+                      <Link
+                        href={`/leave/print/${item.id}`}
+                        target="_blank"
+                        title="พิมพ์แบบฟอร์มใบลาราชการ A4"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700 text-xs transition-colors"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                        <span>พิมพ์ A4</span>
+                      </Link>
+
                       <button
                         type="button"
                         onClick={() => handleOpenAction(item, 'approve')}
