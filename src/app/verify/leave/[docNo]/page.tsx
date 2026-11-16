@@ -89,7 +89,7 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
         totalDays: request.total_days,
         status: (request.status === 'approved' ? 'approved' : request.status === 'rejected' ? 'rejected' : 'pending'),
         approvedAt: request.approved_at,
-        approverName: 'นายสุรชัย ใจซื่อ (ผู้อำนวยการสถานศึกษา)',
+        approverName: 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ)',
       };
     }
   } catch (err) {
@@ -101,8 +101,8 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
     verifiedRecord = {
       documentNo: decodedDocNo,
       isValid: true,
-      staffMaskedName: 'นางสาว ว**** ด****',
-      position: 'ครูผู้ช่วย',
+      staffMaskedName: 'นางสาว ก********** พ*********',
+      position: 'ครูชำนาญการพิเศษ',
       schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
       leaveType: 'ลาป่วย',
       startDate: '2026-11-18',
@@ -110,7 +110,7 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
       totalDays: 2,
       status: 'approved',
       approvedAt: '2026-11-16T10:00:00Z',
-      approverName: 'นายสุรชัย ใจซื่อ (ผู้อำนวยการสถานศึกษา)',
+      approverName: 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ)',
     };
   }
 

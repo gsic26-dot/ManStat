@@ -47,6 +47,8 @@ import {
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
+  INITIAL_SCHOOL_INFO,
+  ACTIVE_CLASSES,
   TeacherRecord,
   BoardMemberRecord,
 } from '@/lib/data/schoolData';
@@ -70,23 +72,8 @@ export default function AdminPage() {
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
 
   // School Info State
-  const [schoolInfo, setSchoolInfo] = useState({
-    schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
-    affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
-    schoolCode10: '1030200688',
-    schoolCode8: '30030099',
-    directorName: 'นายธีรศักดิ์ มโนธรรม',
-    directorPosition: 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
-    actingDirector1: 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์',
-    actingDirector2: 'นายธวัชชัย เหลืองโอฬาร',
-    contactPhone: '099-173-2233',
-    email: 'chumchonbantakhob2473@gmail.com',
-    address: 'ม.1 โรงเรียนชุมชนบ้านตะขบ ต.ตะขบ อ.ปักธงชัย จ.นครราชสีมา 30150',
-    academicYear: '2569',
-    currentTerm: '2',
-    studentCount: 94,
-    fiscalYear: '2570',
-  });
+  const [schoolInfo, setSchoolInfo] = useState(INITIAL_SCHOOL_INFO);
+  const [activeClasses, setActiveClasses] = useState<string[]>(ACTIVE_CLASSES);
 
   // Fiscal Year & Holidays State
   const [fiscalYearBE, setFiscalYearBE] = useState(2570);
@@ -138,7 +125,7 @@ export default function AdminPage() {
       action: 'UPDATE_STAFF_RECORD',
       actorName: 'Superuser (นายธีรศักดิ์ มโนธรรม)',
       actorRole: 'superuser',
-      targetName: 'นางสาวอาริยา ลี้ตะขบ',
+      targetName: 'นางสาวทัชชกร ช่วยจังหรีด',
       ipAddress: '192.168.1.45',
       timestamp: '2026-11-14T09:12:00Z',
       details: 'บันทึกใบอนุญาตประกอบวิชาชีพ B-License ฉบับใหม่',
@@ -595,6 +582,56 @@ export default function AdminPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 10 หลัก</label>
+                  <input
+                    type="text"
+                    value={schoolInfo.schoolCode10}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, schoolCode10: e.target.value })}
+                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 8 หลัก (สพฐ.)</label>
+                  <input
+                    type="text"
+                    value={schoolInfo.schoolCode8}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, schoolCode8: e.target.value })}
+                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">ปีการศึกษา</label>
+                  <input
+                    type="text"
+                    value={schoolInfo.academicYear}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, academicYear: e.target.value })}
+                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">ภาคเรียนที่</label>
+                  <input
+                    type="text"
+                    value={schoolInfo.currentTerm}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, currentTerm: e.target.value })}
+                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">จำนวนนักเรียนรวม (คน)</label>
+                  <input
+                    type="number"
+                    value={schoolInfo.studentCount}
+                    onChange={(e) => setSchoolInfo({ ...schoolInfo, studentCount: Number(e.target.value) || 0 })}
+                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-slate-300 font-semibold mb-1">ที่ตั้งสถานศึกษา</label>
                   <input
@@ -603,6 +640,50 @@ export default function AdminPage() {
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, address: e.target.value })}
                     className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
                   />
+                </div>
+              </div>
+
+              {/* Active Classes Management */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Building className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>ระดับชั้นเรียนที่เปิดทำการสอน (Active Classes)</span>
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      คลิกเพื่อเปิดหรือปิดชั้นเรียนสำหรับปีการศึกษานี้ (ใช้งานในตารางภาระงานและครูประจำชั้น)
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                    เปิดสอน {activeClasses.length} ชั้นเรียน
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-2">
+                  {ACTIVE_CLASSES.map((cls) => {
+                    const isActive = activeClasses.includes(cls);
+                    return (
+                      <button
+                        key={cls}
+                        type="button"
+                        onClick={() => {
+                          if (isActive) {
+                            setActiveClasses((prev) => prev.filter((c) => c !== cls));
+                          } else {
+                            setActiveClasses((prev) => [...prev, cls]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-center font-medium text-xs transition-all ${
+                          isActive
+                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-200 shadow-sm'
+                            : 'bg-slate-800/40 border-slate-700/60 text-slate-400 line-through opacity-60 hover:opacity-90'
+                        }`}
+                      >
+                        {cls}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -868,6 +949,83 @@ export default function AdminPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">สิทธิ์การเข้าใช้งานระบบ</label>
+                  <select
+                    value={selectedStaff.accessLevel || 'User'}
+                    onChange={(e) =>
+                      setSelectedStaff({ ...selectedStaff, accessLevel: e.target.value })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="Superuser">Superuser (สูงสุด)</option>
+                    <option value="Admin">Admin (งานบุคคล/บริหาร)</option>
+                    <option value="User">User (ครูและบุคลากรทั่วไป)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">เวรประจำวัน</label>
+                  <select
+                    value={selectedStaff.dutyDay || '-'}
+                    onChange={(e) =>
+                      setSelectedStaff({ ...selectedStaff, dutyDay: e.target.value })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="-">- ไม่ระบุ -</option>
+                    <option value="จันทร์">วันจันทร์</option>
+                    <option value="อังคาร">วันอังคาร</option>
+                    <option value="พุธ">วันพุธ</option>
+                    <option value="พฤหัสบดี">วันพฤหัสบดี</option>
+                    <option value="ศุกร์">วันศุกร์</option>
+                    <option value="เสาร์">วันเสาร์</option>
+                    <option value="อาทิตย์">วันอาทิตย์</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">ชั้นเรียนที่รับผิดชอบ</label>
+                  <input
+                    type="text"
+                    value={selectedStaff.classLevel || '-'}
+                    placeholder="เช่น ป.1, ม.2, -"
+                    onChange={(e) =>
+                      setSelectedStaff({ ...selectedStaff, classLevel: e.target.value })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">เบอร์โทรศัพท์</label>
+                  <input
+                    type="text"
+                    value={selectedStaff.phone || ''}
+                    placeholder="เช่น 081-xxx-xxxx"
+                    onChange={(e) =>
+                      setSelectedStaff({ ...selectedStaff, phone: e.target.value })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">อีเมลติดต่อ</label>
+                <input
+                  type="email"
+                  value={selectedStaff.email || ''}
+                  onChange={(e) =>
+                    setSelectedStaff({ ...selectedStaff, email: e.target.value })
+                  }
+                  className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                />
+              </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-slate-400 mb-1">ลาป่วยที่ใช้</label>
@@ -1003,21 +1161,70 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1">สถานะ</label>
-                <select
-                  value={selectedBoardMember.status}
-                  onChange={(e) =>
-                    setSelectedBoardMember({
-                      ...selectedBoardMember,
-                      status: e.target.value,
-                    })
-                  }
-                  className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
-                >
-                  <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
-                  <option value="พ้นจากตำแหน่ง">พ้นจากตำแหน่ง</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">อาชีพหลัก</label>
+                  <input
+                    type="text"
+                    value={selectedBoardMember.occupation}
+                    onChange={(e) =>
+                      setSelectedBoardMember({
+                        ...selectedBoardMember,
+                        occupation: e.target.value,
+                      })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">เบอร์โทรศัพท์ติดต่อ</label>
+                  <input
+                    type="text"
+                    value={selectedBoardMember.phone}
+                    onChange={(e) =>
+                      setSelectedBoardMember({
+                        ...selectedBoardMember,
+                        phone: e.target.value,
+                      })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">วาระที่</label>
+                  <input
+                    type="number"
+                    value={selectedBoardMember.termNumber}
+                    onChange={(e) =>
+                      setSelectedBoardMember({
+                        ...selectedBoardMember,
+                        termNumber: Number(e.target.value) || 1,
+                      })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">สถานะ</label>
+                  <select
+                    value={selectedBoardMember.status}
+                    onChange={(e) =>
+                      setSelectedBoardMember({
+                        ...selectedBoardMember,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
+                    <option value="พ้นจากตำแหน่ง">พ้นจากตำแหน่ง</option>
+                  </select>
+                </div>
               </div>
             </div>
 

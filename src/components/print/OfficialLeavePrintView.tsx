@@ -302,12 +302,12 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
                           alt="ลายมือชื่อผู้อำนวยการ"
                           className="h-9 object-contain"
                         />
-                        <div>({data.approverName || 'นายสุรชัย ใจซื่อ'})</div>
+                        <div>({data.approverName || 'นายธีรศักดิ์ มโนธรรม'})</div>
                       </div>
                     ) : (
                       <>
                         <div>(ลงชื่อ)........................................................</div>
-                        <div>({data.approverName || 'นายสุรชัย ใจซื่อ'})</div>
+                        <div>({data.approverName || 'นายธีรศักดิ์ มโนธรรม'})</div>
                       </>
                     )}
                     <div>ตำแหน่ง {data.approverPosition || `ผู้อำนวยการ${data.schoolName}`}</div>

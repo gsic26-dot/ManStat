@@ -63,13 +63,13 @@ const LEAVE_TYPES: Array<{ value: LeaveType; label: string; description: string 
 ];
 
 export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
-  currentStaffId = 'staff-current-001',
-  currentStaffName = 'นายสุรชัย ใจซื่อ',
+  currentStaffId = 'EXE-001',
+  currentStaffName = 'นายธีรศักดิ์ มโนธรรม',
   isFirstYearAppointee = false,
   substituteTeachers = [
-    { id: 'sub-01', name: 'นายสมเกียรติ สิทธิพรหม', position: 'ครู ชำนาญการ' },
-    { id: 'sub-02', name: 'นางสาวพิมพ์ใจ รุ่งเรือง', position: 'ครูผู้ช่วย' },
-    { id: 'sub-03', name: 'นายวรวิทย์ มงคลศิลป์', position: 'ครู ชำนาญการพิเศษ' },
+    { id: 'TCH-004', name: 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์', position: 'ครูชำนาญการพิเศษ' },
+    { id: 'TCH-003', name: 'นายธวัชชัย เหลืองโอฬาร', position: 'ครูชำนาญการพิเศษ' },
+    { id: 'TCH-006', name: 'นางณิชกานต์ พลอยฉิมพลี', position: 'ครูชำนาญการพิเศษ' },
   ],
   onSuccess,
   onCancel,
