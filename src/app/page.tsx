@@ -113,7 +113,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0e141b] text-slate-100 flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#171a21]/95 backdrop-blur-md border-b border-slate-800">
+      <header className="sticky top-0 z-40 bg-[#171a21]/95 backdrop-blur-md border-b border-slate-800 print:hidden">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Mobile Menu Trigger */}
           <div className="flex items-center gap-3">
@@ -146,34 +146,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Right Action Tools & Switchers */}
+          {/* Right Action Tools */}
           <div className="flex items-center gap-3">
-            {/* Quick Submit Leave Button */}
-            <button
-              type="button"
-              onClick={() => handleSelectView('leave')}
-              className="hidden sm:inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-all focus:outline-none"
-            >
-              <PlusCircle className="w-4 h-4 shrink-0" />
-              <span>ยื่นคำร้องขอลา</span>
-            </button>
-
-            {/* Role Switcher */}
-            <div className="hidden md:flex items-center gap-2 h-10 bg-[#101822] px-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300">
-              <Layers className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>บทบาท:</span>
-              <select
-                value={currentRole}
-                onChange={(e) => setCurrentRole(e.target.value as 'superuser' | 'director' | 'hr_admin' | 'teacher')}
-                className="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer"
-              >
-                <option value="superuser" className="bg-[#171a21]">ผู้ดูแลระบบสูงสุด (Superuser)</option>
-                <option value="director" className="bg-[#171a21]">ผู้อำนวยการ (Director)</option>
-                <option value="hr_admin" className="bg-[#171a21]">เจ้าหน้าที่บุคคล (HR Admin)</option>
-                <option value="teacher" className="bg-[#171a21]">ครูผู้สอน (Teacher)</option>
-              </select>
-            </div>
-
             {/* Admin Management Link */}
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
@@ -191,7 +165,7 @@ export default function DashboardPage() {
               {currentRole === 'superuser' ? (
                 <div
                   className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm shadow-amber-950/40"
-                  title="ระดับสิทธิ์: Superuser (ผู้ดูแลระบบสูงสุด)"
+                  title="ระดับสิทธิ์: Superuser"
                 >
                   S
                 </div>
@@ -219,7 +193,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-[10px] text-slate-400">
                   {currentRole === 'superuser'
-                    ? 'นายธีรศักดิ์ มโนธรรม (ผู้ดูแลระบบสูงสุด)'
+                    ? 'นายธีรศักดิ์ มโนธรรม'
                     : currentRole === 'director'
                     ? 'ผู้อำนวยการสถานศึกษา'
                     : currentRole === 'hr_admin'
@@ -242,9 +216,9 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Layout Container (Sidebar + Content) */}
-      <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 print:max-w-none print:p-0 print:m-0 print:w-full print:block">
         {/* Left Navigation Sidebar (Desktop) */}
-        <aside className="hidden lg:block w-64 shrink-0 space-y-6">
+        <aside className="hidden lg:block w-64 shrink-0 space-y-6 print:hidden">
           <div className="bg-[#111822] rounded-2xl border border-slate-800 p-4 sticky top-24 space-y-5">
             {/* Group 1: ระบบการลา */}
             <div>
@@ -525,7 +499,7 @@ export default function DashboardPage() {
 
         {/* Mobile Slide-Over Drawer Navigation */}
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div className="fixed inset-0 z-50 lg:hidden flex print:hidden">
             <div
               className="fixed inset-0 bg-black/80 backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -738,7 +712,7 @@ export default function DashboardPage() {
         )}
 
         {/* Main Content Pane */}
-        <main className="flex-1 min-w-0 space-y-6">
+        <main className="flex-1 min-w-0 space-y-6 print:p-0 print:m-0 print:space-y-0 print:w-full">
           {/* View 1: Main Executive Dashboard */}
           {activeView === 'dashboard' && (
             <div className="space-y-6">
@@ -923,7 +897,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden sticky bottom-0 z-40 bg-[#161f2b]/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px]">
+      <nav className="lg:hidden sticky bottom-0 z-40 bg-[#161f2b]/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] print:hidden">
         <button
           type="button"
           onClick={() => handleSelectView('dashboard')}
@@ -980,7 +954,7 @@ export default function DashboardPage() {
 
       {/* Realtime Toasts Floating Overlay */}
       {toasts.length > 0 && (
-        <div className="fixed bottom-16 lg:bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full">
+        <div className="fixed bottom-16 lg:bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full print:hidden">
           {toasts.map((toast) => (
             <div
               key={toast.id}

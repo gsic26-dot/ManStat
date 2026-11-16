@@ -215,36 +215,49 @@ export function ViewOfficialReports() {
       {/* PRINT-ONLY A4 LANDSCAPE OFFICIAL SUMMARY SHEET                    */}
       {/* Guarantee: Strict 1-Page A4 Landscape (No Overflow)               */}
       {/* ================================================================= */}
-      <div className="hidden print:block text-black font-sarabun bg-white w-[297mm] h-[210mm] max-h-[210mm] p-[8mm_10mm_6mm_10mm] box-border overflow-hidden">
+      <div className="hidden print:block text-black font-sarabun bg-white w-[287mm] h-[200mm] max-h-[200mm] box-border overflow-hidden mx-auto my-0">
         <style dangerouslySetInnerHTML={{ __html: `
-          @page { size: A4 landscape; margin: 0; }
+          @page { size: landscape; margin: 4mm 5mm; }
+          @media print {
+            html, body {
+              width: 297mm !important;
+              height: 210mm !important;
+              max-height: 210mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              background: #fff !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
         ` }} />
 
-        <div className="flex flex-col justify-between h-full">
+        <div className="flex flex-col justify-between h-full w-full">
           <div>
             {/* Header */}
-            <div className="text-center line-height-[1.35] mb-2">
-              <div className="text-[15px] font-bold">โรงเรียนชุมชนบ้านตะขบ</div>
-              <div className="text-[14px] font-bold">แบบสรุปวันลาข้าราชการครูและบุคลากรทางการศึกษา</div>
-              <div className="text-[12.5px] font-bold text-slate-800">
+            <div className="text-center mb-1 leading-tight">
+              <div className="text-[14px] font-bold">โรงเรียนชุมชนบ้านตะขบ</div>
+              <div className="text-[13px] font-bold">แบบสรุปวันลาข้าราชการครูและบุคลากรทางการศึกษา</div>
+              <div className="text-[11.5px] font-bold text-slate-800">
                 {roundTitles[roundFilter].title} {roundTitles[roundFilter].subtitle}
               </div>
             </div>
 
             {/* Official 15-Column Table */}
-            <table className="w-full border-collapse border-[1.5px] border-black text-center text-[10.5px] leading-tight">
+            <table className="w-full border-collapse border border-black text-center text-[9.5px] leading-tight">
               <thead>
                 <tr className="bg-slate-100 font-bold">
-                  <th rowSpan={2} className="border border-black p-1 w-[4%]">ที่</th>
-                  <th rowSpan={2} className="border border-black p-1 w-[26%] text-left pl-2">ชื่อ - ชื่อสกุล</th>
-                  <th colSpan={2} className="border border-black p-1 w-[10%]">ลาป่วย</th>
-                  <th colSpan={2} className="border border-black p-1 w-[10%]">ลากิจ</th>
-                  <th colSpan={2} className="border border-black p-1 w-[9%]">มาสาย</th>
-                  <th colSpan={2} className="border border-black p-1 w-[9%]">ขาดราชการ</th>
-                  <th className="border border-black p-1 w-[6%]">ลาศึกษา</th>
-                  <th className="border border-black p-1 w-[6%]">ลาคลอด</th>
-                  <th className="border border-black p-1 w-[6%]">อุปสมบท</th>
-                  <th colSpan={2} className="border border-black p-1 w-[14%]">รวมวันลา</th>
+                  <th rowSpan={2} className="border border-black p-0.5 w-[3%]">ที่</th>
+                  <th rowSpan={2} className="border border-black p-0.5 w-[25%] text-left pl-1.5">ชื่อ - ชื่อสกุล</th>
+                  <th colSpan={2} className="border border-black p-0.5 w-[10%]">ลาป่วย</th>
+                  <th colSpan={2} className="border border-black p-0.5 w-[10%]">ลากิจ</th>
+                  <th colSpan={2} className="border border-black p-0.5 w-[9%]">มาสาย</th>
+                  <th colSpan={2} className="border border-black p-0.5 w-[9%]">ขาดราชการ</th>
+                  <th className="border border-black p-0.5 w-[6%]">ลาศึกษา</th>
+                  <th className="border border-black p-0.5 w-[6%]">ลาคลอด</th>
+                  <th className="border border-black p-0.5 w-[7%]">อุปสมบท</th>
+                  <th colSpan={2} className="border border-black p-0.5 w-[14%]">รวมวันลา</th>
                 </tr>
                 <tr className="bg-slate-100 font-bold">
                   <th className="border border-black p-0.5">ครั้ง</th>
@@ -264,7 +277,7 @@ export function ViewOfficialReports() {
               </thead>
               <tbody>
                 <tr className="bg-slate-200 font-bold text-left">
-                  <td colSpan={15} className="border border-black px-2 py-0.5 text-[11px]">
+                  <td colSpan={15} className="border border-black px-1.5 py-0.5 text-[10px]">
                     ข้าราชการครูและบุคลากรทางการศึกษา
                   </td>
                 </tr>
@@ -275,7 +288,7 @@ export function ViewOfficialReports() {
                   return (
                     <tr key={t.id} className="border-b border-black">
                       <td className="border border-black p-0.5 text-center">{idx + 1}</td>
-                      <td className="border border-black p-0.5 text-left pl-2 font-medium whitespace-nowrap">
+                      <td className="border border-black p-0.5 text-left pl-1.5 font-medium whitespace-nowrap">
                         {t.name} ({t.position})
                       </td>
                       <td className="border border-black p-0.5">{t.sickUsed > 0 ? '1' : '-'}</td>
@@ -299,7 +312,7 @@ export function ViewOfficialReports() {
           </div>
 
           {/* Signatures at the bottom */}
-          <div className="flex justify-between items-center text-center text-[11.5px] leading-relaxed pt-2">
+          <div className="flex justify-between items-center text-center text-[11px] leading-tight pt-1">
             <div className="w-[45%]">
               <div>ลงชื่อ............................................................ผู้สรุป</div>
               <div className="mt-0.5">(นางสาวทัชชกร ช่วยจังหรีด)</div>

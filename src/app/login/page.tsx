@@ -124,7 +124,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="superuser หรือ email@school.ac.th"
+                  placeholder="กรอกชื่อผู้ใช้ หรือ อีเมล"
                   className="w-full bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
               </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••••••"
+                  placeholder="กรอกรหัสผ่าน"
                   className="w-full bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
               </div>

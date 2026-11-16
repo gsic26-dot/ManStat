@@ -26,16 +26,26 @@ import {
   ArrowRight,
   ShieldCheck,
   Printer,
+  Trash2,
 } from 'lucide-react';
 import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export function ViewLeaveTracking() {
-  const [requests] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+  const [requests, setRequests] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
   const [searchDoc, setSearchDoc] = useState('');
-  const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord>(requests[1]); // default to pending or first
+  const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord | null>(requests[1] || requests[0] || null);
 
   const handleSelectReq = (req: LeaveRequestRecord) => {
     setSelectedReq(req);
+  };
+
+  const handleDeleteCurrent = () => {
+    if (!selectedReq) return;
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${selectedReq.teacherName}?`)) {
+      const remaining = requests.filter((r) => r.id !== selectedReq.id);
+      setRequests(remaining);
+      setSelectedReq(remaining.length > 0 ? remaining[0] : null);
+    }
   };
 
   const steps = [
@@ -187,8 +197,17 @@ export function ViewLeaveTracking() {
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors shadow-sm"
                   >
                     <QrCode className="w-3.5 h-3.5 shrink-0" />
-                    <span>สแกน QR Code</span>
+                    <span>สแกน QR</span>
                   </Link>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCurrent}
+                    title="ลบคำร้องนี้"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>ลบคำร้อง</span>
+                  </button>
                 </div>
               </div>
 

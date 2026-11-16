@@ -27,6 +27,7 @@ import {
   User,
   AlertCircle,
   FileCheck,
+  Trash2,
 } from 'lucide-react';
 import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
 
@@ -102,6 +103,15 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             }
           : null
       );
+    }
+  };
+
+  const handleDelete = (id: string, docNo: string) => {
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${docNo} ออกจากระบบ?`)) {
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+      if (selectedRequest?.id === id) {
+        setSelectedRequest(null);
+      }
     }
   };
 
@@ -287,6 +297,14 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                         >
                           <Printer className="w-4 h-4 shrink-0" />
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(req.id, req.docNo)}
+                          title="ลบคำร้อง"
+                          className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 shrink-0" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -364,14 +382,24 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-              <Link
-                href={`/leave/print/${selectedRequest.id}`}
-                target="_blank"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
-              >
-                <Printer className="w-3.5 h-3.5 shrink-0" />
-                <span>พิมพ์ใบลา A4</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/leave/print/${selectedRequest.id}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5 shrink-0" />
+                  <span>พิมพ์ใบลา A4</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(selectedRequest.id, selectedRequest.docNo)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-medium transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>ลบคำร้อง</span>
+                </button>
+              </div>
 
               {selectedRequest.status === 'pending' ? (
                 <div className="flex items-center gap-2">
