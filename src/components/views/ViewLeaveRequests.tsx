@@ -132,43 +132,43 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
         )}
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Filter and Search Bar (Standard 40px Height) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="ค้นหาชื่อครู, เลขที่หนังสือ, เหตุผลการลา..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+        <div className="h-10 flex items-center gap-2 bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
+          <Filter className="w-4 h-4 text-sky-400 shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'pending' | 'approved' | 'rejected')}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL">สถานะทั้งหมด</option>
-            <option value="pending">รอการอนุมัติ (Pending)</option>
-            <option value="approved">อนุมัติแล้ว (Approved)</option>
-            <option value="rejected">ไม่อนุมัติ (Rejected)</option>
+            <option value="ALL" className="bg-[#171a21]">สถานะทั้งหมด</option>
+            <option value="pending" className="bg-[#171a21]">รอการอนุมัติ (Pending)</option>
+            <option value="approved" className="bg-[#171a21]">อนุมัติแล้ว (Approved)</option>
+            <option value="rejected" className="bg-[#171a21]">ไม่อนุมัติ (Rejected)</option>
           </select>
         </div>
 
-        <div>
+        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as 'ALL' | 'sick' | 'personal' | 'vacation')}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL">ประเภทการลาทั้งหมด</option>
-            <option value="sick">ลาป่วย</option>
-            <option value="personal">ลากิจส่วนตัว</option>
-            <option value="vacation">ลาพักผ่อน</option>
+            <option value="ALL" className="bg-[#171a21]">ประเภทการลาทั้งหมด</option>
+            <option value="sick" className="bg-[#171a21]">ลาป่วย</option>
+            <option value="personal" className="bg-[#171a21]">ลากิจส่วนตัว</option>
+            <option value="vacation" className="bg-[#171a21]">ลาพักผ่อน</option>
           </select>
         </div>
       </div>
@@ -251,19 +251,19 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                     <td className="px-4 py-3.5 text-slate-300">{req.substituteTeacherName || '-'}</td>
                     <td className="px-4 py-3.5 text-center">
                       {req.status === 'approved' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[100px]">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>อนุมัติแล้ว</span>
                         </span>
                       )}
                       {req.status === 'pending' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 min-w-[100px]">
                           <Clock className="w-3.5 h-3.5 shrink-0" />
                           <span>รอพิจารณา</span>
                         </span>
                       )}
                       {req.status === 'rejected' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[100px]">
                           <XCircle className="w-3.5 h-3.5 shrink-0" />
                           <span>ไม่อนุมัติ</span>
                         </span>

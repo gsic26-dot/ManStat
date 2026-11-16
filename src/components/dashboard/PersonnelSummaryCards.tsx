@@ -29,10 +29,10 @@ interface PersonnelSummaryCardsProps {
 
 export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
   stats = {
-    totalStaff: 42,
-    onDutyCount: 40,
-    onLeaveCount: 2,
-    expiringOrRetiringCount: 3,
+    totalStaff: 15,
+    onDutyCount: 14,
+    onLeaveCount: 1,
+    expiringOrRetiringCount: 1,
   },
   isLoading = false,
 }) => {
@@ -86,11 +86,11 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
         return (
           <div
             key={idx}
-            className={`glass-panel p-5 rounded-xl transition-all duration-200 border border-slate-800 ${card.borderColor}`}
+            className={`bg-[#111823]/80 p-5 rounded-2xl transition-all duration-200 border border-slate-800/80 hover:shadow-lg hover:shadow-black/20 ${card.borderColor}`}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-slate-300">{card.title}</span>
-              <div className={`p-2 rounded-lg ${card.bgColor} ${card.iconColor}`}>
+              <div className={`p-2.5 rounded-xl ${card.bgColor} ${card.iconColor}`}>
                 <IconComponent className="w-5 h-5 shrink-0" />
               </div>
             </div>

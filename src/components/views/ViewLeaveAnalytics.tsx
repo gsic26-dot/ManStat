@@ -84,8 +84,8 @@ export function ViewLeaveAnalytics() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-[#101822] px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300">
-            <Calendar className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <div className="h-10 flex items-center gap-2 bg-[#101822] px-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300">
+            <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
             <span>ปีงบประมาณ:</span>
             <select
               value={fiscalYear}
@@ -98,11 +98,11 @@ export function ViewLeaveAnalytics() {
             </select>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#101822] p-1 rounded-xl border border-slate-700 text-xs">
+          <div className="h-10 flex items-center gap-1 bg-[#101822] p-1 rounded-xl border border-slate-700/80 text-xs">
             <button
               type="button"
               onClick={() => setSelectedSemester('ALL')}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
                 selectedSemester === 'ALL' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -111,7 +111,7 @@ export function ViewLeaveAnalytics() {
             <button
               type="button"
               onClick={() => setSelectedSemester('H1')}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
                 selectedSemester === 'H1' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -120,7 +120,7 @@ export function ViewLeaveAnalytics() {
             <button
               type="button"
               onClick={() => setSelectedSemester('H2')}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
                 selectedSemester === 'H2' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >

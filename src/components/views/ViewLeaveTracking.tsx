@@ -91,13 +91,13 @@ export function ViewLeaveTracking() {
         {/* Left Column: Requests List / Selector */}
         <div className="lg:col-span-1 space-y-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="ค้นหาเลขที่หนังสือ หรือชื่อครู..."
               value={searchDoc}
               onChange={(e) => setSearchDoc(e.target.value)}
-              className="w-full bg-[#111822] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
             />
           </div>
 

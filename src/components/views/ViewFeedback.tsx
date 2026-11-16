@@ -122,11 +122,11 @@ export function ViewFeedback() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as 'bug' | 'feature' | 'inquiry')}
-                className="w-full bg-[#16202c] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
+                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                <option value="feature">เสนอแนะฟังก์ชันการทำงานใหม่ (Feature Request)</option>
-                <option value="bug">แจ้งปัญหา / ข้อผิดพลาดของระบบ (Bug Report)</option>
-                <option value="inquiry">สอบถามการใช้งาน / ระเบียบการลา (Inquiry)</option>
+                <option value="feature" className="bg-[#171a21]">เสนอแนะฟังก์ชันการทำงานใหม่ (Feature Request)</option>
+                <option value="bug" className="bg-[#171a21]">แจ้งปัญหา / ข้อผิดพลาดของระบบ (Bug Report)</option>
+                <option value="inquiry" className="bg-[#171a21]">สอบถามการใช้งาน / ระเบียบการลา (Inquiry)</option>
               </select>
             </div>
 
@@ -137,10 +137,10 @@ export function ViewFeedback() {
               <select
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                className="w-full bg-[#16202c] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
+                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
                 {INITIAL_TEACHERS.map((t) => (
-                  <option key={t.id} value={t.name}>
+                  <option key={t.id} value={t.name} className="bg-[#171a21]">
                     {t.name}
                   </option>
                 ))}
@@ -156,7 +156,7 @@ export function ViewFeedback() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="ระบุหัวข้ออย่างกระชับ..."
-                className="w-full bg-[#16202c] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
+                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
 
@@ -169,14 +169,14 @@ export function ViewFeedback() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="อธิบายรายละเอียดขั้นตอน หรือสิ่งที่ต้องการปรับปรุง..."
-                className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#16202c] border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md shadow-sky-900/30 transition-all disabled:opacity-50"
+              className="w-full h-10 inline-flex items-center justify-center gap-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md shadow-sky-900/30 transition-all disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5 shrink-0" />
               <span>{isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อเสนอแนะ'}</span>
@@ -217,17 +217,17 @@ export function ViewFeedback() {
                   </div>
 
                   {item.status === 'resolved' ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                       <span>ดำเนินการแล้ว</span>
                     </span>
                   ) : item.status === 'in_progress' ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-sky-400">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 min-w-[95px]">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       <span>กำลังปรับปรุง</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-amber-400">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 min-w-[95px]">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       <span>รอตรวจสอบ</span>
                     </span>

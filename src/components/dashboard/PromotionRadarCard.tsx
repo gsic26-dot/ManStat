@@ -43,7 +43,7 @@ export const PromotionRadarCard: React.FC<PromotionRadarCardProps> = ({
   const roundName = evalRound === 1 ? 'รอบที่ 1 (1 ต.ค. - 31 มี.ค.)' : 'รอบที่ 2 (1 เม.ย. - 30 ก.ย.)';
 
   return (
-    <div className="glass-panel p-5 rounded-xl border border-slate-800">
+    <div className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-800/80 hover:shadow-xl hover:shadow-black/20 transition-all">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-2">

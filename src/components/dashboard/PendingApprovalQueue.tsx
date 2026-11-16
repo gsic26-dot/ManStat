@@ -63,31 +63,31 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
       : [
           {
             id: 'req-sample-01',
-            staffName: 'นางสาววิภาวี ดวงเนตร',
-            position: 'ครูผู้ช่วย',
-            employeeCode: 'K002',
+            staffName: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
+            position: 'ครูชำนาญการพิเศษ',
+            employeeCode: 'TCH-005',
             leaveType: 'ลาป่วย',
             startDate: '2026-11-18',
             endDate: '2026-11-19',
             totalDays: 2,
             halfDay: 'full',
             reason: 'มีอาการไข้หวัดใหญ่และแพทย์สั่งพักผ่อน',
-            substituteTeacherName: 'นายสมชาย ใจดี',
+            substituteTeacherName: 'นางณิชกานต์ พลอยฉิมพลี',
             attachmentUrl: 'https://example.com/med-cert.pdf',
             createdAt: '2026-11-16T08:30:00Z',
           },
           {
             id: 'req-sample-02',
-            staffName: 'นายเกียรติศักดิ์ พัฒนาการ',
-            position: 'ครู ชำนาญการ',
-            employeeCode: 'K003',
+            staffName: 'นางสาวสุนิสา สุทธิวงศ์',
+            position: 'ครู คศ. 1',
+            employeeCode: 'TCH-008',
             leaveType: 'ลากิจส่วนตัว',
             startDate: '2026-11-20',
             endDate: '2026-11-20',
             totalDays: 0.5,
             halfDay: 'morning',
-            reason: 'ติดต่อราชการทำบัตรประจำตัวประชาชนใหม่',
-            substituteTeacherName: 'นางกาญจนา มงคล',
+            reason: 'ติดต่อธุรกรรมราชการ ณ สำนักงานที่ดิน',
+            substituteTeacherName: 'นายกิตติพณ พรหมทอง',
             attachmentUrl: null,
             createdAt: '2026-11-16T09:15:00Z',
           },
@@ -148,10 +148,10 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
   };
 
   return (
-    <div className="glass-panel p-5 rounded-xl border border-slate-800">
+    <div className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-800/80 hover:shadow-xl hover:shadow-black/20 transition-all">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+          <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
             <ClipboardCheck className="w-5 h-5 shrink-0" />
           </div>
           <div>
@@ -163,7 +163,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2a475e] text-sky-200 text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#2a475e]/80 text-sky-200 text-xs font-semibold border border-sky-500/30">
           <Clock className="w-3.5 h-3.5 shrink-0" />
           <span>รอพิจารณา {requests.length} รายการ</span>
         </span>

@@ -266,10 +266,10 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-              className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500 transition-colors"
+              className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
             >
               {LEAVE_TYPES.map((lt) => (
-                <option key={lt.value} value={lt.value}>
+                <option key={lt.value} value={lt.value} className="bg-[#171a21]">
                   {lt.label} - {lt.description}
                 </option>
               ))}
@@ -291,7 +291,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     setEndDate(e.target.value);
                   }
                 }}
-                className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
               />
             </div>
 
@@ -304,7 +304,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 value={endDate}
                 min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
               />
             </div>
 
@@ -316,11 +316,11 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 value={halfDay}
                 onChange={(e) => setHalfDay(e.target.value as HalfDayPeriod)}
                 disabled={startDate !== endDate || (leaveType !== 'ลาป่วย' && leaveType !== 'ลากิจส่วนตัว')}
-                className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-sky-500 disabled:opacity-50"
+                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 disabled:opacity-50 transition-all cursor-pointer"
               >
-                <option value="full">เต็มวัน (1 วัน)</option>
-                <option value="morning">ครึ่งวันเช้า (0.5 วัน)</option>
-                <option value="afternoon">ครึ่งวันบ่าย (0.5 วัน)</option>
+                <option value="full" className="bg-[#171a21]">เต็มวัน (1 วัน)</option>
+                <option value="morning" className="bg-[#171a21]">ครึ่งวันเช้า (0.5 วัน)</option>
+                <option value="afternoon" className="bg-[#171a21]">ครึ่งวันบ่าย (0.5 วัน)</option>
               </select>
             </div>
           </div>
@@ -387,11 +387,11 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
               <select
                 value={substituteStaffId}
                 onChange={(e) => setSubstituteStaffId(e.target.value)}
-                className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                <option value="">-- เลือกครูผู้สอนแทน (ถ้ามี) --</option>
+                <option value="" className="bg-[#171a21]">-- เลือกครูผู้สอนแทน (ถ้ามี) --</option>
                 {substituteTeachers.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
+                  <option key={sub.id} value={sub.id} className="bg-[#171a21]">
                     {sub.name} ({sub.position})
                   </option>
                 ))}
@@ -407,7 +407,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 value={contactInfo}
                 onChange={(e) => setContactInfo(e.target.value)}
                 placeholder="เบอร์โทรศัพท์ หรือที่อยู่..."
-                className="w-full bg-[#101822] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
           </div>

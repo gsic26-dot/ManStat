@@ -64,7 +64,7 @@ const CircularRing: React.FC<CircularRingProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center bg-[#1b2838]/80 border border-[#2a475e] rounded-xl p-5 shadow-sm">
+    <div className="flex flex-col items-center bg-[#151e2b] border border-slate-700/80 rounded-2xl p-5 shadow-sm">
       <div className="flex items-center justify-between w-full mb-3">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${textColor} shrink-0`} />
@@ -145,7 +145,7 @@ export const LeaveProgressRings: React.FC<LeaveProgressRingsProps> = ({
   const actualPersonalMax = personalLeaveMax ?? (isFirstYear ? 15 : 45);
 
   return (
-    <div className="glass-panel p-5 rounded-xl border border-slate-800">
+    <div className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-800/80 hover:shadow-xl hover:shadow-black/20 transition-all">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">

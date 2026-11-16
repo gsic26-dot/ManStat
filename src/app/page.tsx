@@ -152,15 +152,15 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => handleSelectView('leave')}
-              className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-all focus:outline-none"
+              className="hidden sm:inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-all focus:outline-none"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>ยื่นคำร้องขอลา</span>
             </button>
 
             {/* Role Switcher */}
-            <div className="hidden md:flex items-center gap-1.5 bg-[#101822] px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300">
-              <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div className="hidden md:flex items-center gap-2 h-10 bg-[#101822] px-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300">
+              <Layers className="w-4 h-4 text-amber-400 shrink-0" />
               <span>บทบาท:</span>
               <select
                 value={currentRole}
@@ -178,7 +178,7 @@ export default function DashboardPage() {
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors"
+                className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold transition-colors"
                 title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
               >
                 <Settings className="w-4 h-4 text-sky-400 shrink-0" />

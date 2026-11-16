@@ -68,7 +68,7 @@ export function ViewOfficialReports() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+            className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
           >
             <Printer className="w-4 h-4 shrink-0" />
             <span>พิมพ์รายงาน</span>
@@ -76,40 +76,40 @@ export function ViewOfficialReports() {
         </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar (Standard 40px Height) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="ค้นหาชื่อครู หรือตำแหน่ง..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
           />
         </div>
 
-        <div>
+        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
           <select
             value={roundFilter}
             onChange={(e) => setRoundFilter(e.target.value as 'FULL' | 'ROUND_1' | 'ROUND_2')}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="FULL">รอบการประเมิน: ทั้งปีงบประมาณ 2570</option>
-            <option value="ROUND_1">รอบที่ 1: 1 ต.ค. 2569 - 31 มี.ค. 2570</option>
-            <option value="ROUND_2">รอบที่ 2: 1 เม.ย. 2570 - 30 ก.ย. 2570</option>
+            <option value="FULL" className="bg-[#171a21]">รอบการประเมิน: ทั้งปีงบประมาณ 2570</option>
+            <option value="ROUND_1" className="bg-[#171a21]">รอบที่ 1: 1 ต.ค. 2569 - 31 มี.ค. 2570</option>
+            <option value="ROUND_2" className="bg-[#171a21]">รอบที่ 2: 1 เม.ย. 2570 - 30 ก.ย. 2570</option>
           </select>
         </div>
 
-        <div>
+        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL">กลุ่มสาระ / ฝ่ายงานทั้งหมด</option>
+            <option value="ALL" className="bg-[#171a21]">กลุ่มสาระ / ฝ่ายงานทั้งหมด</option>
             {departments.map((d) => (
-              <option key={d} value={d}>
+              <option key={d} value={d} className="bg-[#171a21]">
                 {d}
               </option>
             ))}
@@ -172,13 +172,13 @@ export function ViewOfficialReports() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {isEligible ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>ผ่านเกณฑ์</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[95px]">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                           <span>เกินเกณฑ์</span>
                         </span>
                       )}

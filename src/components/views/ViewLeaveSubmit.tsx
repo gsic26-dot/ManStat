@@ -43,7 +43,7 @@ export function ViewLeaveSubmit({ onSuccess }: ViewLeaveSubmitProps) {
       {/* SmartLeaveForm Container */}
       <div className="bg-[#111822] p-6 rounded-2xl border border-slate-800 shadow-sm">
         <SmartLeaveForm
-          currentStaffId="TCH-002"
+          currentStaffId="TCH-003"
           currentStaffName="นายธวัชชัย เหลืองโอฬาร"
           substituteTeachers={substituteTeachers}
           onSuccess={onSuccess}

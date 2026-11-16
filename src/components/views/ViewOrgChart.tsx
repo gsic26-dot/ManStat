@@ -34,8 +34,8 @@ export const ViewOrgChart: React.FC = () => {
     },
     {
       title: 'ฝ่ายบริหารงบประมาณ',
-      head: 'นายเกียรติศักดิ์ พัฒนาการ',
-      role: 'ครูชำนาญการ (หัวหน้าฝ่าย)',
+      head: 'นางสาวทัชชกร ช่วยจังหรีด',
+      role: 'ครูชำนาญการพิเศษ (หัวหน้าฝ่าย/การเงิน)',
       icon: DollarSign,
       iconColor: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
@@ -48,8 +48,8 @@ export const ViewOrgChart: React.FC = () => {
     },
     {
       title: 'ฝ่ายบริหารงานบุคคล',
-      head: 'นายสมเกียรติ สิทธิพรหม',
-      role: 'ครูชำนาญการ (หัวหน้าฝ่าย)',
+      head: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
+      role: 'ครูชำนาญการพิเศษ (หัวหน้าฝ่าย)',
       icon: Users,
       iconColor: 'text-amber-400',
       bgColor: 'bg-amber-500/10',
@@ -79,19 +79,19 @@ export const ViewOrgChart: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel p-5 rounded-xl border border-slate-800">
+      <div className="bg-[#141b24] p-5 rounded-2xl border border-slate-800">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
           <Layers className="w-5 h-5 text-sky-400 shrink-0" />
           <span>แผนผังโครงสร้างการบริหารงานโรงเรียนชุมชนบ้านตะขบ</span>
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-400 mt-1">
           โครงสร้างการบริหารสถานศึกษา 4 ฝ่าย ตามพระราชบัญญัติระเบียบบริหารราชการกระทรวงศึกษาธิการ
         </p>
       </div>
 
       {/* Top Director Card */}
       <div className="max-w-md mx-auto">
-        <div className="glass-panel p-6 rounded-2xl border-2 border-sky-500/60 shadow-xl text-center bg-gradient-to-b from-[#1b2838] to-[#121c27]">
+        <div className="bg-[#141b24] p-6 rounded-2xl border-2 border-sky-500/60 shadow-xl text-center bg-gradient-to-b from-[#1b2838] to-[#121c27]">
           <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-600 to-blue-800 border-2 border-sky-400 mx-auto flex items-center justify-center text-white mb-3 shadow-md">
             <School className="w-8 h-8" />
           </div>
@@ -113,11 +113,11 @@ export const ViewOrgChart: React.FC = () => {
           return (
             <div
               key={idx}
-              className="glass-panel p-5 rounded-xl border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col justify-between"
+              className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-800/80 hover:border-sky-500/40 hover:shadow-lg hover:shadow-black/20 transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className={`p-2 rounded-lg ${div.bgColor} ${div.iconColor}`}>
+                  <div className={`p-2 rounded-xl ${div.bgColor} ${div.iconColor}`}>
                     <Icon className="w-5 h-5 shrink-0" />
                   </div>
                   <div>
@@ -125,7 +125,7 @@ export const ViewOrgChart: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-[#101822] p-3 rounded-lg border border-slate-800/80 mb-3 text-xs">
+                <div className="bg-[#101822] p-3 rounded-xl border border-slate-800/80 mb-3 text-xs">
                   <span className="text-[10px] text-slate-500 block">หัวหน้าฝ่าย:</span>
                   <div className="font-semibold text-slate-100">{div.head}</div>
                   <div className="text-[11px] text-sky-300 mt-0.5">{div.role}</div>
@@ -135,9 +135,9 @@ export const ViewOrgChart: React.FC = () => {
                   <span className="text-[11px] text-slate-400 block mb-1.5 font-medium">
                     ขอบข่ายภารกิจหลัก:
                   </span>
-                  <ul className="space-y-1 text-xs text-slate-300">
+                  <ul className="space-y-1.5 text-xs text-slate-300">
                     {div.duties.map((duty, dIdx) => (
-                      <li key={dIdx} className="flex items-start gap-1.5">
+                      <li key={dIdx} className="flex items-start gap-2">
                         <span className="text-sky-400 font-bold">•</span>
                         <span className="leading-relaxed">{duty}</span>
                       </li>

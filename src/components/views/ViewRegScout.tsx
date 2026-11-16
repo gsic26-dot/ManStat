@@ -57,35 +57,35 @@ export function ViewRegScout() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-[#101822] px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300">
+        <div className="h-10 flex items-center gap-2 bg-[#101822] px-4 rounded-xl border border-slate-700 text-xs text-slate-300">
           <Medal className="w-4 h-4 text-amber-400 shrink-0" />
           <span>มีวุฒิลูกเสือ:</span>
           <span className="font-bold text-white font-mono">{scouts.length} รายการ</span>
         </div>
       </div>
 
-      {/* Filter and Search */}
+      {/* Filter and Search (Standard 40px Height) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="ค้นหาชื่อครู, วุฒิการฝึกอบรม, เลขที่วุฒิบัตร..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all"
           />
         </div>
 
-        <div>
+        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-amber-500 transition-all">
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
-            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL">ระดับวุฒิทั้งหมด (All Levels)</option>
+            <option value="ALL" className="bg-[#171a21]">ระดับวุฒิทั้งหมด (All Levels)</option>
             {levels.map((lvl) => (
-              <option key={lvl} value={lvl}>
+              <option key={lvl} value={lvl} className="bg-[#171a21]">
                 {lvl}
               </option>
             ))}
