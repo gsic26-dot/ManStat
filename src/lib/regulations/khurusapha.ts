@@ -41,6 +41,12 @@ export const KHURUSAPHA_SPECS: Record<LicenseType, LicenseStandardSpec> = {
     validityYears: 5,
     description: 'สำหรับผู้อำนวยการและรองผู้อำนวยการสถานศึกษา อายุ 5 ปี'
   },
+  'ผู้บริหารการศึกษา': {
+    type: 'ผู้บริหารการศึกษา',
+    title: 'ใบอนุญาตประกอบวิชาชีพผู้บริหารการศึกษา',
+    validityYears: 5,
+    description: 'สำหรับผู้บริหารการศึกษา อายุ 5 ปี'
+  },
   'ศึกษานิเทศก์': {
     type: 'ศึกษานิเทศก์',
     title: 'ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์',

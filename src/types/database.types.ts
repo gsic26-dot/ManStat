@@ -1,10 +1,10 @@
 /**
- * =========================================================================
- * MANSTAT MODERN - SUPABASE DATABASE TYPE DEFINITIONS
- * =========================================================================
- * Strict TypeScript representation of 001_init_manstat_schema.sql
- * Conforms to Iron Law 2 (Strict Typing, No Any)
- * =========================================================================
+ * ============================================================================
+ * ManStat-Modern: Database TypeScript Schema Types
+ * ============================================================================
+ * 100% Strict Mapping to /supabase/migrations/001_init_manstat_schema.sql
+ * Conforms to Iron Law 2: Strict Typing, No Any.
+ * ============================================================================
  */
 
 export type Json =
@@ -15,337 +15,535 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type StaffRole = 'teacher' | 'hr_admin' | 'director';
-export type StaffStatus = 'ปกติ' | 'ช่วยราชการ' | 'ไปราชการ' | 'ลาออก' | 'ย้าย/เกษียณ';
-export type LicenseType = 'P-License' | 'B-License' | 'A-License' | 'ผู้บริหารสถานศึกษา' | 'ศึกษานิเทศก์';
-export type LeaveType =
+// ----------------------------------------------------------------------------
+// Custom PostgreSQL Enums
+// ----------------------------------------------------------------------------
+export type UserRole = 'teacher' | 'hr_admin' | 'director';
+
+export type LeaveTypeEnum =
   | 'ลาป่วย'
   | 'ลากิจส่วนตัว'
-  | 'ลาพักผ่อน'
   | 'ลาคลอดบุตร'
-  | 'ลาช่วยภริยาคลอดบุตร'
-  | 'ลาอุปสมบท/ฮัจย์'
-  | 'ลาตรวจเลือก/เตรียมพล'
-  | 'ขออนุญาตออกนอกบริเวณสถานศึกษา'
-  | 'ไปราชการ';
-export type HalfDayPeriod = 'FULL' | 'MORNING' | 'AFTERNOON';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-export type WorkloadCategory =
-  | 'ด้านที่ 1 การจัดการเรียนรู้'
-  | 'ด้านที่ 2 การส่งเสริมสนับสนุน'
-  | 'ด้านที่ 3 การพัฒนาตนเองและวิชาชีพ'
-  | 'ด้านที่ 4 ภาระงานตามที่ ก.ค.ศ. กำหนด'
-  | 'งานบริหาร 4 ฝ่าย';
+  | 'ลาไปช่วยเหลือภริยาที่คลอดบุตร'
+  | 'ลาพักผ่อน'
+  | 'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์'
+  | 'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล'
+  | 'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน';
 
+export type LeaveStatusEnum = 'pending' | 'reviewed' | 'approved' | 'rejected' | 'cancelled';
+
+export type HalfDayEnum = 'full' | 'morning' | 'afternoon';
+
+export type LicenseTypeEnum =
+  | 'P-License'
+  | 'B-License'
+  | 'A-License'
+  | 'ผู้บริหารสถานศึกษา'
+  | 'ผู้บริหารการศึกษา'
+  | 'ศึกษานิเทศก์';
+
+export type LicenseHealthStatus = 'VALID' | 'EXPIRING_SOON' | 'EXPIRED';
+
+// Aliases for regulatory engine compatibility
+export type LeaveType = LeaveTypeEnum;
+export type HalfDayPeriod = HalfDayEnum;
+export type LicenseType = LicenseTypeEnum;
+export type StaffRole = UserRole;
+
+// ----------------------------------------------------------------------------
+// Supabase Database Interface
+// ----------------------------------------------------------------------------
 export interface Database {
   public: {
     Tables: {
       school_settings: {
         Row: {
           id: string;
+          school_code: string;
           school_name: string;
           affiliation: string;
-          school_code_10: string;
-          school_code_8: string;
-          director_name: string;
-          director_position: string;
+          director_name: string | null;
+          director_position: string | null;
           current_fiscal_year: number;
-          current_academic_year: number;
-          current_term: number;
           student_count: number;
-          student_data_date: string | null;
-          contact_phone: string | null;
-          address: string | null;
-          logo_base64: string | null;
-          alert_settings: {
-            leave_count_threshold: number;
-            sick_personal_days_threshold: number;
-            license_expiry_warning_days: number;
-            retirement_warning_years: number;
-          };
+          classroom_count: number;
           updated_at: string;
         };
         Insert: {
           id?: string;
+          school_code?: string;
           school_name?: string;
           affiliation?: string;
-          school_code_10?: string;
-          school_code_8?: string;
-          director_name?: string;
-          director_position?: string;
+          director_name?: string | null;
+          director_position?: string | null;
           current_fiscal_year?: number;
-          current_academic_year?: number;
-          current_term?: number;
           student_count?: number;
-          student_data_date?: string | null;
-          contact_phone?: string | null;
-          address?: string | null;
-          logo_base64?: string | null;
-          alert_settings?: {
-            leave_count_threshold?: number;
-            sick_personal_days_threshold?: number;
-            license_expiry_warning_days?: number;
-            retirement_warning_years?: number;
-          };
+          classroom_count?: number;
           updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['school_settings']['Insert']>;
+        Update: {
+          id?: string;
+          school_code?: string;
+          school_name?: string;
+          affiliation?: string;
+          director_name?: string | null;
+          director_position?: string | null;
+          current_fiscal_year?: number;
+          student_count?: number;
+          classroom_count?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
 
       staff: {
         Row: {
-          id: string;
-          user_id: string | null;
-          emp_id: string;
-          email: string;
-          full_name: string;
-          role: StaffRole;
-          position: string;
-          standing: string | null;
-          department: string;
-          division: string | null;
-          position_no: string | null;
-          member_id: string | null;
+          id: string; // References auth.users(id)
+          employee_code: string | null;
+          prefix: string;
+          first_name: string;
+          last_name: string;
+          position_name: string;
+          academic_standing: string | null;
+          department: string | null;
           birth_date: string;
-          start_date: string;
-          duty_day: string | null;
-          phone: string | null;
-          status: StaffStatus;
+          start_service_date: string;
+          is_year_round_staff: boolean;
+          role: UserRole;
+          signature_url: string | null;
+          is_active: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
-          user_id?: string | null;
-          emp_id: string;
-          email: string;
-          full_name: string;
-          role?: StaffRole;
-          position?: string;
-          standing?: string | null;
-          department?: string;
-          division?: string | null;
-          position_no?: string | null;
-          member_id?: string | null;
+          id: string;
+          employee_code?: string | null;
+          prefix: string;
+          first_name: string;
+          last_name: string;
+          position_name?: string;
+          academic_standing?: string | null;
+          department?: string | null;
           birth_date: string;
-          start_date: string;
-          duty_day?: string | null;
-          phone?: string | null;
-          status?: StaffStatus;
+          start_service_date: string;
+          is_year_round_staff?: boolean;
+          role?: UserRole;
+          signature_url?: string | null;
+          is_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['staff']['Insert']>;
+        Update: {
+          id?: string;
+          employee_code?: string | null;
+          prefix?: string;
+          first_name?: string;
+          last_name?: string;
+          position_name?: string;
+          academic_standing?: string | null;
+          department?: string | null;
+          birth_date?: string;
+          start_service_date?: string;
+          is_year_round_staff?: boolean;
+          role?: UserRole;
+          signature_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
 
       staff_sensitive: {
         Row: {
-          emp_id: string;
+          staff_id: string; // References staff(id)
           citizen_id: string;
-          salary: number;
+          phone_number: string | null;
+          current_salary: number;
           bank_account: string | null;
-          blood_group: string | null;
-          created_at: string;
           updated_at: string;
         };
         Insert: {
-          emp_id: string;
+          staff_id: string;
           citizen_id: string;
-          salary?: number;
+          phone_number?: string | null;
+          current_salary?: number;
           bank_account?: string | null;
-          blood_group?: string | null;
-          created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['staff_sensitive']['Insert']>;
+        Update: {
+          staff_id?: string;
+          citizen_id?: string;
+          phone_number?: string | null;
+          current_salary?: number;
+          bank_account?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "staff_sensitive_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: true;
+            referencedRelation: "staff";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       licenses: {
         Row: {
           id: string;
-          emp_id: string;
-          license_type: LicenseType;
+          staff_id: string;
           license_number: string;
-          issue_date: string;
+          license_type: LicenseTypeEnum;
+          issued_date: string;
           expiry_date: string;
-          doc_url: string | null;
+          document_url: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          emp_id: string;
-          license_type: LicenseType;
+          staff_id: string;
           license_number: string;
-          issue_date: string;
+          license_type?: LicenseTypeEnum;
+          issued_date: string;
           expiry_date: string;
-          doc_url?: string | null;
+          document_url?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['licenses']['Insert']>;
+        Update: {
+          id?: string;
+          staff_id?: string;
+          license_number?: string;
+          license_type?: LicenseTypeEnum;
+          issued_date?: string;
+          expiry_date?: string;
+          document_url?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "licenses_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       holidays: {
         Row: {
+          id: string;
           holiday_date: string;
-          title: string;
-          holiday_type: string;
+          holiday_name: string;
+          fiscal_year: number;
           created_at: string;
         };
         Insert: {
+          id?: string;
           holiday_date: string;
-          title: string;
-          holiday_type?: string;
+          holiday_name: string;
+          fiscal_year: number;
           created_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['holidays']['Insert']>;
+        Update: {
+          id?: string;
+          holiday_date?: string;
+          holiday_name?: string;
+          fiscal_year?: number;
+          created_at?: string;
+        };
+        Relationships: [];
       };
 
       leave_requests: {
         Row: {
           id: string;
-          leave_code: string;
-          emp_id: string;
-          leave_type: LeaveType;
+          document_no: string | null;
+          staff_id: string;
+          leave_type: LeaveTypeEnum;
           start_date: string;
           end_date: string;
-          half_day_period: HalfDayPeriod;
+          half_day: HalfDayEnum;
           total_days: number;
           fiscal_year: number;
           eval_round: 1 | 2;
           reason: string;
           contact_address: string | null;
-          contact_phone: string | null;
+          medical_cert_required: boolean;
           medical_cert_url: string | null;
-          status: ApprovalStatus;
-          step_hr: 'pending' | 'approved' | 'rejected';
-          step_director: 'pending' | 'approved' | 'rejected';
+          substitute_staff_id: string | null;
+          status: LeaveStatusEnum;
+          reviewer_id: string | null;
+          reviewed_at: string | null;
           approver_id: string | null;
           approved_at: string | null;
           rejection_reason: string | null;
+          is_retroactive: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
-          leave_code: string;
-          emp_id: string;
-          leave_type: LeaveType;
+          document_no?: string | null;
+          staff_id: string;
+          leave_type: LeaveTypeEnum;
           start_date: string;
           end_date: string;
-          half_day_period?: HalfDayPeriod;
+          half_day?: HalfDayEnum;
           total_days: number;
           fiscal_year: number;
           eval_round: 1 | 2;
           reason: string;
           contact_address?: string | null;
-          contact_phone?: string | null;
+          medical_cert_required?: boolean;
           medical_cert_url?: string | null;
-          status?: ApprovalStatus;
-          step_hr?: 'pending' | 'approved' | 'rejected';
-          step_director?: 'pending' | 'approved' | 'rejected';
+          substitute_staff_id?: string | null;
+          status?: LeaveStatusEnum;
+          reviewer_id?: string | null;
+          reviewed_at?: string | null;
           approver_id?: string | null;
           approved_at?: string | null;
           rejection_reason?: string | null;
+          is_retroactive?: boolean;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['leave_requests']['Insert']>;
+        Update: {
+          id?: string;
+          document_no?: string | null;
+          staff_id?: string;
+          leave_type?: LeaveTypeEnum;
+          start_date?: string;
+          end_date?: string;
+          half_day?: HalfDayEnum;
+          total_days?: number;
+          fiscal_year?: number;
+          eval_round?: 1 | 2;
+          reason?: string;
+          contact_address?: string | null;
+          medical_cert_required?: boolean;
+          medical_cert_url?: string | null;
+          substitute_staff_id?: string | null;
+          status?: LeaveStatusEnum;
+          reviewer_id?: string | null;
+          reviewed_at?: string | null;
+          approver_id?: string | null;
+          approved_at?: string | null;
+          rejection_reason?: string | null;
+          is_retroactive?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       workloads: {
         Row: {
           id: string;
-          emp_id: string;
-          category: WorkloadCategory;
-          title: string;
-          hours_per_week: number;
-          role_in_task: string;
-          academic_term: string;
+          staff_id: string;
           fiscal_year: number;
-          order_reference: string | null;
-          status: string;
-          created_at: string;
+          semester: 1 | 2;
+          teaching_hours: number;
+          support_hours: number;
+          development_hours: number;
+          policy_hours: number;
+          admin_division: string | null;
+          obec_systems: Json;
+          updated_at: string;
         };
         Insert: {
           id?: string;
-          emp_id: string;
-          category: WorkloadCategory;
-          title: string;
-          hours_per_week?: number;
-          role_in_task?: string;
-          academic_term?: string;
-          fiscal_year?: number;
-          order_reference?: string | null;
-          status?: string;
-          created_at?: string;
+          staff_id: string;
+          fiscal_year: number;
+          semester: 1 | 2;
+          teaching_hours?: number;
+          support_hours?: number;
+          development_hours?: number;
+          policy_hours?: number;
+          admin_division?: string | null;
+          obec_systems?: Json;
+          updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['workloads']['Insert']>;
+        Update: {
+          id?: string;
+          staff_id?: string;
+          fiscal_year?: number;
+          semester?: 1 | 2;
+          teaching_hours?: number;
+          support_hours?: number;
+          development_hours?: number;
+          policy_hours?: number;
+          admin_division?: string | null;
+          obec_systems?: Json;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workloads_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       audit_logs: {
         Row: {
           id: string;
-          user_id: string | null;
-          emp_id: string | null;
-          action: string;
-          target_type: string;
-          target_id: string | null;
+          actor_id: string | null;
+          action_type: string;
+          target_staff_id: string | null;
           details: Json;
-          ip_address: string | null;
-          user_agent: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          user_id?: string | null;
-          emp_id?: string | null;
-          action: string;
-          target_type: string;
-          target_id?: string | null;
+          actor_id?: string | null;
+          action_type: string;
+          target_staff_id?: string | null;
           details?: Json;
-          ip_address?: string | null;
-          user_agent?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['audit_logs']['Insert']>;
+        Update: {
+          id?: string;
+          actor_id?: string | null;
+          action_type?: string;
+          target_staff_id?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
       };
     };
 
     Views: {
+      v_staff_directory: {
+        Row: {
+          id: string;
+          employee_code: string | null;
+          prefix: string;
+          first_name: string;
+          last_name: string;
+          full_name: string;
+          position_name: string;
+          academic_standing: string | null;
+          department: string | null;
+          birth_date: string;
+          start_service_date: string;
+          role: UserRole;
+          is_active: boolean;
+          retirement_fiscal_year_be: number;
+          retirement_date_ce: string;
+          masked_citizen_id: string;
+        };
+        Relationships: [];
+      };
+
       v_leave_promotion_radar: {
         Row: {
-          emp_id: string;
+          staff_id: string;
           full_name: string;
-          position: string;
-          department: string;
-          fiscal_year: number;
-          eval_round: number;
-          leave_count: number;
-          sick_personal_days: number;
+          position_name: string;
+          fiscal_year: number | null;
+          eval_round: 1 | 2 | null;
+          leave_occurrences: number;
           sick_days: number;
           personal_days: number;
-          vacation_days: number;
-          total_leave_days: number;
-          is_leave_count_exceeded: boolean;
-          is_days_exceeded: boolean;
+          combined_sick_personal_days: number;
+          is_exceed_occurrences_limit: boolean;
+          is_exceed_days_limit: boolean;
         };
+        Relationships: [];
+      };
+
+      v_license_status: {
+        Row: {
+          id: string;
+          staff_id: string;
+          license_number: string;
+          license_type: LicenseTypeEnum;
+          issued_date: string;
+          expiry_date: string;
+          document_url: string | null;
+          created_at: string;
+          full_name: string;
+          days_remaining: number;
+          license_health: LicenseHealthStatus;
+        };
+        Relationships: [];
       };
     };
 
     Functions: {
-      fn_calculate_working_days: {
+      rpc_reveal_citizen_id: {
+        Args: {
+          p_target_staff_id: string;
+        };
+        Returns: string;
+      };
+
+      fn_calculate_leave_days: {
         Args: {
           p_start_date: string;
           p_end_date: string;
-          p_leave_type: string;
-          p_half_day_period?: string;
+          p_leave_type: LeaveTypeEnum;
+          p_half_day?: HalfDayEnum;
         };
         Returns: number;
       };
-      auth_user_role: {
+
+      fn_calculate_retirement_year_be: {
+        Args: {
+          b_date: string;
+        };
+        Returns: number;
+      };
+
+      fn_get_fiscal_year_be: {
+        Args: {
+          target_date: string;
+        };
+        Returns: number;
+      };
+
+      fn_get_eval_round: {
+        Args: {
+          target_date: string;
+        };
+        Returns: number;
+      };
+
+      fn_is_admin_or_director: {
         Args: Record<string, never>;
-        Returns: string;
+        Returns: boolean;
       };
     };
   };
 }
+
+// ----------------------------------------------------------------------------
+// Convenience Row Types for Application Code
+// ----------------------------------------------------------------------------
+export type SchoolSettings = Database['public']['Tables']['school_settings']['Row'];
+export type Staff = Database['public']['Tables']['staff']['Row'];
+export type StaffSensitive = Database['public']['Tables']['staff_sensitive']['Row'];
+export type License = Database['public']['Tables']['licenses']['Row'];
+export type Holiday = Database['public']['Tables']['holidays']['Row'];
+export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
+export type Workload = Database['public']['Tables']['workloads']['Row'];
+export type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
+
+export type StaffDirectoryView = Database['public']['Views']['v_staff_directory']['Row'];
+export type LeavePromotionRadarView = Database['public']['Views']['v_leave_promotion_radar']['Row'];
+export type LicenseStatusView = Database['public']['Views']['v_license_status']['Row'];

@@ -80,7 +80,7 @@ describe('2. Civil Service Leave Regulations (ระเบียบสำนั�
       startDate: '2026-11-02',
       endDate: '2026-11-02',
       leaveType: 'ลากิจส่วนตัว',
-      halfDayPeriod: 'MORNING'
+      halfDayPeriod: 'morning'
     });
     assert.equal(daysMorning, 0.5);
 
@@ -88,7 +88,7 @@ describe('2. Civil Service Leave Regulations (ระเบียบสำนั�
       startDate: '2026-11-02',
       endDate: '2026-11-02',
       leaveType: 'ลากิจส่วนตัว',
-      halfDayPeriod: 'AFTERNOON'
+      halfDayPeriod: 'afternoon'
     });
     assert.equal(daysAfternoon, 0.5);
   });

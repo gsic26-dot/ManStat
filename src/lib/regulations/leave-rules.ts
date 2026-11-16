@@ -34,16 +34,19 @@ export interface LeaveQuotaValidationResult {
   requiresMedicalCertificate: boolean;
 }
 
-export function isContinuousCalendarLeave(leaveType: LeaveType): boolean {
+export function isContinuousCalendarLeave(leaveType: string): boolean {
   return (
-    leaveType === 'ลาคลอดบุตร' ||
-    leaveType === 'ลาอุปสมบท/ฮัจย์' ||
-    leaveType === 'ลาตรวจเลือก/เตรียมพล'
+    leaveType.includes('คลอด') ||
+    leaveType.includes('อุปสมบท') ||
+    leaveType.includes('ฮัจย์') ||
+    leaveType.includes('ตรวจเลือก') ||
+    leaveType.includes('เตรียมพล') ||
+    leaveType.includes('ศึกษา')
   );
 }
 
 export function calculateWorkingDays(options: LeaveCalculationOptions): number {
-  const { startDate, endDate, leaveType, halfDayPeriod = 'FULL', holidaysList = [] } = options;
+  const { startDate, endDate, leaveType, halfDayPeriod = 'full', holidaysList = [] } = options;
 
   const start = typeof startDate === 'string' ? new Date(startDate) : new Date(startDate.getTime());
   const end = typeof endDate === 'string' ? new Date(endDate) : new Date(endDate.getTime());
@@ -56,12 +59,13 @@ export function calculateWorkingDays(options: LeaveCalculationOptions): number {
   }
 
   // Short permit out of school premises is not counted as official leave days
-  if (leaveType === 'ขออนุญาตออกนอกบริเวณสถานศึกษา' || leaveType === 'ไปราชการ') {
+  if (leaveType.includes('ออกนอกบริเวณ') || leaveType.includes('3 ชม.')) {
     return 0;
   }
 
-  // Half-day support for single date requests
-  if (start.getTime() === end.getTime() && (halfDayPeriod === 'MORNING' || halfDayPeriod === 'AFTERNOON')) {
+  // Half-day support for single date requests (case-insensitive)
+  const halfLower = String(halfDayPeriod).toLowerCase();
+  if (start.getTime() === end.getTime() && (halfLower === 'morning' || halfLower === 'afternoon')) {
     return 0.5;
   }
 
@@ -139,7 +143,7 @@ export function validateLeaveQuota(options: LeaveQuotaCheckOptions): LeaveQuotaV
       maxQuota = 90; // วันปฏิทิน
       break;
 
-    case 'ลาช่วยภริยาคลอดบุตร':
+    case 'ลาไปช่วยเหลือภริยาที่คลอดบุตร':
       maxQuota = 15; // วันทำการ ภายใน 90 วัน
       break;
 
