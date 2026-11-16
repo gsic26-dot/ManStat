@@ -12,18 +12,14 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Clock,
   Search,
   CheckCircle2,
-  AlertCircle,
-  FileText,
   UserCheck,
-  Building,
   QrCode,
-  ArrowRight,
   ShieldCheck,
   Printer,
   Trash2,

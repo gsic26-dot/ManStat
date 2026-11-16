@@ -89,7 +89,6 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
   const isSick = data.leaveType === 'ลาป่วย';
   const isPersonal = (data.leaveType as string) === 'ลากิจส่วนตัว' || (data.leaveType as string) === 'ลากิจ';
   const isMaternity = data.leaveType === 'ลาคลอดบุตร';
-  const isVacation = data.leaveType === 'ลาพักผ่อน';
 
   const isApproved = data.status === 'approved';
   const isRejected = data.status === 'rejected';

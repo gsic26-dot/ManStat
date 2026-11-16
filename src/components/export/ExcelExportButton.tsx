@@ -15,7 +15,7 @@
  */
 
 import React, { useState } from 'react';
-import { FileSpreadsheet, Download, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   getStaffDirectory,

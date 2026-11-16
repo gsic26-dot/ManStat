@@ -11,7 +11,7 @@
  */
 
 import React, { useState } from 'react';
-import { Award, FileText, Calendar, CheckCircle2, Search, Medal } from 'lucide-react';
+import { Award, Calendar, Search, Medal } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 
 export const ViewRegStanding: React.FC = () => {

@@ -10,8 +10,7 @@
  * ============================================================================
  */
 
-import React from 'react';
-import { FilePlus, ShieldCheck, HelpCircle } from 'lucide-react';
+import { FilePlus } from 'lucide-react';
 import { SmartLeaveForm } from '@/components/leave/SmartLeaveForm';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 

@@ -15,7 +15,6 @@
 
 import * as XLSX from 'xlsx';
 import { calculateRetirementInfo, calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
-import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
 import { maskCitizenId } from '@/components/security/CitizenIdShield';
 import type {
   StaffDirectoryView,

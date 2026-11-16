@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Users, UserCheck, CalendarOff, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Users, UserCheck, CalendarOff, AlertTriangle } from 'lucide-react';
 
 export interface PersonnelSummaryStats {
   totalStaff: number;

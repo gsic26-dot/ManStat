@@ -14,12 +14,8 @@ import React, { useState } from 'react';
 import {
   MessageSquare,
   Send,
-  AlertCircle,
   CheckCircle2,
   Clock,
-  HelpCircle,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 

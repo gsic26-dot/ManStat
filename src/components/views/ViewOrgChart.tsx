@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { School, User, BookOpen, DollarSign, Users, Shield, Layers } from 'lucide-react';
+import { School, BookOpen, DollarSign, Users, Shield, Layers } from 'lucide-react';
 
 export const ViewOrgChart: React.FC = () => {
   const divisions = [

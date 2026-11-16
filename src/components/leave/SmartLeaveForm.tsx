@@ -16,20 +16,16 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calendar,
   Clock,
-  FileText,
-  UserCheck,
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
   Upload,
   Loader2,
   X,
-  ShieldCheck,
-  Info,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { submitLeaveRequest } from '@/lib/supabase/queries';

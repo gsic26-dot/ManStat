@@ -12,17 +12,11 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Award,
   Search,
-  Filter,
   Medal,
-  Calendar,
-  FileText,
-  Building,
-  User,
-  Shield,
 } from 'lucide-react';
 import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
 

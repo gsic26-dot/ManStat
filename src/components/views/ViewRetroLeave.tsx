@@ -17,11 +17,8 @@ import {
   RotateCcw,
   Calendar,
   User,
-  FileText,
   AlertTriangle,
   Save,
-  CheckCircle2,
-  Paperclip,
   Clock,
   ShieldAlert,
 } from 'lucide-react';

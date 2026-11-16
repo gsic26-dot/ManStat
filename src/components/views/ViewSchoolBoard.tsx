@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { Award, UserCheck, Phone, Building, CheckCircle2, Shield } from 'lucide-react';
+import { UserCheck, Phone, Building, CheckCircle2, Shield } from 'lucide-react';
 import { INITIAL_BOARD_MEMBERS } from '@/lib/data/schoolData';
 
 export const ViewSchoolBoard: React.FC = () => {

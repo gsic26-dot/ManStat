@@ -7,7 +7,6 @@
  * ============================================================================
  */
 
-import React from 'react';
 import { OfficialLeavePrintView, type LeavePrintData } from '@/components/print/OfficialLeavePrintView';
 import { createClient } from '@/lib/supabase/server';
 

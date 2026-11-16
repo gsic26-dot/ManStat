@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   School,
@@ -28,9 +28,7 @@ import {
   LogOut,
   User,
   Settings,
-  Layers,
   CheckCircle2,
-  AlertTriangle,
   X,
   Printer,
   FileCheck,
@@ -56,8 +54,6 @@ import { LeaveProgressRings } from '@/components/dashboard/LeaveProgressRings';
 import { PromotionRadarCard } from '@/components/dashboard/PromotionRadarCard';
 import { PendingApprovalQueue } from '@/components/dashboard/PendingApprovalQueue';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
-import { SmartLeaveForm } from '@/components/leave/SmartLeaveForm';
-import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
 
 // View Components
@@ -96,7 +92,7 @@ export type ActiveView =
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [currentRole, setCurrentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
+  const [currentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
 
   // Real-time toast notifications hook
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });

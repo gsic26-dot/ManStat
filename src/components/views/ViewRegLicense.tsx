@@ -19,8 +19,6 @@ import {
   AlertOctagon,
   Search,
   ExternalLink,
-  ShieldCheck,
-  Calendar,
 } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';

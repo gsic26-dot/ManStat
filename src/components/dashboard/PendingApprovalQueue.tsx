@@ -18,17 +18,15 @@ import {
   Check,
   X,
   Clock,
-  FileText,
   User,
   Calendar,
-  AlertCircle,
   Loader2,
   CheckCircle2,
   Printer,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateLeaveStatus } from '@/lib/supabase/queries';
-import type { LeaveRequest, LeaveStatusEnum } from '@/types/database.types';
+import type { LeaveStatusEnum } from '@/types/database.types';
 
 export interface PendingItemDisplay {
   id: string;
@@ -101,12 +99,10 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
 
   const [remarks, setRemarks] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleOpenAction = (request: PendingItemDisplay, action: 'approve' | 'reject') => {
     setActiveModal({ request, action });
     setRemarks('');
-    setStatusMessage(null);
   };
 
   const handleCloseModal = () => {
@@ -119,7 +115,6 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
     if (!activeModal) return;
 
     setIsSubmitting(true);
-    setStatusMessage(null);
 
     const newStatus: LeaveStatusEnum = activeModal.action === 'approve' ? 'approved' : 'rejected';
 

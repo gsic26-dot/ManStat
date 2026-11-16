@@ -13,18 +13,13 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   FileSpreadsheet,
   Search,
-  Filter,
   Printer,
-  Calendar,
   CheckCircle2,
   AlertTriangle,
-  Award,
-  Layers,
-  ChevronDown,
 } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';

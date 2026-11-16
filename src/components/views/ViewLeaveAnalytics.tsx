@@ -12,18 +12,15 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   TrendingUp,
   BarChart3,
   PieChart,
   Calendar,
-  AlertTriangle,
   Award,
-  Users,
   CheckCircle2,
   Clock,
-  Layers,
 } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 

@@ -19,7 +19,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   Briefcase,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Search,
@@ -27,8 +26,6 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronRight,
-  GraduationCap,
-  Users,
   Trash2,
   X,
 } from 'lucide-react';

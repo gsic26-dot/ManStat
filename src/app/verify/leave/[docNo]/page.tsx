@@ -10,7 +10,6 @@
  * ============================================================================
  */
 
-import React from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
@@ -21,7 +20,6 @@ import {
   Clock,
   User,
   ArrowLeft,
-  AlertTriangle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
