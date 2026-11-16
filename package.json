@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint src",
     "test": "tsx --test src/**/*.test.ts"
   },
   "keywords": [],
@@ -30,13 +30,15 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "typescript": "^7.0.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.72.2",
     "autoprefixer": "^10.6.2",
+    "eslint": "^10.15.0",
     "postcss": "^8.5.33",
     "tailwindcss": "^3.4.19",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
   }
 }
