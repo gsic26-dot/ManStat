@@ -26,6 +26,10 @@ export interface TeacherRecord {
   idCard: string;
   positionNo?: string;
   memberId?: string;
+  highestScout?: string;
+  scoutCertNo?: string;
+  teachingHours?: number;
+  taHours?: number;
   sickUsed: number;
   personalUsed: number;
   vacationUsed: number;
