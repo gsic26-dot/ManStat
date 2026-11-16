@@ -170,19 +170,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-800 text-center space-y-2">
-            <div className="bg-[#121a24] border border-amber-500/30 rounded-xl p-2.5 text-left flex items-start gap-2">
-              <span className="w-5 h-5 rounded-md bg-amber-500/20 text-amber-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">
-                S
-              </span>
-              <div className="text-[11px] text-slate-300">
-                <span className="text-amber-300 font-bold">เข้าสู่ระบบผู้ดูแลสูงสุด (Superuser):</span>
-                <div className="text-slate-400 font-mono mt-0.5">
-                  ชื่อผู้ใช้: <span className="text-white">superuser</span> | รหัสผ่าน:{' '}
-                  <span className="text-white">44123130114</span>
-                </div>
-              </div>
-            </div>
+          <div className="mt-6 pt-4 border-t border-slate-800 text-center">
             <p className="text-[11px] text-slate-500">
               หากพบปัญหาการเข้าสู่ระบบ โปรดติดต่อเจ้าหน้าที่ดูแลระบบคอมพิวเตอร์ของโรงเรียน
             </p>
