@@ -2,7 +2,7 @@
  * =========================================================================
  * MANSTAT MODERN - UNIVERSAL API ROUTER (routes.js)
  * =========================================================================
- * Dispatches RPC calls from client-side google.script.run via gas-bridge.js
+ * Dispatches RPC calls from modern client-side fetch API
  * Seamlessly integrated with Cloud PostgreSQL and fallback store.
  * =========================================================================
  */
