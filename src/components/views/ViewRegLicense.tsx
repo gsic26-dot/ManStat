@@ -1,0 +1,235 @@
+'use client';
+
+/**
+ * ============================================================================
+ * ManStat-Modern: View Khurusapha Professional Licenses (ทะเบียนใบอนุญาตฯ)
+ * ============================================================================
+ * - Professional License Health Tracking (P, B, A, Educational Administrator)
+ * - 90-Day Early Warning Threshold per Khurusapha Standards
+ * - Direct link to renewal guidance
+ * - Zero emojis, pure Lucide SVG icons with strict 8px gap.
+ * ============================================================================
+ */
+
+import React, { useState, useMemo } from 'react';
+import {
+  Award,
+  AlertTriangle,
+  CheckCircle2,
+  AlertOctagon,
+  Search,
+  ExternalLink,
+  ShieldCheck,
+  Calendar,
+} from 'lucide-react';
+import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
+
+export const ViewRegLicense: React.FC = () => {
+  const [filterHealth, setFilterHealth] = useState<'ALL' | 'VALID' | 'EXPIRING_SOON' | 'EXPIRED'>('ALL');
+  const [search, setSearch] = useState<string>('');
+
+  // Extract all licenses from teachers
+  const allLicenses = useMemo(() => {
+    const list: Array<{
+      teacherName: string;
+      position: string;
+      department: string;
+      category: string;
+      type: string;
+      number: string;
+      issueDate: string;
+      expiryDate: string;
+      health: 'VALID' | 'EXPIRING_SOON' | 'EXPIRED';
+      daysRemaining: number;
+    }> = [];
+
+    INITIAL_TEACHERS.forEach((t) => {
+      (t.licenses || []).forEach((lic) => {
+        const evalResult = evaluateLicenseHealth(lic.expiryDate);
+        list.push({
+          teacherName: t.name,
+          position: t.position,
+          department: t.department,
+          category: lic.category,
+          type: lic.type,
+          number: lic.number,
+          issueDate: lic.issueDate,
+          expiryDate: lic.expiryDate,
+          health: evalResult.health,
+          daysRemaining: evalResult.daysRemaining,
+        });
+      });
+    });
+
+    return list;
+  }, []);
+
+  const stats = useMemo(() => {
+    return {
+      total: allLicenses.length,
+      valid: allLicenses.filter((l) => l.health === 'VALID').length,
+      expiringSoon: allLicenses.filter((l) => l.health === 'EXPIRING_SOON').length,
+      expired: allLicenses.filter((l) => l.health === 'EXPIRED').length,
+    };
+  }, [allLicenses]);
+
+  const filtered = useMemo(() => {
+    return allLicenses.filter((l) => {
+      const matchSearch =
+        l.teacherName.toLowerCase().includes(search.toLowerCase()) ||
+        l.number.toLowerCase().includes(search.toLowerCase()) ||
+        l.type.toLowerCase().includes(search.toLowerCase());
+
+      const matchHealth = filterHealth === 'ALL' || l.health === filterHealth;
+
+      return matchSearch && matchHealth;
+    });
+  }, [allLicenses, search, filterHealth]);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-5 rounded-xl border border-slate-800">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Award className="w-5 h-5 text-sky-400 shrink-0" />
+            <span>ทะเบียนใบอนุญาตประกอบวิชาชีพครูและผู้บริหาร (คุรุสภา)</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            ระบบเฝ้าระวังวันหมดอายุล่วงหน้า 90 วัน ตามข้อบังคับคุรุสภาว่าด้วยใบอนุญาตประกอบวิชาชีพ
+          </p>
+        </div>
+
+        <a
+          href="https://ksp-eservice.ksp.or.th/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-sky-300 text-xs border border-slate-700 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+          <span>ระบบ KSP e-Service (คุรุสภา)</span>
+        </a>
+      </div>
+
+      {/* Stats Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div
+          onClick={() => setFilterHealth('ALL')}
+          className={`cursor-pointer glass-panel p-4 rounded-xl border transition-all ${
+            filterHealth === 'ALL' ? 'border-sky-500 bg-sky-500/10' : 'border-slate-800'
+          }`}
+        >
+          <span className="text-xs text-slate-400 block mb-1">ใบอนุญาตทั้งหมด</span>
+          <span className="text-2xl font-bold font-mono text-white">{stats.total}</span>
+        </div>
+
+        <div
+          onClick={() => setFilterHealth('VALID')}
+          className={`cursor-pointer glass-panel p-4 rounded-xl border transition-all ${
+            filterHealth === 'VALID' ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-400">สถานะปกติ</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <span className="text-2xl font-bold font-mono text-emerald-400">{stats.valid}</span>
+        </div>
+
+        <div
+          onClick={() => setFilterHealth('EXPIRING_SOON')}
+          className={`cursor-pointer glass-panel p-4 rounded-xl border transition-all ${
+            filterHealth === 'EXPIRING_SOON' ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-400">ใกล้หมดอายุ (ใน 90 วัน)</span>
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          </div>
+          <span className="text-2xl font-bold font-mono text-amber-400">{stats.expiringSoon}</span>
+        </div>
+
+        <div
+          onClick={() => setFilterHealth('EXPIRED')}
+          className={`cursor-pointer glass-panel p-4 rounded-xl border transition-all ${
+            filterHealth === 'EXPIRED' ? 'border-rose-500 bg-rose-500/10' : 'border-slate-800'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-slate-400">หมดอายุแล้ว</span>
+            <AlertOctagon className="w-4 h-4 text-rose-400" />
+          </div>
+          <span className="text-2xl font-bold font-mono text-rose-400">{stats.expired}</span>
+        </div>
+      </div>
+
+      {/* Table List */}
+      <div className="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
+        <div className="relative max-w-sm">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="ค้นหาชื่อผู้ถือใบอนุญาต หรือเลขที่..."
+            className="bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-full"
+          />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold">
+              <tr>
+                <th className="px-4 py-3 rounded-l-lg">ผู้ถือใบอนุญาต</th>
+                <th className="px-4 py-3">ประเภทใบอนุญาต</th>
+                <th className="px-4 py-3">เลขที่ใบอนุญาต</th>
+                <th className="px-4 py-3">วันออกใบอนุญาต</th>
+                <th className="px-4 py-3">วันหมดอายุ</th>
+                <th className="px-4 py-3">วันคงเหลือ</th>
+                <th className="px-4 py-3 rounded-r-lg text-right">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-sans">
+              {filtered.map((item, idx) => (
+                <tr key={idx} className="hover:bg-[#1a2636]/50 transition-colors">
+                  <td className="px-4 py-3.5">
+                    <div className="font-semibold text-white">{item.teacherName}</div>
+                    <div className="text-[11px] text-slate-400">{item.position}</div>
+                  </td>
+                  <td className="px-4 py-3.5 text-sky-300 font-medium">{item.type}</td>
+                  <td className="px-4 py-3.5 font-mono text-slate-200">{item.number}</td>
+                  <td className="px-4 py-3.5 font-mono text-slate-400">{item.issueDate}</td>
+                  <td className="px-4 py-3.5 font-mono text-slate-200">{item.expiryDate}</td>
+                  <td className="px-4 py-3.5 font-mono font-bold">
+                    <span className={item.daysRemaining <= 0 ? 'text-rose-400' : item.daysRemaining <= 90 ? 'text-amber-400' : 'text-emerald-400'}>
+                      {item.daysRemaining} วัน
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                    {item.health === 'VALID' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span>ปกติ</span>
+                      </span>
+                    ) : item.health === 'EXPIRING_SOON' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <span>เตือนต่ออายุ</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                        <AlertOctagon className="w-3 h-3 shrink-0" />
+                        <span>หมดอายุ</span>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};

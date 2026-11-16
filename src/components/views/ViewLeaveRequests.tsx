@@ -1,0 +1,410 @@
+'use client';
+
+/**
+ * ============================================================================
+ * ManStat-Modern: ViewLeaveRequests (รายการคำร้องและประวัติการลา)
+ * ============================================================================
+ * - Tabular view of all leave requests (Pending, Approved, Rejected)
+ * - Filtering by status, leave type, and teacher name search
+ * - Direct link to print official A4 with QR code (/leave/print/[id])
+ * - Direct approval / rejection actions for Supervisor / Director
+ * - Zero Emojis, Pure Lucide SVG Icons, 8px Standard Spacing
+ * ============================================================================
+ */
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import {
+  FileText,
+  Search,
+  Filter,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Printer,
+  Eye,
+  Calendar,
+  User,
+  AlertCircle,
+  FileCheck,
+} from 'lucide-react';
+import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
+
+interface ViewLeaveRequestsProps {
+  onOpenSubmitModal?: () => void;
+}
+
+export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps) {
+  const [requests, setRequests] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'sick' | 'personal' | 'vacation'>('ALL');
+  const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null);
+
+  const filteredRequests = requests.filter((req) => {
+    const matchesSearch =
+      req.teacherName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.docNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.reason.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
+    const matchesType = typeFilter === 'ALL' || req.leaveType === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const handleApprove = (id: string) => {
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'approved',
+              currentStep: 3,
+              directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+            }
+          : r
+      )
+    );
+    if (selectedRequest?.id === id) {
+      setSelectedRequest((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'approved',
+              currentStep: 3,
+              directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+            }
+          : null
+      );
+    }
+  };
+
+  const handleReject = (id: string) => {
+    const reason = prompt('กรุณาระบุเหตุผลการไม่อนุมัติ:');
+    if (reason === null) return;
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'rejected',
+              directorRemark: `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`,
+            }
+          : r
+      )
+    );
+    if (selectedRequest?.id === id) {
+      setSelectedRequest((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'rejected',
+              directorRemark: `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`,
+            }
+          : null
+      );
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header & Action Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 rounded-2xl border border-slate-800">
+        <div>
+          <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+            <FileText className="w-4 h-4 shrink-0" />
+            <span>Leave Request Management</span>
+          </div>
+          <h2 className="text-xl font-bold text-white mt-1">รายการคำร้องและประวัติการลา</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            ตรวจสอบ อนุมัติ และพิมพ์แบบฟอร์มใบลาราชการมาตรฐาน A4 พร้อมระบบตรวจสอบ QR Code
+          </p>
+        </div>
+
+        {onOpenSubmitModal && (
+          <button
+            type="button"
+            onClick={onOpenSubmitModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-all shadow-md shadow-sky-900/20"
+          >
+            <FileCheck className="w-4 h-4 shrink-0" />
+            <span>ยื่นคำร้องขอลาใหม่</span>
+          </button>
+        )}
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อครู, เลขที่หนังสือ, เหตุผลการลา..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#111822] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'pending' | 'approved' | 'rejected')}
+            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+          >
+            <option value="ALL">สถานะทั้งหมด</option>
+            <option value="pending">รอการอนุมัติ (Pending)</option>
+            <option value="approved">อนุมัติแล้ว (Approved)</option>
+            <option value="rejected">ไม่อนุมัติ (Rejected)</option>
+          </select>
+        </div>
+
+        <div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as 'ALL' | 'sick' | 'personal' | 'vacation')}
+            className="w-full bg-[#111822] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+          >
+            <option value="ALL">ประเภทการลาทั้งหมด</option>
+            <option value="sick">ลาป่วย</option>
+            <option value="personal">ลากิจส่วนตัว</option>
+            <option value="vacation">ลาพักผ่อน</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Requests Table */}
+      <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider">
+              <tr>
+                <th className="px-4 py-3">เลขที่หนังสือ / วันที่ยื่น</th>
+                <th className="px-4 py-3">ผู้ขอลา / ตำแหน่ง</th>
+                <th className="px-4 py-3">ประเภท / จำนวนวัน</th>
+                <th className="px-4 py-3">ช่วงเวลาการลา</th>
+                <th className="px-4 py-3">ครูผู้สอนแทน</th>
+                <th className="px-4 py-3 text-center">สถานะ</th>
+                <th className="px-4 py-3 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {filteredRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <AlertCircle className="w-6 h-6 text-slate-600" />
+                      <span>ไม่พบข้อมูลรายการคำร้องขอลา</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-[#162231]/50 transition-colors">
+                    <td className="px-4 py-3.5">
+                      <div className="font-mono font-medium text-sky-400">{req.docNo}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {new Date(req.submittedAt).toLocaleDateString('th-TH', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="font-semibold text-white">{req.teacherName}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{req.position}</div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
+                          req.leaveType === 'sick'
+                            ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                            : req.leaveType === 'personal'
+                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        }`}
+                      >
+                        {req.leaveTypeName}
+                      </span>
+                      <div className="text-[11px] font-semibold text-slate-300 mt-1">
+                        {req.totalDays} วันทำการ
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="text-slate-200">
+                        {new Date(req.startDate).toLocaleDateString('th-TH', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        ถึง{' '}
+                        {new Date(req.endDate).toLocaleDateString('th-TH', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-300">{req.substituteTeacherName || '-'}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      {req.status === 'approved' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>อนุมัติแล้ว</span>
+                        </span>
+                      )}
+                      {req.status === 'pending' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          <Clock className="w-3.5 h-3.5 shrink-0" />
+                          <span>รอพิจารณา</span>
+                        </span>
+                      )}
+                      {req.status === 'rejected' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>ไม่อนุมัติ</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRequest(req)}
+                          title="ดูรายละเอียด"
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                        >
+                          <Eye className="w-4 h-4 shrink-0" />
+                        </button>
+                        <Link
+                          href={`/leave/print/${req.id}`}
+                          target="_blank"
+                          title="พิมพ์แบบฟอร์ม A4"
+                          className="p-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 transition-colors"
+                        >
+                          <Printer className="w-4 h-4 shrink-0" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Details & Action Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-sky-400 font-bold text-sm">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span>รายละเอียดคำร้องขอลา ({selectedRequest.docNo})</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRequest(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              <div className="grid grid-cols-2 gap-2 bg-[#0e141c] p-3 rounded-xl border border-slate-800">
+                <div>
+                  <span className="text-slate-500">ผู้ขอลา:</span>
+                  <p className="font-semibold text-white mt-0.5">{selectedRequest.teacherName}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">สังกัด / กลุ่มสาระ:</span>
+                  <p className="font-medium text-slate-200 mt-0.5">{selectedRequest.department}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">ประเภทการลา:</span>
+                  <p className="font-medium text-sky-300 mt-0.5">
+                    {selectedRequest.leaveTypeName} ({selectedRequest.totalDays} วัน)
+                  </p>
+                </div>
+                <div>
+                  <span className="text-slate-500">ผู้ปฏิบัติหน้าที่แทน:</span>
+                  <p className="font-medium text-slate-200 mt-0.5">{selectedRequest.substituteTeacherName}</p>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-500 block mb-1">เหตุผลและความจำเป็น:</span>
+                <p className="bg-[#0e141c] p-3 rounded-xl border border-slate-800 text-slate-200">
+                  {selectedRequest.reason}
+                </p>
+              </div>
+
+              {selectedRequest.supervisorRemark && (
+                <div>
+                  <span className="text-slate-500 block mb-1">ความเห็นผู้บังคับบัญชาชั้นต้น:</span>
+                  <p className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-200">
+                    {selectedRequest.supervisorRemark}
+                  </p>
+                </div>
+              )}
+
+              {selectedRequest.directorRemark && (
+                <div>
+                  <span className="text-slate-500 block mb-1">คำสั่งผู้อำนวยการ:</span>
+                  <p className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-emerald-200">
+                    {selectedRequest.directorRemark}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <Link
+                href={`/leave/print/${selectedRequest.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5 shrink-0" />
+                <span>พิมพ์ใบลา A4</span>
+              </Link>
+
+              {selectedRequest.status === 'pending' ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleReject(selectedRequest.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>ไม่อนุมัติ</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(selectedRequest.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>อนุมัติคำร้อง</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSelectedRequest(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs hover:bg-slate-700 transition-colors"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
