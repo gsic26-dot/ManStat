@@ -341,6 +341,36 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
             </table>
           </div>
 
+          {/* =============================================================== */}
+          {/* FOOTER: QR CODE VERIFICATION SEAL (ตรวจสอบเอกสารดิจิทัล)       */}
+          {/* =============================================================== */}
+          <div className="border-t border-dashed border-slate-600 pt-1.5 mt-1 flex items-center justify-between text-[11px] leading-[1.35] text-slate-700">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white p-0.5 border border-black inline-block">
+                <QRCodeSVG
+                  value={`${originUrl}/verify/leave/${encodeURIComponent(data.documentNo)}`}
+                  size={46}
+                  level="M"
+                />
+              </div>
+              <div>
+                <div className="font-bold text-black text-[11.5px]">
+                  สแกนเพื่อตรวจสอบความถูกต้องของเอกสารราชการ (Digital Verification)
+                </div>
+                <div className="text-[10px] text-slate-600 font-mono">
+                  รหัสเอกสาร: <b>{data.documentNo}</b> | ตรวจสอบผ่านระบบ ManStat โรงเรียนชุมชนบ้านตะขบ
+                </div>
+                <div className="text-[9.5px] text-slate-500">
+                  สังกัดสำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3
+                </div>
+              </div>
+            </div>
+            <div className="text-right text-[10px] text-slate-500">
+              <div>เอกสารต้นฉบับทางราชการ</div>
+              <div className="font-bold text-sky-700">หน้า 1 / 1 (A4)</div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
