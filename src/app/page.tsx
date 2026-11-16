@@ -104,6 +104,18 @@ export default function DashboardPage() {
             {/* OBEC Standard Excel Export Button */}
             <ExcelExportButton fiscalYear={fiscalYearBE} />
 
+            {/* Admin Management Link (For director & hr_admin) */}
+            {(currentRole === 'director' || currentRole === 'hr_admin') && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors"
+                title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
+              >
+                <Settings className="w-4 h-4 text-sky-400 shrink-0" />
+                <span className="hidden sm:inline">ตั้งค่าระบบ</span>
+              </Link>
+            )}
+
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
               <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
