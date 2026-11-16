@@ -18,7 +18,7 @@ export type Json =
 // ----------------------------------------------------------------------------
 // Custom PostgreSQL Enums
 // ----------------------------------------------------------------------------
-export type UserRole = 'teacher' | 'hr_admin' | 'director';
+export type UserRole = 'teacher' | 'hr_admin' | 'director' | 'superuser';
 
 export type LeaveTypeEnum =
   | 'ลาป่วย'

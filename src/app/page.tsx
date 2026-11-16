@@ -96,7 +96,7 @@ export type ActiveView =
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [currentRole, setCurrentRole] = useState<'director' | 'hr_admin' | 'teacher'>('director');
+  const [currentRole, setCurrentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
 
   // Real-time toast notifications hook
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });
@@ -160,13 +160,14 @@ export default function DashboardPage() {
 
             {/* Role Switcher */}
             <div className="hidden md:flex items-center gap-1.5 bg-[#101822] px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300">
-              <Layers className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>บทบาท:</span>
               <select
                 value={currentRole}
-                onChange={(e) => setCurrentRole(e.target.value as 'director' | 'hr_admin' | 'teacher')}
-                className="bg-transparent text-sky-300 font-semibold focus:outline-none cursor-pointer"
+                onChange={(e) => setCurrentRole(e.target.value as 'superuser' | 'director' | 'hr_admin' | 'teacher')}
+                className="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer"
               >
+                <option value="superuser" className="bg-[#171a21]">ผู้ดูแลระบบสูงสุด (Superuser)</option>
                 <option value="director" className="bg-[#171a21]">ผู้อำนวยการ (Director)</option>
                 <option value="hr_admin" className="bg-[#171a21]">เจ้าหน้าที่บุคคล (HR Admin)</option>
                 <option value="teacher" className="bg-[#171a21]">ครูผู้สอน (Teacher)</option>
@@ -174,7 +175,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Admin Management Link */}
-            {(currentRole === 'director' || currentRole === 'hr_admin') && (
+            {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
                 href="/admin"
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors"
@@ -187,12 +188,44 @@ export default function DashboardPage() {
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
-                <User className="w-4 h-4" />
-              </div>
+              {currentRole === 'superuser' ? (
+                <div
+                  className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm shadow-amber-950/40"
+                  title="ระดับสิทธิ์: Superuser (ผู้ดูแลระบบสูงสุด)"
+                >
+                  S
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
               <div className="hidden lg:block text-left">
-                <div className="text-xs font-semibold text-slate-200">นายธีรศักดิ์ มโนธรรม</div>
-                <div className="text-[10px] text-slate-400">ผู้อำนวยการสถานศึกษา</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-white">
+                    {currentRole === 'superuser'
+                      ? 'Superuser'
+                      : currentRole === 'director'
+                      ? 'นายธีรศักดิ์ มโนธรรม'
+                      : currentRole === 'hr_admin'
+                      ? 'นายธวัชชัย เหลืองโอฬาร'
+                      : 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์'}
+                  </span>
+                  {currentRole === 'superuser' && (
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      ROOT
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {currentRole === 'superuser'
+                    ? 'นายธีรศักดิ์ มโนธรรม (ผู้ดูแลระบบสูงสุด)'
+                    : currentRole === 'director'
+                    ? 'ผู้อำนวยการสถานศึกษา'
+                    : currentRole === 'hr_admin'
+                    ? 'เจ้าหน้าที่บุคคล (HR Admin)'
+                    : 'ครูผู้สอน (Teacher)'}
+                </div>
               </div>
             </div>
 
@@ -777,7 +810,7 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-7 space-y-6">
                   {/* Pending Approvals Table */}
-                  {currentRole === 'director' || currentRole === 'hr_admin' ? (
+                  {currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin' ? (
                     <PendingApprovalQueue currentUserId="director-001" />
                   ) : (
                     <div className="glass-panel p-6 rounded-xl border border-slate-800 text-center py-12">

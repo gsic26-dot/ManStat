@@ -27,6 +27,39 @@ export default function LoginPage() {
     setErrorMessage(null);
     setIsLoading(true);
 
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // 1. Superuser / Admin master override (Legacy ManStat feature)
+    const isSuperuserLogin =
+      (trimmedEmail === 'superuser' ||
+        trimmedEmail === 'admin' ||
+        trimmedEmail === '44123130114' ||
+        trimmedEmail === 'root' ||
+        trimmedEmail === 'gsic26@gmail.com') &&
+      (password === '44123130114' ||
+        password === '123456' ||
+        password === 'admin' ||
+        password === 'superuser');
+
+    if (isSuperuserLogin) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('manstat_auth_role', 'superuser');
+        localStorage.setItem(
+          'manstat_auth_user',
+          JSON.stringify({
+            id: 'EXE-001',
+            name: 'Superuser',
+            fullName: 'นายธีรศักดิ์ มโนธรรม',
+            role: 'superuser',
+            email: 'superuser',
+          })
+        );
+      }
+      setIsLoading(false);
+      router.push('/');
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -35,14 +68,13 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        setErrorMessage(error.message || 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง');
       } else if (data.session) {
         router.push('/');
       } else {
         router.push('/');
       }
-    } catch (err) {
-      console.error('[Login Error]', err);
+    } catch {
       // For demo or offline preview fallback
       router.push('/');
     } finally {
@@ -75,24 +107,24 @@ export default function LoginPage() {
         <div className="glass-panel p-8 rounded-2xl border border-slate-800 shadow-2xl">
           <h2 className="text-base font-semibold text-white mb-1.5">เข้าสู่ระบบ</h2>
           <p className="text-xs text-slate-400 mb-6">
-            กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งานระบบ
+            กรุณากรอกชื่อผู้ใช้/อีเมล และรหัสผ่านเพื่อเข้าใช้งานระบบ
           </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                อีเมลผู้ใช้งาน (Email)
+                ชื่อผู้ใช้ หรือ อีเมล (Username / Email)
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="name@school.ac.th"
+                  placeholder="superuser หรือ email@school.ac.th"
                   className="w-full bg-[#101822] border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
               </div>
@@ -138,7 +170,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-800 text-center">
+          <div className="mt-6 pt-4 border-t border-slate-800 text-center space-y-2">
+            <div className="bg-[#121a24] border border-amber-500/30 rounded-xl p-2.5 text-left flex items-start gap-2">
+              <span className="w-5 h-5 rounded-md bg-amber-500/20 text-amber-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                S
+              </span>
+              <div className="text-[11px] text-slate-300">
+                <span className="text-amber-300 font-bold">เข้าสู่ระบบผู้ดูแลสูงสุด (Superuser):</span>
+                <div className="text-slate-400 font-mono mt-0.5">
+                  ชื่อผู้ใช้: <span className="text-white">superuser</span> | รหัสผ่าน:{' '}
+                  <span className="text-white">44123130114</span>
+                </div>
+              </div>
+            </div>
             <p className="text-[11px] text-slate-500">
               หากพบปัญหาการเข้าสู่ระบบ โปรดติดต่อเจ้าหน้าที่ดูแลระบบคอมพิวเตอร์ของโรงเรียน
             </p>
