@@ -2,24 +2,29 @@
 
 /**
  * ============================================================================
- * ManStat-Modern: Official A4 Leave Document Print Engine
+ * ManStat-Modern: Official A4 Leave Document Print Engine (แฟ้ม บค 4/1)
  * ============================================================================
  * Standard: ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555
- * Typography: Sarabun font (16pt body, 20pt bold headings)
- * Layout: Exact A4 Portrait fit (margin: 15mm 20mm 15mm 25mm), 0-overflow
+ * Template: แฟ้ม บค 4/1 (Exact Restoration from Legacy GAS System)
+ * Typography: Sarabun font (Official Thai Bureaucratic Standards)
+ * Layout: Exact A4 Portrait fit (210mm x 297mm, Safe bounds: 190mm x 272mm)
+ * Guarantee: STRICT SINGLE PAGE (Zero-Overflow, No 2nd page spill)
  * Features:
+ *   - แฟ้ม บค 4/1 Header with Official School Receipt Box (เลขที่รับ/วันที่/เวลา/ผู้รับ)
+ *   - Structured Checkbox options: [ ] ป่วย [ ] กิจส่วนตัว [ ] คลอดบุตร
+ *   - Prior Leave Records & Substitute Teacher Assignment
+ *   - Split Bottom Grid:
+ *       • Left: สถิติการลาในปีงบประมาณนี้ + ลายมือชื่อผู้ตรวจสอบ (นางสาวทัชชกร ช่วยจังหรีด)
+ *       • Right: ขอแสดงความนับถือ (ผู้ขอลา) + ความเห็นผู้บังคับบัญชา + คำสั่ง ผอ. ([ ] อนุญาต / [ ] ไม่อนุญาต)
  *   - Toggle Arabic <-> Thai Numerals (๑ ๒ ๓...)
- *   - Auto-population of Leave Statistics table
- *   - Electronic Signature display for approved status
- *   - High-Definition QR Code for verification linking to /verify/leave/[docNo]
- *   - Zero emojis, pure Lucide SVG icons, strict 8px gap.
+ *   - Zero emojis, Pure Lucide SVG Icons, 8px standard gap
  * ============================================================================
  */
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, ArrowLeft, Languages, Check, ShieldCheck } from 'lucide-react';
+import { Printer, ArrowLeft, Languages } from 'lucide-react';
 import { formatNumberText, formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import type { LeaveType, LeaveStatusEnum } from '@/types/database.types';
 
@@ -42,7 +47,8 @@ export interface LeavePrintData {
   endDate: string;
   totalDays: number;
   contactAddress?: string | null;
-  // Prior leave in this fiscal year for this category
+  substituteTeacher?: string | null;
+  // Prior leave in this fiscal year
   lastLeaveStartDate?: string | null;
   lastLeaveEndDate?: string | null;
   lastLeaveDays?: number | null;
@@ -77,24 +83,40 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
 }) => {
   const [useThaiNumerals, setUseThaiNumerals] = useState<boolean>(false);
 
-  const isVacationForm = data.leaveType === 'ลาพักผ่อน';
-  const formTitle = isVacationForm ? '(แบบใบลาพักผ่อน)' : '(แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร)';
-
   const formatNum = (val: string | number) => formatNumberText(val, useThaiNumerals);
   const formatDate = (val: string | Date) => formatOfficialThaiDate(val, useThaiNumerals);
 
-  // Compute stats totals
-  const sickTotal = data.stats.sickUsedBefore + data.stats.sickCurrent;
-  const personalTotal = data.stats.personalUsedBefore + data.stats.personalCurrent;
-  const vacationTotal = data.stats.vacationUsedBefore + data.stats.vacationCurrent;
-  const maternityTotal = data.stats.maternityUsedBefore + data.stats.maternityCurrent;
+  const isSick = data.leaveType === 'ลาป่วย';
+  const isPersonal = (data.leaveType as string) === 'ลากิจส่วนตัว' || (data.leaveType as string) === 'ลากิจ';
+  const isMaternity = data.leaveType === 'ลาคลอดบุตร';
+  const isVacation = data.leaveType === 'ลาพักผ่อน';
 
-  const verificationUrl = `${originUrl}/verify/leave/${encodeURIComponent(data.documentNo)}`;
+  const isApproved = data.status === 'approved';
+  const isRejected = data.status === 'rejected';
+
+  // Compute leave statistics
+  const priorSick = data.stats.sickUsedBefore;
+  const curSick = isSick ? data.totalDays : 0;
+  const totSick = priorSick + curSick;
+
+  const priorPers = data.stats.personalUsedBefore;
+  const curPers = isPersonal ? data.totalDays : 0;
+  const totPers = priorPers + curPers;
+
+  const schoolTitle = data.schoolName || 'โรงเรียนชุมชนบ้านตะขบ';
+  const directorTitle = data.approverName || 'นายธีรศักดิ์ มโนธรรม';
+  const directorPos = data.approverPosition || `ผู้อำนวยการ${schoolTitle}`;
+
+  const BoxCheck: React.FC<{ checked?: boolean }> = ({ checked }) => (
+    <span className="inline-block w-[13px] h-[13px] border border-black text-center leading-[12px] text-[11px] font-bold align-middle mx-1">
+      {checked ? '✓' : '\u00A0'}
+    </span>
+  );
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-900 font-sarabun antialiased print:bg-white print:p-0">
       {/* Top Controls Bar (Hidden during printing) */}
-      <div className="print:hidden sticky top-0 z-50 bg-[#171a21] border-b border-slate-800 text-white px-6 py-3 shadow-lg flex items-center justify-between">
+      <div className="print:hidden sticky top-0 z-50 bg-[#141a24] border-b border-slate-800 text-white px-6 py-3 shadow-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -103,9 +125,12 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
             <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>กลับหน้าหลัก</span>
           </Link>
-          <span className="text-slate-500">|</span>
+          <span className="text-slate-600">|</span>
           <span className="text-xs text-slate-300 font-mono">
             เลขที่เอกสาร: {data.documentNo}
+          </span>
+          <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+            แฟ้ม บค 4/1 (A4 แนวตั้ง 1 หน้าพอดี)
           </span>
         </div>
 
@@ -127,260 +152,197 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition-colors"
           >
             <Printer className="w-4 h-4 shrink-0" />
-            <span>สั่งพิมพ์เอกสาร A4</span>
+            <span>สั่งพิมพ์ A4</span>
           </button>
         </div>
       </div>
 
-      {/* A4 Document Container */}
+      {/* A4 Document Viewport */}
       <div className="flex justify-center p-4 sm:p-8 print:p-0">
         <div
           id="print-sheet"
-          className="w-[210mm] min-h-[297mm] max-h-[297mm] bg-white p-[15mm_20mm_15mm_25mm] shadow-2xl print:shadow-none print:w-full print:max-w-[210mm] print:h-[297mm] flex flex-col justify-between text-[15pt] leading-[1.38] text-black box-border relative overflow-hidden"
+          className="w-[210mm] h-[297mm] max-h-[297mm] bg-white p-[12mm_14mm_10mm_14mm] shadow-2xl print:shadow-none print:w-[210mm] print:h-[297mm] print:p-[12mm_14mm_10mm_14mm] flex flex-col justify-between text-[13px] leading-[1.48] text-black box-border relative overflow-hidden"
           style={{
             fontFamily: '"Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           }}
         >
-          {/* Top Form Header */}
+          {/* ================================================================= */}
+          {/* UPPER SECTION: HEADER, TITLE, SUBJECT, BODY                      */}
+          {/* ================================================================= */}
           <div>
+            {/* Top Row: แฟ้ม บค 4/1 & Receipt Box */}
             <div className="flex justify-between items-start mb-2">
-              <span className="text-[13pt] text-slate-700 font-normal">
-                {formTitle}
-              </span>
-              <div className="text-left w-64 text-[15pt]">
-                <div>เขียนที่ <span className="font-semibold">{data.schoolName}</span></div>
-                <div>
-                  วันที่ <span className="font-semibold">{formatDate(data.createdAt)}</span>
-                </div>
+              <div className="font-bold text-[13.5px] pt-1">
+                แฟ้ม บค 4/1
               </div>
+              <div className="border border-black p-2 w-[235px] text-[11.5px] leading-[1.45]">
+                <div className="text-center font-bold border-b border-black pb-0.5 mb-1">
+                  {schoolTitle}
+                </div>
+                <div>เลขที่รับ ....................................................</div>
+                <div>วันที่ ............ / ........................ / .............</div>
+                <div>เวลา ................. น. ผู้รับ .......................</div>
+              </div>
+            </div>
+
+            {/* Document Title */}
+            <div className="text-center font-bold text-[16.5px] my-1">
+              ใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว
+            </div>
+
+            {/* Location & Date */}
+            <div className="text-right text-[13px] leading-[1.45] mb-2">
+              เขียนที่ &nbsp;<b>{schoolTitle}</b><br />
+              วันที่ <b>{formatDate(data.createdAt)}</b>
             </div>
 
             {/* Subject and Salutation */}
-            <div className="mt-3 space-y-1">
-              <div>
-                <span className="font-bold">เรื่อง</span>&nbsp;&nbsp;&nbsp;ขอ{data.leaveType}
-              </div>
-              <div>
-                <span className="font-bold">เรียน</span>&nbsp;&nbsp;&nbsp;ผู้อำนวยการ{data.schoolName}
-              </div>
+            <div className="text-[13px] leading-[1.5] space-y-0.5 mb-2">
+              <div><b>เรื่อง</b> &nbsp;ขอ{data.leaveType}</div>
+              <div><b>เรียน</b> &nbsp;ผู้อำนวยการ{schoolTitle}</div>
             </div>
 
             {/* Main Body Paragraph */}
-            <div className="mt-3 text-justify indent-12 leading-[1.42]">
-              ข้าพเจ้า&nbsp;<span className="font-semibold">{data.prefix}{data.firstName}&nbsp;&nbsp;{data.lastName}</span>
-              &nbsp;&nbsp;ตำแหน่ง&nbsp;<span className="font-semibold">{data.position}</span>
-              {data.academicStanding && (
-                <>&nbsp;&nbsp;วิทยฐานะ&nbsp;<span className="font-semibold">{data.academicStanding}</span></>
-              )}
-              &nbsp;&nbsp;สังกัด&nbsp;<span className="font-semibold">{data.affiliation}</span>
-              &nbsp;&nbsp;มีความประสงค์ขอ{data.leaveType}
-              &nbsp;&nbsp;เนื่องจาก&nbsp;<span className="font-semibold">{data.reason}</span>
-              &nbsp;&nbsp;ตั้งแต่วันที่&nbsp;<span className="font-semibold">{formatDate(data.startDate)}</span>
-              &nbsp;&nbsp;ถึงวันที่&nbsp;<span className="font-semibold">{formatDate(data.endDate)}</span>
-              &nbsp;&nbsp;มีกำหนด&nbsp;<span className="font-bold underline">{formatNum(data.totalDays)}</span>&nbsp;วัน
-              &nbsp;&nbsp;ข้าพเจ้าได้ลา{data.leaveType}ครั้งสุดท้ายตั้งแต่วันที่&nbsp;
-              {data.lastLeaveStartDate ? formatDate(data.lastLeaveStartDate) : '-'}
-              &nbsp;ถึงวันที่&nbsp;
-              {data.lastLeaveEndDate ? formatDate(data.lastLeaveEndDate) : '-'}
-              &nbsp;มีกำหนด&nbsp;
-              {data.lastLeaveDays ? formatNum(data.lastLeaveDays) : '-'}
-              &nbsp;วัน
-              &nbsp;&nbsp;ในระหว่างลาจะสามารถติดต่อข้าพเจ้าได้ที่&nbsp;
-              <span className="font-semibold">{data.contactAddress || data.schoolName}</span>
-            </div>
+            <div className="text-[13px] leading-[1.58] text-justify space-y-1">
+              <div className="indent-10">
+                ข้าพเจ้า &nbsp;<b>{data.prefix}{data.firstName}&nbsp;&nbsp;{data.lastName}</b>
+                &nbsp;&nbsp;&nbsp;ตำแหน่ง &nbsp;<b>{data.position}</b>
+                {data.academicStanding && (
+                  <>&nbsp;&nbsp;วิทยฐานะ &nbsp;<b>{data.academicStanding}</b></>
+                )}
+              </div>
+              <div>
+                สังกัด &nbsp;<b>{data.affiliation}</b>
+              </div>
 
-            {/* Requester Signature Block */}
-            <div className="mt-3 flex justify-end">
-              <div className="text-center w-64 text-[14pt]">
-                <div>(ลงชื่อ)........................................................ผู้ขอลา</div>
-                <div className="mt-0.5">
-                  (&nbsp;{data.prefix}{data.firstName}&nbsp;&nbsp;{data.lastName}&nbsp;)
+              {/* Checkboxes for Leave Type */}
+              <div className="mt-1 pl-5">
+                <div>
+                  ขอลา &nbsp;&nbsp;<BoxCheck checked={isSick} /> ป่วย &nbsp;เนื่องจาก <u>{isSick ? data.reason : '...................................................................................................'}</u>
                 </div>
+                <div className="pl-9">
+                  <BoxCheck checked={isPersonal} /> กิจส่วนตัว &nbsp;เนื่องจาก <u>{isPersonal ? data.reason : '...................................................................................................'}</u>
+                </div>
+                <div className="pl-9">
+                  <BoxCheck checked={isMaternity} /> คลอดบุตร
+                </div>
+              </div>
+
+              {/* Leave Range */}
+              <div className="mt-1">
+                ตั้งแต่วันที่ <b>{formatDate(data.startDate)}</b> &nbsp;ถึงวันที่ <b>{formatDate(data.endDate)}</b> &nbsp;มีกำหนด <b>{formatNum(data.totalDays)}</b> วัน
+              </div>
+
+              {/* Prior Leave Record */}
+              <div>
+                ข้าพเจ้าได้ลา &nbsp;<BoxCheck checked={data.lastLeaveDays ? isSick : false} /> ป่วย &nbsp;<BoxCheck checked={data.lastLeaveDays ? isPersonal : false} /> กิจส่วนตัว &nbsp;<BoxCheck checked={false} /> คลอดบุตร &nbsp;ครั้งสุดท้ายตั้งแต่วันที่ <b>{data.lastLeaveStartDate ? formatDate(data.lastLeaveStartDate) : '.......................................'}</b> ถึงวันที่ <b>{data.lastLeaveEndDate ? formatDate(data.lastLeaveEndDate) : '.......................................'}</b> มีกำหนด <b>{data.lastLeaveDays ? formatNum(data.lastLeaveDays) : '........'}</b> วัน
+              </div>
+
+              {/* Contact Information & Substitute Teacher */}
+              <div className="mt-0.5">
+                ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ <u>{data.contactAddress || schoolTitle}</u><br />
+                (มอบหมายผู้สอนแทน: <u>{data.substituteTeacher || '................................................................................'}</u>)
               </div>
             </div>
           </div>
 
-          {/* Bottom Grid: 2 Columns (Leave Statistics Table & Supervisor/Director Approvals) */}
-          <div className="mt-3 pt-2 border-t border-slate-400 grid grid-cols-2 gap-4 text-[12pt] leading-tight">
-            {/* Left Column: สถิติการลาในปีงบประมาณนี้ */}
-            <div className="border border-black p-2 rounded-sm flex flex-col justify-between">
-              <div>
-                <div className="text-center font-bold mb-1.5 text-[12pt]">
-                  สถิติการลาในปีงบประมาณนี้
-                </div>
-                <table className="w-full border-collapse border border-black text-center text-[11pt]">
-                  <thead>
-                    <tr className="bg-slate-100 font-semibold">
-                      <th className="border border-black px-1 py-1">ประเภทการลา</th>
-                      <th className="border border-black px-1 py-1">ลามาแล้ว<br />(วันทำการ)</th>
-                      <th className="border border-black px-1 py-1">ลาครั้งนี้<br />(วันทำการ)</th>
-                      <th className="border border-black px-1 py-1">รวมเป็น<br />(วันทำการ)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border border-black px-1 py-0.5 text-left">ลาป่วย</td>
-                      <td className="border border-black px-1 py-0.5">{formatNum(data.stats.sickUsedBefore)}</td>
-                      <td className="border border-black px-1 py-0.5">{data.leaveType === 'ลาป่วย' ? formatNum(data.stats.sickCurrent) : '-'}</td>
-                      <td className="border border-black px-1 py-0.5 font-semibold">{formatNum(sickTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-black px-1 py-0.5 text-left">ลากิจส่วนตัว</td>
-                      <td className="border border-black px-1 py-0.5">{formatNum(data.stats.personalUsedBefore)}</td>
-                      <td className="border border-black px-1 py-0.5">{data.leaveType === 'ลากิจส่วนตัว' ? formatNum(data.stats.personalCurrent) : '-'}</td>
-                      <td className="border border-black px-1 py-0.5 font-semibold">{formatNum(personalTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-black px-1 py-0.5 text-left">ลาพักผ่อน</td>
-                      <td className="border border-black px-1 py-0.5">{formatNum(data.stats.vacationUsedBefore)}</td>
-                      <td className="border border-black px-1 py-0.5">{data.leaveType === 'ลาพักผ่อน' ? formatNum(data.stats.vacationCurrent) : '-'}</td>
-                      <td className="border border-black px-1 py-0.5 font-semibold">{formatNum(vacationTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-black px-1 py-0.5 text-left">ลาคลอดบุตร</td>
-                      <td className="border border-black px-1 py-0.5">{formatNum(data.stats.maternityUsedBefore)}</td>
-                      <td className="border border-black px-1 py-0.5">{data.leaveType === 'ลาคลอดบุตร' ? formatNum(data.stats.maternityCurrent) : '-'}</td>
-                      <td className="border border-black px-1 py-0.5 font-semibold">{formatNum(maternityTotal)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Leave Statistics Checker Signature */}
-              <div className="mt-2 text-center text-[11pt]">
-                <div>(ลงชื่อ)........................................................ผู้ตรวจสอบ</div>
-                <div className="mt-0.5">ตำแหน่ง เจ้าหน้าที่บริหารงานบุคคล</div>
-                <div>วันที่ ......./......./.......</div>
-              </div>
-            </div>
-
-            {/* Right Column: Supervisor's Opinion & School Director's Order */}
-            <div className="border border-black p-2 rounded-sm flex flex-col justify-between">
-              {/* 1. ความเห็นผู้บังคับบัญชาชั้นต้น */}
-              <div>
-                <div className="font-bold text-[12pt] mb-1">ความเห็นผู้บังคับบัญชาชั้นต้น</div>
-                <div className="text-[11pt] space-y-0.5">
-                  <div>( &nbsp;&nbsp; ) เห็นควรอนุญาต&nbsp;&nbsp;&nbsp;&nbsp;( &nbsp;&nbsp; ) อื่นๆ .............................</div>
-                  <div className="text-center mt-1">
-                    <div>(ลงชื่อ)........................................................</div>
-                    <div>ตำแหน่ง รองผู้อำนวยการสถานศึกษา</div>
-                    <div>วันที่ ......./......./.......</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. คำสั่งผู้อำนวยการสถานศึกษา */}
-              <div className="border-t border-dashed border-black pt-1.5 mt-1">
-                <div className="font-bold text-[12pt] mb-1">คำสั่ง</div>
-                <div className="text-[11pt]">
-                  <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-1.5">
-                      <span className="font-bold text-base">
-                        [{data.status === 'approved' ? '✓' : ' '}]
-                      </span>
-                      <span>อนุญาต</span>
-                    </label>
-                    <label className="flex items-center gap-1.5">
-                      <span className="font-bold text-base">
-                        [{data.status === 'rejected' ? '✓' : ' '}]
-                      </span>
-                      <span>ไม่อนุมัติ</span>
-                    </label>
-                  </div>
-
-                  {data.rejectionReason && (
-                    <div className="text-[10pt] text-rose-700 italic mt-0.5">
-                      หมายเหตุ: {data.rejectionReason}
+          {/* ================================================================= */}
+          {/* LOWER SECTION: 2 COLUMNS (LEAVE STATS & APPROVALS)                */}
+          {/* ================================================================= */}
+          <div className="mt-2 pt-2 border-t border-black">
+            <table className="w-full border-collapse border-none">
+              <tbody>
+                <tr>
+                  {/* Left Column (48%): สถิติการลาในปีงบประมาณนี้ & ผู้ตรวจสอบ */}
+                  <td className="w-[48%] align-top pr-3 border-none text-left">
+                    <div className="font-bold text-center mb-1 text-[13px]">
+                      สถิติการลาในปีงบประมาณนี้
                     </div>
-                  )}
+                    <table className="w-full border-collapse border border-black text-center text-[12px]">
+                      <thead>
+                        <tr className="bg-slate-50 font-bold">
+                          <th className="border border-black p-1">ประเภทลา</th>
+                          <th className="border border-black p-1">ลามาแล้ว</th>
+                          <th className="border border-black p-1">ลาครั้งนี้</th>
+                          <th className="border border-black p-1">รวมเป็น</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-1 text-center">ป่วย</td>
+                          <td className="border border-black p-1">{priorSick > 0 ? formatNum(priorSick) : '-'}</td>
+                          <td className="border border-black p-1">{curSick > 0 ? formatNum(curSick) : '-'}</td>
+                          <td className="border border-black p-1 font-bold">{totSick > 0 ? formatNum(totSick) : '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-1 text-center">กิจส่วนตัว</td>
+                          <td className="border border-black p-1">{priorPers > 0 ? formatNum(priorPers) : '-'}</td>
+                          <td className="border border-black p-1">{curPers > 0 ? formatNum(curPers) : '-'}</td>
+                          <td className="border border-black p-1 font-bold">{totPers > 0 ? formatNum(totPers) : '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-1 text-center">คลอดบุตร</td>
+                          <td className="border border-black p-1">-</td>
+                          <td className="border border-black p-1">-</td>
+                          <td className="border border-black p-1">-</td>
+                        </tr>
+                      </tbody>
+                    </table>
 
-                  <div className="text-center mt-1">
-                    {data.status === 'approved' && data.signatureUrl ? (
-                      <div className="flex flex-col items-center">
-                        <img
-                          src={data.signatureUrl}
-                          alt="ลายมือชื่อผู้อำนวยการ"
-                          className="h-9 object-contain"
-                        />
-                        <div>({data.approverName || 'นายธีรศักดิ์ มโนธรรม'})</div>
+                    {/* ผู้ตรวจสอบสถิติการลา (นางสาวทัชชกร ช่วยจังหรีด) */}
+                    <div className="text-center mt-7 text-[12.5px] leading-[1.5]">
+                      <div>ลงชื่อ....................................................... ผู้ตรวจสอบ</div>
+                      <div className="mt-0.5">(นางสาวทัชชกร ช่วยจังหรีด)</div>
+                      <div>ตำแหน่ง ครูชำนาญการพิเศษ</div>
+                      <div className="mt-0.5">วันที่ .......... เดือน ........................ พ.ศ. .............</div>
+                    </div>
+                  </td>
+
+                  {/* Right Column (52%): ขอแสดงความนับถือ & คำสั่งผู้อำนวยการ */}
+                  <td className="w-[52%] align-top pl-3 border-none text-center">
+                    {/* ขอแสดงความนับถือ (ผู้ขอลา) */}
+                    <div className="text-[13px] leading-[1.45]">
+                      <div>ขอแสดงความนับถือ</div>
+                      <div className="my-3">ลงชื่อ.......................................................</div>
+                      <div>( <b>{data.prefix}{data.firstName}&nbsp;&nbsp;{data.lastName}</b> )</div>
+                      <div>ตำแหน่ง <b>{data.position}</b></div>
+                    </div>
+
+                    {/* ความเห็นของผู้บังคับบัญชา */}
+                    <div className="mt-2.5 text-left border-t border-dashed border-black pt-1.5 text-[12.5px]">
+                      <div className="font-bold underline">ความเห็นของผู้บังคับบัญชา</div>
+                      <div className="border-b border-dotted border-black h-[18px] mt-1 text-center text-[12px]">
+                        {isApproved ? 'อนุญาตให้ลาได้ตามสิทธิ์' : ''}
                       </div>
-                    ) : (
-                      <>
-                        <div>(ลงชื่อ)........................................................</div>
-                        <div>({data.approverName || 'นายธีรศักดิ์ มโนธรรม'})</div>
-                      </>
-                    )}
-                    <div>ตำแหน่ง {data.approverPosition || `ผู้อำนวยการ${data.schoolName}`}</div>
-                    <div>
-                      วันที่&nbsp;
-                      {data.approvedAt ? formatDate(data.approvedAt) : '......./......./.......'}
+                      <div className="text-center mt-2 leading-[1.4]">
+                        <div>ลงชื่อ.......................................................</div>
+                        <div>({directorTitle})</div>
+                        <div>ตำแหน่ง {directorPos}</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+
+                    {/* คำสั่งผู้อำนวยการ */}
+                    <div className="mt-2 text-left border-t border-dashed border-black pt-1.5 text-[12.5px]">
+                      <div className="font-bold underline">คำสั่ง</div>
+                      <div className="text-center my-1">
+                        <BoxCheck checked={isApproved} /> อนุญาต &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <BoxCheck checked={isRejected} /> ไม่อนุญาต
+                      </div>
+                      <div className="text-center mt-2 leading-[1.4]">
+                        <div>ลงชื่อ.......................................................</div>
+                        <div>({directorTitle})</div>
+                        <div>ตำแหน่ง {directorPos}</div>
+                        <div className="mt-0.5">วันที่ .......... เดือน ........................ พ.ศ. .............</div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* Footer: Verification QR Code & Standard Compliance Statement */}
-          <div className="mt-3 pt-2 border-t border-slate-300 flex items-center justify-between text-[9pt] text-slate-600">
-            <div className="flex items-center gap-3">
-              <div className="bg-white p-1 border border-slate-400 rounded">
-                <QRCodeSVG
-                  value={verificationUrl}
-                  size={52}
-                  level="M"
-                  includeMargin={false}
-                />
-              </div>
-              <div>
-                <div className="font-mono font-bold text-black text-[10pt]">
-                  รหัสตรวจสอบเอกสาร (Doc No): {data.documentNo}
-                </div>
-                <div>
-                  เอกสารนี้จัดทำและรับรองผ่านระบบสารสนเทศบริหารงานบุคคลอิเล็กทรอนิกส์ (ManStat-Modern)
-                </div>
-                <div>
-                  สแกน QR Code เพื่อตรวจสอบความถูกต้องของเอกสารตาม พ.ร.บ. การปฏิบัติราชการทางอิเล็กทรอนิกส์ พ.ศ. 2565
-                </div>
-              </div>
-            </div>
-
-            <div className="text-right text-[8pt] text-slate-500 font-mono">
-              <div>Page 1 of 1</div>
-              <div>สพป.นม. 3</div>
-            </div>
-          </div>
         </div>
       </div>
-
-      {/* Strict Print CSS */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 15mm 20mm 15mm 25mm;
-          }
-          html, body {
-            background: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 15pt !important;
-            line-height: 1.38 !important;
-          }
-          #print-sheet {
-            width: 100% !important;
-            max-width: 100% !important;
-            min-height: auto !important;
-            height: auto !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
