@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/tests/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts"
   },
   "keywords": [],
   "author": "",
