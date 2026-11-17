@@ -38,6 +38,11 @@ export const ViewStaffDirectory: React.FC = () => {
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
+  const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedTeacherId((prev) => (prev === id ? null : id));
+  };
 
   // Unique departments for filter pills
   const departments = useMemo(() => {
@@ -161,18 +166,16 @@ export const ViewStaffDirectory: React.FC = () => {
       {/* Main View Mode: Table (Default & Recommended) */}
       {viewMode === 'table' ? (
         <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto w-full">
+          <div className="w-full">
             <table className="w-full text-left text-sm text-slate-200">
-              <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
+              <thead className="bg-[#16202d] text-xs uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[220px]">บุคลากร</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">กลุ่มสาระ / ฝ่าย</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[210px]">เลขประจำตัวประชาชน (PDPA)</th>
-                  <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">อายุราชการ</th>
-                  <th scope="col" className="px-4 py-3.5 min-w-[160px]">ติดต่อ</th>
-                  <th scope="col" className="px-4 py-3.5 text-center min-w-[110px]">แฟ้มประวัติ</th>
+                  <th scope="col" className="w-10 px-3 py-3.5 text-center"></th>
+                  <th scope="col" className="px-3 py-3.5 text-center w-12 font-mono shrink-0">ลำดับ</th>
+                  <th scope="col" className="px-4 py-3.5">ชื่อ-สกุล</th>
+                  <th scope="col" className="px-4 py-3.5">ตำแหน่ง / วิทยฐานะ</th>
+                  <th scope="col" className="px-4 py-3.5">กลุ่มสาระ / ฝ่าย</th>
+                  <th scope="col" className="px-4 py-3.5 text-center whitespace-nowrap">อายุราชการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-sans">
@@ -181,100 +184,158 @@ export const ViewStaffDirectory: React.FC = () => {
                   const isDirector = teacher.position.includes('ผู้อำนวยการ');
                   const displayPosition = teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   const displayDept = teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                  const isExpanded = expandedTeacherId === teacher.id;
+
                   return (
-                    <tr
-                      key={teacher.id}
-                      className={`hover:bg-[#182536]/60 transition-colors ${
-                        isDirector ? 'bg-sky-950/20' : ''
-                      }`}
-                    >
-                      {/* Sequence */}
-                      <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
-                        {index + 1}
-                      </td>
+                    <React.Fragment key={teacher.id}>
+                      <tr
+                        onClick={() => toggleExpand(teacher.id)}
+                        className={`hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                          isDirector ? 'bg-sky-950/20' : ''
+                        } ${isExpanded ? 'bg-[#15202e]' : ''}`}
+                      >
+                        {/* Expand Button */}
+                        <td className="w-10 px-3 py-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpand(teacher.id);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                            title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
+                          >
+                            <ChevronRight
+                              className={`w-4 h-4 transition-transform duration-200 ${
+                                isExpanded ? 'rotate-90 text-sky-400' : ''
+                              }`}
+                            />
+                          </button>
+                        </td>
 
-                      {/* Staff Name & Initials */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-700 flex items-center justify-center text-sky-400 font-bold text-sm shrink-0 shadow-sm">
-                            {teacher.firstName ? teacher.firstName[0] : 'ค'}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-white text-base truncate max-w-[170px]" title={teacher.name}>
-                              {teacher.name}
+                        {/* Sequence */}
+                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
+                          {index + 1}
+                        </td>
+
+                        {/* Staff Name & Initials */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 font-bold text-sm shrink-0">
+                              {teacher.firstName ? teacher.firstName[0] : 'ค'}
                             </div>
-                            <div className="text-xs text-slate-400 font-mono truncate" title={`รหัส: ${teacher.employeeCode}`}>
-                              รหัส: {teacher.employeeCode}
+                            <div className="min-w-0">
+                              <div className="font-bold text-white text-sm truncate max-w-[190px]" title={teacher.name}>
+                                {teacher.name}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-mono truncate" title={`รหัส: ${teacher.employeeCode}`}>
+                                รหัส: {teacher.employeeCode}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Position & Standing */}
-                      <td className="px-5 py-3.5">
-                        <div className="font-medium text-sky-300 text-sm truncate max-w-[180px]" title={teacher.position}>
-                          {displayPosition}
-                        </div>
-                        {teacher.academicStanding && teacher.academicStanding !== '-' && (
-                          <div className="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]" title={teacher.academicStanding}>
-                            {teacher.academicStanding}
+                        {/* Position & Standing */}
+                        <td className="px-4 py-3.5">
+                          <div className="font-medium text-sky-300 text-xs sm:text-sm truncate max-w-[190px]" title={teacher.position}>
+                            {displayPosition}
                           </div>
-                        )}
-                      </td>
+                          {teacher.academicStanding && teacher.academicStanding !== '-' ? (
+                            <div className="text-xs text-slate-400 mt-0.5 truncate max-w-[190px]" title={teacher.academicStanding}>
+                              {teacher.academicStanding}
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-500 mt-0.5">ไม่มีวิทยฐานะ</div>
+                          )}
+                        </td>
 
-                      {/* Department */}
-                      <td className="px-5 py-3.5">
-                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#101822] text-slate-300 border border-slate-700 truncate max-w-[180px]" title={teacher.department}>
-                          {displayDept}
-                        </span>
-                      </td>
+                        {/* Department */}
+                        <td className="px-4 py-3.5">
+                          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-[#101822] text-slate-300 border border-slate-700 truncate max-w-[190px]" title={teacher.department}>
+                            {displayDept}
+                          </span>
+                        </td>
 
-                      {/* Citizen ID Shield */}
-                      <td className="px-5 py-3.5">
-                        <CitizenIdShield
-                          targetStaffId={teacher.id}
-                          initialMaskedId={teacher.maskedCitizenId}
-                        />
-                      </td>
+                        {/* Tenure */}
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                          <span className="font-mono font-medium text-slate-200 text-xs sm:text-sm">
+                            {tenure.years} ปี {tenure.months} เดือน
+                          </span>
+                          <span className="block text-[11px] text-slate-500 font-mono">
+                            บรรจุ {teacher.startDate}
+                          </span>
+                        </td>
+                      </tr>
 
-                      {/* Tenure */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <span className="font-medium text-slate-200 text-xs sm:text-sm">
-                          {tenure.years} ปี {tenure.months} เดือน
-                        </span>
-                        <span className="block text-[11px] text-slate-500 font-mono">
-                          บรรจุ {teacher.startDate}
-                        </span>
-                      </td>
+                      {/* Expanded Master-Detail Panel */}
+                      {isExpanded && (
+                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                          <td colSpan={6} className="px-6 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                              {/* 1. PDPA Citizen ID Shield */}
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
+                                  เลขประจำตัวประชาชน (PDPA Shield)
+                                </div>
+                                <CitizenIdShield
+                                  targetStaffId={teacher.id}
+                                  initialMaskedId={teacher.maskedCitizenId}
+                                />
+                              </div>
 
-                      {/* Contact */}
-                      <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
-                        {teacher.phone && teacher.phone !== '-' && (
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <Phone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                            <span title={teacher.phone}>{teacher.phone}</span>
-                          </div>
-                        )}
-                        {teacher.email && teacher.email !== '-' && (
-                          <div className="flex items-center gap-1.5 text-slate-400 font-mono mt-0.5">
-                            <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate max-w-[130px]" title={teacher.email}>{teacher.email}</span>
-                          </div>
-                        )}
-                      </td>
+                              {/* 2. Employment & Appointment */}
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">ข้อมูลตำแหน่งและสายงาน</div>
+                                <div className="text-slate-200 font-medium">{teacher.position}</div>
+                                <div className="text-slate-400 text-[11px] mt-0.5">
+                                  รหัสบุคลากร: <span className="font-mono text-sky-400">{teacher.employeeCode}</span>
+                                </div>
+                                <div className="text-slate-400 text-[11px]">
+                                  วันบรรจุ: <span className="font-mono text-slate-300">{teacher.startDate}</span>
+                                </div>
+                              </div>
 
-                      {/* Action: Open Portfolio */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTeacher(teacher)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
-                        >
-                          <span>ก.พ.7</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
+                              {/* 3. Contact Info */}
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">ช่องทางการติดต่อ</div>
+                                <div className="flex items-center gap-1.5 font-mono text-slate-300">
+                                  <Phone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                  <span>{teacher.phone && teacher.phone !== '-' ? teacher.phone : 'ไม่ได้ระบุ'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 font-mono text-slate-400 text-[11px] mt-1">
+                                  <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                  <span className="truncate max-w-[160px]">{teacher.email && teacher.email !== '-' ? teacher.email : 'ไม่ได้ระบุ'}</span>
+                                </div>
+                              </div>
+
+                              {/* 4. Action: Portfolio & Qualifications */}
+                              <div className="flex flex-col justify-between">
+                                <div>
+                                  <div className="text-[11px] text-slate-400 mb-1 font-medium">แฟ้มประวัติ ก.พ.7</div>
+                                  <div className="text-slate-300 text-[11px]">
+                                    วุฒิลูกเสือ: <span className="text-amber-300">{teacher.highestScout || '-'}</span>
+                                  </div>
+                                </div>
+                                <div className="pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTeacher(teacher);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                                  >
+                                    <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                    <span>เปิดดูแฟ้ม ก.พ.7</span>
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

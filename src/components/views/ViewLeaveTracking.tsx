@@ -120,27 +120,27 @@ export function ViewLeaveTracking() {
                   <div
                     key={r.id}
                     onClick={() => handleSelectReq(r)}
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-colors ${
                       isSelected
-                        ? 'bg-[#182332] border-sky-500 shadow-md shadow-sky-950/40'
+                        ? 'bg-[#182332] border-sky-500'
                         : 'bg-[#111822] border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-sky-400">{r.docNo}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-bold text-sky-400 truncate">{r.docNo}</span>
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                        className={`inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full ${
                           r.status === 'approved'
-                            ? 'bg-emerald-500/20 text-emerald-300'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : r.status === 'pending'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-rose-500/20 text-rose-300'
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                         }`}
                       >
                         {r.status === 'approved'
                           ? 'อนุมัติแล้ว'
                           : r.status === 'pending'
-                          ? 'กำลังดำเนินการ'
+                          ? 'รอพิจารณา'
                           : 'ไม่อนุมัติ'}
                       </span>
                     </div>
@@ -225,7 +225,7 @@ export function ViewLeaveTracking() {
                     <div
                       className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
                         s.done
-                          ? 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/20'
+                          ? 'bg-sky-500 text-white border-sky-400'
                           : 'bg-[#151c27] text-slate-500 border-slate-700'
                       }`}
                     >

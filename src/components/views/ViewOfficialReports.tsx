@@ -185,14 +185,14 @@ export function ViewOfficialReports() {
                       <td className="px-4 py-3 text-center font-mono font-bold text-sky-400 whitespace-nowrap">
                         {total}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
                         {isEligible ? (
-                          <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>ผ่านเกณฑ์</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[95px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[95px]">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                             <span>เกินเกณฑ์</span>
                           </span>

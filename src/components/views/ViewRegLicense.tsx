@@ -19,6 +19,7 @@ import {
   AlertOctagon,
   Search,
   ExternalLink,
+  ChevronRight,
 } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
@@ -26,6 +27,11 @@ import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
 export const ViewRegLicense: React.FC = () => {
   const [filterHealth, setFilterHealth] = useState<'ALL' | 'VALID' | 'EXPIRING_SOON' | 'EXPIRED'>('ALL');
   const [search, setSearch] = useState<string>('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   // Extract all licenses from teachers
   const allLicenses = useMemo(() => {
@@ -183,68 +189,147 @@ export const ViewRegLicense: React.FC = () => {
           />
         </div>
 
-        <div className="overflow-x-auto w-full">
+        <div className="w-full">
           <table className="w-full text-left text-sm text-slate-200">
             <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold text-xs border-b border-slate-800">
               <tr>
-                <th className="px-4 py-3.5 rounded-l-lg min-w-[200px]">ผู้ถือใบอนุญาต</th>
-                <th className="px-4 py-3.5 min-w-[170px]">ประเภทใบอนุญาต</th>
-                <th className="px-4 py-3.5 min-w-[160px]">เลขที่ใบอนุญาต</th>
-                <th className="px-4 py-3.5 min-w-[130px]">วันออกใบอนุญาต</th>
-                <th className="px-4 py-3.5 min-w-[130px]">วันหมดอายุ</th>
-                <th className="px-4 py-3.5 text-center min-w-[110px]">วันคงเหลือ</th>
-                <th className="px-4 py-3.5 rounded-r-lg text-right min-w-[125px]">สถานะ</th>
+                <th className="w-10 px-3 py-3.5 text-center"></th>
+                <th className="px-4 py-3.5">ผู้ถือใบอนุญาต</th>
+                <th className="px-4 py-3.5">ประเภทใบอนุญาต</th>
+                <th className="px-4 py-3.5 font-mono whitespace-nowrap">วันหมดอายุ</th>
+                <th className="px-4 py-3.5 text-center whitespace-nowrap">วันคงเหลือ</th>
+                <th className="px-4 py-3.5 text-center min-w-[120px]">สถานะ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
               {filtered.map((item, idx) => {
                 const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                const rowKey = `${item.number}-${idx}`;
+                const isExpanded = expandedId === rowKey;
+
                 return (
-                  <tr key={idx} className="hover:bg-[#1a2636]/50 transition-colors">
-                    <td className="px-4 py-3.5">
-                      <div className="font-bold text-white text-base truncate max-w-[180px]" title={item.teacherName}>
-                        {item.teacherName}
-                      </div>
-                      <div className="text-xs text-slate-400 truncate max-w-[180px]" title={item.position}>
-                        {posDisplay}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-sky-300 font-medium text-xs sm:text-sm">
-                      <div className="truncate max-w-[160px]" title={item.type}>{item.type}</div>
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm whitespace-nowrap" title={item.number}>
-                      {item.number}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-slate-400 text-xs sm:text-sm whitespace-nowrap">
-                      {item.issueDate}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm whitespace-nowrap">
-                      {item.expiryDate}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono font-bold text-center text-xs sm:text-sm whitespace-nowrap">
-                      <span className={item.daysRemaining <= 0 ? 'text-rose-400' : item.daysRemaining <= 90 ? 'text-amber-400' : 'text-emerald-400'}>
-                        {item.daysRemaining} วัน
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                      {item.health === 'VALID' ? (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[105px]">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>ปกติ</span>
+                  <React.Fragment key={rowKey}>
+                    <tr
+                      onClick={() => toggleExpand(rowKey)}
+                      className={`hover:bg-[#1a2636]/60 transition-colors cursor-pointer ${
+                        isExpanded ? 'bg-[#15202e]' : ''
+                      }`}
+                    >
+                      {/* Expand Button */}
+                      <td className="w-10 px-3 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleExpand(rowKey);
+                          }}
+                          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                          title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
+                        >
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-90 text-sky-400' : ''
+                            }`}
+                          />
+                        </button>
+                      </td>
+
+                      {/* License Holder */}
+                      <td className="px-4 py-3.5">
+                        <div className="font-bold text-white text-base truncate max-w-[200px]" title={item.teacherName}>
+                          {item.teacherName}
+                        </div>
+                        <div className="text-xs text-slate-400 truncate max-w-[200px]" title={item.position}>
+                          {posDisplay}
+                        </div>
+                      </td>
+
+                      {/* License Type */}
+                      <td className="px-4 py-3.5 text-sky-300 font-medium text-xs sm:text-sm">
+                        <div className="truncate max-w-[180px]" title={item.type}>{item.type}</div>
+                      </td>
+
+                      {/* Expiry Date */}
+                      <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm whitespace-nowrap">
+                        {item.expiryDate}
+                      </td>
+
+                      {/* Remaining Days */}
+                      <td className="px-4 py-3.5 font-mono font-bold text-center text-xs sm:text-sm whitespace-nowrap">
+                        <span className={item.daysRemaining <= 0 ? 'text-rose-400' : item.daysRemaining <= 90 ? 'text-amber-400' : 'text-emerald-400'}>
+                          {item.daysRemaining} วัน
                         </span>
-                      ) : item.health === 'EXPIRING_SOON' ? (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 min-w-[105px]">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                          <span>เตือนต่ออายุ</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[105px]">
-                          <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
-                          <span>หมดอายุ</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+
+                      {/* Status Badge (Strict Zero Wrapping) */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        {item.health === 'VALID' ? (
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span>ปกติ</span>
+                          </span>
+                        ) : item.health === 'EXPIRING_SOON' ? (
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>เตือนต่ออายุ</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                            <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                            <span>หมดอายุ</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+
+                    {/* Expanded Detail Panel */}
+                    {isExpanded && (
+                      <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                        <td colSpan={6} className="px-6 py-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                            <div>
+                              <div className="text-[11px] text-slate-400 mb-1 font-medium">เลขที่ใบอนุญาตประกอบวิชาชีพ</div>
+                              <div className="font-mono text-sky-400 font-semibold">{item.number}</div>
+                              <div className="text-slate-400 text-[11px] mt-0.5">หมวด: {item.category}</div>
+                            </div>
+
+                            <div>
+                              <div className="text-[11px] text-slate-400 mb-1 font-medium">วันที่ออกเอกสารใบอนุญาต</div>
+                              <div className="font-mono text-slate-300">{item.issueDate}</div>
+                              <div className="text-slate-400 text-[11px] mt-0.5">กลุ่มสาระ/ฝ่าย: {item.department}</div>
+                            </div>
+
+                            <div>
+                              <div className="text-[11px] text-slate-400 mb-1 font-medium">สถานะอายุใบอนุญาต</div>
+                              <div className="text-slate-200">
+                                {item.daysRemaining > 0 ? (
+                                  <span>ยังคงเหลือเวลาอีก <b className="font-mono text-amber-300">{item.daysRemaining}</b> วัน</span>
+                                ) : (
+                                  <span className="text-rose-400 font-medium">หมดอายุแล้ว ต้องดำเนินการต่ออายุทันที</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col justify-between">
+                              <div className="text-[11px] text-slate-400 mb-1 font-medium">ตรวจสอบฐานข้อมูลคุรุสภา</div>
+                              <div className="pt-1">
+                                <a
+                                  href="https://ksp-eservice.ksp.or.th/"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                  <span>ระบบ KSP e-Service</span>
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

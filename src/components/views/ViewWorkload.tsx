@@ -232,16 +232,21 @@ export const ViewWorkload: React.FC = () => {
       <div className="bg-[#121822] p-5 rounded-2xl border border-slate-800/80 space-y-4">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold">
+            <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
               <tr>
-                <th className="px-4 py-3 rounded-l-lg min-w-[210px]">ครูผู้สอน / บุคลากร</th>
-                <th className="px-3 py-3 text-center min-w-[130px]">ชั่วโมงสอน &amp; TA<br /><span className="text-[10px] lowercase text-slate-500">&gt;= 12 ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center min-w-[100px]">งานสนับสนุน<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center min-w-[130px]">งานพัฒนาสถานศึกษา<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center min-w-[130px]">งานนโยบาย/จุดเน้น<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center font-bold text-white min-w-[110px]">รวมภาระงาน<br /><span className="text-[10px] lowercase text-slate-400">&gt;= 20 ชม.</span></th>
-                <th className="px-4 py-3 text-center min-w-[125px]">ผลประเมิน PA</th>
-                <th className="px-4 py-3 rounded-r-lg text-right min-w-[100px]">รายละเอียด</th>
+                <th scope="col" className="w-10 px-3 py-3.5 text-center">
+                  <span className="sr-only">ขยายรายละเอียด</span>
+                </th>
+                <th scope="col" className="px-4 py-3.5 min-w-[220px]">ครูผู้สอน / บุคลากร</th>
+                <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">
+                  ชั่วโมงสอน &amp; TA<br />
+                  <span className="text-[10px] lowercase text-slate-500 font-normal">&gt;= 12 ชม./สัปดาห์</span>
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">
+                  รวมภาระงาน 4 ด้าน<br />
+                  <span className="text-[10px] lowercase text-slate-500 font-normal">&gt;= 20 ชม./สัปดาห์</span>
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">ผลประเมิน PA</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -258,67 +263,97 @@ export const ViewWorkload: React.FC = () => {
                         isExpanded ? 'bg-[#15202e]' : ''
                       }`}
                     >
+                      {/* Expand Toggle */}
+                      <td className="px-3 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleExpand(w.id);
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                          aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
+                        >
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-90 text-sky-400' : ''
+                            }`}
+                          />
+                        </button>
+                      </td>
+
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-white flex items-center gap-2">
-                          <span className="truncate max-w-[170px]" title={w.name}>{w.name}</span>
+                          <span className="truncate max-w-[200px]" title={w.name}>{w.name}</span>
                         </div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-[200px]" title={`${posDisplay} (${deptDisplay})`}>
+                        <div className="text-[11px] text-slate-400 truncate max-w-[220px]" title={`${posDisplay} (${deptDisplay})`}>
                           {posDisplay} ({deptDisplay})
                         </div>
                       </td>
-                      <td className="px-3 py-3.5 text-center font-mono font-semibold text-slate-100">
+
+                      <td className="px-4 py-3.5 text-center font-mono font-semibold text-slate-100 whitespace-nowrap">
                         {w.teachingHours} ชม.
                       </td>
-                      <td className="px-3 py-3.5 text-center font-mono text-slate-300">
-                        {w.supportHours} ชม.
-                      </td>
-                      <td className="px-3 py-3.5 text-center font-mono text-slate-300">
-                        {w.schoolDevHours} ชม.
-                      </td>
-                      <td className="px-3 py-3.5 text-center font-mono text-slate-300">
-                        {w.policyHours} ชม.
-                      </td>
-                      <td className="px-3 py-3.5 text-center font-mono font-bold text-sky-300">
+
+                      <td className="px-4 py-3.5 text-center font-mono font-bold text-sky-300 whitespace-nowrap">
                         {w.totalHours} ชม.
                       </td>
+
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         {w.evalResult.isAllPassed ? (
-                          <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[105px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[110px]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>ผ่านเกณฑ์ PA</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[105px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[110px]">
                             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             <span>ไม่ครบเกณฑ์</span>
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <button
-                          type="button"
-                          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-sky-400" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
                     </tr>
 
                     {/* Expanded Detail Panel */}
                     {isExpanded && (
-                      <tr className="bg-[#121924]">
-                        <td colSpan={8} className="p-4 border-t border-b border-slate-700/60">
+                      <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                        <td colSpan={5} className="p-4 sm:p-5">
                           <div className="space-y-4">
-                            {/* Summary Bar */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d141d] p-3 rounded-xl border border-slate-800">
+                            {/* 4 Aspect Checklist Cards */}
+                            <div>
+                              <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-2">
+                                สรุปภาระงาน 4 ด้านตามเกณฑ์ PA ว9/2564 &amp; ว21/2564
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                <div className="bg-[#121924] p-3 rounded-xl border border-slate-800">
+                                  <span className="text-slate-400 text-[11px] block">1. งานสอนตามตาราง &amp; TA</span>
+                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.teachingHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-emerald-400 mt-1 block">&gt;= 12 ชม. (ผ่านเกณฑ์)</span>
+                                </div>
+                                <div className="bg-[#121924] p-3 rounded-xl border border-slate-800">
+                                  <span className="text-slate-400 text-[11px] block">2. สนับสนุนการเรียนรู้</span>
+                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.supportHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-slate-400 mt-1 block">งานครูที่ปรึกษา / PLC</span>
+                                </div>
+                                <div className="bg-[#121924] p-3 rounded-xl border border-slate-800">
+                                  <span className="text-slate-400 text-[11px] block">3. พัฒนาสถานศึกษา</span>
+                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.schoolDevHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-slate-400 mt-1 block">งาน 4 ฝ่ายบริหาร</span>
+                                </div>
+                                <div className="bg-[#121924] p-3 rounded-xl border border-slate-800">
+                                  <span className="text-slate-400 text-[11px] block">4. นโยบายและจุดเน้น</span>
+                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.policyHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-slate-400 mt-1 block">โครงการสถานศึกษา</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Summary Bar & Add Course Button */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d141d] p-3.5 rounded-xl border border-slate-800">
                               <div className="flex items-center gap-2">
                                 <BookOpen className="w-4 h-4 text-sky-400 shrink-0" />
-                                <span className="font-semibold text-white">
-                                  หมวดที่ 1: งานสอนตามตาราง &amp; งานผู้ช่วยสอน (TA) ของ {w.name}
+                                <span className="font-semibold text-white text-xs sm:text-sm">
+                                  รายวิชาที่สอนและงาน TA ของ {w.name}
                                 </span>
                                 <span className="text-xs text-sky-300 font-mono">
                                   (รวม {w.teachingHours} ชม./สัปดาห์)
@@ -351,11 +386,11 @@ export const ViewWorkload: React.FC = () => {
                                           {c.courseName}
                                         </span>
                                         {c.type === 'TA' ? (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
                                             TA
                                           </span>
                                         ) : (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 whitespace-nowrap">
                                             สอนหลัก
                                           </span>
                                         )}
@@ -387,30 +422,6 @@ export const ViewWorkload: React.FC = () => {
                                   ยังไม่มีการลงทะเบียนรายวิชาเฉพาะสำหรับครูท่านนี้ (ใช้ชั่วโมงสอนพื้นฐานตามระบบ {w.teachingHours} ชม.)
                                 </div>
                               )}
-                            </div>
-
-                            {/* 4 Aspect Checklist */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-[11px]">
-                              <div className="bg-[#101822] p-2 rounded-lg border border-slate-800/80">
-                                <span className="text-slate-500 block">1. สอน &amp; TA:</span>
-                                <span className="font-semibold text-slate-200">{w.teachingHours} ชม.</span>
-                                <span className="text-[10px] text-emerald-400 block">&gt;= 12 ชม. (ผ่าน)</span>
-                              </div>
-                              <div className="bg-[#101822] p-2 rounded-lg border border-slate-800/80">
-                                <span className="text-slate-500 block">2. สนับสนุนการเรียน:</span>
-                                <span className="font-semibold text-slate-200">{w.supportHours} ชม.</span>
-                                <span className="text-[10px] text-slate-400 block">งานที่ปรึกษา/PLC</span>
-                              </div>
-                              <div className="bg-[#101822] p-2 rounded-lg border border-slate-800/80">
-                                <span className="text-slate-500 block">3. พัฒนาสถานศึกษา:</span>
-                                <span className="font-semibold text-slate-200">{w.schoolDevHours} ชม.</span>
-                                <span className="text-[10px] text-slate-400 block">งาน 4 ฝ่ายบริหาร</span>
-                              </div>
-                              <div className="bg-[#101822] p-2 rounded-lg border border-slate-800/80">
-                                <span className="text-slate-500 block">4. นโยบาย/จุดเน้น:</span>
-                                <span className="font-semibold text-slate-200">{w.policyHours} ชม.</span>
-                                <span className="text-[10px] text-slate-400 block">โครงการสถานศึกษา</span>
-                              </div>
                             </div>
                           </div>
                         </td>

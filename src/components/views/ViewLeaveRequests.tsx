@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -27,6 +27,8 @@ import {
   FileCheck,
   Trash2,
   X,
+  ChevronRight,
+  QrCode,
 } from 'lucide-react';
 import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
 
@@ -40,6 +42,11 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'sick' | 'personal' | 'vacation'>('ALL');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   const filteredRequests = requests.filter((req) => {
     const matchesSearch =
@@ -184,23 +191,22 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
 
       {/* Requests Table */}
       <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto w-full">
+        <div className="w-full">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider">
+            <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="px-4 py-3 min-w-[160px]">เลขที่หนังสือ / วันที่ยื่น</th>
-                <th className="px-4 py-3 min-w-[190px]">ผู้ขอลา / ตำแหน่ง</th>
-                <th className="px-4 py-3 min-w-[140px]">ประเภท / จำนวนวัน</th>
-                <th className="px-4 py-3 min-w-[140px]">ช่วงเวลาการลา</th>
-                <th className="px-4 py-3 min-w-[160px]">ครูผู้สอนแทน</th>
-                <th className="px-4 py-3 text-center min-w-[125px]">สถานะ</th>
+                <th className="w-10 px-3 py-3 text-center"></th>
+                <th className="px-4 py-3">ผู้ขอลา / ตำแหน่ง</th>
+                <th className="px-4 py-3">ประเภทการลา</th>
+                <th className="px-4 py-3">ช่วงวันที่ลา &amp; จำนวน</th>
+                <th className="px-4 py-3 text-center min-w-[120px]">สถานะ</th>
                 <th className="px-4 py-3 text-center min-w-[110px]">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <AlertCircle className="w-6 h-6 text-slate-600" />
                       <span>ไม่พบข้อมูลรายการคำร้องขอลา</span>
@@ -209,113 +215,168 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 </tr>
               ) : (
                 filteredRequests.map((req) => {
+                  const isExpanded = expandedId === req.id;
                   const posDisplay = req.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   return (
-                    <tr key={req.id} className="hover:bg-[#162231]/50 transition-colors">
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <div className="font-mono font-medium text-sky-400">{req.docNo}</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          {new Date(req.submittedAt).toLocaleDateString('th-TH', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-semibold text-white truncate max-w-[170px]" title={req.teacherName}>{req.teacherName}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[170px]" title={req.position}>{posDisplay}</div>
-                      </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
-                            req.leaveType === 'sick'
-                              ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                              : req.leaveType === 'personal'
-                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                          }`}
-                        >
-                          {req.leaveTypeName}
-                        </span>
-                        <div className="text-[11px] font-semibold text-slate-300 mt-1 font-mono">
-                          {req.totalDays} วันทำการ
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap font-mono text-[11px]">
-                        <div className="text-slate-200">
-                          {new Date(req.startDate).toLocaleDateString('th-TH', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                        <div className="text-slate-500">
-                          ถึง{' '}
-                          {new Date(req.endDate).toLocaleDateString('th-TH', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-300">
-                        <div className="truncate max-w-[150px]" title={req.substituteTeacherName || '-'}>
-                          {req.substituteTeacherName || '-'}
-                        </div>
-                      </td>
-                    <td className="px-4 py-3.5 text-center">
-                      {req.status === 'approved' && (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[100px]">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>อนุมัติแล้ว</span>
-                        </span>
+                    <React.Fragment key={req.id}>
+                      <tr
+                        onClick={() => toggleExpand(req.id)}
+                        className={`hover:bg-[#162231]/60 transition-colors cursor-pointer ${
+                          isExpanded ? 'bg-[#15202e]' : ''
+                        }`}
+                      >
+                        <td className="w-10 px-3 py-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpand(req.id);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                            title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
+                          >
+                            <ChevronRight
+                              className={`w-4 h-4 transition-transform duration-200 ${
+                                isExpanded ? 'rotate-90 text-sky-400' : ''
+                              }`}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-semibold text-white truncate max-w-[200px]" title={req.teacherName}>{req.teacherName}</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={req.position}>{posDisplay}</div>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full ${
+                              req.leaveType === 'sick'
+                                ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+                                : req.leaveType === 'personal'
+                                ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
+                                : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {req.leaveTypeName}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs">
+                          <div className="text-slate-200">
+                            {new Date(req.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} – {new Date(req.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                          </div>
+                          <div className="text-sky-400 font-semibold mt-0.5 text-[11px]">
+                            {req.totalDays} วันทำการ
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                          {req.status === 'approved' && (
+                            <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                              <span>อนุมัติแล้ว</span>
+                            </span>
+                          )}
+                          {req.status === 'pending' && (
+                            <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              <Clock className="w-3.5 h-3.5 shrink-0" />
+                              <span>รอพิจารณา</span>
+                            </span>
+                          )}
+                          {req.status === 'rejected' && (
+                            <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                              <XCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>ไม่อนุมัติ</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRequest(req)}
+                              title="ดูรายละเอียดฉบับเต็ม"
+                              className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                            >
+                              <Eye className="w-4 h-4 shrink-0" />
+                            </button>
+                            <Link
+                              href={`/leave/print/${req.id}`}
+                              target="_blank"
+                              title="พิมพ์แบบฟอร์ม A4"
+                              className="p-1.5 rounded-md text-slate-400 hover:text-sky-300 hover:bg-slate-800/50 transition-colors duration-200"
+                            >
+                              <Printer className="w-4 h-4 shrink-0" />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(req.id, req.docNo)}
+                              title="ลบคำร้อง"
+                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                            >
+                              <Trash2 className="w-4 h-4 shrink-0" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expanded Detail Panel */}
+                      {isExpanded && (
+                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                          <td colSpan={6} className="px-6 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1">เลขที่เอกสาร &amp; วันที่ยื่น</div>
+                                <div className="font-mono text-sky-400 font-medium">{req.docNo}</div>
+                                <div className="text-slate-400 text-[11px] mt-0.5">
+                                  ยื่นเมื่อ: {new Date(req.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1">ครูผู้ปฏิบัติหน้าที่แทน</div>
+                                <div className="text-slate-200 font-medium">{req.substituteTeacherName || 'ไม่มีการระบุ'}</div>
+                                <div className="text-slate-400 text-[11px] mt-0.5">กลุ่มสาระ: {req.department}</div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1">คำสั่ง/ความเห็นผู้อำนวยการ</div>
+                                <div className="text-slate-200">{req.directorRemark || req.supervisorRemark || 'ยังไม่มีความเห็นเพิ่มเติม'}</div>
+                              </div>
+
+                              <div className="flex flex-col justify-between">
+                                <div className="text-[11px] text-slate-400 mb-1">ลิงก์และเอกสารทางการ</div>
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    href={`/verify/leave/${encodeURIComponent(req.docNo)}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs transition-colors duration-200"
+                                  >
+                                    <QrCode className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                    <span>ตรวจสอบ QR</span>
+                                  </Link>
+                                  <Link
+                                    href={`/leave/print/${req.id}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs transition-colors duration-200"
+                                  >
+                                    <Printer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                    <span>พิมพ์ A4</span>
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+
+                            {req.reason && (
+                              <div className="mt-3 pt-3 border-t border-slate-800/60 text-xs">
+                                <span className="text-[11px] text-slate-400">เหตุผลความจำเป็น: </span>
+                                <span className="text-slate-200">{req.reason}</span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
                       )}
-                      {req.status === 'pending' && (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 min-w-[100px]">
-                          <Clock className="w-3.5 h-3.5 shrink-0" />
-                          <span>รอพิจารณา</span>
-                        </span>
-                      )}
-                      {req.status === 'rejected' && (
-                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[100px]">
-                          <XCircle className="w-3.5 h-3.5 shrink-0" />
-                          <span>ไม่อนุมัติ</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedRequest(req)}
-                          title="ดูรายละเอียด"
-                          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
-                        >
-                          <Eye className="w-4 h-4 shrink-0" />
-                        </button>
-                        <Link
-                          href={`/leave/print/${req.id}`}
-                          target="_blank"
-                          title="พิมพ์แบบฟอร์ม A4"
-                          className="p-1.5 rounded-md text-slate-400 hover:text-sky-300 hover:bg-slate-800/50 transition-colors duration-200"
-                        >
-                          <Printer className="w-4 h-4 shrink-0" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(req.id, req.docNo)}
-                          title="ลบคำร้อง"
-                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                        >
-                          <Trash2 className="w-4 h-4 shrink-0" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+                    </React.Fragment>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

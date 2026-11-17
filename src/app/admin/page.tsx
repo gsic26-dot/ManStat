@@ -39,6 +39,7 @@ import {
   Compass,
   X,
   Plus,
+  ChevronRight,
 } from 'lucide-react';
 import {
   INITIAL_TEACHERS,
@@ -122,6 +123,9 @@ export default function AdminPage() {
   // Staff State
   const [teachers, setTeachers] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [staffSearch, setStaffSearch] = useState('');
+  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
+  const [expandedBoardId, setExpandedBoardId] = useState<string | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<TeacherRecord | null>(null);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalTab, setStaffModalTab] = useState<
@@ -620,94 +624,155 @@ export default function AdminPage() {
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                     <tr>
-                      <th className="px-4 py-3 min-w-[190px]">รหัส / ชื่อ-สกุล</th>
-                      <th className="px-4 py-3 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
-                      <th className="px-4 py-3 min-w-[190px]">วุฒิลูกเสือ & ใบอนุญาต</th>
-                      <th className="px-4 py-3 text-center min-w-[125px]">ภาระงาน (สอน/TA)</th>
-                      <th className="px-4 py-3 text-center min-w-[110px]">สิทธิ์การใช้งาน</th>
-                      <th className="px-4 py-3 text-center min-w-[125px]">วันลาสะสม (ป/ก/พ)</th>
-                      <th className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
+                      <th scope="col" className="w-10 px-3 py-3 text-center">
+                        <span className="sr-only">ขยายรายละเอียด</span>
+                      </th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px]">รหัส / ชื่อ-สกุล</th>
+                      <th scope="col" className="px-4 py-3 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[120px]">สิทธิ์การใช้งาน</th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-sans">
                     {filteredTeachers.map((t) => {
                       const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                      const isExpanded = expandedStaffId === t.id;
                       return (
-                        <tr key={t.id} className="hover:bg-[#162231]/50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="font-bold text-white truncate max-w-[170px]" title={t.name}>{t.name}</div>
-                            <div className="text-[11px] font-mono text-sky-400 mt-0.5 truncate max-w-[170px]" title={`${t.employeeCode} ${t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}`}>
-                              {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="truncate max-w-[170px]" title={t.position}>{posDisplay}</div>
-                            <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[170px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
-                              {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col gap-1 text-[11px]">
-                              <span className="inline-flex items-center gap-1 text-amber-300 truncate max-w-[170px]" title={t.highestScout || 'ไม่มีวุฒิลูกเสือ'}>
-                                <Compass className="w-3 h-3 text-amber-400 shrink-0" />
-                                <span className="truncate">{t.highestScout || 'ไม่มีวุฒิลูกเสือ'}</span>
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-emerald-300 truncate max-w-[170px]" title={t.licenses && t.licenses.length > 0 ? t.licenses[0].type : 'ยังไม่มีข้อมูลใบอนุญาต'}>
-                                <Award className="w-3 h-3 text-emerald-400 shrink-0" />
-                                <span className="truncate">{t.licenses && t.licenses.length > 0 ? t.licenses[0].type.split(' ')[0] : 'ยังไม่มีข้อมูลใบอนุญาต'}</span>
-                              </span>
-                            </div>
-                          </td>
-                        <td className="px-4 py-3 text-center font-mono">
-                          <span className="text-sky-300 font-bold">{t.teachingHours ?? 18}</span>
-                          <span className="text-slate-500"> / </span>
-                          <span className="text-amber-300 font-bold">{t.taHours ?? 0}</span>
-                          <span className="text-slate-400 text-[10px] block">ชม./สัปดาห์</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {t.employeeCode === 'EXE-001' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              Superuser
-                            </span>
-                          ) : t.employeeCode === 'TCH-002' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                              HR Admin
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                              Teacher
-                            </span>
+                        <React.Fragment key={t.id}>
+                          <tr
+                            onClick={() => setExpandedStaffId(isExpanded ? null : t.id)}
+                            className={`hover:bg-[#162231]/50 transition-colors cursor-pointer ${
+                              isExpanded ? 'bg-[#162231]/40' : ''
+                            }`}
+                          >
+                            <td className="px-3 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedStaffId(isExpanded ? null : t.id);
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                                aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
+                              >
+                                <ChevronRight
+                                  className={`w-4 h-4 transition-transform duration-200 ${
+                                    isExpanded ? 'rotate-90 text-sky-400' : ''
+                                  }`}
+                                />
+                              </button>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-white truncate max-w-[180px]" title={t.name}>{t.name}</div>
+                              <div className="text-[11px] font-mono text-sky-400 mt-0.5 truncate max-w-[180px]" title={`${t.employeeCode} ${t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}`}>
+                                {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
+                              <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[180px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
+                                {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap">
+                              {t.employeeCode === 'EXE-001' ? (
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  Superuser
+                                </span>
+                              ) : t.employeeCode === 'TCH-002' ? (
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                  HR Admin
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                  Teacher
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditStaff(t)}
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                                  title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteStaff(t.id)}
+                                  className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                                  title="ลบข้อมูลบุคลากร"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded Detail Panel */}
+                          {isExpanded && (
+                            <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                              <td colSpan={5} className="px-6 py-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      วุฒิลูกเสือ &amp; ใบอนุญาต
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5 text-amber-300">
+                                        <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                        <span className="font-medium">{t.highestScout || 'ไม่มีวุฒิลูกเสือ'}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-emerald-300">
+                                        <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                        <span className="font-medium">
+                                          {t.licenses && t.licenses.length > 0 ? t.licenses[0].type : 'ไม่มีข้อมูลใบอนุญาต'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      ภาระงานสอนและ TA
+                                    </div>
+                                    <div className="text-slate-200 font-mono">
+                                      <span className="text-sky-300 font-bold text-sm">{t.teachingHours ?? 18}</span>
+                                      <span className="text-slate-500"> สอน + </span>
+                                      <span className="text-amber-300 font-bold text-sm">{t.taHours ?? 0}</span>
+                                      <span className="text-slate-400 text-xs"> TA ชม./สัปดาห์</span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      วันลาสะสม (ป่วย / กิจ / พักผ่อน)
+                                    </div>
+                                    <div className="font-mono text-xs">
+                                      <span className="text-rose-400 font-bold">{t.sickUsed}</span> วันป่วย /{' '}
+                                      <span className="text-amber-400 font-bold">{t.personalUsed}</span> วันกิจ /{' '}
+                                      <span className="text-emerald-400 font-bold">{t.vacationUsed}</span> วันพักผ่อน
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      กลุ่มสาระ / ฝ่ายงาน
+                                    </div>
+                                    <div className="text-slate-200 font-medium">
+                                      {t.department}
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 mt-0.5">
+                                      บรรจุ: {t.startDate}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-center font-mono">
-                          <span className="text-rose-400 font-bold">{t.sickUsed}</span> /{' '}
-                          <span className="text-amber-400 font-bold">{t.personalUsed}</span> /{' '}
-                          <span className="text-emerald-400 font-bold">{t.vacationUsed}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditStaff(t)}
-                              className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
-                              title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStaff(t.id)}
-                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                              title="ลบข้อมูลบุคลากร"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -751,73 +816,134 @@ export default function AdminPage() {
                 <table className="w-full text-left text-sm text-slate-200">
                   <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-xs">
                     <tr>
-                      <th className="px-4 py-3 text-center min-w-[56px] shrink-0">ลำดับ</th>
-                      <th className="px-4 py-3 min-w-[200px]">ชื่อ - สกุล</th>
-                      <th className="px-4 py-3 min-w-[190px]">ตำแหน่งในคณะกรรมการ</th>
-                      <th className="px-4 py-3 min-w-[210px]">สังกัด / องค์กร</th>
-                      <th className="px-4 py-3 text-center min-w-[110px]">วาระ</th>
-                      <th className="px-4 py-3 text-center min-w-[110px]">สถานะ</th>
-                      <th className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
+                      <th scope="col" className="w-10 px-3 py-3.5 text-center">
+                        <span className="sr-only">ขยายรายละเอียด</span>
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[56px] shrink-0">ลำดับ</th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px]">ชื่อ - สกุล</th>
+                      <th scope="col" className="px-4 py-3 min-w-[190px]">ตำแหน่งในคณะกรรมการ</th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-sans">
                     {filteredBoard.map((b, idx) => {
                       const isDirector = b.position === 'DIRECTOR_SEC';
+                      const isExpanded = expandedBoardId === b.id;
                       return (
-                        <tr key={b.id} className="hover:bg-[#162231]/50 transition-colors">
-                          <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold whitespace-nowrap">{idx + 1}</td>
-                          <td className="px-4 py-3.5">
-                            <div className="font-bold text-white text-base truncate max-w-[180px]" title={b.fullName}>{b.fullName}</div>
-                            {isDirector && (
-                              <span className="block text-xs text-sky-400 font-normal mt-0.5 truncate max-w-[180px]" title="ผอ.สถานศึกษา">
-                                ผอ.สถานศึกษา
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 truncate max-w-[170px]" title={b.positionTitle}>
-                              {b.positionTitle}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-300 text-xs sm:text-sm">
-                            <div className="truncate max-w-[190px]" title={b.organization}>{b.organization}</div>
-                          </td>
-                          <td className="px-4 py-3.5 text-center font-mono whitespace-nowrap">
-                            {isDirector ? (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                                โดยตำแหน่ง
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-300">วาระที่ {b.termNumber}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                              <span>{b.status}</span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
-                            <div className="inline-flex items-center gap-1.5">
+                        <React.Fragment key={b.id}>
+                          <tr
+                            onClick={() => setExpandedBoardId(isExpanded ? null : b.id)}
+                            className={`hover:bg-[#162231]/50 transition-colors cursor-pointer ${
+                              isExpanded ? 'bg-[#162231]/40' : ''
+                            }`}
+                          >
+                            <td className="px-3 py-3.5 text-center">
                               <button
                                 type="button"
-                                onClick={() => handleOpenEditBoardMember(b)}
-                                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
-                                title="แก้ไขข้อมูลกรรมการ"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedBoardId(isExpanded ? null : b.id);
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                                aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                               >
-                                <Edit className="w-3.5 h-3.5" />
+                                <ChevronRight
+                                  className={`w-4 h-4 transition-transform duration-200 ${
+                                    isExpanded ? 'rotate-90 text-sky-400' : ''
+                                  }`}
+                                />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteBoardMember(b.id)}
-                                className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                                title="ลบกรรมการสถานศึกษา"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold whitespace-nowrap">{idx + 1}</td>
+                            <td className="px-4 py-3.5">
+                              <div className="font-bold text-white text-base truncate max-w-[200px]" title={b.fullName}>{b.fullName}</div>
+                              {isDirector && (
+                                <span className="block text-xs text-sky-400 font-normal mt-0.5 truncate max-w-[200px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
+                                  ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30" title={b.positionTitle}>
+                                {b.positionTitle}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-center">
+                              <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditBoardMember(b)}
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                                  title="แก้ไขข้อมูลกรรมการ"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteBoardMember(b.id)}
+                                  className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                                  title="ลบกรรมการสถานศึกษา"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded Detail Panel */}
+                          {isExpanded && (
+                            <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                              <td colSpan={5} className="px-6 py-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      สังกัดองค์กร / หน่วยงาน
+                                    </div>
+                                    <div className="text-slate-200 font-medium leading-relaxed">
+                                      {b.organization}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      อาชีพ / บทบาท
+                                    </div>
+                                    <div className="text-slate-300 font-medium">
+                                      {b.occupation || 'ไม่ได้ระบุ'}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      วาระการดำรงตำแหน่ง
+                                    </div>
+                                    <div className="text-slate-200 font-medium">
+                                      {isDirector ? (
+                                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                                          โดยตำแหน่ง
+                                        </span>
+                                      ) : (
+                                        <span>วาระที่ {b.termNumber} (วาระ 4 ปี)</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      สถานะการดำรงตำแหน่ง
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{b.status}</span>
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 mt-1">
+                                      ตามกฎกระทรวง พ.ศ. 2546
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1223,45 +1349,104 @@ export default function AdminPage() {
 
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold">
+                <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                   <tr>
-                    <th scope="col" className="px-4 py-3 rounded-l-lg min-w-[170px]">วันและเวลา</th>
+                    <th scope="col" className="w-10 px-3 py-3 text-center">
+                      <span className="sr-only">ขยายรายละเอียด</span>
+                    </th>
+                    <th scope="col" className="px-4 py-3 min-w-[170px]">วันและเวลา</th>
                     <th scope="col" className="px-4 py-3 min-w-[160px]">ประเภทกิจกรรม</th>
                     <th scope="col" className="px-4 py-3 min-w-[190px]">ผู้ดำเนินการ</th>
                     <th scope="col" className="px-4 py-3 min-w-[170px]">เป้าหมายข้อมูล</th>
-                    <th scope="col" className="px-4 py-3 min-w-[130px]">IP Address</th>
-                    <th scope="col" className="px-4 py-3 rounded-r-lg min-w-[220px]">รายละเอียด</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-sans">
-                  {sampleAuditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-[#1a2636]/50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString('th-TH')}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-200">
-                        <div className="truncate max-w-[180px]" title={`${log.actorName} (${log.actorRole})`}>
-                          {log.actorName} ({log.actorRole})
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        <div className="truncate max-w-[160px]" title={log.targetName}>
-                          {log.targetName}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">{log.ipAddress}</td>
-                      <td className="px-4 py-3 text-slate-400">
-                        <div className="truncate max-w-[210px]" title={log.details}>
-                          {log.details}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {sampleAuditLogs.map((log) => {
+                    const isExpanded = expandedLogId === log.id;
+                    return (
+                      <React.Fragment key={log.id}>
+                        <tr
+                          onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                          className={`hover:bg-[#1a2636]/50 transition-colors cursor-pointer ${
+                            isExpanded ? 'bg-[#1a2636]/40' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedLogId(isExpanded ? null : log.id);
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                              aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
+                            >
+                              <ChevronRight
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-90 text-amber-400' : ''
+                                }`}
+                              />
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleString('th-TH')}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-slate-200">
+                            <div className="truncate max-w-[200px]" title={`${log.actorName} (${log.actorRole})`}>
+                              {log.actorName} ({log.actorRole})
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            <div className="truncate max-w-[180px]" title={log.targetName}>
+                              {log.targetName}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Expanded Detail Panel */}
+                        {isExpanded && (
+                          <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                            <td colSpan={5} className="px-6 py-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                                <div className="sm:col-span-2">
+                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    รายละเอียดกิจกรรม (Audit Details)
+                                  </div>
+                                  <div className="text-slate-200 font-medium leading-relaxed bg-[#141d27] p-3 rounded-xl border border-slate-800">
+                                    {log.details}
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      IP Address &amp; การเชื่อมต่อ
+                                    </div>
+                                    <div className="font-mono text-slate-300 font-medium">
+                                      {log.ipAddress}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      มาตรฐานการคุ้มครองข้อมูล
+                                    </div>
+                                    <div className="text-emerald-400 text-[11px] flex items-center gap-1.5">
+                                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                                      <span>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

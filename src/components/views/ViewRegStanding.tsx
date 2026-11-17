@@ -12,12 +12,17 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Award, Calendar, Search, Medal, LayoutList, LayoutGrid, FileText } from 'lucide-react';
+import { Award, Calendar, Search, Medal, LayoutList, LayoutGrid, FileText, ChevronRight } from 'lucide-react';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 
 export const ViewRegStanding: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   const standingData = useMemo(() => {
     return INITIAL_TEACHERS.map((t) => ({
@@ -98,16 +103,15 @@ export const ViewRegStanding: React.FC = () => {
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
         <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto w-full">
+          <div className="w-full">
             <table className="w-full text-left text-sm text-slate-200">
-              <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
+              <thead className="bg-[#16202d] text-xs uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">ชื่อ - สกุล</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[210px]">ตำแหน่ง / กลุ่มสาระ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">วิทยฐานะปัจจุบัน</th>
-                  <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">วันบรรจุรับราชการ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">คำสั่งแต่งตั้งล่าสุด</th>
+                  <th scope="col" className="w-10 px-3 py-3.5 text-center"></th>
+                  <th scope="col" className="px-3 py-3.5 text-center w-12 font-mono shrink-0">ลำดับ</th>
+                  <th scope="col" className="px-4 py-3.5">ชื่อ - สกุล</th>
+                  <th scope="col" className="px-4 py-3.5">ตำแหน่ง</th>
+                  <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">วิทยฐานะปัจจุบัน</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-sans">
@@ -115,43 +119,116 @@ export const ViewRegStanding: React.FC = () => {
                   const latestOrder = item.orders[0];
                   const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   const deptDisplay = item.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                  const isExpanded = expandedId === item.id;
 
                   return (
-                    <tr key={item.id} className="hover:bg-[#182536]/60 transition-colors">
-                      <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
-                        {index + 1}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="font-bold text-white text-base truncate max-w-[180px]" title={item.name}>
-                          {item.name}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300">
-                        <div className="truncate max-w-[190px]" title={item.position}>{posDisplay}</div>
-                        <div className="text-slate-400 text-xs mt-0.5 truncate max-w-[190px]" title={item.department}>{deptDisplay}</div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 truncate max-w-[170px]" title={item.standing}>
-                          {item.standing}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
-                        {item.startDate}
-                      </td>
-                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300">
-                        {latestOrder ? (
-                          <div className="flex items-start gap-2">
-                            <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                            <div className="min-w-0">
-                              <div className="font-mono text-slate-200 font-medium truncate max-w-[170px]" title={`คำสั่งที่: ${latestOrder.orderNumber}`}>คำสั่งที่: {latestOrder.orderNumber}</div>
-                              <div className="text-xs text-slate-400 truncate max-w-[170px]" title={`มีผลตั้งแต่: ${latestOrder.effectiveDate}`}>มีผลตั้งแต่: {latestOrder.effectiveDate}</div>
-                            </div>
+                    <React.Fragment key={item.id}>
+                      <tr
+                        onClick={() => toggleExpand(item.id)}
+                        className={`hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                          isExpanded ? 'bg-[#15202e]' : ''
+                        }`}
+                      >
+                        {/* Expand Button */}
+                        <td className="w-10 px-3 py-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpand(item.id);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                            title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
+                          >
+                            <ChevronRight
+                              className={`w-4 h-4 transition-transform duration-200 ${
+                                isExpanded ? 'rotate-90 text-sky-400' : ''
+                              }`}
+                            />
+                          </button>
+                        </td>
+
+                        {/* Sequence */}
+                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
+                          {index + 1}
+                        </td>
+
+                        {/* Full Name */}
+                        <td className="px-4 py-3.5">
+                          <div className="font-bold text-white text-base truncate max-w-[200px]" title={item.name}>
+                            {item.name}
                           </div>
-                        ) : (
-                          <span className="text-slate-500">-</span>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+
+                        {/* Position */}
+                        <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-300">
+                          <div className="truncate max-w-[200px]" title={item.position}>{posDisplay}</div>
+                        </td>
+
+                        {/* Standing Badge (Strictly zero-wrap) */}
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                          <span
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                            title={item.standing}
+                          >
+                            <Medal className="w-3.5 h-3.5 shrink-0" />
+                            <span>{item.standing}</span>
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* Expanded Detail Panel */}
+                      {isExpanded && (
+                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                          <td colSpan={5} className="px-6 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">กลุ่มสาระการเรียนรู้ / ฝ่าย</div>
+                                <div className="text-slate-200 font-medium">{deptDisplay}</div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">วันบรรจุรับราชการ</div>
+                                <div className="font-mono text-slate-300">{item.startDate}</div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">เลขที่คำสั่งแต่งตั้งล่าสุด</div>
+                                <div className="font-mono text-amber-300 font-medium">
+                                  {latestOrder ? latestOrder.orderNumber : 'ไม่มีข้อมูลคำสั่ง'}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
+                                <div className="font-mono text-sky-400">
+                                  {latestOrder ? latestOrder.effectiveDate : '-'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {item.orders.length > 1 && (
+                              <div className="mt-3 pt-3 border-t border-slate-800/60 text-xs">
+                                <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
+                                  ประวัติคำสั่งแต่งตั้งทั้งหมด ({item.orders.length} รายการ):
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {item.orders.map((ord, oIdx) => (
+                                    <span
+                                      key={oIdx}
+                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#101822] text-slate-300 border border-slate-800 text-[11px] font-mono"
+                                    >
+                                      <FileText className="w-3 h-3 text-amber-400 shrink-0" />
+                                      <span>{ord.level}: {ord.orderNumber} ({ord.effectiveDate})</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

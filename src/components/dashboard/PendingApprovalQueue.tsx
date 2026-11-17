@@ -189,7 +189,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                   <span className="text-xs text-slate-400 truncate max-w-[140px]" title={req.position}>
                     ({req.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')})
                   </span>
-                  <span className="px-2 py-0.5 text-[11px] font-medium rounded bg-slate-800 text-slate-300 border border-slate-700/60 shrink-0">
+                  <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 text-[11px] font-medium rounded bg-slate-800 text-slate-300 border border-slate-700/60">
                     {req.leaveType}
                   </span>
                 </div>
