@@ -30,6 +30,7 @@ yarn-error.log*
 *.suo
 *.ntvs*
 *.njsproj
+*.tsbuildinfo
 
 # Supabase CLI temp
 supabase/.temp/
