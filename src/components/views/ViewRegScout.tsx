@@ -6,6 +6,7 @@
  * ============================================================================
  * - Registry of National Scout Organization of Thailand leader qualifications
  * - Wood Badge (W.B. 2-4 Beads), B.T.C., A.T.C. courses
+ * - Dual View: Spacious Table View (Default) & Responsive Cards
  * - Search by teacher name, filter by scout level & category
  * - Appointment orders and certificate numbers
  * - Zero Emojis, Pure Lucide SVG Icons, 8px Standard Spacing
@@ -16,7 +17,8 @@ import { useState } from 'react';
 import {
   Award,
   Search,
-  Medal,
+  LayoutList,
+  LayoutGrid,
 } from 'lucide-react';
 import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
 
@@ -24,6 +26,7 @@ export function ViewRegScout() {
   const [scouts] = useState<ScoutRecord[]>(INITIAL_SCOUTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const levels = Array.from(new Set(scouts.map((s) => s.badgeLevel)));
 
@@ -38,27 +41,50 @@ export function ViewRegScout() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 rounded-2xl border border-slate-800">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-800">
         <div>
           <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider">
             <Award className="w-4 h-4 shrink-0" />
             <span>Scout Leader Qualifications Registry</span>
           </div>
-          <h2 className="text-xl font-bold text-white mt-1">ทะเบียนวุฒิทางลูกเสือ</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ
+          <h2 className="text-lg sm:text-xl font-bold text-white mt-1">ทะเบียนวุฒิทางลูกเสือ</h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ (รวม {scouts.length} รายการ)
           </p>
         </div>
 
-        <div className="h-10 flex items-center gap-2 bg-[#101822] px-4 rounded-xl border border-slate-700 text-xs text-slate-300">
-          <Medal className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>มีวุฒิลูกเสือ:</span>
-          <span className="font-bold text-white font-mono">{scouts.length} รายการ</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex p-1 bg-[#101822] border border-slate-700 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                viewMode === 'table'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <LayoutList className="w-4 h-4 shrink-0" />
+              <span>ตาราง</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 shrink-0" />
+              <span>การ์ด</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filter and Search (Standard 40px Height) */}
+      {/* Filter and Search */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
@@ -67,11 +93,11 @@ export function ViewRegScout() {
             placeholder="ค้นหาชื่อครู, วุฒิการฝึกอบรม, เลขที่วุฒิบัตร..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all"
+            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 transition-all"
           />
         </div>
 
-        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-amber-500 transition-all">
+        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs sm:text-sm text-slate-200 focus-within:border-amber-500 transition-all">
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
@@ -87,62 +113,117 @@ export function ViewRegScout() {
         </div>
       </div>
 
-      {/* Scouts Grid Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredScouts.map((s) => (
-          <div
-            key={s.id}
-            className="bg-[#111822] rounded-2xl border border-slate-800 p-5 hover:border-amber-500/40 transition-all flex flex-col justify-between group"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  {s.badgeLevel}
-                </span>
-                <span className="text-[11px] font-mono text-slate-500">{s.category}</span>
-              </div>
-
-              <h3 className="font-bold text-white text-sm group-hover:text-amber-300 transition-colors">
-                {s.teacherName}
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">{s.position}</p>
-
-              <div className="mt-4 p-3 rounded-xl bg-[#151e2b] border border-slate-800/80 space-y-2 text-xs">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">
-                    หลักสูตรและวุฒิการฝึกอบรม
-                  </span>
-                  <p className="font-medium text-slate-200 mt-0.5">{s.qualification}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px]">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">เลขที่วุฒิบัตร</span>
-                    <span className="font-mono text-sky-400">{s.certificateNo}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">วันที่ได้รับ</span>
-                    <span className="text-slate-300">
+      {/* Main View: Table View */}
+      {viewMode === 'table' ? (
+        <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-200">
+              <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
+                <tr>
+                  <th scope="col" className="px-4 py-3.5 text-center w-14">ลำดับ</th>
+                  <th scope="col" className="px-5 py-3.5">ผู้ถือวุฒิลูกเสือ</th>
+                  <th scope="col" className="px-5 py-3.5">ระดับวุฒิ</th>
+                  <th scope="col" className="px-5 py-3.5">หลักสูตร / วุฒิการฝึกอบรม</th>
+                  <th scope="col" className="px-5 py-3.5">เลขที่วุฒิบัตร</th>
+                  <th scope="col" className="px-4 py-3.5 text-center">วันที่ได้รับ</th>
+                  <th scope="col" className="px-5 py-3.5">ผู้ออกวุฒิบัตร</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/70 font-sans">
+                {filteredScouts.map((s, index) => (
+                  <tr key={s.id} className="hover:bg-[#182536]/60 transition-colors">
+                    <td className="px-4 py-4 text-center font-mono font-bold text-slate-400">
+                      {index + 1}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="font-bold text-white text-base">{s.teacherName}</div>
+                      <div className="text-xs text-slate-400">{s.position}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        {s.badgeLevel}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-xs sm:text-sm text-slate-300 font-medium">
+                      {s.qualification}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-xs sm:text-sm text-sky-400">
+                      {s.certificateNo}
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
                       {new Date(s.issueDate).toLocaleDateString('th-TH', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
                       })}
+                    </td>
+                    <td className="px-5 py-4 text-xs sm:text-sm text-slate-400">
+                      {s.issuedBy}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Scouts Grid Cards */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredScouts.map((s) => (
+            <div
+              key={s.id}
+              className="bg-[#111822] rounded-2xl border border-slate-800 p-5 hover:border-amber-500/40 transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <span className="px-3 py-1 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {s.badgeLevel}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">{s.category}</span>
+                </div>
+
+                <h3 className="font-bold text-white text-base group-hover:text-amber-300 transition-colors">
+                  {s.teacherName}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{s.position}</p>
+
+                <div className="mt-4 p-3.5 rounded-xl bg-[#151e2b] border border-slate-800/80 space-y-2 text-xs sm:text-sm">
+                  <div>
+                    <span className="text-slate-400 block text-xs uppercase font-semibold">
+                      หลักสูตรและวุฒิการฝึกอบรม
                     </span>
+                    <p className="font-medium text-slate-200 mt-0.5">{s.qualification}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
+                    <div>
+                      <span className="text-slate-400 block">เลขที่วุฒิบัตร</span>
+                      <span className="font-mono text-sky-400 font-medium">{s.certificateNo}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">วันที่ได้รับ</span>
+                      <span className="text-slate-300">
+                        {new Date(s.issueDate).toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-              <span className="truncate max-w-[200px]" title={s.issuedBy}>
-                {s.issuedBy}
-              </span>
-              <span className="font-mono text-[10px] text-slate-500">{s.orderNumber}</span>
+              <div className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+                <span className="truncate max-w-[200px]" title={s.issuedBy}>
+                  {s.issuedBy}
+                </span>
+                <span className="font-mono text-xs text-slate-500">{s.orderNumber}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

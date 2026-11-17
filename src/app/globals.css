@@ -27,8 +27,12 @@
 
   body {
     background-color: #0e141b;
-    color: #c7d5e0;
-    font-family: -apple-system, BlinkMacSystemFont, "Sarabun", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #e2e8f0;
+    font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     overflow-x: hidden;
   }

@@ -47,6 +47,7 @@ import {
   ACTIVE_CLASSES,
   TeacherRecord,
   BoardMemberRecord,
+  BOARD_STATUTORY_ORDER,
 } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 
@@ -472,12 +473,18 @@ export default function AdminPage() {
       t.department.toLowerCase().includes(staffSearch.toLowerCase())
   );
 
-  const filteredBoard = boardMembers.filter(
-    (b) =>
-      b.fullName.toLowerCase().includes(boardSearch.toLowerCase()) ||
-      b.positionTitle.toLowerCase().includes(boardSearch.toLowerCase()) ||
-      b.organization.toLowerCase().includes(boardSearch.toLowerCase())
-  );
+  const filteredBoard = boardMembers
+    .filter(
+      (b) =>
+        b.fullName.toLowerCase().includes(boardSearch.toLowerCase()) ||
+        b.positionTitle.toLowerCase().includes(boardSearch.toLowerCase()) ||
+        b.organization.toLowerCase().includes(boardSearch.toLowerCase())
+    )
+    .sort(
+      (a, b) =>
+        (BOARD_STATUTORY_ORDER[a.position] ?? 99) -
+        (BOARD_STATUTORY_ORDER[b.position] ?? 99)
+    );
 
   return (
     <div className="min-h-screen bg-[#0e141b] text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
@@ -723,7 +730,7 @@ export default function AdminPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-mono">
-                  ทั้งหมด {boardMembers.length} ท่าน (วาระที่ 1)
+                  ทั้งหมด {boardMembers.length} ท่าน (ตามลำดับกฎกระทรวง)
                 </span>
                 <button
                   type="button"
@@ -738,10 +745,10 @@ export default function AdminPage() {
 
             <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                <table className="w-full text-left text-sm text-slate-200">
+                  <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-xs">
                     <tr>
-                      <th className="px-4 py-3">ลำดับ</th>
+                      <th className="px-4 py-3 text-center">ลำดับ</th>
                       <th className="px-4 py-3">ชื่อ - สกุล</th>
                       <th className="px-4 py-3">ตำแหน่งในคณะกรรมการ</th>
                       <th className="px-4 py-3">สังกัด / องค์กร</th>
@@ -751,45 +758,63 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-sans">
-                    {filteredBoard.map((b, idx) => (
-                      <tr key={b.id} className="hover:bg-[#162231]/50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="px-4 py-3 font-bold text-white">{b.fullName}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                            {b.positionTitle}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-400">{b.organization}</td>
-                        <td className="px-4 py-3 text-center font-mono">วาระที่ {b.termNumber}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3 shrink-0" />
-                            <span>{b.status}</span>
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditBoardMember(b)}
-                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
-                              title="แก้ไขข้อมูลกรรมการ"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBoardMember(b.id)}
-                              className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition-colors"
-                              title="ลบกรรมการสถานศึกษา"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredBoard.map((b, idx) => {
+                      const isDirector = b.position === 'DIRECTOR_SEC';
+                      return (
+                        <tr key={b.id} className="hover:bg-[#162231]/50 transition-colors">
+                          <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold">{idx + 1}</td>
+                          <td className="px-4 py-3.5 font-bold text-white text-base">
+                            {b.fullName}
+                            {isDirector && (
+                              <span className="block text-xs text-sky-400 font-normal mt-0.5">
+                                ผู้อำนวยการสถานศึกษา
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                              {b.positionTitle}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-300 text-xs sm:text-sm">{b.organization}</td>
+                          <td className="px-4 py-3.5 text-center font-mono">
+                            {isDirector ? (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                                โดยตำแหน่ง
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-300">วาระที่ {b.termNumber}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                              <span>{b.status}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditBoardMember(b)}
+                                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                                title="แก้ไขข้อมูลกรรมการ"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBoardMember(b.id)}
+                                className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition-colors"
+                                title="ลบกรรมการสถานศึกษา"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

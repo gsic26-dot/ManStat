@@ -569,31 +569,21 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
   }
 ];
 
+export const BOARD_STATUTORY_ORDER: Record<string, number> = {
+  CHAIR: 1,
+  PARENT_REP: 2,
+  TEACHER_REP: 3,
+  COMMUNITY_REP: 4,
+  LOCAL_ADMIN: 5,
+  ALUMNI_REP: 6,
+  RELIGION_REP: 7,
+  EXPERT: 8,
+  DIRECTOR_SEC: 9,
+};
+
 export const INITIAL_BOARD_MEMBERS: BoardMemberRecord[] = [
   {
-    "id": "SBD-261030151715",
-    "fullName": "นายธีรศักดิ์ มโนธรรม",
-    "position": "DIRECTOR_SEC",
-    "positionTitle": "กรรมการและเลขานุการ",
-    "occupation": "ผู้อำนวยการสถานศึกษา",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "099-173-2233",
-    "status": "ดำรงตำแหน่ง",
-    "termNumber": 1
-  },
-  {
-    "id": "SBD-TCH-TCH-006",
-    "fullName": "นางณิชกานต์ พลอยฉิมพลี",
-    "position": "TEACHER_REP",
-    "positionTitle": "ผู้แทนครู",
-    "occupation": "ครูชำนาญการพิเศษ",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "081-725-9258",
-    "status": "ดำรงตำแหน่ง",
-    "termNumber": 1
-  },
-  {
-    "id": "SBD-003",
+    "id": "SBD-001",
     "fullName": "นางเสาวนีย์ ศิริวรรณโยธา",
     "position": "CHAIR",
     "positionTitle": "ประธานกรรมการ",
@@ -604,70 +594,92 @@ export const INITIAL_BOARD_MEMBERS: BoardMemberRecord[] = [
     "termNumber": 1
   },
   {
-    "id": "SBD-004",
+    "id": "SBD-002",
     "fullName": "นางปวิมล มะสิโกวา",
     "position": "PARENT_REP",
     "positionTitle": "ผู้แทนผู้ปกครอง",
-    "occupation": "-",
+    "occupation": "เกษตรกร",
+    "organization": "ชุมชนบ้านตะขบ",
+    "phone": "089-571-3342",
+    "status": "ดำรงตำแหน่ง",
+    "termNumber": 1
+  },
+  {
+    "id": "SBD-003",
+    "fullName": "นางณิชกานต์ พลอยฉิมพลี",
+    "position": "TEACHER_REP",
+    "positionTitle": "ผู้แทนครู",
+    "occupation": "ครูชำนาญการพิเศษ",
     "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "-",
+    "phone": "081-725-9258",
+    "status": "ดำรงตำแหน่ง",
+    "termNumber": 1
+  },
+  {
+    "id": "SBD-004",
+    "fullName": "นางสาวปฐมา ควรตะขบ",
+    "position": "COMMUNITY_REP",
+    "positionTitle": "ผู้แทนองค์กรชุมชน",
+    "occupation": "ผู้นำชุมชน",
+    "organization": "องค์กรชุมชนตำบลตะขบ",
+    "phone": "084-332-1190",
     "status": "ดำรงตำแหน่ง",
     "termNumber": 1
   },
   {
     "id": "SBD-005",
-    "fullName": "นางปัทมาพร ธงตะขบ",
-    "position": "ALUMNI_REP",
-    "positionTitle": "ผู้แทนศิษย์เก่า",
-    "occupation": "-",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "-",
+    "fullName": "นางเกศรินทร์ ไชยหาญ",
+    "position": "LOCAL_ADMIN",
+    "positionTitle": "ผู้แทนองค์กรปกครองส่วนท้องถิ่น",
+    "occupation": "เจ้าพนักงาน อปท.",
+    "organization": "องค์การบริหารส่วนตำบลตะขบ",
+    "phone": "087-991-4456",
     "status": "ดำรงตำแหน่ง",
     "termNumber": 1
   },
   {
     "id": "SBD-006",
-    "fullName": "พระครูธวัชชโยดม",
-    "position": "RELIGION_REP",
-    "positionTitle": "ผู้แทนพระภิกษุสงฆ์ / ศาสนา",
-    "occupation": "-",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "-",
+    "fullName": "นางปัทมาพร ธงตะขบ",
+    "position": "ALUMNI_REP",
+    "positionTitle": "ผู้แทนศิษย์เก่า",
+    "occupation": "ธุรกิจส่วนตัว",
+    "organization": "ชมรมศิษย์เก่าโรงเรียนชุมชนบ้านตะขบ",
+    "phone": "086-123-4567",
     "status": "ดำรงตำแหน่ง",
     "termNumber": 1
   },
   {
     "id": "SBD-007",
-    "fullName": "นางสาวปฐมา ควรตะขบ",
-    "position": "COMMUNITY_REP",
-    "positionTitle": "ผู้แทนองค์กรชุมชน",
-    "occupation": "-",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
+    "fullName": "พระครูธวัชชโยดม",
+    "position": "RELIGION_REP",
+    "positionTitle": "ผู้แทนพระภิกษุสงฆ์ / ศาสนา",
+    "occupation": "เจ้าอาวาส / พระภิกษุสงฆ์",
+    "organization": "วัดตะขบ",
     "phone": "-",
     "status": "ดำรงตำแหน่ง",
     "termNumber": 1
   },
   {
     "id": "SBD-008",
-    "fullName": "นางเกศรินทร์ ไชยหาญ",
-    "position": "LOCAL_ADMIN",
-    "positionTitle": "ผู้แทนองค์กรปกครองส่วนท้องถิ่น",
-    "occupation": "-",
-    "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "-",
+    "fullName": "นายสวัสดิ์ งามตะขบ",
+    "position": "EXPERT",
+    "positionTitle": "กรรมการผู้ทรงคุณวุฒิ",
+    "occupation": "ข้าราชการบำนาญ",
+    "organization": "ชุมชนบ้านตะขบ",
+    "phone": "081-443-2211",
     "status": "ดำรงตำแหน่ง",
     "termNumber": 1
   },
   {
     "id": "SBD-009",
-    "fullName": "นายสวัสดิ์ งามตะขบ",
-    "position": "EXPERT",
-    "positionTitle": "กรรมการผู้ทรงคุณวุฒิ",
-    "occupation": "-",
+    "fullName": "นายธีรศักดิ์ มโนธรรม",
+    "position": "DIRECTOR_SEC",
+    "positionTitle": "กรรมการและเลขานุการ",
+    "occupation": "ผู้อำนวยการสถานศึกษา",
     "organization": "โรงเรียนชุมชนบ้านตะขบ",
-    "phone": "-",
+    "phone": "099-173-2233",
     "status": "ดำรงตำแหน่ง",
-    "termNumber": 1
+    "termNumber": 0
   }
 ];
 
