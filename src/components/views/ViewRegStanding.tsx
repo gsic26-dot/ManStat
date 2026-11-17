@@ -98,50 +98,53 @@ export const ViewRegStanding: React.FC = () => {
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
         <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm text-slate-200">
               <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5">ชื่อ - สกุล</th>
-                  <th scope="col" className="px-5 py-3.5">ตำแหน่ง / กลุ่มสาระ</th>
-                  <th scope="col" className="px-5 py-3.5">วิทยฐานะปัจจุบัน</th>
-                  <th scope="col" className="px-4 py-3.5 text-center">วันบรรจุรับราชการ</th>
-                  <th scope="col" className="px-5 py-3.5">คำสั่งแต่งตั้งล่าสุด</th>
+                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">ชื่อ - สกุล</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[210px]">ตำแหน่ง / กลุ่มสาระ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">วิทยฐานะปัจจุบัน</th>
+                  <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">วันบรรจุรับราชการ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">คำสั่งแต่งตั้งล่าสุด</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-sans">
                 {filtered.map((item, index) => {
                   const latestOrder = item.orders[0];
+                  const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  const deptDisplay = item.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+
                   return (
                     <tr key={item.id} className="hover:bg-[#182536]/60 transition-colors">
-                      <td className="px-4 py-4 text-center font-mono font-bold text-slate-400">
+                      <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
                         {index + 1}
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-white text-base">
+                      <td className="px-5 py-3.5">
+                        <div className="font-bold text-white text-base truncate max-w-[180px]" title={item.name}>
                           {item.name}
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-xs sm:text-sm text-slate-300">
-                        <div>{item.position}</div>
-                        <div className="text-slate-400 text-xs mt-0.5">{item.department}</div>
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300">
+                        <div className="truncate max-w-[190px]" title={item.position}>{posDisplay}</div>
+                        <div className="text-slate-400 text-xs mt-0.5 truncate max-w-[190px]" title={item.department}>{deptDisplay}</div>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      <td className="px-5 py-3.5">
+                        <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 truncate max-w-[170px]" title={item.standing}>
                           {item.standing}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
                         {item.startDate}
                       </td>
-                      <td className="px-5 py-4 text-xs sm:text-sm text-slate-300">
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300">
                         {latestOrder ? (
                           <div className="flex items-start gap-2">
                             <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                            <div>
-                              <div className="font-mono text-slate-200 font-medium">คำสั่งที่: {latestOrder.orderNumber}</div>
-                              <div className="text-xs text-slate-400">มีผลตั้งแต่: {latestOrder.effectiveDate}</div>
+                            <div className="min-w-0">
+                              <div className="font-mono text-slate-200 font-medium truncate max-w-[170px]" title={`คำสั่งที่: ${latestOrder.orderNumber}`}>คำสั่งที่: {latestOrder.orderNumber}</div>
+                              <div className="text-xs text-slate-400 truncate max-w-[170px]" title={`มีผลตั้งแต่: ${latestOrder.effectiveDate}`}>มีผลตั้งแต่: {latestOrder.effectiveDate}</div>
                             </div>
                           </div>
                         ) : (

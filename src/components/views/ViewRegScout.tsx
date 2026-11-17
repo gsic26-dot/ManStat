@@ -116,52 +116,59 @@ export function ViewRegScout() {
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
         <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm text-slate-200">
               <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5">ผู้ถือวุฒิลูกเสือ</th>
-                  <th scope="col" className="px-5 py-3.5">ระดับวุฒิ</th>
-                  <th scope="col" className="px-5 py-3.5">หลักสูตร / วุฒิการฝึกอบรม</th>
-                  <th scope="col" className="px-5 py-3.5">เลขที่วุฒิบัตร</th>
-                  <th scope="col" className="px-4 py-3.5 text-center">วันที่ได้รับ</th>
-                  <th scope="col" className="px-5 py-3.5">ผู้ออกวุฒิบัตร</th>
+                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">ผู้ถือวุฒิลูกเสือ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[140px]">ระดับวุฒิ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[220px]">หลักสูตร / วุฒิการฝึกอบรม</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[170px]">เลขที่วุฒิบัตร</th>
+                  <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">วันที่ได้รับ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[180px]">ผู้ออกวุฒิบัตร</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-sans">
-                {filteredScouts.map((s, index) => (
-                  <tr key={s.id} className="hover:bg-[#182536]/60 transition-colors">
-                    <td className="px-4 py-4 text-center font-mono font-bold text-slate-400">
-                      {index + 1}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="font-bold text-white text-base">{s.teacherName}</div>
-                      <div className="text-xs text-slate-400">{s.position}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                        {s.badgeLevel}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-xs sm:text-sm text-slate-300 font-medium">
-                      {s.qualification}
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs sm:text-sm text-sky-400">
-                      {s.certificateNo}
-                    </td>
-                    <td className="px-4 py-4 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
-                      {new Date(s.issueDate).toLocaleDateString('th-TH', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </td>
-                    <td className="px-5 py-4 text-xs sm:text-sm text-slate-400">
-                      {s.issuedBy}
-                    </td>
-                  </tr>
-                ))}
+                {filteredScouts.map((s, index) => {
+                  const posDisplay = s.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  return (
+                    <tr key={s.id} className="hover:bg-[#182536]/60 transition-colors">
+                      <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
+                        {index + 1}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="font-bold text-white text-base truncate max-w-[180px]" title={s.teacherName}>{s.teacherName}</div>
+                        <div className="text-xs text-slate-400 truncate max-w-[180px]" title={s.position}>{posDisplay}</div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 truncate max-w-[120px]" title={s.badgeLevel}>
+                          {s.badgeLevel}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300 font-medium">
+                        <div className="truncate max-w-[200px]" title={s.qualification}>
+                          {s.qualification}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 font-mono text-xs sm:text-sm text-sky-400 whitespace-nowrap" title={s.certificateNo}>
+                        {s.certificateNo}
+                      </td>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                        {new Date(s.issueDate).toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-400">
+                        <div className="truncate max-w-[170px]" title={s.issuedBy}>
+                          {s.issuedBy}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

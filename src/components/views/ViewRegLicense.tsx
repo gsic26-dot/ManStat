@@ -183,55 +183,70 @@ export const ViewRegLicense: React.FC = () => {
           />
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-sm text-slate-200">
             <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold text-xs border-b border-slate-800">
               <tr>
-                <th className="px-4 py-3.5 rounded-l-lg">ผู้ถือใบอนุญาต</th>
-                <th className="px-4 py-3.5">ประเภทใบอนุญาต</th>
-                <th className="px-4 py-3.5">เลขที่ใบอนุญาต</th>
-                <th className="px-4 py-3.5">วันออกใบอนุญาต</th>
-                <th className="px-4 py-3.5">วันหมดอายุ</th>
-                <th className="px-4 py-3.5 text-center">วันคงเหลือ</th>
-                <th className="px-4 py-3.5 rounded-r-lg text-right">สถานะ</th>
+                <th className="px-4 py-3.5 rounded-l-lg min-w-[200px]">ผู้ถือใบอนุญาต</th>
+                <th className="px-4 py-3.5 min-w-[170px]">ประเภทใบอนุญาต</th>
+                <th className="px-4 py-3.5 min-w-[160px]">เลขที่ใบอนุญาต</th>
+                <th className="px-4 py-3.5 min-w-[130px]">วันออกใบอนุญาต</th>
+                <th className="px-4 py-3.5 min-w-[130px]">วันหมดอายุ</th>
+                <th className="px-4 py-3.5 text-center min-w-[110px]">วันคงเหลือ</th>
+                <th className="px-4 py-3.5 rounded-r-lg text-right min-w-[125px]">สถานะ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
-              {filtered.map((item, idx) => (
-                <tr key={idx} className="hover:bg-[#1a2636]/50 transition-colors">
-                  <td className="px-4 py-3.5">
-                    <div className="font-bold text-white text-base">{item.teacherName}</div>
-                    <div className="text-xs text-slate-400">{item.position}</div>
-                  </td>
-                  <td className="px-4 py-3.5 text-sky-300 font-medium text-xs sm:text-sm">{item.type}</td>
-                  <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm">{item.number}</td>
-                  <td className="px-4 py-3.5 font-mono text-slate-400 text-xs sm:text-sm">{item.issueDate}</td>
-                  <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm">{item.expiryDate}</td>
-                  <td className="px-4 py-3.5 font-mono font-bold text-center text-xs sm:text-sm">
-                    <span className={item.daysRemaining <= 0 ? 'text-rose-400' : item.daysRemaining <= 90 ? 'text-amber-400' : 'text-emerald-400'}>
-                      {item.daysRemaining} วัน
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                    {item.health === 'VALID' ? (
-                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[105px]">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>ปกติ</span>
+              {filtered.map((item, idx) => {
+                const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                return (
+                  <tr key={idx} className="hover:bg-[#1a2636]/50 transition-colors">
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-white text-base truncate max-w-[180px]" title={item.teacherName}>
+                        {item.teacherName}
+                      </div>
+                      <div className="text-xs text-slate-400 truncate max-w-[180px]" title={item.position}>
+                        {posDisplay}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-sky-300 font-medium text-xs sm:text-sm">
+                      <div className="truncate max-w-[160px]" title={item.type}>{item.type}</div>
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm whitespace-nowrap" title={item.number}>
+                      {item.number}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-slate-400 text-xs sm:text-sm whitespace-nowrap">
+                      {item.issueDate}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-slate-200 text-xs sm:text-sm whitespace-nowrap">
+                      {item.expiryDate}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono font-bold text-center text-xs sm:text-sm whitespace-nowrap">
+                      <span className={item.daysRemaining <= 0 ? 'text-rose-400' : item.daysRemaining <= 90 ? 'text-amber-400' : 'text-emerald-400'}>
+                        {item.daysRemaining} วัน
                       </span>
-                    ) : item.health === 'EXPIRING_SOON' ? (
-                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 min-w-[105px]">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span>เตือนต่ออายุ</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[105px]">
-                        <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
-                        <span>หมดอายุ</span>
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      {item.health === 'VALID' ? (
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 min-w-[105px]">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>ปกติ</span>
+                        </span>
+                      ) : item.health === 'EXPIRING_SOON' ? (
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 min-w-[105px]">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          <span>เตือนต่ออายุ</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 min-w-[105px]">
+                          <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                          <span>หมดอายุ</span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

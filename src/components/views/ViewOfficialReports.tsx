@@ -142,49 +142,51 @@ export function ViewOfficialReports() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-xs text-slate-300">
               <thead className="bg-[#131b25] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="px-4 py-3 text-center">ลำดับ</th>
-                  <th className="px-4 py-3">ชื่อ - นามสกุล</th>
-                  <th className="px-4 py-3">ตำแหน่ง / สังกัด</th>
-                  <th className="px-4 py-3 text-center text-rose-400">ลาป่วย (วัน)</th>
-                  <th className="px-4 py-3 text-center text-amber-400">ลากิจ (วัน)</th>
-                  <th className="px-4 py-3 text-center text-emerald-400">พักผ่อน (วัน)</th>
-                  <th className="px-4 py-3 text-center text-sky-400 font-bold">รวมวันลา</th>
-                  <th className="px-4 py-3 text-center">สิทธิ์เลื่อนเงินเดือน</th>
+                  <th className="px-4 py-3 text-center min-w-[50px] shrink-0">ลำดับ</th>
+                  <th className="px-4 py-3 min-w-[200px]">ชื่อ - นามสกุล</th>
+                  <th className="px-4 py-3 min-w-[190px]">ตำแหน่ง / สังกัด</th>
+                  <th className="px-4 py-3 text-center text-rose-400 min-w-[110px]">ลาป่วย (วัน)</th>
+                  <th className="px-4 py-3 text-center text-amber-400 min-w-[110px]">ลากิจ (วัน)</th>
+                  <th className="px-4 py-3 text-center text-emerald-400 min-w-[110px]">พักผ่อน (วัน)</th>
+                  <th className="px-4 py-3 text-center text-sky-400 font-bold min-w-[110px]">รวมวันลา</th>
+                  <th className="px-4 py-3 text-center min-w-[125px]">สิทธิ์เลื่อนเงินเดือน</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-800/60 font-sans">
                 {filteredTeachers.map((t, idx) => {
                   const total = t.sickUsed + t.personalUsed + t.vacationUsed;
                   const isEligible = total <= 23;
+                  const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  const deptDisplay = t.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
 
                   return (
                     <tr key={t.id} className="hover:bg-[#162231]/50 transition-colors">
-                      <td className="px-4 py-3 text-center font-mono text-slate-500">{idx + 1}</td>
+                      <td className="px-4 py-3 text-center font-mono text-slate-500 whitespace-nowrap">{idx + 1}</td>
                       <td className="px-4 py-3 font-semibold text-white">
-                        {t.name}
-                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">{t.employeeCode}</div>
+                        <div className="truncate max-w-[180px]" title={t.name}>{t.name}</div>
+                        <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[180px]" title={`รหัส: ${t.employeeCode}`}>{t.employeeCode}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <div>{t.position}</div>
-                        <div className="text-[11px] text-slate-400">{t.department}</div>
+                        <div className="truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
+                        <div className="text-[11px] text-slate-400 truncate max-w-[180px]" title={t.department}>{deptDisplay}</div>
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-rose-300 font-medium">
+                      <td className="px-4 py-3 text-center font-mono text-rose-300 font-medium whitespace-nowrap">
                         {t.sickUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-amber-300 font-medium">
+                      <td className="px-4 py-3 text-center font-mono text-amber-300 font-medium whitespace-nowrap">
                         {t.personalUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-emerald-300 font-medium">
+                      <td className="px-4 py-3 text-center font-mono text-emerald-300 font-medium whitespace-nowrap">
                         {t.vacationUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-sky-400">
+                      <td className="px-4 py-3 text-center font-mono font-bold text-sky-400 whitespace-nowrap">
                         {total}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {isEligible ? (
                           <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />

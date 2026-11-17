@@ -183,20 +183,20 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
 
       {/* Requests Table */}
       <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-3">เลขที่หนังสือ / วันที่ยื่น</th>
-                <th className="px-4 py-3">ผู้ขอลา / ตำแหน่ง</th>
-                <th className="px-4 py-3">ประเภท / จำนวนวัน</th>
-                <th className="px-4 py-3">ช่วงเวลาการลา</th>
-                <th className="px-4 py-3">ครูผู้สอนแทน</th>
-                <th className="px-4 py-3 text-center">สถานะ</th>
-                <th className="px-4 py-3 text-center">จัดการ</th>
+                <th className="px-4 py-3 min-w-[160px]">เลขที่หนังสือ / วันที่ยื่น</th>
+                <th className="px-4 py-3 min-w-[190px]">ผู้ขอลา / ตำแหน่ง</th>
+                <th className="px-4 py-3 min-w-[140px]">ประเภท / จำนวนวัน</th>
+                <th className="px-4 py-3 min-w-[140px]">ช่วงเวลาการลา</th>
+                <th className="px-4 py-3 min-w-[160px]">ครูผู้สอนแทน</th>
+                <th className="px-4 py-3 text-center min-w-[125px]">สถานะ</th>
+                <th className="px-4 py-3 text-center min-w-[110px]">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-800/60 font-sans">
               {filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
@@ -207,56 +207,62 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-[#162231]/50 transition-colors">
-                    <td className="px-4 py-3.5">
-                      <div className="font-mono font-medium text-sky-400">{req.docNo}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {new Date(req.submittedAt).toLocaleDateString('th-TH', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="font-semibold text-white">{req.teacherName}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{req.position}</div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
-                          req.leaveType === 'sick'
-                            ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                            : req.leaveType === 'personal'
-                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                        }`}
-                      >
-                        {req.leaveTypeName}
-                      </span>
-                      <div className="text-[11px] font-semibold text-slate-300 mt-1">
-                        {req.totalDays} วันทำการ
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="text-slate-200">
-                        {new Date(req.startDate).toLocaleDateString('th-TH', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        ถึง{' '}
-                        {new Date(req.endDate).toLocaleDateString('th-TH', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-300">{req.substituteTeacherName || '-'}</td>
+                filteredRequests.map((req) => {
+                  const posDisplay = req.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  return (
+                    <tr key={req.id} className="hover:bg-[#162231]/50 transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="font-mono font-medium text-sky-400">{req.docNo}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {new Date(req.submittedAt).toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="font-semibold text-white truncate max-w-[170px]" title={req.teacherName}>{req.teacherName}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[170px]" title={req.position}>{posDisplay}</div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
+                            req.leaveType === 'sick'
+                              ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                              : req.leaveType === 'personal'
+                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          }`}
+                        >
+                          {req.leaveTypeName}
+                        </span>
+                        <div className="text-[11px] font-semibold text-slate-300 mt-1 font-mono">
+                          {req.totalDays} วันทำการ
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-mono text-[11px]">
+                        <div className="text-slate-200">
+                          {new Date(req.startDate).toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </div>
+                        <div className="text-slate-500">
+                          ถึง{' '}
+                          {new Date(req.endDate).toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-300">
+                        <div className="truncate max-w-[150px]" title={req.substituteTeacherName || '-'}>
+                          {req.substituteTeacherName || '-'}
+                        </div>
+                      </td>
                     <td className="px-4 py-3.5 text-center">
                       {req.status === 'approved' && (
                         <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[100px]">
@@ -306,8 +312,9 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
         </div>

@@ -229,24 +229,26 @@ export const ViewWorkload: React.FC = () => {
       </div>
 
       {/* Workload Table */}
-      <div className="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
-        <div className="overflow-x-auto">
+      <div className="bg-[#121822] p-5 rounded-2xl border border-slate-800/80 space-y-4">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold">
               <tr>
-                <th className="px-4 py-3 rounded-l-lg">ครูผู้สอน / บุคลากร</th>
-                <th className="px-3 py-3 text-center">ชั่วโมงสอน &amp; TA<br /><span className="text-[10px] lowercase text-slate-500">&gt;= 12 ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center">งานสนับสนุน<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center">งานพัฒนาสถานศึกษา<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center">งานนโยบาย/จุดเน้น<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
-                <th className="px-3 py-3 text-center font-bold text-white">รวมภาระงาน<br /><span className="text-[10px] lowercase text-slate-400">&gt;= 20 ชม.</span></th>
-                <th className="px-4 py-3 text-center">ผลประเมิน PA</th>
-                <th className="px-4 py-3 rounded-r-lg text-right">รายละเอียด</th>
+                <th className="px-4 py-3 rounded-l-lg min-w-[210px]">ครูผู้สอน / บุคลากร</th>
+                <th className="px-3 py-3 text-center min-w-[130px]">ชั่วโมงสอน &amp; TA<br /><span className="text-[10px] lowercase text-slate-500">&gt;= 12 ชม./สัปดาห์</span></th>
+                <th className="px-3 py-3 text-center min-w-[100px]">งานสนับสนุน<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
+                <th className="px-3 py-3 text-center min-w-[130px]">งานพัฒนาสถานศึกษา<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
+                <th className="px-3 py-3 text-center min-w-[130px]">งานนโยบาย/จุดเน้น<br /><span className="text-[10px] lowercase text-slate-500">ชม./สัปดาห์</span></th>
+                <th className="px-3 py-3 text-center font-bold text-white min-w-[110px]">รวมภาระงาน<br /><span className="text-[10px] lowercase text-slate-400">&gt;= 20 ชม.</span></th>
+                <th className="px-4 py-3 text-center min-w-[125px]">ผลประเมิน PA</th>
+                <th className="px-4 py-3 rounded-r-lg text-right min-w-[100px]">รายละเอียด</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
               {filtered.map((w) => {
                 const isExpanded = expandedTeacherId === w.id;
+                const posDisplay = w.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                const deptDisplay = w.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
 
                 return (
                   <React.Fragment key={w.id}>
@@ -258,9 +260,11 @@ export const ViewWorkload: React.FC = () => {
                     >
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-white flex items-center gap-2">
-                          <span>{w.name}</span>
+                          <span className="truncate max-w-[170px]" title={w.name}>{w.name}</span>
                         </div>
-                        <div className="text-[11px] text-slate-400">{w.position} ({w.department})</div>
+                        <div className="text-[11px] text-slate-400 truncate max-w-[200px]" title={`${posDisplay} (${deptDisplay})`}>
+                          {posDisplay} ({deptDisplay})
+                        </div>
                       </td>
                       <td className="px-3 py-3.5 text-center font-mono font-semibold text-slate-100">
                         {w.teachingHours} ชม.

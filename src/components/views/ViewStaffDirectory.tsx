@@ -161,24 +161,26 @@ export const ViewStaffDirectory: React.FC = () => {
       {/* Main View Mode: Table (Default & Recommended) */}
       {viewMode === 'table' ? (
         <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm text-slate-200">
               <thead className="bg-[#16202d] text-xs sm:text-sm uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5">บุคลากร</th>
-                  <th scope="col" className="px-5 py-3.5">ตำแหน่ง / วิทยฐานะ</th>
-                  <th scope="col" className="px-5 py-3.5">กลุ่มสาระ / ฝ่าย</th>
-                  <th scope="col" className="px-5 py-3.5">เลขประจำตัวประชาชน (PDPA)</th>
-                  <th scope="col" className="px-4 py-3.5 text-center">อายุราชการ</th>
-                  <th scope="col" className="px-4 py-3.5">ติดต่อ</th>
-                  <th scope="col" className="px-4 py-3.5 text-center">แฟ้มประวัติ</th>
+                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[220px]">บุคลากร</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[190px]">กลุ่มสาระ / ฝ่าย</th>
+                  <th scope="col" className="px-5 py-3.5 min-w-[210px]">เลขประจำตัวประชาชน (PDPA)</th>
+                  <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">อายุราชการ</th>
+                  <th scope="col" className="px-4 py-3.5 min-w-[160px]">ติดต่อ</th>
+                  <th scope="col" className="px-4 py-3.5 text-center min-w-[110px]">แฟ้มประวัติ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-sans">
                 {filteredTeachers.map((teacher, index) => {
                   const tenure = calculateTenure(teacher.startDate);
                   const isDirector = teacher.position.includes('ผู้อำนวยการ');
+                  const displayPosition = teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  const displayDept = teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
                   return (
                     <tr
                       key={teacher.id}
@@ -187,21 +189,21 @@ export const ViewStaffDirectory: React.FC = () => {
                       }`}
                     >
                       {/* Sequence */}
-                      <td className="px-4 py-4 text-center font-mono font-bold text-slate-400">
+                      <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
                         {index + 1}
                       </td>
 
                       {/* Staff Name & Initials */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-700 flex items-center justify-center text-sky-400 font-bold text-sm shrink-0 shadow-sm">
                             {teacher.firstName ? teacher.firstName[0] : 'ค'}
                           </div>
-                          <div>
-                            <div className="font-bold text-white text-base">
+                          <div className="min-w-0">
+                            <div className="font-bold text-white text-base truncate max-w-[170px]" title={teacher.name}>
                               {teacher.name}
                             </div>
-                            <div className="text-xs text-slate-400 font-mono">
+                            <div className="text-xs text-slate-400 font-mono truncate" title={`รหัส: ${teacher.employeeCode}`}>
                               รหัส: {teacher.employeeCode}
                             </div>
                           </div>
@@ -209,26 +211,26 @@ export const ViewStaffDirectory: React.FC = () => {
                       </td>
 
                       {/* Position & Standing */}
-                      <td className="px-5 py-4">
-                        <div className="font-medium text-sky-300 text-sm">
-                          {teacher.position}
+                      <td className="px-5 py-3.5">
+                        <div className="font-medium text-sky-300 text-sm truncate max-w-[180px]" title={teacher.position}>
+                          {displayPosition}
                         </div>
                         {teacher.academicStanding && teacher.academicStanding !== '-' && (
-                          <div className="text-xs text-slate-400 mt-0.5">
+                          <div className="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]" title={teacher.academicStanding}>
                             {teacher.academicStanding}
                           </div>
                         )}
                       </td>
 
                       {/* Department */}
-                      <td className="px-5 py-4">
-                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#101822] text-slate-300 border border-slate-700">
-                          {teacher.department}
+                      <td className="px-5 py-3.5">
+                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#101822] text-slate-300 border border-slate-700 truncate max-w-[180px]" title={teacher.department}>
+                          {displayDept}
                         </span>
                       </td>
 
                       {/* Citizen ID Shield */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3.5">
                         <CitizenIdShield
                           targetStaffId={teacher.id}
                           initialMaskedId={teacher.maskedCitizenId}
@@ -236,7 +238,7 @@ export const ViewStaffDirectory: React.FC = () => {
                       </td>
 
                       {/* Tenure */}
-                      <td className="px-4 py-4 text-center whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <span className="font-medium text-slate-200 text-xs sm:text-sm">
                           {tenure.years} ปี {tenure.months} เดือน
                         </span>
@@ -246,23 +248,23 @@ export const ViewStaffDirectory: React.FC = () => {
                       </td>
 
                       {/* Contact */}
-                      <td className="px-4 py-4 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-300 whitespace-nowrap">
                         {teacher.phone && teacher.phone !== '-' && (
                           <div className="flex items-center gap-1.5 font-mono">
                             <Phone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                            <span>{teacher.phone}</span>
+                            <span title={teacher.phone}>{teacher.phone}</span>
                           </div>
                         )}
                         {teacher.email && teacher.email !== '-' && (
                           <div className="flex items-center gap-1.5 text-slate-400 font-mono mt-0.5">
                             <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate max-w-[140px]">{teacher.email}</span>
+                            <span className="truncate max-w-[130px]" title={teacher.email}>{teacher.email}</span>
                           </div>
                         )}
                       </td>
 
                       {/* Action: Open Portfolio */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setSelectedTeacher(teacher)}
@@ -287,7 +289,7 @@ export const ViewStaffDirectory: React.FC = () => {
             return (
               <div
                 key={teacher.id}
-                className="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col justify-between"
+                className="bg-[#121822] p-5 rounded-2xl border border-slate-800/80 hover:border-sky-500/40 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start gap-3 mb-3">
@@ -295,14 +297,14 @@ export const ViewStaffDirectory: React.FC = () => {
                       {teacher.firstName ? teacher.firstName[0] : 'ค'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-base font-bold text-white truncate">
+                      <div className="text-base font-bold text-white truncate" title={teacher.name}>
                         {teacher.name}
                       </div>
-                      <div className="text-sm text-sky-300 truncate font-medium">
-                        {teacher.position}
+                      <div className="text-sm text-sky-300 truncate font-medium" title={teacher.position}>
+                        {teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}
                       </div>
-                      <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-xs font-semibold bg-[#101822] text-slate-300 border border-slate-800">
-                        {teacher.department}
+                      <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-xs font-semibold bg-[#101822] text-slate-300 border border-slate-800 truncate max-w-full" title={teacher.department}>
+                        {teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
                       </span>
                     </div>
                   </div>
