@@ -21,17 +21,13 @@ import Link from 'next/link';
 import {
   School,
   Calendar,
-  Clock,
   PlusCircle,
   ShieldCheck,
   Bell,
   LogOut,
   User,
   Settings,
-  CheckCircle2,
   X,
-  Printer,
-  FileCheck,
   LayoutDashboard,
   FileText,
   RotateCcw,
@@ -44,6 +40,7 @@ import {
   BadgeCheck,
   MessageSquare,
   Menu,
+  Scale,
 } from 'lucide-react';
 
 // Core Dashboard Components
@@ -51,7 +48,6 @@ import { PersonnelSummaryCards } from '@/components/dashboard/PersonnelSummaryCa
 import { LeaveProgressRings } from '@/components/dashboard/LeaveProgressRings';
 import { PromotionRadarCard } from '@/components/dashboard/PromotionRadarCard';
 import { PendingApprovalQueue } from '@/components/dashboard/PendingApprovalQueue';
-import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
 
 // View Components
@@ -90,6 +86,7 @@ export type ActiveView =
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [currentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
 
   // Real-time toast notifications hook
@@ -657,39 +654,39 @@ export default function DashboardPage() {
           {/* View 1: Main Executive Dashboard */}
           {activeView === 'dashboard' && (
             <div className="space-y-6">
-              {/* Banner Section */}
-              <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-gradient-to-r from-[#172332]/90 via-[#1b2838]/80 to-[#121c27]/90 relative overflow-hidden">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                  <div>
-                    <div className="flex items-center gap-2 text-sky-400 text-xs font-medium mb-1">
-                      <Calendar className="w-4 h-4 shrink-0" />
-                      <span>{currentDateThai}</span>
-                      <span className="text-slate-500">|</span>
-                      <Clock className="w-4 h-4 shrink-0" />
-                      <span>ปีงบประมาณ พ.ศ. {fiscalYearBE} (รอบการประเมินที่ 1)</span>
-                    </div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">
-                      ระบบสารสนเทศบริหารงานบุคคลและระเบียบราชการไทย
-                    </h1>
-                    <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                      ระบบคำนวณวันลา วันเกษียณ และเกณฑ์การประเมินเงินเดือนตาม พ.ร.บ. ข้าราชการครูฯ และระเบียบสำนักนายกรัฐมนตรี พ.ศ. 2555
-                    </p>
-                  </div>
-
-                  {/* PDPA Demonstration Card */}
-                  <div className="bg-[#101822]/80 border border-slate-700/80 p-3.5 rounded-xl self-start md:self-auto">
-                    <span className="text-[11px] text-slate-400 block mb-1 font-medium">
-                      เลขประจำตัวประชาชน (คุ้มครอง PDPA 100%):
-                    </span>
-                    <CitizenIdShield
-                      targetStaffId="c6e3d2a1-0000-0000-0000-000000000001"
-                      initialMaskedId="3-3014-*****-**-1"
-                    />
-                  </div>
+              {/* 1. Compact Executive Header Bar */}
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800/80">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-xl font-bold text-white tracking-tight">
+                    ภาพรวมการบริหารงานบุคคล
+                  </h1>
+                  <span className="px-2.5 py-0.5 text-xs font-medium bg-[#121822] text-slate-300 border border-slate-800/80 rounded-md">
+                    โรงเรียนชุมชนบ้านตะขบ · สพป.นม. 3
+                  </span>
                 </div>
-              </div>
 
-              {/* 1. Personnel Summary Cards */}
+                <div className="flex items-center gap-3 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5 bg-[#121822] px-3 py-1.5 rounded-lg border border-slate-800/80">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-mono tabular-nums text-slate-300">{currentDateThai}</span>
+                    <span className="text-slate-600">|</span>
+                    <span className="font-mono tabular-nums text-sky-400 font-medium">
+                      ปีงบฯ {fiscalYearBE} (รอบที่ 1)
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsLegalModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 transition-colors cursor-pointer"
+                  >
+                    <Scale className="w-3.5 h-3.5 text-sky-400" />
+                    <span>ระเบียบกฎหมาย</span>
+                  </button>
+                </div>
+              </header>
+
+              {/* 2. Minimalist Metric Strip */}
               <section aria-label="Personnel Summary Statistics">
                 <PersonnelSummaryCards
                   stats={{
@@ -701,10 +698,28 @@ export default function DashboardPage() {
                 />
               </section>
 
-              {/* 2. Grid Layout: Personal Quotas & Promotion Radar vs Management Approvals */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-5 space-y-6">
-                  {/* Circular Leave Progress Rings */}
+              {/* 3. Asymmetric Action-First Grid (8 Columns : 4 Columns) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Primary Column (8 Cols): คิวคำขอรออนุมัติ (Actionable Inbox) */}
+                <div className="lg:col-span-8">
+                  {currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin' ? (
+                    <PendingApprovalQueue
+                      currentUserId="director-001"
+                      onViewAllHistory={() => handleSelectView('tracking_requests')}
+                    />
+                  ) : (
+                    <div className="bg-[#121822] border border-slate-800/80 rounded-xl p-8 text-center">
+                      <ShieldCheck className="w-10 h-10 text-sky-400 mx-auto mb-2 opacity-80" />
+                      <h4 className="text-base font-semibold text-white">มุมมองบุคลากรทั่วไป (ครูผู้สอน)</h4>
+                      <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                        เข้าถึงคิวการอนุมัติคำขอลาสำหรับผู้บริหารและเจ้าหน้าที่บุคคล โปรดตรวจสอบสิทธิการเข้าถึงของท่าน
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Secondary Column (4 Cols): สิทธิวันลา & เรดาร์ ว15/2561 */}
+                <aside className="lg:col-span-4 space-y-6">
                   <LeaveProgressRings
                     sickLeaveUsed={0}
                     sickLeaveMax={60}
@@ -713,7 +728,6 @@ export default function DashboardPage() {
                     isFirstYear={false}
                   />
 
-                  {/* Smart Salary Promotion Radar (ก.ค.ศ. ว15/2561) */}
                   <PromotionRadarCard
                     fiscalYear={fiscalYearBE}
                     evalRound={1}
@@ -721,71 +735,70 @@ export default function DashboardPage() {
                     sickPersonalDays={0}
                     isEligible={true}
                   />
-                </div>
+                </aside>
+              </div>
 
-                <div className="lg:col-span-7 space-y-6">
-                  {/* Pending Approvals Table */}
-                  {currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin' ? (
-                    <PendingApprovalQueue currentUserId="director-001" />
-                  ) : (
-                    <div className="glass-panel p-6 rounded-xl border border-slate-800 text-center py-12">
-                      <ShieldCheck className="w-12 h-12 text-sky-400 mx-auto mb-3 opacity-80" />
-                      <h4 className="text-base font-semibold text-white">มุมมองบุคลากรทั่วไป (ครูผู้สอน)</h4>
-                      <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                        คุณกำลังอยู่ในมุมมองของครูผู้สอน หากต้องการเข้าถึงคิวการอนุมัติคำขอลา โปรดสลับบทบาทเป็น ผู้อำนวยการ หรือ เจ้าหน้าที่บุคคล ที่มุมขวาบน
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Legal References & Regulatory Note */}
-                  <div className="glass-panel p-5 rounded-xl border border-slate-800 bg-[#131b26]/60">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>การปฏิบัติตามมาตรฐานกฎหมายราชการไทย (Zero-GAS Engine)</span>
-                      </h4>
+              {/* 4. Progressive Disclosure: Legal Reference Modal */}
+              {isLegalModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                  <div className="bg-[#121822] border border-slate-800 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href="/leave/print/LEV-2569-001"
-                          target="_blank"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1b2838] hover:bg-[#2a475e] text-[11px] text-sky-300 border border-slate-700 transition-colors"
-                        >
-                          <Printer className="w-3.5 h-3.5 shrink-0" />
-                          <span>ตัวอย่างพิมพ์ A4</span>
-                        </Link>
-                        <Link
-                          href="/verify/leave/%E0%B8%A8%E0%B8%98%2004052.12%2F045"
-                          target="_blank"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1b2838] hover:bg-[#2a475e] text-[11px] text-emerald-300 border border-slate-700 transition-colors"
-                        >
-                          <FileCheck className="w-3.5 h-3.5 shrink-0" />
-                          <span>ตัวอย่างสแกน QR</span>
-                        </Link>
+                        <Scale className="w-4 h-4 text-sky-400" />
+                        <h3 className="text-base font-semibold text-white">
+                          ระเบียบและข้อกฎหมายอ้างอิงในระบบ
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsLegalModalOpen(false)}
+                        className="text-slate-400 hover:text-white p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                      <div className="p-3 rounded-lg bg-[#0b1016] border border-slate-800/80">
+                        <p className="font-semibold text-white mb-1">
+                          1. ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555
+                        </p>
+                        <p className="text-slate-400">
+                          ข้อ 17 คำนวณวันลาตามปีงบประมาณ (1 ต.ค. – 30 ก.ย.) ลาป่วยไม่เกิน 60 วันทำการ และลากิจส่วนตัวไม่เกิน 45 วันทำการ (บรรจุใหม่ปีแรกไม่เกิน 15 วันทำการ)
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-[#0b1016] border border-slate-800/80">
+                        <p className="font-semibold text-white mb-1">
+                          2. หลักเกณฑ์ ก.ค.ศ. ว15/2561 (การเลื่อนเงินเดือนข้าราชการครูฯ)
+                        </p>
+                        <p className="text-slate-400">
+                          ในรอบการประเมินครึ่งปี ต้องลาป่วยและลากิจส่วนตัวรวมกันไม่เกิน 6 ครั้ง และมีจำนวนวันลาไม่เกิน 23 วันทำการ
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-[#0b1016] border border-slate-800/80">
+                        <p className="font-semibold text-white mb-1">
+                          3. พ.ร.บ. บำเหน็จบำนาญข้าราชการ พ.ศ. 2494 (มาตรา 19) & PDPA
+                        </p>
+                        <p className="text-slate-400">
+                          ผู้เกิดวันที่ 1 ตุลาคม เกษียณในปีงบประมาณที่อายุครบ 60 ปีบริบูรณ์ และจัดเก็บเลขประจำตัวประชาชนแบบ Masking 13 หลักพร้อมบันทึก Audit Log ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล
+                        </p>
                       </div>
                     </div>
-                    <ul className="space-y-2 text-xs text-slate-400 font-sans">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>
-                          <strong>พ.ร.บ. บำเหน็จบำนาญข้าราชการ พ.ศ. 2494 มาตรา 19:</strong> ผู้เกิดวันที่ 1 ตุลาคม เกษียณในปีงบประมาณที่อายุครบ 60 ปีพอดี (ไม่มีการบวกเพิ่ม 1 ปี)
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>
-                          <strong>ระเบียบสำนักนายกรัฐมนตรีฯ พ.ศ. 2555 ข้อ 17:</strong> ข้าราชการบรรจุใหม่ในปีแรก มีสิทธิลากิจส่วนตัวได้ไม่เกิน 15 วันทำการ
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>
-                          <strong>มาตรฐาน PDPA & ก.ร.ม.:</strong> จัดเก็บเลขประจำตัวประชาชนแบบ Masking และบันทึก Audit Log ทุกครั้งที่มีการเปิดเผยข้อมูลจริง
-                        </span>
-                      </li>
-                    </ul>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsLegalModalOpen(false)}
+                        className="px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+                      >
+                        ปิดหน้าต่าง
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

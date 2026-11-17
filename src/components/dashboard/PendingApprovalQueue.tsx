@@ -2,12 +2,11 @@
 
 /**
  * ============================================================================
- * ManStat-Modern: Pending Approval Queue (Management & HR Administration)
+ * ManStat-Modern: Pending Approval Queue (Actionable Inbox)
  * ============================================================================
  * - For HR Admins and School Directors (Role-based access).
- * - Displays pending leave requests awaiting official signature/approval.
- * - Decompressed spacious Card-Row layout (solves table cramping/squeezing).
- * - Readable typography with Sarabun font standards.
+ * - Action-First Executive Inbox: Decide within 2 seconds.
+ * - Single-layer rows, crisp tabular-nums, zero decorative blur.
  * - 1-Click Approve / Reject with confirmation modal and remark input.
  * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
@@ -16,17 +15,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  ClipboardCheck,
   Check,
   X,
   Clock,
-  User,
-  Calendar,
-  Loader2,
-  CheckCircle2,
   Printer,
-  FileText,
-  UserCheck,
+  ChevronRight,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateLeaveStatus } from '@/lib/supabase/queries';
@@ -52,12 +47,14 @@ interface PendingApprovalQueueProps {
   requests?: PendingItemDisplay[];
   currentUserId?: string;
   onActionComplete?: () => void;
+  onViewAllHistory?: () => void;
 }
 
 export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
   requests: initialRequests = [],
   currentUserId = 'director-001',
   onActionComplete,
+  onViewAllHistory,
 }) => {
   const [requests, setRequests] = useState<PendingItemDisplay[]>(
     initialRequests.length > 0
@@ -69,8 +66,8 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
             position: 'ครูชำนาญการพิเศษ',
             employeeCode: 'TCH-005',
             leaveType: 'ลาป่วย',
-            startDate: '2026-11-18',
-            endDate: '2026-11-19',
+            startDate: '18 พ.ย. 2569',
+            endDate: '19 พ.ย. 2569',
             totalDays: 2,
             halfDay: 'full',
             reason: 'มีอาการไข้หวัดใหญ่และแพทย์สั่งให้พักรักษาตัว',
@@ -84,8 +81,8 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
             position: 'ครู คศ. 1',
             employeeCode: 'TCH-008',
             leaveType: 'ลากิจส่วนตัว',
-            startDate: '2026-11-20',
-            endDate: '2026-11-20',
+            startDate: '20 พ.ย. 2569',
+            endDate: '20 พ.ย. 2569',
             totalDays: 0.5,
             halfDay: 'morning',
             reason: 'ติดต่อธุรกรรมราชการ ณ สำนักงานที่ดินจังหวัดนครราชสีมา',
@@ -132,13 +129,11 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
         remarks.trim() || undefined
       );
 
-      // Remove the item from local list
       setRequests((prev) => prev.filter((r) => r.id !== activeModal.request.id));
       handleCloseModal();
       if (onActionComplete) onActionComplete();
     } catch (err) {
       console.error('[PendingApprovalQueue] Action error:', err);
-      // For demo / local mode when mock data id doesn't exist in remote DB
       setRequests((prev) => prev.filter((r) => r.id !== activeModal.request.id));
       handleCloseModal();
     } finally {
@@ -147,200 +142,172 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
   };
 
   return (
-    <div className="bg-[#111823]/90 p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-xl shadow-black/30">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 shrink-0">
-            <ClipboardCheck className="w-5 h-5 shrink-0" />
-          </div>
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">
-              คิวคำขอลาที่รอการอนุมัติ
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              ระบบตรวจสอบและลงนามอนุมัติคำขอลา สำหรับผู้บริหารและงานบุคคล
-            </p>
-          </div>
+    <section className="bg-[#121822] border border-slate-800/80 rounded-xl overflow-hidden">
+      {/* Actionable Header */}
+      <div className="px-5 py-4 border-b border-slate-800/80 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-base font-semibold text-white tracking-tight">
+            คำขอรออนุมัติ
+          </h2>
+          <span className="px-2 py-0.5 text-xs font-mono font-semibold tabular-nums rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            {requests.length} รายการ
+          </span>
         </div>
-        <span className="self-start sm:self-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-950/50 text-sky-300 text-xs sm:text-sm font-semibold border border-sky-500/30">
-          <Clock className="w-4 h-4 shrink-0 text-sky-400" />
-          <span>รอพิจารณา {requests.length} รายการ</span>
-        </span>
+
+        {onViewAllHistory && (
+          <button
+            type="button"
+            onClick={onViewAllHistory}
+            className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <span>ดูประวัติทั้งหมด</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Empty State */}
       {requests.length === 0 ? (
-        <div className="text-center py-12 px-4 bg-[#141d27]/40 rounded-xl border border-dashed border-slate-800">
-          <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3 opacity-90" />
-          <p className="text-base text-slate-200 font-semibold">ไม่มีรายการคำขอลาค้างพิจารณา</p>
-          <p className="text-sm text-slate-400 mt-1">คำขอทั้งหมดได้รับการดำเนินการอนุมัติเรียบร้อยแล้ว</p>
+        <div className="text-center py-12 px-4">
+          <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
+          <p className="text-sm text-slate-200 font-medium">ไม่มีรายการคำขอลาค้างพิจารณา</p>
+          <p className="text-xs text-slate-500 mt-0.5">คำขอทั้งหมดได้รับการดำเนินการเรียบร้อยแล้ว</p>
         </div>
       ) : (
-        /* Spacious Responsive Card List */
-        <div className="space-y-4">
-          {requests.map((item) => (
+        /* Single-Layer Row List */
+        <div className="divide-y divide-slate-800/60">
+          {requests.map((req) => (
             <div
-              key={item.id}
-              className="bg-[#141e2b]/80 hover:bg-[#182434] border border-slate-800 hover:border-sky-500/30 rounded-xl p-4 sm:p-5 transition-all shadow-md"
+              key={req.id}
+              className="p-4 sm:px-5 hover:bg-slate-800/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
-              {/* Row 1: Applicant & Leave Type */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 shrink-0">
-                    <User className="w-5 h-5 shrink-0" />
-                  </div>
-                  <div>
-                    <div className="text-base font-bold text-white">
-                      {item.staffName}
-                    </div>
-                    <div className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
-                      {item.position} <span className="text-slate-500 font-mono">({item.employeeCode})</span>
-                    </div>
-                  </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-sm font-semibold text-white">
+                    {req.staffName}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ({req.position})
+                  </span>
+                  <span className="px-2 py-0.5 text-[11px] font-medium rounded bg-slate-800 text-slate-300 border border-slate-700/60">
+                    {req.leaveType}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs sm:text-sm font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30">
-                    {item.leaveType}
+                {req.reason && (
+                  <p className="text-xs text-slate-400 line-clamp-1">
+                    สาเหตุ: <span className="text-slate-300">{req.reason}</span>
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 text-xs text-slate-400 pt-0.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="font-mono tabular-nums text-slate-300">
+                    {req.startDate} – {req.endDate}
                   </span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs sm:text-sm font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">
-                    {item.totalDays} วัน
-                    {item.halfDay && item.halfDay !== 'full' && (
-                      <span className="text-xs text-amber-200 ml-1 font-sans">
-                        ({item.halfDay === 'morning' ? 'ครึ่งวันเช้า' : 'ครึ่งวันบ่าย'})
+                  <span className="px-1.5 py-0.2 bg-sky-500/10 text-sky-400 font-mono font-semibold tabular-nums rounded text-[11px]">
+                    {req.totalDays} วันทำการ
+                    {req.halfDay && req.halfDay !== 'full' && (
+                      <span className="ml-1 text-[10px] text-amber-300 font-sans">
+                        ({req.halfDay === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'})
                       </span>
                     )}
                   </span>
                 </div>
               </div>
 
-              {/* Row 2: Details (Dates, Reason, Substitute) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-3.5 text-xs sm:text-sm text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>
-                    ช่วงวันที่: <strong className="text-slate-100 font-medium">{item.startDate} ถึง {item.endDate}</strong>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>
-                    ครูผู้สอนแทน: <strong className="text-slate-100 font-medium">{item.substituteTeacherName || 'ไม่ระบุ'}</strong>
-                  </span>
-                </div>
-
-                {item.reason && (
-                  <div className="md:col-span-2 flex items-start gap-2 pt-1 text-slate-300">
-                    <FileText className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                    <span>
-                      เหตุผลการลา: <span className="text-slate-200 italic">{item.reason}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Row 3: Action Buttons */}
-              <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+              {/* Action Buttons: Decision within 2 seconds */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <Link
-                  href={`/leave/print/${item.id}`}
+                  href={`/leave/print/${req.id}`}
                   target="_blank"
-                  title="เปิดดูและพิมพ์แบบฟอร์มใบลาราชการ A4 (พิมพ์หน้าเดียว)"
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1c293a] hover:bg-[#25374d] text-slate-200 hover:text-white border border-slate-700 text-xs sm:text-sm font-medium transition-all shadow-sm"
+                  title="พิมพ์แบบฟอร์ม A4"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
                 >
-                  <Printer className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>พิมพ์แบบคำขอลา (A4)</span>
+                  <Printer className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span>พิมพ์ A4</span>
                 </Link>
 
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAction(item, 'reject')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-950/50 hover:bg-rose-900/70 text-rose-200 border border-rose-800/60 text-xs sm:text-sm font-semibold transition-all shadow-sm"
-                  >
-                    <X className="w-4 h-4 shrink-0 text-rose-400" />
-                    <span>ไม่อนุมัติ</span>
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAction(req, 'approve')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+                >
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>อนุมัติ</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAction(item, 'approve')}
-                    className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-md transition-all"
-                  >
-                    <Check className="w-4 h-4 shrink-0" />
-                    <span>อนุมัติคำขอ</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAction(req, 'reject')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/30 hover:bg-rose-950/60 text-rose-400 border border-rose-800/50 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5 shrink-0" />
+                  <span>ไม่อนุมัติ</span>
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Approve / Reject Modal Dialog */}
+      {/* Confirmation Modal Dialog */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg bg-[#171a21] border border-slate-700 rounded-2xl shadow-2xl p-6 text-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-700 mb-4">
-              <div className="flex items-center gap-2.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg bg-[#121822] border border-slate-800 rounded-xl shadow-2xl p-6 text-slate-100 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
                 {activeModal.action === 'approve' ? (
-                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    <Check className="w-5 h-5 shrink-0" />
+                  <div className="p-1.5 rounded bg-emerald-500/10 text-emerald-400">
+                    <Check className="w-4 h-4 shrink-0" />
                   </div>
                 ) : (
-                  <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                    <X className="w-5 h-5 shrink-0" />
+                  <div className="p-1.5 rounded bg-rose-500/10 text-rose-400">
+                    <X className="w-4 h-4 shrink-0" />
                   </div>
                 )}
-                <h4 className="text-base sm:text-lg font-bold text-white">
+                <h4 className="text-base font-semibold text-white">
                   ยืนยันการ{activeModal.action === 'approve' ? 'อนุมัติคำขอลา' : 'ไม่อนุมัติคำขอลา'}
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-2.5 mb-4 text-xs sm:text-sm">
+            <div className="bg-[#0b1016] p-4 rounded-lg border border-slate-800/80 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400">ผู้ขอลา:</span>
-                <span className="text-white font-semibold">{activeModal.request.staffName} ({activeModal.request.position})</span>
+                <span className="text-white font-medium">{activeModal.request.staffName} ({activeModal.request.position})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">ประเภทการลา:</span>
-                <span className="text-sky-300 font-semibold">{activeModal.request.leaveType}</span>
+                <span className="text-sky-300 font-medium">{activeModal.request.leaveType}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">ช่วงวันที่:</span>
-                <span className="text-slate-200">{activeModal.request.startDate} ถึง {activeModal.request.endDate}</span>
+                <span className="text-slate-200 font-mono tabular-nums">{activeModal.request.startDate} – {activeModal.request.endDate}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">จำนวนวันลา:</span>
-                <span className="text-amber-300 font-mono font-bold">{activeModal.request.totalDays} วัน</span>
+                <span className="text-emerald-400 font-mono font-bold tabular-nums">{activeModal.request.totalDays} วันทำการ</span>
               </div>
-              {activeModal.request.reason && (
-                <div className="pt-2 border-t border-slate-800">
-                  <span className="text-slate-400 block mb-1">เหตุผลการลา:</span>
-                  <span className="text-slate-200 italic">{activeModal.request.reason}</span>
-                </div>
-              )}
             </div>
 
-            <div className="mb-5">
-              <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
-                {activeModal.action === 'approve' ? 'ข้อคิดเห็น / คำสั่งการเพิ่มเติม (ถ้ามี):' : 'เหตุผลที่ไม่อนุมัติ (ระบุเพื่อแจ้งผู้ขอลา):'}
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                {activeModal.action === 'approve' ? 'ข้อคิดเห็นเพิ่มเติม (ถ้ามี):' : 'เหตุผลที่ไม่อนุมัติ (ระบุเพื่อแจ้งผู้ขอลา):'}
               </label>
               <textarea
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={3}
-                placeholder={activeModal.action === 'approve' ? 'ระบุข้อคิดเห็นหรือคำสั่งการตามระเบียบ...' : 'ระบุเหตุผลตามระเบียบราชการที่ไม่อนุมัติ...'}
-                className="w-full bg-[#101822] border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                placeholder={activeModal.action === 'approve' ? 'ระบุข้อคิดเห็นหรือคำสั่งการ...' : 'ระบุเหตุผลตามระเบียบราชการ...'}
+                className="w-full bg-[#0b1016] border border-slate-700/80 rounded-lg p-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
               />
             </div>
 
@@ -349,7 +316,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 type="button"
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
               >
                 ยกเลิก
               </button>
@@ -357,19 +324,19 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 type="button"
                 onClick={handleConfirmAction}
                 disabled={isSubmitting}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold transition-colors ${
                   activeModal.action === 'approve'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-950/30'
-                    : 'bg-rose-700 hover:bg-rose-600 shadow-lg shadow-rose-950/30'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-sm'
+                    : 'bg-rose-700 hover:bg-rose-600 shadow-sm'
                 }`}
               >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>ยืนยันการ{activeModal.action === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}</span>
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

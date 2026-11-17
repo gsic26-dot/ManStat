@@ -2,18 +2,15 @@
 
 /**
  * ============================================================================
- * ManStat-Modern: Personnel Summary Cards (School-wide Status Header)
+ * ManStat-Modern: Personnel Summary Cards (Minimalist Metric Strip)
  * ============================================================================
- * - Total Staff (จำนวนบุคลากรทั้งหมด)
- * - On-Duty (มาปฏิบัติหน้าที่)
- * - On-Leave Today (ลางานวันนี้)
- * - Retirement / License Expiring Soon (เกษียณ/ใบอนุญาตใกล้หมดอายุ)
- * - Zero emojis, Lucide SVG icons with strict 8px gap.
+ * - Sleek 4-column horizontal strip
+ * - Single border-slate-800/80 container, crisp font-mono tabular-nums
+ * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
  */
 
 import React from 'react';
-import { Users, UserCheck, CalendarOff, AlertTriangle } from 'lucide-react';
 
 export interface PersonnelSummaryStats {
   totalStaff: number;
@@ -32,84 +29,42 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
     totalStaff: 15,
     onDutyCount: 14,
     onLeaveCount: 1,
-    expiringOrRetiringCount: 1,
+    expiringOrRetiringCount: 2,
   },
   isLoading = false,
 }) => {
-  const cards = [
-    {
-      title: 'บุคลากรทั้งหมด',
-      value: stats.totalStaff,
-      unit: 'คน',
-      subtitle: 'ข้าราชการครูและบุคลากร',
-      icon: Users,
-      iconColor: 'text-sky-400',
-      borderColor: 'hover:border-sky-500/40',
-      bgColor: 'bg-sky-500/10',
-    },
-    {
-      title: 'มาปฏิบัติหน้าที่',
-      value: stats.onDutyCount,
-      unit: 'คน',
-      subtitle: 'พร้อมปฏิบัติการสอน/งานราชการ',
-      icon: UserCheck,
-      iconColor: 'text-emerald-400',
-      borderColor: 'hover:border-emerald-500/40',
-      bgColor: 'bg-emerald-500/10',
-    },
-    {
-      title: 'ลางานวันนี้',
-      value: stats.onLeaveCount,
-      unit: 'คน',
-      subtitle: 'มีใบลาถูกต้องตามระเบียบ',
-      icon: CalendarOff,
-      iconColor: 'text-amber-400',
-      borderColor: 'hover:border-amber-500/40',
-      bgColor: 'bg-amber-500/10',
-    },
-    {
-      title: 'เกษียณ / ใบอนุญาตใกล้หมดอายุ',
-      value: stats.expiringOrRetiringCount,
-      unit: 'คน',
-      subtitle: 'ต้องดำเนินการต่ออายุใน 90 วัน',
-      icon: AlertTriangle,
-      iconColor: 'text-rose-400',
-      borderColor: 'hover:border-rose-500/40',
-      bgColor: 'bg-rose-500/10',
-    },
+  const items = [
+    { label: 'บุคลากรทั้งหมด', value: stats.totalStaff, unit: 'คน', dotColor: 'bg-sky-500' },
+    { label: 'ปฏิบัติหน้าที่วันนี้', value: stats.onDutyCount, unit: 'คน', dotColor: 'bg-emerald-500' },
+    { label: 'อยู่ระหว่างการลา', value: stats.onLeaveCount, unit: 'คน', dotColor: 'bg-amber-500' },
+    { label: 'เกษียณอายุราชการปีนี้', value: stats.expiringOrRetiringCount, unit: 'คน', dotColor: 'bg-rose-500' },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card, idx) => {
-        const IconComponent = card.icon;
-        return (
-          <div
-            key={idx}
-            className={`bg-[#111823]/80 p-5 rounded-2xl transition-all duration-200 border border-slate-800/80 hover:shadow-lg hover:shadow-black/20 ${card.borderColor}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-slate-300">{card.title}</span>
-              <div className={`p-2.5 rounded-xl ${card.bgColor} ${card.iconColor}`}>
-                <IconComponent className="w-5 h-5 shrink-0" />
-              </div>
-            </div>
-
-            <div className="flex items-baseline gap-2 mb-1">
-              {isLoading ? (
-                <div className="h-8 w-16 bg-slate-800 animate-pulse rounded" />
-              ) : (
-                <span className="text-3xl font-bold tracking-tight text-white font-mono">
-                  {card.value}
-                </span>
-              )}
-              <span className="text-sm text-slate-400">{card.unit}</span>
-            </div>
-
-            <p className="text-xs text-slate-400 truncate">{card.subtitle}</p>
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {items.map((item, idx) => (
+        <div
+          key={idx}
+          className="bg-[#121822] border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">
+              {item.label}
+            </span>
+            <span className={`w-2 h-2 rounded-full ${item.dotColor}`} />
           </div>
-        );
-      })}
-    </div>
+          <div className="mt-3 flex items-baseline gap-1.5">
+            {isLoading ? (
+              <div className="h-8 w-14 bg-slate-800 animate-pulse rounded" />
+            ) : (
+              <span className="text-2xl font-mono font-bold tabular-nums text-white">
+                {item.value}
+              </span>
+            )}
+            <span className="text-xs text-slate-500">{item.unit}</span>
+          </div>
+        </div>
+      ))}
+    </section>
   );
 };
