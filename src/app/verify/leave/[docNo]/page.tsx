@@ -146,23 +146,23 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
               </span>
             </div>
 
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-800">
-              <span className="text-slate-400 flex items-center gap-1.5">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-800 gap-2">
+              <span className="text-slate-400 flex items-center gap-1.5 shrink-0">
                 <School className="w-4 h-4 text-sky-400 shrink-0" />
                 <span>หน่วยงานต้นสังกัด:</span>
               </span>
-              <span className="font-medium text-slate-200">
+              <span className="font-medium text-slate-200 truncate max-w-[240px]" title={verifiedRecord.schoolName}>
                 {verifiedRecord.schoolName}
               </span>
             </div>
 
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-800">
-              <span className="text-slate-400 flex items-center gap-1.5">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-800 gap-2">
+              <span className="text-slate-400 flex items-center gap-1.5 shrink-0">
                 <User className="w-4 h-4 text-sky-400 shrink-0" />
                 <span>ผู้ขอลา (PDPA Masked):</span>
               </span>
-              <span className="font-medium text-slate-200">
-                {verifiedRecord.staffMaskedName} ({verifiedRecord.position})
+              <span className="font-medium text-slate-200 truncate max-w-[240px]" title={`${verifiedRecord.staffMaskedName} (${verifiedRecord.position})`}>
+                {verifiedRecord.staffMaskedName} ({verifiedRecord.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')})
               </span>
             </div>
 
@@ -194,9 +194,9 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
               </span>
             </div>
 
-            <div className="flex justify-between items-center py-1.5">
-              <span className="text-slate-400">ผู้อนุมัติคำสั่ง:</span>
-              <span className="text-slate-200 font-medium">
+            <div className="flex justify-between items-center py-1.5 gap-2">
+              <span className="text-slate-400 shrink-0">ผู้อนุมัติคำสั่ง:</span>
+              <span className="text-slate-200 font-medium truncate max-w-[240px]" title={verifiedRecord.approverName}>
                 {verifiedRecord.approverName}
               </span>
             </div>

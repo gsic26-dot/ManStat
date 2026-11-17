@@ -39,10 +39,11 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
+            title="รายการคำร้องขอลา"
           >
             <FileText className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>รายการคำร้องขอลา</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <span className="truncate">รายการคำร้องขอลา</span>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
               2
             </span>
           </button>
@@ -55,9 +56,10 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
+            title="ติดตามสถานะคำร้อง"
           >
             <Clock className="w-4 h-4 shrink-0 text-sky-400" />
-            <span>ติดตามสถานะคำร้อง</span>
+            <span className="truncate">ติดตามสถานะคำร้อง</span>
           </button>
         </div>
 

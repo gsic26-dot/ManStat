@@ -282,8 +282,8 @@ export function ViewRetroLeave() {
             {selectedTeacher && (
               <div className="space-y-3 text-xs">
                 <div className="p-3 bg-[#151d28] rounded-xl border border-slate-800">
-                  <div className="font-bold text-white text-sm">{selectedTeacher.name}</div>
-                  <div className="text-slate-400 text-[11px] mt-0.5">{selectedTeacher.position}</div>
+                  <div className="font-bold text-white text-sm truncate" title={selectedTeacher.name}>{selectedTeacher.name}</div>
+                  <div className="text-slate-400 text-[11px] mt-0.5 truncate" title={selectedTeacher.position}>{selectedTeacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-slate-300">

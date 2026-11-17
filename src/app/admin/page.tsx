@@ -616,46 +616,48 @@ export default function AdminPage() {
             </div>
 
             <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                     <tr>
-                      <th className="px-4 py-3">รหัส / ชื่อ-สกุล</th>
-                      <th className="px-4 py-3">ตำแหน่ง / วิทยฐานะ</th>
-                      <th className="px-4 py-3">วุฒิลูกเสือ & ใบอนุญาต</th>
-                      <th className="px-4 py-3 text-center">ภาระงาน (สอน/TA)</th>
-                      <th className="px-4 py-3 text-center">สิทธิ์การใช้งาน</th>
-                      <th className="px-4 py-3 text-center">วันลาสะสม (ป/ก/พ)</th>
-                      <th className="px-4 py-3 text-center">จัดการ</th>
+                      <th className="px-4 py-3 min-w-[190px]">รหัส / ชื่อ-สกุล</th>
+                      <th className="px-4 py-3 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
+                      <th className="px-4 py-3 min-w-[190px]">วุฒิลูกเสือ & ใบอนุญาต</th>
+                      <th className="px-4 py-3 text-center min-w-[125px]">ภาระงาน (สอน/TA)</th>
+                      <th className="px-4 py-3 text-center min-w-[110px]">สิทธิ์การใช้งาน</th>
+                      <th className="px-4 py-3 text-center min-w-[125px]">วันลาสะสม (ป/ก/พ)</th>
+                      <th className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-sans">
-                    {filteredTeachers.map((t) => (
-                      <tr key={t.id} className="hover:bg-[#162231]/50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-white">{t.name}</div>
-                          <div className="text-[11px] font-mono text-sky-400 mt-0.5">
-                            {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div>{t.position}</div>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col gap-1 text-[11px]">
-                            <span className="inline-flex items-center gap-1 text-amber-300">
-                              <Compass className="w-3 h-3 text-amber-400 shrink-0" />
-                              <span>{t.highestScout || 'ไม่มีวุฒิลูกเสือ'}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-emerald-300">
-                              <Award className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span>{t.licenses && t.licenses.length > 0 ? t.licenses[0].type.split(' ')[0] : 'ยังไม่มีข้อมูลใบอนุญาต'}</span>
-                            </span>
-                          </div>
-                        </td>
+                    {filteredTeachers.map((t) => {
+                      const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                      return (
+                        <tr key={t.id} className="hover:bg-[#162231]/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-white truncate max-w-[170px]" title={t.name}>{t.name}</div>
+                            <div className="text-[11px] font-mono text-sky-400 mt-0.5 truncate max-w-[170px]" title={`${t.employeeCode} ${t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}`}>
+                              {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="truncate max-w-[170px]" title={t.position}>{posDisplay}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[170px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
+                              {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-1 text-[11px]">
+                              <span className="inline-flex items-center gap-1 text-amber-300 truncate max-w-[170px]" title={t.highestScout || 'ไม่มีวุฒิลูกเสือ'}>
+                                <Compass className="w-3 h-3 text-amber-400 shrink-0" />
+                                <span className="truncate">{t.highestScout || 'ไม่มีวุฒิลูกเสือ'}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-emerald-300 truncate max-w-[170px]" title={t.licenses && t.licenses.length > 0 ? t.licenses[0].type : 'ยังไม่มีข้อมูลใบอนุญาต'}>
+                                <Award className="w-3 h-3 text-emerald-400 shrink-0" />
+                                <span className="truncate">{t.licenses && t.licenses.length > 0 ? t.licenses[0].type.split(' ')[0] : 'ยังไม่มีข้อมูลใบอนุญาต'}</span>
+                              </span>
+                            </div>
+                          </td>
                         <td className="px-4 py-3 text-center font-mono">
                           <span className="text-sky-300 font-bold">{t.teachingHours ?? 18}</span>
                           <span className="text-slate-500"> / </span>
@@ -703,8 +705,9 @@ export default function AdminPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
+                    );
+                  })}
+                </tbody>
                 </table>
               </div>
             </div>
@@ -744,17 +747,17 @@ export default function AdminPage() {
             </div>
 
             <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-sm text-slate-200">
                   <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-xs">
                     <tr>
-                      <th className="px-4 py-3 text-center">ลำดับ</th>
-                      <th className="px-4 py-3">ชื่อ - สกุล</th>
-                      <th className="px-4 py-3">ตำแหน่งในคณะกรรมการ</th>
-                      <th className="px-4 py-3">สังกัด / องค์กร</th>
-                      <th className="px-4 py-3 text-center">วาระ</th>
-                      <th className="px-4 py-3 text-center">สถานะ</th>
-                      <th className="px-4 py-3 text-center">จัดการ</th>
+                      <th className="px-4 py-3 text-center min-w-[56px] shrink-0">ลำดับ</th>
+                      <th className="px-4 py-3 min-w-[200px]">ชื่อ - สกุล</th>
+                      <th className="px-4 py-3 min-w-[190px]">ตำแหน่งในคณะกรรมการ</th>
+                      <th className="px-4 py-3 min-w-[210px]">สังกัด / องค์กร</th>
+                      <th className="px-4 py-3 text-center min-w-[110px]">วาระ</th>
+                      <th className="px-4 py-3 text-center min-w-[110px]">สถานะ</th>
+                      <th className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -762,22 +765,24 @@ export default function AdminPage() {
                       const isDirector = b.position === 'DIRECTOR_SEC';
                       return (
                         <tr key={b.id} className="hover:bg-[#162231]/50 transition-colors">
-                          <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold">{idx + 1}</td>
-                          <td className="px-4 py-3.5 font-bold text-white text-base">
-                            {b.fullName}
+                          <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold whitespace-nowrap">{idx + 1}</td>
+                          <td className="px-4 py-3.5">
+                            <div className="font-bold text-white text-base truncate max-w-[180px]" title={b.fullName}>{b.fullName}</div>
                             {isDirector && (
-                              <span className="block text-xs text-sky-400 font-normal mt-0.5">
-                                ผู้อำนวยการสถานศึกษา
+                              <span className="block text-xs text-sky-400 font-normal mt-0.5 truncate max-w-[180px]" title="ผอ.สถานศึกษา">
+                                ผอ.สถานศึกษา
                               </span>
                             )}
                           </td>
                           <td className="px-4 py-3.5">
-                            <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 truncate max-w-[170px]" title={b.positionTitle}>
                               {b.positionTitle}
                             </span>
                           </td>
-                          <td className="px-4 py-3.5 text-slate-300 text-xs sm:text-sm">{b.organization}</td>
-                          <td className="px-4 py-3.5 text-center font-mono">
+                          <td className="px-4 py-3.5 text-slate-300 text-xs sm:text-sm">
+                            <div className="truncate max-w-[190px]" title={b.organization}>{b.organization}</div>
+                          </td>
+                          <td className="px-4 py-3.5 text-center font-mono whitespace-nowrap">
                             {isDirector ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
                                 โดยตำแหน่ง
@@ -786,7 +791,7 @@ export default function AdminPage() {
                               <span className="text-xs text-slate-300">วาระที่ {b.termNumber}</span>
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-center">
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                               <span>{b.status}</span>
@@ -1216,16 +1221,16 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold">
                   <tr>
-                    <th scope="col" className="px-4 py-3 rounded-l-lg">วันและเวลา</th>
-                    <th scope="col" className="px-4 py-3">ประเภทกิจกรรม</th>
-                    <th scope="col" className="px-4 py-3">ผู้ดำเนินการ</th>
-                    <th scope="col" className="px-4 py-3">เป้าหมายข้อมูล</th>
-                    <th scope="col" className="px-4 py-3">IP Address</th>
-                    <th scope="col" className="px-4 py-3 rounded-r-lg">รายละเอียด</th>
+                    <th scope="col" className="px-4 py-3 rounded-l-lg min-w-[170px]">วันและเวลา</th>
+                    <th scope="col" className="px-4 py-3 min-w-[160px]">ประเภทกิจกรรม</th>
+                    <th scope="col" className="px-4 py-3 min-w-[190px]">ผู้ดำเนินการ</th>
+                    <th scope="col" className="px-4 py-3 min-w-[170px]">เป้าหมายข้อมูล</th>
+                    <th scope="col" className="px-4 py-3 min-w-[130px]">IP Address</th>
+                    <th scope="col" className="px-4 py-3 rounded-r-lg min-w-[220px]">รายละเอียด</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -1234,17 +1239,27 @@ export default function AdminPage() {
                       <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">
                         {new Date(log.timestamp).toLocaleString('th-TH')}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
                           {log.action}
                         </span>
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-200">
-                        {log.actorName} ({log.actorRole})
+                        <div className="truncate max-w-[180px]" title={`${log.actorName} (${log.actorRole})`}>
+                          {log.actorName} ({log.actorRole})
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{log.targetName}</td>
-                      <td className="px-4 py-3 font-mono text-slate-400">{log.ipAddress}</td>
-                      <td className="px-4 py-3 text-slate-400">{log.details}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <div className="truncate max-w-[160px]" title={log.targetName}>
+                          {log.targetName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">{log.ipAddress}</td>
+                      <td className="px-4 py-3 text-slate-400">
+                        <div className="truncate max-w-[210px]" title={log.details}>
+                          {log.details}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

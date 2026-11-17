@@ -47,11 +47,11 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
           key={idx}
           className="bg-[#121822] border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <span className="text-xs font-medium text-slate-400 truncate" title={item.label}>
               {item.label}
             </span>
-            <span className={`w-2 h-2 rounded-full ${item.dotColor}`} />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${item.dotColor}`} />
           </div>
           <div className="mt-3 flex items-baseline gap-1.5">
             {isLoading ? (

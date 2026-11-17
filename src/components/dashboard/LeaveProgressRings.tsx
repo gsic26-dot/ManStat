@@ -34,11 +34,11 @@ export const LeaveProgressRings: React.FC<LeaveProgressRingsProps> = ({
 
   return (
     <div className="bg-[#121822] border border-slate-800/80 rounded-xl p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <h2 className="text-sm font-semibold text-white truncate" title="สิทธิวันลาของฉัน (ปีงบฯ 2570)">
           สิทธิวันลาของฉัน (ปีงบฯ 2570)
         </h2>
-        <span className="text-[11px] font-mono text-slate-400">
+        <span className="text-[11px] font-mono text-slate-400 shrink-0">
           ระเบียบฯ 2555
         </span>
       </div>

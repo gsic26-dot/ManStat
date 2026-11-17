@@ -154,19 +154,19 @@ export default function DashboardPage() {
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
               <div
-                className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm"
+                className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm shrink-0"
                 title="ระดับสิทธิ์: Superuser"
               >
                 S
               </div>
-              <div className="hidden lg:block text-left">
+              <div className="hidden lg:block text-left min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-white">Superuser</span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <span className="text-xs font-semibold text-white truncate max-w-[100px]" title="Superuser">Superuser</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
                     ROOT
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[10px] text-slate-400 truncate max-w-[110px]" title="นายธีรศักดิ์ มโนธรรม">
                   นายธีรศักดิ์ มโนธรรม
                 </div>
               </div>
@@ -203,17 +203,18 @@ export default function DashboardPage() {
                       ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                   }`}
+                  title="สถิติและภาพรวม"
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <LayoutDashboard className="w-4 h-4 shrink-0 text-sky-400" />
-                    <span>สถิติและภาพรวม</span>
+                    <span className="truncate">สถิติและภาพรวม</span>
                   </div>
                 </button>
               </div>
 
               {/* หมวด 2: งานวันลา (Leave Services) */}
               <div>
-                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate" title="หมวด 2: งานวันลา">
                   หมวด 2: งานวันลา
                 </div>
                 <div className="space-y-0.5">
@@ -225,10 +226,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ยื่นคำร้องขอลา"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <PlusCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>ยื่นคำร้องขอลา</span>
+                      <span className="truncate">ยื่นคำร้องขอลา</span>
                     </div>
                   </button>
 
@@ -240,12 +242,13 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ติดตามและประวัติการลา"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <FileText className="w-4 h-4 shrink-0 text-amber-400" />
-                      <span>ติดตามและประวัติการลา</span>
+                      <span className="truncate">ติดตามและประวัติการลา</span>
                     </div>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                       2
                     </span>
                   </button>
@@ -258,10 +261,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="บันทึกการลาย้อนหลัง"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <RotateCcw className="w-4 h-4 shrink-0 text-cyan-400" />
-                      <span>บันทึกการลาย้อนหลัง</span>
+                      <span className="truncate">บันทึกการลาย้อนหลัง</span>
                     </div>
                   </button>
 
@@ -273,10 +277,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="รายงานและสถิติวันลา"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <TrendingUp className="w-4 h-4 shrink-0 text-sky-400" />
-                      <span>รายงานและสถิติวันลา</span>
+                      <span className="truncate">รายงานและสถิติวันลา</span>
                     </div>
                   </button>
                 </div>
@@ -284,7 +289,7 @@ export default function DashboardPage() {
 
               {/* หมวด 3: งานทะเบียนประวัติ (Personnel Registries) */}
               <div>
-                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate" title="หมวด 3: งานทะเบียนประวัติ">
                   หมวด 3: งานทะเบียนประวัติ
                 </div>
                 <div className="space-y-0.5">
@@ -296,10 +301,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ทะเบียนประวัติบุคลากร"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <User className="w-4 h-4 shrink-0 text-sky-400" />
-                      <span>ทะเบียนประวัติบุคลากร</span>
+                      <span className="truncate">ทะเบียนประวัติบุคลากร</span>
                     </div>
                   </button>
 
@@ -311,10 +317,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ทะเบียนวิทยฐานะ"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <GraduationCap className="w-4 h-4 shrink-0 text-cyan-400" />
-                      <span>ทะเบียนวิทยฐานะ</span>
+                      <span className="truncate">ทะเบียนวิทยฐานะ</span>
                     </div>
                   </button>
 
@@ -326,10 +333,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ทะเบียนใบอนุญาตฯ"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>ทะเบียนใบอนุญาตฯ</span>
+                      <span className="truncate">ทะเบียนใบอนุญาตฯ</span>
                     </div>
                   </button>
 
@@ -341,10 +349,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ทะเบียนวุฒิลูกเสือ"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <Award className="w-4 h-4 shrink-0 text-amber-400" />
-                      <span>ทะเบียนวุฒิลูกเสือ</span>
+                      <span className="truncate">ทะเบียนวุฒิลูกเสือ</span>
                     </div>
                   </button>
                 </div>
@@ -352,7 +361,7 @@ export default function DashboardPage() {
 
               {/* หมวด 4: ข้อมูลสถานศึกษา (School Governance) */}
               <div>
-                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate" title="หมวด 4: ข้อมูลสถานศึกษา">
                   หมวด 4: ข้อมูลสถานศึกษา
                 </div>
                 <div className="space-y-0.5">
@@ -364,10 +373,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="คณะกรรมการสถานศึกษา"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <Users className="w-4 h-4 shrink-0 text-amber-400" />
-                      <span>คณะกรรมการสถานศึกษา</span>
+                      <span className="truncate">คณะกรรมการสถานศึกษา</span>
                     </div>
                   </button>
 
@@ -379,10 +389,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="โครงสร้างองค์กร"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <Network className="w-4 h-4 shrink-0 text-cyan-400" />
-                      <span>โครงสร้างองค์กร</span>
+                      <span className="truncate">โครงสร้างองค์กร</span>
                     </div>
                   </button>
 
@@ -394,10 +405,11 @@ export default function DashboardPage() {
                         ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                     }`}
+                    title="ตารางสอนและภาระงาน"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <Briefcase className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>ตารางสอนและภาระงาน</span>
+                      <span className="truncate">ตารางสอนและภาระงาน</span>
                     </div>
                   </button>
                 </div>
@@ -414,10 +426,11 @@ export default function DashboardPage() {
                     ? 'bg-slate-800/70 text-white font-medium'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
+                title="แจ้งปรับปรุงระบบ"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <MessageSquare className="w-3.5 h-3.5 shrink-0 text-sky-400" />
-                  <span>แจ้งปรับปรุงระบบ</span>
+                  <span className="truncate">แจ้งปรับปรุงระบบ</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono">v2.0</span>
               </button>
@@ -467,7 +480,7 @@ export default function DashboardPage() {
 
                 {/* หมวด 2 */}
                 <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2 truncate" title="หมวด 2: งานวันลา">
                     หมวด 2: งานวันลา
                   </span>
                   <div className="space-y-1">
@@ -479,9 +492,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ยื่นคำร้องขอลา"
                     >
-                      <PlusCircle className="w-4 h-4 text-emerald-400" />
-                      <span>ยื่นคำร้องขอลา</span>
+                      <PlusCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate">ยื่นคำร้องขอลา</span>
                     </button>
                     <button
                       type="button"
@@ -491,12 +505,13 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ติดตามและประวัติการลา"
                     >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-amber-400" />
-                        <span>ติดตามและประวัติการลา</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="truncate">ติดตามและประวัติการลา</span>
                       </div>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 shrink-0">
                         2
                       </span>
                     </button>
@@ -508,9 +523,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="บันทึกการลาย้อนหลัง"
                     >
-                      <RotateCcw className="w-4 h-4 text-cyan-400" />
-                      <span>บันทึกการลาย้อนหลัง</span>
+                      <RotateCcw className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span className="truncate">บันทึกการลาย้อนหลัง</span>
                     </button>
                     <button
                       type="button"
@@ -520,16 +536,17 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="รายงานและสถิติวันลา"
                     >
-                      <TrendingUp className="w-4 h-4 text-sky-400" />
-                      <span>รายงานและสถิติวันลา</span>
+                      <TrendingUp className="w-4 h-4 text-sky-400 shrink-0" />
+                      <span className="truncate">รายงานและสถิติวันลา</span>
                     </button>
                   </div>
                 </div>
 
                 {/* หมวด 3 */}
                 <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2 truncate" title="หมวด 3: งานทะเบียนประวัติ">
                     หมวด 3: งานทะเบียนประวัติ
                   </span>
                   <div className="space-y-1">
@@ -541,9 +558,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ทะเบียนประวัติบุคลากร"
                     >
-                      <User className="w-4 h-4 text-sky-400" />
-                      <span>ทะเบียนประวัติบุคลากร</span>
+                      <User className="w-4 h-4 text-sky-400 shrink-0" />
+                      <span className="truncate">ทะเบียนประวัติบุคลากร</span>
                     </button>
                     <button
                       type="button"
@@ -553,9 +571,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ทะเบียนวิทยฐานะ"
                     >
-                      <GraduationCap className="w-4 h-4 text-cyan-400" />
-                      <span>ทะเบียนวิทยฐานะ</span>
+                      <GraduationCap className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span className="truncate">ทะเบียนวิทยฐานะ</span>
                     </button>
                     <button
                       type="button"
@@ -565,9 +584,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ทะเบียนใบอนุญาตฯ"
                     >
-                      <BadgeCheck className="w-4 h-4 text-emerald-400" />
-                      <span>ทะเบียนใบอนุญาตฯ</span>
+                      <BadgeCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate">ทะเบียนใบอนุญาตฯ</span>
                     </button>
                     <button
                       type="button"
@@ -577,16 +597,17 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ทะเบียนวุฒิลูกเสือ"
                     >
-                      <Award className="w-4 h-4 text-amber-400" />
-                      <span>ทะเบียนวุฒิลูกเสือ</span>
+                      <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">ทะเบียนวุฒิลูกเสือ</span>
                     </button>
                   </div>
                 </div>
 
                 {/* หมวด 4 */}
                 <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2 truncate" title="หมวด 4: ข้อมูลสถานศึกษา">
                     หมวด 4: ข้อมูลสถานศึกษา
                   </span>
                   <div className="space-y-1">
@@ -598,9 +619,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="คณะกรรมการสถานศึกษา"
                     >
-                      <Users className="w-4 h-4 text-amber-400" />
-                      <span>คณะกรรมการสถานศึกษา</span>
+                      <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">คณะกรรมการสถานศึกษา</span>
                     </button>
                     <button
                       type="button"
@@ -610,9 +632,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="โครงสร้างองค์กร"
                     >
-                      <Network className="w-4 h-4 text-cyan-400" />
-                      <span>โครงสร้างองค์กร</span>
+                      <Network className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span className="truncate">โครงสร้างองค์กร</span>
                     </button>
                     <button
                       type="button"
@@ -622,9 +645,10 @@ export default function DashboardPage() {
                           ? 'bg-slate-800 text-white font-medium'
                           : 'text-slate-400'
                       }`}
+                      title="ตารางสอนและภาระงาน"
                     >
-                      <Briefcase className="w-4 h-4 text-emerald-400" />
-                      <span>ตารางสอนและภาระงาน</span>
+                      <Briefcase className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate">ตารางสอนและภาระงาน</span>
                     </button>
                   </div>
                 </div>

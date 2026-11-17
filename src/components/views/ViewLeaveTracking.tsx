@@ -172,9 +172,9 @@ export function ViewLeaveTracking() {
                       {selectedReq.leaveTypeName}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-white mt-1">{selectedReq.teacherName}</h3>
-                  <p className="text-xs text-slate-400">
-                    {selectedReq.position} • {selectedReq.department}
+                  <h3 className="text-base font-bold text-white mt-1 truncate max-w-[280px]" title={selectedReq.teacherName}>{selectedReq.teacherName}</h3>
+                  <p className="text-xs text-slate-400 truncate max-w-[320px]" title={`${selectedReq.position} • ${selectedReq.department}`}>
+                    {selectedReq.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')} • {selectedReq.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
                   </p>
                 </div>
 

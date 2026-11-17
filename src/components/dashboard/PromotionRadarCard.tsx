@@ -32,16 +32,16 @@ export const PromotionRadarCard: React.FC<PromotionRadarCardProps> = ({
 
   return (
     <div className="bg-[#121822] border border-slate-800/80 rounded-xl p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <h2 className="text-sm font-semibold text-white truncate" title="สถานะเกณฑ์เลื่อนเงินเดือน">
           สถานะเกณฑ์เลื่อนเงินเดือน
         </h2>
         {isExceeded ? (
-          <span className="px-2 py-0.5 text-[11px] font-mono font-medium rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <span className="px-2 py-0.5 text-[11px] font-mono font-medium rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
             เกินเกณฑ์ที่กำหนด
           </span>
         ) : (
-          <span className="px-2 py-0.5 text-[11px] font-mono font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="px-2 py-0.5 text-[11px] font-mono font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
             ผ่านเกณฑ์ปกติ
           </span>
         )}

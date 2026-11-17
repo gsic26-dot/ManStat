@@ -230,7 +230,7 @@ export function ViewFeedback() {
                   )}
                 </div>
 
-                <h4 className="font-bold text-white text-xs">{item.title}</h4>
+                <h4 className="font-bold text-white text-xs truncate" title={item.title}>{item.title}</h4>
                 <p className="text-xs text-slate-300 leading-relaxed">{item.description}</p>
 
                 {item.response && (
@@ -241,7 +241,7 @@ export function ViewFeedback() {
                 )}
 
                 <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
-                  <span>ผู้ส่ง: {item.senderName}</span>
+                  <span className="truncate max-w-[200px]" title={`ผู้ส่ง: ${item.senderName}`}>ผู้ส่ง: {item.senderName}</span>
                   <span>
                     {new Date(item.submittedAt).toLocaleDateString('th-TH', {
                       day: 'numeric',

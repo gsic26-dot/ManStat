@@ -288,32 +288,37 @@ export function ViewLeaveAnalytics() {
       {/* Department Breakdown Table */}
       <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800">
         <h3 className="text-sm font-bold text-white mb-3">สรุปสถิติการลาแยกตามกลุ่มสาระการเรียนรู้ / สายงาน</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800">
               <tr>
-                <th className="px-4 py-2.5">กลุ่มสาระการเรียนรู้ / สายงาน</th>
-                <th className="px-4 py-2.5 text-center">จำนวนบุคลากร</th>
-                <th className="px-4 py-2.5 text-center">วันลารวม (วัน)</th>
-                <th className="px-4 py-2.5 text-center">ค่าเฉลี่ยต่อคน</th>
-                <th className="px-4 py-2.5">สถานะ</th>
+                <th className="px-4 py-2.5 min-w-[240px]">กลุ่มสาระการเรียนรู้ / สายงาน</th>
+                <th className="px-4 py-2.5 text-center min-w-[120px]">จำนวนบุคลากร</th>
+                <th className="px-4 py-2.5 text-center min-w-[120px]">วันลารวม (วัน)</th>
+                <th className="px-4 py-2.5 text-center min-w-[110px]">ค่าเฉลี่ยต่อคน</th>
+                <th className="px-4 py-2.5 min-w-[110px]">สถานะ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {departments.map((d) => (
-                <tr key={d.name} className="hover:bg-[#162231]/40">
-                  <td className="px-4 py-3 font-medium text-white">{d.name}</td>
-                  <td className="px-4 py-3 text-center font-mono">{d.count} ท่าน</td>
-                  <td className="px-4 py-3 text-center font-mono font-bold text-sky-400">{d.days}</td>
-                  <td className="px-4 py-3 text-center font-mono">{(d.days / d.count).toFixed(1)}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      <CheckCircle2 className="w-3 h-3 shrink-0" />
-                      <span>ปกติ</span>
-                    </span>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-800/60 font-sans">
+              {departments.map((d) => {
+                const displayName = d.name.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                return (
+                  <tr key={d.name} className="hover:bg-[#162231]/40 transition-colors">
+                    <td className="px-4 py-3 font-medium text-white">
+                      <div className="truncate max-w-[220px]" title={d.name}>{displayName}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center font-mono whitespace-nowrap">{d.count} ท่าน</td>
+                    <td className="px-4 py-3 text-center font-mono font-bold text-sky-400 whitespace-nowrap">{d.days}</td>
+                    <td className="px-4 py-3 text-center font-mono whitespace-nowrap">{(d.days / d.count).toFixed(1)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span>ปกติ</span>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

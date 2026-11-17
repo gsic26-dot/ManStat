@@ -127,8 +127,8 @@ export const ViewOrgChart: React.FC = () => {
 
                 <div className="bg-[#101822] p-3 rounded-xl border border-slate-800/80 mb-3 text-xs">
                   <span className="text-[10px] text-slate-500 block">หัวหน้าฝ่าย:</span>
-                  <div className="font-semibold text-slate-100">{div.head}</div>
-                  <div className="text-[11px] text-sky-300 mt-0.5">{div.role}</div>
+                  <div className="font-semibold text-slate-100 truncate" title={div.head}>{div.head}</div>
+                  <div className="text-[11px] text-sky-300 mt-0.5 truncate" title={div.role}>{div.role}</div>
                 </div>
 
                 <div>

@@ -37,9 +37,10 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
+            title="กราฟและสถิติภาพรวม"
           >
             <TrendingUp className="w-4 h-4 shrink-0 text-sky-400" />
-            <span>กราฟและสถิติภาพรวม</span>
+            <span className="truncate">กราฟและสถิติภาพรวม</span>
           </button>
 
           <button
@@ -50,9 +51,10 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
+            title="สรุปวันลา สพฐ. (รายงานทางการ)"
           >
             <FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>สรุปวันลา สพฐ. (รายงานทางการ)</span>
+            <span className="truncate">สรุปวันลา สพฐ. (รายงานทางการ)</span>
           </button>
         </div>
       </div>
