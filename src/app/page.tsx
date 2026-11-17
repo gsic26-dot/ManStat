@@ -36,7 +36,6 @@ import {
   FileText,
   RotateCcw,
   TrendingUp,
-  FileSpreadsheet,
   Network,
   Users,
   Briefcase,
@@ -45,7 +44,6 @@ import {
   BadgeCheck,
   MessageSquare,
   Menu,
-  ChevronRight,
 } from 'lucide-react';
 
 // Core Dashboard Components
@@ -63,11 +61,9 @@ import { ViewRegStanding } from '@/components/views/ViewRegStanding';
 import { ViewOrgChart } from '@/components/views/ViewOrgChart';
 import { ViewSchoolBoard } from '@/components/views/ViewSchoolBoard';
 import { ViewWorkload } from '@/components/views/ViewWorkload';
-import { ViewLeaveRequests } from '@/components/views/ViewLeaveRequests';
-import { ViewLeaveTracking } from '@/components/views/ViewLeaveTracking';
+import { ViewLeaveHub } from '@/components/views/ViewLeaveHub';
+import { ViewLeaveReportsHub } from '@/components/views/ViewLeaveReportsHub';
 import { ViewRetroLeave } from '@/components/views/ViewRetroLeave';
-import { ViewLeaveAnalytics } from '@/components/views/ViewLeaveAnalytics';
-import { ViewOfficialReports } from '@/components/views/ViewOfficialReports';
 import { ViewRegScout } from '@/components/views/ViewRegScout';
 import { ViewFeedback } from '@/components/views/ViewFeedback';
 import { ViewLeaveSubmit } from '@/components/views/ViewLeaveSubmit';
@@ -75,9 +71,11 @@ import { ViewLeaveSubmit } from '@/components/views/ViewLeaveSubmit';
 export type ActiveView =
   | 'dashboard'
   | 'leave'
+  | 'tracking_requests'
   | 'requests'
   | 'tracking'
   | 'retro_leave'
+  | 'leave_reports'
   | 'analytics'
   | 'official_reports'
   | 'org_chart'
@@ -107,16 +105,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0e141b] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0b1016] text-slate-100 flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#171a21]/95 backdrop-blur-md border-b border-slate-800 print:hidden">
+      <header className="sticky top-0 z-40 bg-[#121822] border-b border-slate-800/80 print:hidden">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Mobile Menu Trigger */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 focus:outline-none"
+              className="lg:hidden p-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 focus:outline-none"
               title="เปิดเมนูนำทาง"
             >
               <Menu className="w-5 h-5" />
@@ -148,7 +146,7 @@ export default function DashboardPage() {
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
                 href="/admin"
-                className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold transition-colors"
+                className="h-9 inline-flex items-center gap-2 px-3.5 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-semibold transition-colors"
                 title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
               >
                 <Settings className="w-4 h-4 text-sky-400 shrink-0" />
@@ -158,43 +156,21 @@ export default function DashboardPage() {
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              {currentRole === 'superuser' ? (
-                <div
-                  className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm shadow-amber-950/40"
-                  title="ระดับสิทธิ์: Superuser"
-                >
-                  S
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
+              <div
+                className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm"
+                title="ระดับสิทธิ์: Superuser"
+              >
+                S
+              </div>
               <div className="hidden lg:block text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-white">
-                    {currentRole === 'superuser'
-                      ? 'Superuser'
-                      : currentRole === 'director'
-                      ? 'นายธีรศักดิ์ มโนธรรม'
-                      : currentRole === 'hr_admin'
-                      ? 'นายธวัชชัย เหลืองโอฬาร'
-                      : 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์'}
+                  <span className="text-xs font-semibold text-white">Superuser</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    ROOT
                   </span>
-                  {currentRole === 'superuser' && (
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      ROOT
-                    </span>
-                  )}
                 </div>
                 <div className="text-[10px] text-slate-400">
-                  {currentRole === 'superuser'
-                    ? 'นายธีรศักดิ์ มโนธรรม'
-                    : currentRole === 'director'
-                    ? 'ผู้อำนวยการสถานศึกษา'
-                    : currentRole === 'hr_admin'
-                    ? 'เจ้าหน้าที่บุคคล (HR Admin)'
-                    : 'ครูผู้สอน (Teacher)'}
+                  นายธีรศักดิ์ มโนธรรม
                 </div>
               </div>
             </div>
@@ -203,7 +179,7 @@ export default function DashboardPage() {
             <Link
               href="/login"
               title="ออกจากระบบ"
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-rose-300 transition-colors"
+              className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-300 transition-colors"
             >
               <LogOut className="w-4 h-4 shrink-0" />
             </Link>
@@ -214,281 +190,240 @@ export default function DashboardPage() {
       {/* Main Layout Container (Sidebar + Content) */}
       <div className="flex-1 flex w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 print:max-w-none print:p-0 print:m-0 print:w-full print:block">
         {/* Left Navigation Sidebar (Desktop) */}
-        <aside className="hidden lg:block w-64 shrink-0 space-y-6 print:hidden">
-          <div className="bg-[#111822] rounded-2xl border border-slate-800 p-4 sticky top-24 space-y-5">
-            {/* Group 1: ระบบการลา */}
-            <div>
-              <div className="flex items-center gap-2 text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2 px-2">
-                <FileText className="w-3.5 h-3.5 shrink-0" />
-                <span>ระบบการลา</span>
-              </div>
-              <nav className="space-y-1">
+        <aside className="hidden lg:block w-64 shrink-0 print:hidden">
+          <div className="bg-[#121822] rounded-xl border border-slate-800/80 p-2.5 sticky top-20 flex flex-col justify-between shadow-xl">
+            <div className="space-y-1">
+              {/* หมวด 1: ภาพรวม (Overview) */}
+              <div>
+                <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  หมวด 1: ภาพรวม
+                </div>
                 <button
                   type="button"
                   onClick={() => handleSelectView('dashboard')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
                     activeView === 'dashboard'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
+                      ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <LayoutDashboard className="w-4 h-4 shrink-0" />
-                    <span>สถิติการลา</span>
+                  <div className="flex items-center gap-2.5">
+                    <LayoutDashboard className="w-4 h-4 shrink-0 text-sky-400" />
+                    <span>สถิติและภาพรวม</span>
                   </div>
                 </button>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('leave')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'leave'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>ยื่นคำร้องขอลา</span>
-                  </div>
-                </button>
+              {/* หมวด 2: งานวันลา (Leave Services) */}
+              <div>
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  หมวด 2: งานวันลา
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('leave')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'leave'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <PlusCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>ยื่นคำร้องขอลา</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('requests')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'requests'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>รายการคำร้อง</span>
-                  </div>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    2
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('tracking_requests')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'tracking_requests' || activeView === 'requests' || activeView === 'tracking'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>ติดตามและประวัติการลา</span>
+                    </div>
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      2
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('tracking')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'tracking'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 shrink-0 text-sky-400" />
-                    <span>ติดตามคำร้อง</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('retro_leave')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'retro_leave'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RotateCcw className="w-4 h-4 shrink-0 text-cyan-400" />
+                      <span>บันทึกการลาย้อนหลัง</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('retro_leave')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'retro_leave'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4 shrink-0 text-cyan-400" />
-                    <span>บันทึกการลาย้อนหลัง</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('leave_reports')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'leave_reports' || activeView === 'analytics' || activeView === 'official_reports'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <TrendingUp className="w-4 h-4 shrink-0 text-sky-400" />
+                      <span>รายงานและสถิติวันลา</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('analytics')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'analytics'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 shrink-0" />
-                    <span>กราฟสถิติ</span>
-                  </div>
-                </button>
+              {/* หมวด 3: งานทะเบียนประวัติ (Personnel Registries) */}
+              <div>
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  หมวด 3: งานทะเบียนประวัติ
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('staff_directory')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'staff_directory'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <User className="w-4 h-4 shrink-0 text-sky-400" />
+                      <span>ทะเบียนประวัติบุคลากร</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('official_reports')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'official_reports'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>สรุปวันลา สพฐ.</span>
-                  </div>
-                </button>
-              </nav>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('dir_standing')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'dir_standing'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <GraduationCap className="w-4 h-4 shrink-0 text-cyan-400" />
+                      <span>ทะเบียนวิทยฐานะ</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('dir_license')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'dir_license'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>ทะเบียนใบอนุญาตฯ</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('dir_scout')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'dir_scout'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>ทะเบียนวุฒิลูกเสือ</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* หมวด 4: ข้อมูลสถานศึกษา (School Governance) */}
+              <div>
+                <div className="px-3 pt-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  หมวด 4: ข้อมูลสถานศึกษา
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('school_board')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'school_board'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>คณะกรรมการสถานศึกษา</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('org_chart')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'org_chart'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Network className="w-4 h-4 shrink-0 text-cyan-400" />
+                      <span>โครงสร้างองค์กร</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('workload')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'workload'
+                        ? 'bg-slate-800/70 text-white border-l-2 border-sky-500 font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Briefcase className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>ตารางสอนและภาระงาน</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Group 2: การบริหารและภาระงาน */}
-            <div className="pt-3 border-t border-slate-800">
-              <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 px-2">
-                <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                <span>การบริหารและภาระงาน</span>
-              </div>
-              <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('org_chart')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'org_chart'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Network className="w-4 h-4 shrink-0 text-cyan-400" />
-                    <span>แผนผังองค์กร 4 ฝ่าย</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('school_board')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'school_board'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>คณะกรรมการสถานศึกษา</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('workload')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'workload'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>ภาระงานสอนและ PA</span>
-                  </div>
-                </button>
-              </nav>
-            </div>
-
-            {/* Group 3: ทะเบียนประวัติ */}
-            <div className="pt-3 border-t border-slate-800">
-              <div className="flex items-center gap-2 text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2 px-2">
-                <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-                <span>ทะเบียนประวัติ</span>
-              </div>
-              <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('staff_directory')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'staff_directory'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 shrink-0 text-sky-400" />
-                    <span>ทะเบียนประวัติครู</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('dir_standing')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'dir_standing'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 shrink-0 text-cyan-400" />
-                    <span>วิทยฐานะและคำสั่ง</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('dir_scout')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'dir_scout'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>วุฒิทางลูกเสือ</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('dir_license')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'dir_license'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>ใบอนุญาตประกอบวิชาชีพ</span>
-                  </div>
-                </button>
-              </nav>
-            </div>
-
-            {/* Group 4: การตั้งค่า / ข้อเสนอแนะ */}
-            <div className="pt-3 border-t border-slate-800">
-              <div className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2 px-2">
-                <Settings className="w-3.5 h-3.5 shrink-0" />
-                <span>การตั้งค่าและระบบ</span>
-              </div>
-              <nav className="space-y-1">
-                <Link
-                  href="/admin"
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#182332] hover:text-white transition-all"
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-4 h-4 shrink-0 text-sky-400" />
-                    <span>ศูนย์ผู้ดูแลระบบ</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectView('feedback')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                    activeView === 'feedback'
-                      ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                      : 'text-slate-300 hover:bg-[#182332] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 shrink-0 text-cyan-400" />
-                    <span>แจ้งปรับปรุงระบบ</span>
-                  </div>
-                </button>
-              </nav>
+            {/* Footer Utility Link: แจ้งปรับปรุงระบบ */}
+            <div className="pt-2.5 mt-2.5 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => handleSelectView('feedback')}
+                className={`w-full flex items-center justify-between py-1.5 px-3 text-xs rounded-md transition-all ${
+                  activeView === 'feedback'
+                    ? 'bg-slate-800/70 text-white font-medium'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 shrink-0 text-sky-400" />
+                  <span>แจ้งปรับปรุงระบบ</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono">v2.0</span>
+              </button>
             </div>
           </div>
         </aside>
@@ -500,9 +435,9 @@ export default function DashboardPage() {
               className="fixed inset-0 bg-black/80 backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative w-72 max-w-[80vw] bg-[#111822] border-r border-slate-800 p-5 overflow-y-auto z-10 space-y-5">
+            <div className="relative w-72 max-w-[80vw] bg-[#121822] border-r border-slate-800/80 p-5 overflow-y-auto z-10 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <span className="font-bold text-white text-sm">เมนูระบบ ManStat</span>
+                <span className="font-bold text-white text-sm">เมนูระบบ ManStat-Modern</span>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -512,28 +447,40 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {/* Mobile Menu List */}
+              {/* Mobile Menu List with 4 Groups */}
               <div className="space-y-4 text-xs">
+                {/* หมวด 1 */}
                 <div>
-                  <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block mb-2">
-                    ระบบการลา
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                    หมวด 1: ภาพรวม
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('dashboard')}
+                    className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                      activeView === 'dashboard'
+                        ? 'bg-slate-800 text-white font-medium'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-sky-400" />
+                    <span>สถิติและภาพรวม</span>
+                  </button>
+                </div>
+
+                {/* หมวด 2 */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                    หมวด 2: งานวันลา
                   </span>
                   <div className="space-y-1">
                     <button
                       type="button"
-                      onClick={() => handleSelectView('dashboard')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'dashboard' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>สถิติการลา</span>
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => handleSelectView('leave')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'leave' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'leave'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
                       <PlusCircle className="w-4 h-4 text-emerald-400" />
@@ -541,29 +488,28 @@ export default function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSelectView('requests')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'requests' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      onClick={() => handleSelectView('tracking_requests')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${
+                        activeView === 'tracking_requests' || activeView === 'requests' || activeView === 'tracking'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
-                      <FileText className="w-4 h-4 text-amber-400" />
-                      <span>รายการคำร้อง</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('tracking')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'tracking' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <Clock className="w-4 h-4 text-sky-400" />
-                      <span>ติดตามคำร้อง</span>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-amber-400" />
+                        <span>ติดตามและประวัติการลา</span>
+                      </div>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                        2
+                      </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSelectView('retro_leave')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'retro_leave' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'retro_leave'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
                       <RotateCcw className="w-4 h-4 text-cyan-400" />
@@ -571,47 +517,89 @@ export default function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSelectView('analytics')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'analytics' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      onClick={() => handleSelectView('leave_reports')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'leave_reports' || activeView === 'analytics' || activeView === 'official_reports'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
-                      <TrendingUp className="w-4 h-4" />
-                      <span>กราฟสถิติ</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('official_reports')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'official_reports' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                      <span>สรุปวันลา สพฐ.</span>
+                      <TrendingUp className="w-4 h-4 text-sky-400" />
+                      <span>รายงานและสถิติวันลา</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800">
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-2">
-                    การบริหารและภาระงาน
+                {/* หมวด 3 */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                    หมวด 3: งานทะเบียนประวัติ
                   </span>
                   <div className="space-y-1">
                     <button
                       type="button"
-                      onClick={() => handleSelectView('org_chart')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'org_chart' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      onClick={() => handleSelectView('staff_directory')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'staff_directory'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
-                      <Network className="w-4 h-4 text-cyan-400" />
-                      <span>แผนผังองค์กร 4 ฝ่าย</span>
+                      <User className="w-4 h-4 text-sky-400" />
+                      <span>ทะเบียนประวัติบุคลากร</span>
                     </button>
                     <button
                       type="button"
+                      onClick={() => handleSelectView('dir_standing')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'dir_standing'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <GraduationCap className="w-4 h-4 text-cyan-400" />
+                      <span>ทะเบียนวิทยฐานะ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectView('dir_license')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'dir_license'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <BadgeCheck className="w-4 h-4 text-emerald-400" />
+                      <span>ทะเบียนใบอนุญาตฯ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectView('dir_scout')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'dir_scout'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <Award className="w-4 h-4 text-amber-400" />
+                      <span>ทะเบียนวุฒิลูกเสือ</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* หมวด 4 */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 px-2">
+                    หมวด 4: ข้อมูลสถานศึกษา
+                  </span>
+                  <div className="space-y-1">
+                    <button
+                      type="button"
                       onClick={() => handleSelectView('school_board')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'school_board' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'school_board'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
                       <Users className="w-4 h-4 text-amber-400" />
@@ -619,88 +607,45 @@ export default function DashboardPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => handleSelectView('org_chart')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'org_chart'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      <Network className="w-4 h-4 text-cyan-400" />
+                      <span>โครงสร้างองค์กร</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleSelectView('workload')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'workload' ? 'bg-sky-600 text-white' : 'text-slate-300'
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'workload'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400'
                       }`}
                     >
                       <Briefcase className="w-4 h-4 text-emerald-400" />
-                      <span>ภาระงานสอนและ PA</span>
+                      <span>ตารางสอนและภาระงาน</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800">
-                  <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block mb-2">
-                    ทะเบียนประวัติ
-                  </span>
-                  <div className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('staff_directory')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'staff_directory' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <User className="w-4 h-4 text-sky-400" />
-                      <span>ทะเบียนประวัติครู</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('dir_standing')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'dir_standing' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <GraduationCap className="w-4 h-4 text-cyan-400" />
-                      <span>วิทยฐานะและคำสั่ง</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('dir_scout')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'dir_scout' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <Award className="w-4 h-4 text-amber-400" />
-                      <span>วุฒิทางลูกเสือ</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('dir_license')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'dir_license' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <BadgeCheck className="w-4 h-4 text-emerald-400" />
-                      <span>ใบอนุญาตประกอบวิชาชีพ</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-800">
-                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-2">
-                    ระบบ
-                  </span>
-                  <div className="space-y-1">
-                    <Link
-                      href="/admin"
-                      className="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 text-slate-300"
-                    >
-                      <Settings className="w-4 h-4 text-sky-400" />
-                      <span>ศูนย์ผู้ดูแลระบบ (Admin)</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('feedback')}
-                      className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
-                        activeView === 'feedback' ? 'bg-sky-600 text-white' : 'text-slate-300'
-                      }`}
-                    >
-                      <MessageSquare className="w-4 h-4 text-cyan-400" />
-                      <span>แจ้งปรับปรุงระบบ</span>
-                    </button>
-                  </div>
+                {/* Mobile Secondary Utility */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('feedback')}
+                    className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                      activeView === 'feedback'
+                        ? 'bg-slate-800 text-white font-medium'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4 text-sky-400" />
+                    <span>แจ้งปรับปรุงระบบ</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -844,56 +789,57 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* View 2: Leave Application Form */}
+          {/* View: Leave Application Form */}
           {activeView === 'leave' && (
-            <ViewLeaveSubmit onSuccess={() => handleSelectView('requests')} />
+            <ViewLeaveSubmit onSuccess={() => handleSelectView('tracking_requests')} />
           )}
 
-          {/* View 3: Leave Requests & History */}
-          {activeView === 'requests' && (
-            <ViewLeaveRequests onOpenSubmitModal={() => handleSelectView('leave')} />
+          {/* View: Combined Leave Requests & Workflow Tracker */}
+          {(activeView === 'tracking_requests' || activeView === 'requests' || activeView === 'tracking') && (
+            <ViewLeaveHub
+              initialTab={activeView === 'tracking' ? 'tracking' : 'requests'}
+              onOpenSubmitModal={() => handleSelectView('leave')}
+            />
           )}
 
-          {/* View 4: Leave Workflow Tracker */}
-          {activeView === 'tracking' && <ViewLeaveTracking />}
-
-          {/* View 5: Retroactive Leave Logging */}
+          {/* View: Retroactive Leave Logging */}
           {activeView === 'retro_leave' && <ViewRetroLeave />}
 
-          {/* View 6: Leave Analytics & Charts */}
-          {activeView === 'analytics' && <ViewLeaveAnalytics />}
+          {/* View: Combined Leave Reports & Analytics */}
+          {(activeView === 'leave_reports' || activeView === 'analytics' || activeView === 'official_reports') && (
+            <ViewLeaveReportsHub
+              initialTab={activeView === 'official_reports' ? 'official' : 'analytics'}
+            />
+          )}
 
-          {/* View 7: Official OBEC Reports & Excel Exporter */}
-          {activeView === 'official_reports' && <ViewOfficialReports />}
-
-          {/* View 8: School 4 Divisions Organization Chart */}
+          {/* View: School 4 Divisions Organization Chart */}
           {activeView === 'org_chart' && <ViewOrgChart />}
 
-          {/* View 9: Basic Education School Board */}
+          {/* View: Basic Education School Board */}
           {activeView === 'school_board' && <ViewSchoolBoard />}
 
-          {/* View 10: Teacher Teaching Hours & PA Workload */}
+          {/* View: Teacher Teaching Hours & PA Workload */}
           {activeView === 'workload' && <ViewWorkload />}
 
-          {/* View 11: Teacher Directory & Portfolios */}
+          {/* View: Teacher Directory & Portfolios */}
           {activeView === 'staff_directory' && <ViewStaffDirectory />}
 
-          {/* View 12: Academic Standings & Appointment Orders */}
+          {/* View: Academic Standings & Appointment Orders */}
           {activeView === 'dir_standing' && <ViewRegStanding />}
 
-          {/* View 13: Scout Qualifications Registry */}
+          {/* View: Scout Qualifications Registry */}
           {activeView === 'dir_scout' && <ViewRegScout />}
 
-          {/* View 14: Khurusapha Professional Licenses */}
+          {/* View: Khurusapha Professional Licenses */}
           {activeView === 'dir_license' && <ViewRegLicense />}
 
-          {/* View 15: System Feedback */}
+          {/* View: System Feedback */}
           {activeView === 'feedback' && <ViewFeedback />}
         </main>
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden sticky bottom-0 z-40 bg-[#161f2b]/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around text-[10px] print:hidden">
+      <nav className="lg:hidden sticky bottom-0 z-40 bg-[#121822] border-t border-slate-800/80 px-2 py-1.5 flex items-center justify-around text-[10px] print:hidden">
         <button
           type="button"
           onClick={() => handleSelectView('dashboard')}
@@ -902,7 +848,7 @@ export default function DashboardPage() {
           }`}
         >
           <LayoutDashboard className="w-4 h-4 shrink-0" />
-          <span>สถิติ</span>
+          <span>ภาพรวม</span>
         </button>
 
         <button
@@ -918,24 +864,26 @@ export default function DashboardPage() {
 
         <button
           type="button"
-          onClick={() => handleSelectView('requests')}
+          onClick={() => handleSelectView('tracking_requests')}
           className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
-            activeView === 'requests' ? 'text-amber-400 font-bold' : 'text-slate-400'
+            activeView === 'tracking_requests' || activeView === 'requests' || activeView === 'tracking'
+              ? 'text-amber-400 font-bold'
+              : 'text-slate-400'
           }`}
         >
           <FileText className="w-4 h-4 shrink-0" />
-          <span>คำร้อง</span>
+          <span>ติดตาม/คำร้อง</span>
         </button>
 
         <button
           type="button"
-          onClick={() => handleSelectView('tracking')}
+          onClick={() => handleSelectView('staff_directory')}
           className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
-            activeView === 'tracking' ? 'text-sky-400 font-bold' : 'text-slate-400'
+            activeView === 'staff_directory' ? 'text-sky-400 font-bold' : 'text-slate-400'
           }`}
         >
-          <Clock className="w-4 h-4 shrink-0" />
-          <span>ติดตาม</span>
+          <User className="w-4 h-4 shrink-0" />
+          <span>ครู/บุคลากร</span>
         </button>
 
         <button
@@ -944,7 +892,7 @@ export default function DashboardPage() {
           className="flex flex-col items-center gap-1 p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
         >
           <Menu className="w-4 h-4 shrink-0" />
-          <span>เมนูอื่นๆ</span>
+          <span>เมนูทั้งหมด</span>
         </button>
       </nav>
 

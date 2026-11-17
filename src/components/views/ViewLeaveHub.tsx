@@ -1,0 +1,84 @@
+'use client';
+
+/**
+ * ============================================================================
+ * ManStat-Modern: ViewLeaveHub (ติดตามและประวัติการลา)
+ * ============================================================================
+ * - Consolidates "รายการคำร้อง" (Leave Requests) & "ติดตามสถานะ" (Workflow Tracking)
+ * - Minimalist top segmented tab switcher
+ * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
+ * ============================================================================
+ */
+
+import React, { useState } from 'react';
+import { FileText, Clock, PlusCircle } from 'lucide-react';
+import { ViewLeaveRequests } from './ViewLeaveRequests';
+import { ViewLeaveTracking } from './ViewLeaveTracking';
+
+interface ViewLeaveHubProps {
+  initialTab?: 'requests' | 'tracking';
+  onOpenSubmitModal?: () => void;
+}
+
+export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
+  initialTab = 'requests',
+  onOpenSubmitModal,
+}) => {
+  const [activeTab, setActiveTab] = useState<'requests' | 'tracking'>(initialTab);
+
+  return (
+    <div className="space-y-5">
+      {/* Top Segmented Tab Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121822] p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
+        <div className="inline-flex p-1 bg-[#0b1016] border border-slate-800/80 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+              activeTab === 'requests'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+            }`}
+          >
+            <FileText className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>รายการคำร้องขอลา</span>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              2
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tracking')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+              activeTab === 'tracking'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+            }`}
+          >
+            <Clock className="w-4 h-4 shrink-0 text-sky-400" />
+            <span>ติดตามสถานะคำร้อง</span>
+          </button>
+        </div>
+
+        {onOpenSubmitModal && (
+          <button
+            type="button"
+            onClick={onOpenSubmitModal}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm self-start sm:self-auto"
+          >
+            <PlusCircle className="w-4 h-4 shrink-0" />
+            <span>ยื่นคำร้องขอลาใหม่</span>
+          </button>
+        )}
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === 'requests' ? (
+        <ViewLeaveRequests onOpenSubmitModal={onOpenSubmitModal} />
+      ) : (
+        <ViewLeaveTracking />
+      )}
+    </div>
+  );
+};
