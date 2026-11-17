@@ -103,7 +103,7 @@ export const ViewRegLicense: React.FC = () => {
           href="https://ksp-eservice.ksp.or.th/"
           target="_blank"
           rel="noopener noreferrer"
-          className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-sky-300 text-xs font-medium border border-slate-700/80 transition-all shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
         >
           <ExternalLink className="w-4 h-4 shrink-0" />
           <span>ระบบ KSP e-Service (คุรุสภา)</span>

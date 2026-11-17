@@ -95,12 +95,12 @@ export function ViewLeaveAnalytics() {
             </select>
           </div>
 
-          <div className="h-10 flex items-center gap-1 bg-[#101822] p-1 rounded-xl border border-slate-700/80 text-xs">
+          <div className="h-10 flex items-center gap-1 bg-[#101822] p-1 rounded-lg border border-slate-700/80 text-xs">
             <button
               type="button"
               onClick={() => setSelectedSemester('ALL')}
-              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
-                selectedSemester === 'ALL' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
+                selectedSemester === 'ALL' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
               ทั้งปี
@@ -108,8 +108,8 @@ export function ViewLeaveAnalytics() {
             <button
               type="button"
               onClick={() => setSelectedSemester('H1')}
-              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
-                selectedSemester === 'H1' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
+                selectedSemester === 'H1' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
               รอบที่ 1
@@ -117,8 +117,8 @@ export function ViewLeaveAnalytics() {
             <button
               type="button"
               onClick={() => setSelectedSemester('H2')}
-              className={`h-8 px-3 rounded-lg font-medium transition-colors ${
-                selectedSemester === 'H2' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
+                selectedSemester === 'H2' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
               รอบที่ 2

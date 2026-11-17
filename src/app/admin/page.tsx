@@ -494,7 +494,7 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
               <span>กลับสู่หน้าหลัก</span>
@@ -520,10 +520,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('staff')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'staff'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             <Users className="w-4 h-4 shrink-0" />
@@ -533,10 +533,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('board')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'board'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             <Award className="w-4 h-4 shrink-0" />
@@ -546,10 +546,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('school')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'school'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             <Building className="w-4 h-4 shrink-0" />
@@ -559,10 +559,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('fiscal')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'fiscal'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             <Calendar className="w-4 h-4 shrink-0" />
@@ -572,10 +572,10 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => setActiveTab('audit')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'audit'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-950/40'
-                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -607,7 +607,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={handleOpenAddStaff}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-all"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                 >
                   <UserPlus className="w-4 h-4 shrink-0" />
                   <span>เพิ่มบุคลากร</span>
@@ -689,7 +689,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleOpenEditStaff(t)}
-                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                              className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                               title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
                             >
                               <Edit className="w-3.5 h-3.5" />
@@ -697,7 +697,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteStaff(t.id)}
-                              className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition-colors"
+                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                               title="ลบข้อมูลบุคลากร"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -738,7 +738,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={handleOpenAddBoardMember}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-sm transition-all"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                 >
                   <PlusCircle className="w-4 h-4 shrink-0" />
                   <span>เพิ่มกรรมการสถานศึกษา</span>
@@ -802,18 +802,18 @@ export default function AdminPage() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditBoardMember(b)}
-                                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                                 title="แก้ไขข้อมูลกรรมการ"
                               >
-                                <Edit className="w-4 h-4" />
+                                <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteBoardMember(b.id)}
-                                className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition-colors"
+                                className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                                 title="ลบกรรมการสถานศึกษา"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1038,9 +1038,9 @@ export default function AdminPage() {
                             setActiveClasses((prev) => [...prev, cls]);
                           }
                         }}
-                        className={`p-2.5 rounded-xl border text-center font-medium text-xs transition-all ${
+                        className={`p-2.5 rounded-lg border text-center font-medium text-xs transition-colors duration-200 ${
                           isActive
-                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-200 shadow-sm'
+                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-200'
                             : 'bg-slate-800/40 border-slate-700/60 text-slate-400 line-through opacity-60 hover:opacity-90'
                         }`}
                       >
@@ -1054,7 +1054,7 @@ export default function AdminPage() {
               <div className="pt-4 border-t border-slate-800 flex justify-end">
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition-all shadow-md shadow-sky-950/40"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                 >
                   <Save className="w-4 h-4 shrink-0" />
                   <span>บันทึกการตั้งค่าสถานศึกษา</span>
@@ -1143,7 +1143,7 @@ export default function AdminPage() {
 
                 <button
                   type="submit"
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                 >
                   <PlusCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>บันทึกวันหยุด</span>
@@ -1188,7 +1188,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => handleDeleteHoliday(h.id)}
-                        className="p-1 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                        className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                         title="ลบวันหยุด"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1291,21 +1291,21 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setIsStaffModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Sub-Tabs Navigation (Google Segmented Control style) */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#0d141d] rounded-xl border border-slate-800 shrink-0">
+            <div className="flex items-center gap-1.5 p-1 bg-[#0d141d] rounded-lg border border-slate-800 shrink-0">
               <button
                 type="button"
                 onClick={() => setStaffModalTab('profile')}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'profile'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
                 <Users className="w-3.5 h-3.5 shrink-0" />
@@ -1314,25 +1314,25 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setStaffModalTab('licenses')}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'licenses'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
                 <span>ใบอนุญาต & วุฒิลูกเสือ</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900 text-slate-300 font-mono">
                   {(selectedStaff.licenses || []).length}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStaffModalTab('workload')}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'workload'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5 shrink-0" />
@@ -1341,10 +1341,10 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setStaffModalTab('history')}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'history'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                 }`}
               >
                 <GraduationCap className="w-3.5 h-3.5 shrink-0" />
@@ -1721,7 +1721,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteLicenseFromStaff(idx)}
-                              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                               title="ลบใบอนุญาตฉบับนี้"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
@@ -1791,7 +1791,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={handleAddLicenseToStaff}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
                         >
                           <Plus className="w-3.5 h-3.5 shrink-0" />
                           <span>เพิ่มใบอนุญาตลงทะเบียน</span>
@@ -1975,7 +1975,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteStandingFromStaff(idx)}
-                              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
                             </button>
@@ -2023,7 +2023,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={handleAddStandingToStaff}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-sm"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
                         >
                           <Plus className="w-3.5 h-3.5 shrink-0" />
                           <span>เพิ่มรายการวิทยฐานะ</span>
@@ -2066,7 +2066,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteEducationFromStaff(idx)}
-                              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
                             </button>
@@ -2126,7 +2126,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={handleAddEducationToStaff}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-sm"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
                         >
                           <Plus className="w-3.5 h-3.5 shrink-0" />
                           <span>เพิ่มวุฒิการศึกษา</span>
@@ -2144,7 +2144,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => handleDeleteStaff(selectedStaff.id)}
-                  className="px-4 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 font-semibold inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs inline-flex items-center gap-2 transition-colors duration-200"
                 >
                   <Trash2 className="w-4 h-4 shrink-0" />
                   <span>ลบข้อมูลบุคลากรนี้</span>
@@ -2156,14 +2156,14 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsStaffModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveStaff}
-                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold shadow-md inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200"
                 >
                   <Save className="w-4 h-4 shrink-0" />
                   <span>{isNewStaff ? 'บันทึกเพิ่มบุคลากรใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
@@ -2195,7 +2195,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setIsBoardModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2335,7 +2335,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => handleDeleteBoardMember(selectedBoardMember.id)}
-                  className="px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 font-semibold inline-flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs inline-flex items-center gap-2 transition-colors duration-200"
                 >
                   <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>ลบกรรมการ</span>
@@ -2347,14 +2347,14 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsBoardModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveBoardMember}
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold inline-flex items-center gap-1.5 shadow-md"
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200"
                 >
                   <Save className="w-4 h-4 shrink-0" />
                   <span>{isNewBoardMember ? 'บันทึกเพิ่มกรรมการใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>

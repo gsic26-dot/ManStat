@@ -26,6 +26,7 @@ import {
   AlertCircle,
   FileCheck,
   Trash2,
+  X,
 } from 'lucide-react';
 import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
 
@@ -132,7 +133,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           <button
             type="button"
             onClick={onOpenSubmitModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-all shadow-md shadow-sky-900/20"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
           >
             <FileCheck className="w-4 h-4 shrink-0" />
             <span>ยื่นคำร้องขอลาใหม่</span>
@@ -289,7 +290,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           type="button"
                           onClick={() => setSelectedRequest(req)}
                           title="ดูรายละเอียด"
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                         >
                           <Eye className="w-4 h-4 shrink-0" />
                         </button>
@@ -297,7 +298,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           href={`/leave/print/${req.id}`}
                           target="_blank"
                           title="พิมพ์แบบฟอร์ม A4"
-                          className="p-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/30 text-sky-400 border border-sky-500/30 transition-colors"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-sky-300 hover:bg-slate-800/50 transition-colors duration-200"
                         >
                           <Printer className="w-4 h-4 shrink-0" />
                         </Link>
@@ -305,7 +306,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           type="button"
                           onClick={() => handleDelete(req.id, req.docNo)}
                           title="ลบคำร้อง"
-                          className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition-colors"
+                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                         >
                           <Trash2 className="w-4 h-4 shrink-0" />
                         </button>
@@ -332,14 +333,14 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               <button
                 type="button"
                 onClick={() => setSelectedRequest(null)}
-                className="text-slate-400 hover:text-white"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs text-slate-300">
-              <div className="grid grid-cols-2 gap-2 bg-[#0e141c] p-3 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-2 gap-2 bg-[#0e141c] p-3 rounded-lg border border-slate-800">
                 <div>
                   <span className="text-slate-500">ผู้ขอลา:</span>
                   <p className="font-semibold text-white mt-0.5">{selectedRequest.teacherName}</p>
@@ -362,7 +363,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
 
               <div>
                 <span className="text-slate-500 block mb-1">เหตุผลและความจำเป็น:</span>
-                <p className="bg-[#0e141c] p-3 rounded-xl border border-slate-800 text-slate-200">
+                <p className="bg-[#0e141c] p-3 rounded-lg border border-slate-800 text-slate-200">
                   {selectedRequest.reason}
                 </p>
               </div>
@@ -370,7 +371,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               {selectedRequest.supervisorRemark && (
                 <div>
                   <span className="text-slate-500 block mb-1">ความเห็นผู้บังคับบัญชาชั้นต้น:</span>
-                  <p className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-amber-200">
+                  <p className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg text-amber-200">
                     {selectedRequest.supervisorRemark}
                   </p>
                 </div>
@@ -379,7 +380,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               {selectedRequest.directorRemark && (
                 <div>
                   <span className="text-slate-500 block mb-1">คำสั่งผู้อำนวยการ:</span>
-                  <p className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-emerald-200">
+                  <p className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg text-emerald-200">
                     {selectedRequest.directorRemark}
                   </p>
                 </div>
@@ -391,7 +392,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <Link
                   href={`/leave/print/${selectedRequest.id}`}
                   target="_blank"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   <Printer className="w-3.5 h-3.5 shrink-0" />
                   <span>พิมพ์ใบลา A4</span>
@@ -399,7 +400,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <button
                   type="button"
                   onClick={() => handleDelete(selectedRequest.id, selectedRequest.docNo)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
                 >
                   <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>ลบคำร้อง</span>
@@ -411,7 +412,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                   <button
                     type="button"
                     onClick={() => handleReject(selectedRequest.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
                   >
                     <XCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>ไม่อนุมัติ</span>
@@ -419,7 +420,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                   <button
                     type="button"
                     onClick={() => handleApprove(selectedRequest.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white border border-transparent text-xs font-medium transition-colors duration-200"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>อนุมัติคำร้อง</span>
@@ -429,7 +430,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <button
                   type="button"
                   onClick={() => setSelectedRequest(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs hover:bg-slate-700 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ปิดหน้าต่าง
                 </button>

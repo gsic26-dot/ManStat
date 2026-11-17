@@ -297,7 +297,7 @@ export const ViewWorkload: React.FC = () => {
                       <td className="px-4 py-3.5 text-right">
                         <button
                           type="button"
-                          className="p-1 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                         >
                           {isExpanded ? (
                             <ChevronDown className="w-4 h-4 text-sky-400" />
@@ -330,7 +330,7 @@ export const ViewWorkload: React.FC = () => {
                                   e.stopPropagation();
                                   handleOpenAddModal(w.id, w.name);
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-colors"
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                               >
                                 <PlusCircle className="w-3.5 h-3.5 shrink-0" />
                                 <span>+ เพิ่มรายวิชาสอน / งาน TA</span>
@@ -376,7 +376,7 @@ export const ViewWorkload: React.FC = () => {
                                         handleDeleteCourse(c.id);
                                       }}
                                       title="ลบวิชานี้"
-                                      className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                                      className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
                                     >
                                       <Trash2 className="w-3.5 h-3.5 shrink-0" />
                                     </button>
@@ -436,9 +436,9 @@ export const ViewWorkload: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -520,13 +520,13 @@ export const ViewWorkload: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold shadow-sm transition-colors"
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
                 >
                   บันทึกภาระงานสอน
                 </button>

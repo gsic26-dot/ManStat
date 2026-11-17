@@ -150,7 +150,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                  className="absolute right-3 p-1 rounded-md text-slate-500 hover:text-slate-300 transition-colors duration-200 focus:outline-none"
                   aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                 >
                   {showPassword ? (
@@ -172,7 +172,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0088cc] hover:bg-[#0099e6] active:bg-[#0077b3] text-white font-medium text-sm shadow-lg shadow-sky-950/40 transition-all focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 cursor-pointer"
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-sm border border-transparent transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-700 disabled:opacity-50 cursor-pointer"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin shrink-0" />

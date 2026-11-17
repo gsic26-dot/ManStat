@@ -111,7 +111,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 focus:outline-none"
+              className="lg:hidden p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none"
               title="เปิดเมนูนำทาง"
             >
               <Menu className="w-5 h-5" />
@@ -122,7 +122,7 @@ export default function DashboardPage() {
               onClick={() => handleSelectView('dashboard')}
               className="flex items-center gap-3 text-left focus:outline-none"
             >
-              <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 text-white shadow-md shadow-sky-900/30">
+              <div className="p-2 rounded-lg bg-sky-600 text-white">
                 <School className="w-5 h-5 shrink-0" />
               </div>
               <div>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
                 href="/admin"
-                className="h-9 inline-flex items-center gap-2 px-3.5 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
               >
                 <Settings className="w-4 h-4 text-sky-400 shrink-0" />
@@ -154,7 +154,7 @@ export default function DashboardPage() {
             {/* User Profile Pill */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
               <div
-                className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shadow-sm shrink-0"
+                className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold font-mono text-sm shrink-0"
                 title="ระดับสิทธิ์: Superuser"
               >
                 S
@@ -176,7 +176,7 @@ export default function DashboardPage() {
             <Link
               href="/login"
               title="ออกจากระบบ"
-              className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-300 transition-colors"
+              className="p-1.5 rounded-md text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
             >
               <LogOut className="w-4 h-4 shrink-0" />
             </Link>
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -702,7 +702,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setIsLegalModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
                   >
                     <Scale className="w-3.5 h-3.5 text-sky-400" />
                     <span>ระเบียบกฎหมาย</span>
@@ -776,9 +776,9 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => setIsLegalModalOpen(false)}
-                        className="text-slate-400 hover:text-white p-1"
+                        className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
 
@@ -815,7 +815,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => setIsLegalModalOpen(false)}
-                        className="px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+                        className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                       >
                         ปิดหน้าต่าง
                       </button>
@@ -949,7 +949,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => dismissToast(toast.id)}
-                className="text-slate-400 hover:text-white p-1"
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-4 h-4" />
               </button>

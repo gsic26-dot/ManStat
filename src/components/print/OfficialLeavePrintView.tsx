@@ -119,7 +119,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>กลับหน้าหลัก</span>
@@ -138,7 +138,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
           <button
             type="button"
             onClick={() => setUseThaiNumerals((prev) => !prev)}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#1b2838] hover:bg-[#2a475e] border border-slate-700 text-xs text-sky-300 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 border border-slate-800/80 text-xs font-medium text-slate-300 hover:text-white transition-colors duration-200"
           >
             <Languages className="w-4 h-4 shrink-0" />
             <span>{useThaiNumerals ? 'เปลี่ยนเป็นเลขอารบิก (1, 2, 3)' : 'เปลี่ยนเป็นเลขไทย (๑, ๒, ๓)'}</span>
@@ -148,7 +148,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
           >
             <Printer className="w-4 h-4 shrink-0" />
             <span>สั่งพิมพ์ A4</span>

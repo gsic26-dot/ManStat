@@ -91,14 +91,14 @@ export const ViewSchoolBoard: React.FC = () => {
           </div>
 
           {/* View Switcher */}
-          <div className="inline-flex p-1 bg-[#101822] border border-slate-700 rounded-xl">
+          <div className="inline-flex p-1 bg-[#101822] border border-slate-800/80 rounded-lg">
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'table'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
               }`}
             >
               <LayoutList className="w-4 h-4 shrink-0" />
@@ -107,10 +107,10 @@ export const ViewSchoolBoard: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'grid'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
               }`}
             >
               <LayoutGrid className="w-4 h-4 shrink-0" />

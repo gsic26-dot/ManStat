@@ -34,9 +34,9 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('requests')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'requests'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-slate-800 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
             title="รายการคำร้องขอลา"
@@ -51,9 +51,9 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('tracking')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'tracking'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-slate-800 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
             title="ติดตามสถานะคำร้อง"
@@ -67,7 +67,7 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
           <button
             type="button"
             onClick={onOpenSubmitModal}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-medium border border-transparent transition-colors duration-200 self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4 shrink-0" />
             <span>ยื่นคำร้องขอลาใหม่</span>

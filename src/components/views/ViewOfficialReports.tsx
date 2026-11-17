@@ -77,12 +77,11 @@ export function ViewOfficialReports() {
           <div className="flex items-center gap-3">
             <ExcelExportButton
               fiscalYear={2570}
-              className="shadow-md shadow-emerald-950/40"
             />
             <button
               type="button"
               onClick={() => window.print()}
-              className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
             >
               <Printer className="w-4 h-4 shrink-0" />
               <span>พิมพ์รายงาน (A4 แนวนอน)</span>

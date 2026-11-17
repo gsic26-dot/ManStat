@@ -222,7 +222,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                   href={`/leave/print/${req.id}`}
                   target="_blank"
                   title="พิมพ์แบบฟอร์ม A4"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 transition-colors duration-200"
                 >
                   <Printer className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span>พิมพ์ A4</span>
@@ -231,7 +231,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenAction(req, 'approve')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/90 hover:bg-emerald-500 text-white border border-transparent transition-colors duration-200 cursor-pointer"
                 >
                   <Check className="w-3.5 h-3.5 shrink-0" />
                   <span>อนุมัติ</span>
@@ -240,7 +240,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenAction(req, 'reject')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/30 hover:bg-rose-950/60 text-rose-400 border border-rose-800/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors duration-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5 shrink-0" />
                   <span>ไม่อนุมัติ</span>
@@ -273,7 +273,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -316,7 +316,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 type="button"
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
               >
                 ยกเลิก
               </button>
@@ -324,13 +324,13 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 type="button"
                 onClick={handleConfirmAction}
                 disabled={isSubmitting}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
                   activeModal.action === 'approve'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-sm'
-                    : 'bg-rose-700 hover:bg-rose-600 shadow-sm'
+                    ? 'bg-emerald-600/90 hover:bg-emerald-500 text-white border border-transparent'
+                    : 'bg-rose-800/80 hover:bg-rose-700 text-rose-100 border border-transparent'
                 }`}
               >
-                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
                 <span>ยืนยันการ{activeModal.action === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}</span>
               </button>
             </div>

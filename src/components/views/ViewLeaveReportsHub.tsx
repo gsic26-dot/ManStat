@@ -32,9 +32,9 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('analytics')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'analytics'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-slate-800 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
             title="กราฟและสถิติภาพรวม"
@@ -46,9 +46,9 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('official')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'official'
-                ? 'bg-slate-800 text-white shadow-sm'
+                ? 'bg-slate-800 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
             }`}
             title="สรุปวันลา สพฐ. (รายงานทางการ)"

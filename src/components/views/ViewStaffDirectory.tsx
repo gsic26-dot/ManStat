@@ -90,14 +90,14 @@ export const ViewStaffDirectory: React.FC = () => {
               />
             </div>
 
-            <div className="inline-flex p-1 bg-[#101822] border border-slate-700 rounded-xl">
+            <div className="inline-flex p-1 bg-[#101822] border border-slate-800/80 rounded-lg">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                   viewMode === 'table'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
                 }`}
                 title="มุมมองตารางแนวยาว อ่านง่าย"
               >
@@ -107,10 +107,10 @@ export const ViewStaffDirectory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                   viewMode === 'grid'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
                 }`}
                 title="มุมมองการ์ด"
               >
@@ -129,10 +129,10 @@ export const ViewStaffDirectory: React.FC = () => {
           <button
             type="button"
             onClick={() => setSelectedDept('ALL')}
-            className={`px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors duration-200 shrink-0 ${
               selectedDept === 'ALL'
-                ? 'bg-sky-600 text-white shadow-sm'
-                : 'bg-[#101822] text-slate-300 hover:bg-slate-800 border border-slate-700'
+                ? 'bg-sky-600 text-white border border-transparent'
+                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
             }`}
           >
             ทั้งหมด ({INITIAL_TEACHERS.length})
@@ -145,10 +145,10 @@ export const ViewStaffDirectory: React.FC = () => {
                 key={dept}
                 type="button"
                 onClick={() => setSelectedDept(dept)}
-                className={`px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors duration-200 shrink-0 ${
                   isSelected
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'bg-[#101822] text-slate-300 hover:bg-slate-800 border border-slate-700'
+                    ? 'bg-sky-600 text-white border border-transparent'
+                    : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
                 }`}
               >
                 {dept} ({count})
@@ -268,7 +268,7 @@ export const ViewStaffDirectory: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedTeacher(teacher)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#1b2838] hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition-all shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                         >
                           <span>ก.พ.7</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -346,7 +346,7 @@ export const ViewStaffDirectory: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedTeacher(teacher)}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1b2838] hover:bg-[#2a475e] text-slate-200 hover:text-white border border-slate-700 text-xs sm:text-sm font-semibold transition-colors"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs sm:text-sm font-medium transition-colors duration-200"
                 >
                   <span>ดูประวัติ ก.พ.7 และพัฒนาวิชาชีพ</span>
                   <ChevronRight className="w-4 h-4" />
@@ -371,7 +371,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedTeacher(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -435,7 +435,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedTeacher(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold transition-colors"
+                className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs sm:text-sm font-medium transition-colors duration-200"
               >
                 ปิดหน้าต่าง
               </button>

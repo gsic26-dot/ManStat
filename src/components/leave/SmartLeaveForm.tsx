@@ -237,7 +237,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
           >
             <X className="w-5 h-5" />
           </button>
@@ -449,7 +449,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 type="button"
                 onClick={onCancel}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
               >
                 ยกเลิก
               </button>
@@ -457,7 +457,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || calculatedDays <= 0}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-semibold shadow-md transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-medium border border-transparent transition-colors duration-200"
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin shrink-0" />

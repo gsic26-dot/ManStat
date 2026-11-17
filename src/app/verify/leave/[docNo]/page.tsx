@@ -215,7 +215,7 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
           <div className="mt-6 text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
               <span>เข้าสู่หน้าหลักระบบ ManStat-Modern</span>

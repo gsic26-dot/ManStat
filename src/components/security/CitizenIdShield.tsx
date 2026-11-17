@@ -124,7 +124,7 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
 
   return (
     <div className={`inline-flex flex-col gap-1 ${className}`}>
-      <div className="inline-flex items-center gap-2 bg-[#1b2838] border border-[#2a475e] px-3 py-1.5 rounded-md font-mono text-sm shadow-sm transition-all">
+      <div className="inline-flex items-center gap-2 bg-[#121822] border border-slate-800/80 px-3 py-1.5 rounded-md font-mono text-xs transition-colors">
         <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" aria-label="PDPA Protection Active" />
 
         <span className={`tracking-wider font-semibold ${isRevealed ? 'text-emerald-300' : 'text-slate-300'}`}>
@@ -136,7 +136,7 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
           onClick={handleToggleReveal}
           disabled={isLoading}
           title={isRevealed ? 'ซ่อนเลขประจำตัวประชาชน' : 'แสดงเลขประจำตัวประชาชน (บันทึก Audit Log)'}
-          className="ml-1 inline-flex items-center justify-center p-1 rounded hover:bg-[#2a475e] text-slate-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-sky-400"
+          className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-700"
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin text-sky-400" />

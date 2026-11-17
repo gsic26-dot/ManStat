@@ -172,7 +172,7 @@ export function ViewFeedback() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-10 inline-flex items-center justify-center gap-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-md shadow-sky-900/30 transition-all disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200 disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5 shrink-0" />
               <span>{isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อเสนอแนะ'}</span>

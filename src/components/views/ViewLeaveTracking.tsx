@@ -182,7 +182,7 @@ export function ViewLeaveTracking() {
                   <Link
                     href={`/leave/print/${selectedReq.id}`}
                     target="_blank"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
                   >
                     <Printer className="w-3.5 h-3.5 shrink-0" />
                     <span>พิมพ์ใบลา</span>
@@ -190,7 +190,7 @@ export function ViewLeaveTracking() {
                   <Link
                     href={`/verify/leave/${encodeURIComponent(selectedReq.docNo)}`}
                     target="_blank"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors shadow-sm"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white border border-transparent text-xs font-medium transition-colors duration-200"
                   >
                     <QrCode className="w-3.5 h-3.5 shrink-0" />
                     <span>สแกน QR</span>
@@ -199,7 +199,7 @@ export function ViewLeaveTracking() {
                     type="button"
                     onClick={handleDeleteCurrent}
                     title="ลบคำร้องนี้"
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
                   >
                     <Trash2 className="w-3.5 h-3.5 shrink-0" />
                     <span>ลบคำร้อง</span>
