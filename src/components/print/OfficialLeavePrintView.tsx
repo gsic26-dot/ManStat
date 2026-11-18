@@ -113,7 +113,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
   );
 
   return (
-    <div className="bg-slate-100 min-h-screen text-slate-900 font-sarabun antialiased print:bg-white print:p-0">
+    <div className="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 font-sarabun antialiased print:bg-white print:p-0">
       {/* Top Controls Bar (Hidden during printing) */}
       <div className="print:hidden sticky top-0 z-50 bg-[#141a24] border-b border-slate-800 text-white px-6 py-3 shadow-lg flex items-center justify-between">
         <div className="flex items-center gap-3">

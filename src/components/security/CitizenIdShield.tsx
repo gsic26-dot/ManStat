@@ -124,10 +124,10 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
 
   return (
     <div className={`inline-flex flex-col gap-1 ${className}`}>
-      <div className="inline-flex items-center gap-2 bg-[#121822] border border-slate-800/80 px-3 py-1.5 rounded-md font-mono text-xs transition-colors">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" aria-label="PDPA Protection Active" />
+      <div className="inline-flex items-center gap-2 bg-slate-100 dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800/80 px-3 py-1.5 rounded-md font-mono text-xs transition-colors">
+        <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" aria-label="PDPA Protection Active" />
 
-        <span className={`tracking-wider font-semibold ${isRevealed ? 'text-emerald-300' : 'text-slate-300'}`}>
+        <span className={`tracking-wider font-semibold ${isRevealed ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-300'}`}>
           {isRevealed && revealedId ? revealedId : displayMasked}
         </span>
 
@@ -136,12 +136,12 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
           onClick={handleToggleReveal}
           disabled={isLoading}
           title={isRevealed ? 'ซ่อนเลขประจำตัวประชาชน' : 'แสดงเลขประจำตัวประชาชน (บันทึก Audit Log)'}
-          className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-700"
+          className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700"
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+            <Loader2 className="w-4 h-4 animate-spin text-sky-500 dark:text-sky-400" />
           ) : isRevealed ? (
-            <EyeOff className="w-4 h-4 text-amber-400" />
+            <EyeOff className="w-4 h-4 text-amber-500 dark:text-amber-400" />
           ) : (
             <Eye className="w-4 h-4" />
           )}
@@ -150,9 +150,9 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
 
       {/* 15-second Visual Countdown Progress Bar */}
       {isRevealed && (
-        <div className="w-full bg-[#101822] rounded-full h-1.5 overflow-hidden border border-slate-700/50">
+        <div className="w-full bg-slate-200 dark:bg-[#101822] rounded-full h-1.5 overflow-hidden border border-slate-300 dark:border-slate-700/50">
           <div
-            className="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-amber-400 transition-all duration-200 ease-linear"
+            className="h-full bg-gradient-to-r from-emerald-500 via-sky-500 to-amber-500 dark:from-emerald-400 dark:via-sky-400 dark:to-amber-400 transition-all duration-200 ease-linear"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -160,14 +160,14 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
 
       {/* Audit & Auto-mask Notice */}
       {isRevealed && (
-        <span className="text-[11px] text-amber-300 font-sans flex items-center gap-1">
+        <span className="text-[11px] text-amber-700 dark:text-amber-300 font-sans flex items-center gap-1">
           <span>จะซ่อนอัตโนมัติใน {remainingSeconds} วินาที (บันทึก Audit Log แล้ว)</span>
         </span>
       )}
 
       {/* Error Message */}
       {errorMessage && (
-        <div className="flex items-center gap-1 text-[11px] text-rose-400 font-sans mt-0.5">
+        <div className="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400 font-sans mt-0.5">
           <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
           <span>{errorMessage}</span>
         </div>

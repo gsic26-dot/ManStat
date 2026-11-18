@@ -48,13 +48,13 @@ export const ViewRegStanding: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <Medal className="w-5 h-5 text-amber-400 shrink-0" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
             <span>ทะเบียนวิทยฐานะข้าราชการครูและบุคลากรทางการศึกษา</span>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             ข้อมูลวิทยฐานะและคำสั่งแต่งตั้งตาม พ.ร.บ. ระเบียบข้าราชการครูและบุคลากรทางการศึกษา พ.ศ. 2547
           </p>
         </div>
@@ -67,18 +67,18 @@ export const ViewRegStanding: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="ค้นหาชื่อ หรือวิทยฐานะ..."
-              className="h-10 bg-[#101822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 w-52 sm:w-64 transition-all"
+              className="h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500 w-52 sm:w-64 transition-all"
             />
           </div>
 
-          <div className="inline-flex p-1 bg-[#101822] border border-slate-800/80 rounded-lg">
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
             <button
               type="button"
               onClick={() => setViewMode('table')}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'table'
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
               }`}
             >
               <LayoutList className="w-4 h-4 shrink-0" />
@@ -89,8 +89,8 @@ export const ViewRegStanding: React.FC = () => {
               onClick={() => setViewMode('grid')}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'grid'
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
               }`}
             >
               <LayoutGrid className="w-4 h-4 shrink-0" />
@@ -102,10 +102,10 @@ export const ViewRegStanding: React.FC = () => {
 
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
-        <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-[#111823] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-xl overflow-hidden transition-colors duration-200">
           <div className="w-full">
-            <table className="w-full text-left text-sm text-slate-200">
-              <thead className="bg-[#16202d] text-xs uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
+            <table className="w-full text-left text-sm text-slate-700 dark:text-slate-200">
+              <thead className="bg-slate-100/80 dark:bg-[#16202d] text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                 <tr>
                   <th scope="col" className="w-10 px-3 py-3.5 text-center"></th>
                   <th scope="col" className="px-3 py-3.5 text-center w-12 font-mono shrink-0">ลำดับ</th>
@@ -114,7 +114,7 @@ export const ViewRegStanding: React.FC = () => {
                   <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">วิทยฐานะปัจจุบัน</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/70 font-sans">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
                 {filtered.map((item, index) => {
                   const latestOrder = item.orders[0];
                   const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
@@ -125,8 +125,8 @@ export const ViewRegStanding: React.FC = () => {
                     <React.Fragment key={item.id}>
                       <tr
                         onClick={() => toggleExpand(item.id)}
-                        className={`hover:bg-[#182536]/60 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-[#15202e]' : ''
+                        className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                          isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''
                         }`}
                       >
                         {/* Expand Button */}
@@ -137,12 +137,12 @@ export const ViewRegStanding: React.FC = () => {
                               e.stopPropagation();
                               toggleExpand(item.id);
                             }}
-                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                            className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50 transition-colors duration-200"
                             title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
                           >
                             <ChevronRight
                               className={`w-4 h-4 transition-transform duration-200 ${
-                                isExpanded ? 'rotate-90 text-sky-400' : ''
+                                isExpanded ? 'rotate-90 text-sky-500 dark:text-sky-400' : ''
                               }`}
                             />
                           </button>
@@ -155,20 +155,20 @@ export const ViewRegStanding: React.FC = () => {
 
                         {/* Full Name */}
                         <td className="px-4 py-3.5">
-                          <div className="font-bold text-white text-base truncate max-w-[200px]" title={item.name}>
+                          <div className="font-bold text-slate-900 dark:text-white text-base truncate max-w-[200px]" title={item.name}>
                             {item.name}
                           </div>
                         </td>
 
                         {/* Position */}
-                        <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-300">
+                        <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
                           <div className="truncate max-w-[200px]" title={item.position}>{posDisplay}</div>
                         </td>
 
                         {/* Standing Badge (Strictly zero-wrap) */}
                         <td className="px-4 py-3.5 text-center whitespace-nowrap">
                           <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                             title={item.standing}
                           >
                             <Medal className="w-3.5 h-3.5 shrink-0" />
@@ -179,46 +179,46 @@ export const ViewRegStanding: React.FC = () => {
 
                       {/* Expanded Detail Panel */}
                       {isExpanded && (
-                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                        <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                           <td colSpan={5} className="px-6 py-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1 font-medium">กลุ่มสาระการเรียนรู้ / ฝ่าย</div>
-                                <div className="text-slate-200 font-medium">{deptDisplay}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">กลุ่มสาระการเรียนรู้ / ฝ่าย</div>
+                                <div className="text-slate-800 dark:text-slate-200 font-medium">{deptDisplay}</div>
                               </div>
 
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1 font-medium">วันบรรจุรับราชการ</div>
-                                <div className="font-mono text-slate-300">{item.startDate}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันบรรจุรับราชการ</div>
+                                <div className="font-mono text-slate-700 dark:text-slate-300">{item.startDate}</div>
                               </div>
 
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1 font-medium">เลขที่คำสั่งแต่งตั้งล่าสุด</div>
-                                <div className="font-mono text-amber-300 font-medium">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">เลขที่คำสั่งแต่งตั้งล่าสุด</div>
+                                <div className="font-mono text-amber-600 dark:text-amber-300 font-medium">
                                   {latestOrder ? latestOrder.orderNumber : 'ไม่มีข้อมูลคำสั่ง'}
                                 </div>
                               </div>
 
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
-                                <div className="font-mono text-sky-400">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
+                                <div className="font-mono text-sky-600 dark:text-sky-400">
                                   {latestOrder ? latestOrder.effectiveDate : '-'}
                                 </div>
                               </div>
                             </div>
 
                             {item.orders.length > 1 && (
-                              <div className="mt-3 pt-3 border-t border-slate-800/60 text-xs">
-                                <div className="text-[11px] text-slate-400 mb-1.5 font-medium">
+                              <div className="mt-3 pt-3 border-t border-slate-200/90 dark:border-slate-800/60 text-xs">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                                   ประวัติคำสั่งแต่งตั้งทั้งหมด ({item.orders.length} รายการ):
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   {item.orders.map((ord, oIdx) => (
                                     <span
                                       key={oIdx}
-                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#101822] text-slate-300 border border-slate-800 text-[11px] font-mono"
+                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
                                     >
-                                      <FileText className="w-3 h-3 text-amber-400 shrink-0" />
+                                      <FileText className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
                                       <span>{ord.level}: {ord.orderNumber} ({ord.effectiveDate})</span>
                                     </span>
                                   ))}
@@ -241,29 +241,29 @@ export const ViewRegStanding: React.FC = () => {
           {filtered.map((item) => (
             <div
               key={item.id}
-              className="bg-[#111823]/90 p-5 rounded-2xl border border-slate-800 hover:border-amber-500/40 hover:shadow-lg transition-all flex flex-col justify-between"
+              className="bg-white dark:bg-[#111823]/90 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                     {item.standing}
                   </span>
-                  <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                 </div>
 
-                <div className="text-base font-bold text-white mb-0.5">{item.name}</div>
-                <div className="text-xs sm:text-sm text-slate-400 mb-3">{item.department}</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{item.name}</div>
+                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{item.department}</div>
 
-                <div className="space-y-2 text-xs sm:text-sm text-slate-300 pt-3 border-t border-slate-800">
+                <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>วันบรรจุ: <strong className="text-slate-200">{item.startDate}</strong></span>
+                    <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{item.startDate}</strong></span>
                   </div>
                   {item.orders.length > 0 && (
-                    <div className="mt-2 bg-[#101822] p-3 rounded-xl border border-slate-800 space-y-1.5 text-xs">
-                      <span className="text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
-                      <div className="text-slate-200 font-mono">คำสั่งเลขที่: {item.orders[0].orderNumber}</div>
-                      <div className="text-slate-400">มีผลตั้งแต่วันที่: {item.orders[0].effectiveDate}</div>
+                    <div className="mt-2 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-1.5 text-xs">
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
+                      <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {item.orders[0].orderNumber}</div>
+                      <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {item.orders[0].effectiveDate}</div>
                     </div>
                   )}
                 </div>

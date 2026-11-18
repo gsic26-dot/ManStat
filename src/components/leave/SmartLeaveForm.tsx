@@ -219,16 +219,16 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
   };
 
   return (
-    <div className="glass-panel p-6 rounded-xl border border-slate-800 shadow-2xl max-w-2xl mx-auto text-slate-200">
+    <div className="bg-white dark:bg-[#121822] p-6 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm max-w-2xl mx-auto text-slate-800 dark:text-slate-200">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-700/80">
+      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200/90 dark:border-slate-700/80">
         <div className="flex items-center gap-2">
-          <div className="p-2.5 rounded-lg bg-sky-500/15 text-sky-400">
+          <div className="p-2.5 rounded-lg bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400">
             <Calendar className="w-5 h-5 shrink-0" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">ยื่นแบบฟอร์มขอลาอิเล็กทรอนิกส์</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">ยื่นแบบฟอร์มขอลาอิเล็กทรอนิกส์</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               ผู้ขอลา: {currentStaffName} | ปีงบประมาณ พ.ศ. {fiscalYear} (รอบที่ {evalRound})
             </p>
           </div>
@@ -237,7 +237,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
           >
             <X className="w-5 h-5" />
           </button>
@@ -247,7 +247,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
       {submitSuccess ? (
         <div className="text-center py-10 space-y-3">
           <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-          <h4 className="text-base font-semibold text-white">บันทึกคำขอลาเรียบร้อยแล้ว</h4>
+          <h4 className="text-base font-semibold text-slate-900 dark:text-white">บันทึกคำขอลาเรียบร้อยแล้ว</h4>
           <p className="text-xs text-slate-400">
             ระบบส่งข้อมูลเข้าสู่คิวการพิจารณาของผู้บังคับบัญชาตามสายงานเรียบร้อยแล้ว
           </p>
@@ -256,16 +256,16 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Leave Type Select */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               ประเภทการลา <span className="text-rose-400">*</span>
             </label>
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-              className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+              className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
             >
               {LEAVE_TYPES.map((lt) => (
-                <option key={lt.value} value={lt.value} className="bg-[#171a21]">
+                <option key={lt.value} value={lt.value} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                   {lt.label} - {lt.description}
                 </option>
               ))}
@@ -275,7 +275,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
           {/* Date Picker Range & Period */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 ตั้งแต่วันที่ <span className="text-rose-400">*</span>
               </label>
               <input
@@ -287,12 +287,12 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     setEndDate(e.target.value);
                   }
                 }}
-                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 ถึงวันที่ <span className="text-rose-400">*</span>
               </label>
               <input
@@ -300,36 +300,36 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 value={endDate}
                 min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 ช่วงเวลาการลา
               </label>
               <select
                 value={halfDay}
                 onChange={(e) => setHalfDay(e.target.value as HalfDayPeriod)}
                 disabled={startDate !== endDate || (leaveType !== 'ลาป่วย' && leaveType !== 'ลากิจส่วนตัว')}
-                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 disabled:opacity-50 transition-all cursor-pointer"
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 disabled:opacity-50 transition-all cursor-pointer"
               >
-                <option value="full" className="bg-[#171a21]">เต็มวัน (1 วัน)</option>
-                <option value="morning" className="bg-[#171a21]">ครึ่งวันเช้า (0.5 วัน)</option>
-                <option value="afternoon" className="bg-[#171a21]">ครึ่งวันบ่าย (0.5 วัน)</option>
+                <option value="full" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">เต็มวัน (1 วัน)</option>
+                <option value="morning" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ครึ่งวันเช้า (0.5 วัน)</option>
+                <option value="afternoon" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ครึ่งวันบ่าย (0.5 วัน)</option>
               </select>
             </div>
           </div>
 
           {/* Live Calculated Days Banner */}
-          <div className="bg-[#101822] border border-slate-700/80 rounded-lg p-3.5 flex items-center justify-between">
+          <div className="bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg p-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span className="text-xs text-slate-300">
+              <span className="text-xs text-slate-600 dark:text-slate-300">
                 จำนวนวันลาที่คำนวณได้จริง (หักวันหยุดราชการ/เสาร์-อาทิตย์):
               </span>
             </div>
-            <span className="font-mono text-base font-bold text-sky-300">
+            <span className="font-mono text-base font-bold text-sky-600 dark:text-sky-300">
               {calculatedDays} วันทำการ
             </span>
           </div>
@@ -361,7 +361,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
 
           {/* Reason for Leave */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               เหตุผลการลา <span className="text-rose-400">*</span>
             </label>
             <textarea
@@ -370,24 +370,24 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
               rows={2}
               required
               placeholder="ระบุเหตุผลความจำเป็น เช่น ป่วยเป็นไข้หวัด, จัดการธุระส่วนตัวที่อำเภอ..."
-              className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+              className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
             />
           </div>
 
           {/* Substitute Teacher & Contact Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 ผู้ปฏิบัติหน้าที่แทน (ครูผู้สอนแทน)
               </label>
               <select
                 value={substituteStaffId}
                 onChange={(e) => setSubstituteStaffId(e.target.value)}
-                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                <option value="" className="bg-[#171a21]">-- เลือกครูผู้สอนแทน (ถ้ามี) --</option>
+                <option value="" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">-- เลือกครูผู้สอนแทน (ถ้ามี) --</option>
                 {substituteTeachers.map((sub) => (
-                  <option key={sub.id} value={sub.id} className="bg-[#171a21]">
+                  <option key={sub.id} value={sub.id} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                     {sub.name} ({sub.position})
                   </option>
                 ))}
@@ -395,7 +395,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 ที่อยู่หรือเบอร์โทรศัพท์ที่ติดต่อได้ระหว่างลา
               </label>
               <input
@@ -403,18 +403,18 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 value={contactInfo}
                 onChange={(e) => setContactInfo(e.target.value)}
                 placeholder="เบอร์โทรศัพท์ หรือที่อยู่..."
-                className="w-full h-10 bg-[#101822] border border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
           </div>
 
           {/* Attachment Upload (Supabase Storage: leave-documents) */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               แนบเอกสารประกอบ (ใบรับรองแพทย์ / หนังสือราชการ)
             </label>
             <div className="flex items-center gap-3">
-              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-[#1b2838] hover:bg-[#2a475e] border border-slate-700 rounded-lg text-xs text-slate-300 transition-colors">
+              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-[#1b2838] dark:hover:bg-[#2a475e] border border-slate-200/90 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300 transition-colors">
                 <Upload className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                 <span>{selectedFile ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์อัปโหลด'}</span>
                 <input
@@ -449,7 +449,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 type="button"
                 onClick={onCancel}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
               >
                 ยกเลิก
               </button>

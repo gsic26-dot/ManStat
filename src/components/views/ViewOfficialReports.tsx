@@ -61,14 +61,14 @@ export function ViewOfficialReports() {
       {/* ================================================================= */}
       <div className="space-y-6 print:hidden">
         {/* Header & Export Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 rounded-2xl border border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div>
-            <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
               <FileSpreadsheet className="w-4 h-4 shrink-0" />
               <span>Official Attendance & Evaluation Reports</span>
             </div>
-            <h2 className="text-xl font-bold text-white mt-1">สรุปวันลาและรายงาน สพฐ.</h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">สรุปวันลาและรายงาน สพฐ.</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               รายงานสถิติการมาปฏิบัติราชการเพื่อประกอบการประเมินเลื่อนขั้นเงินเดือนตาม ว15/2561
             </p>
           </div>
@@ -98,31 +98,31 @@ export function ViewOfficialReports() {
               placeholder="ค้นหาชื่อครู หรือตำแหน่ง..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+              className="w-full h-10 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
             />
           </div>
 
-          <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
+          <div className="h-10 flex items-center bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">
             <select
               value={roundFilter}
               onChange={(e) => setRoundFilter(e.target.value as 'FULL' | 'ROUND_1' | 'ROUND_2')}
-              className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
+              className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <option value="FULL" className="bg-[#171a21]">รอบการประเมิน: ทั้งปีงบประมาณ 2570</option>
-              <option value="ROUND_1" className="bg-[#171a21]">รอบที่ 1: 1 ต.ค. 2569 - 31 มี.ค. 2570</option>
-              <option value="ROUND_2" className="bg-[#171a21]">รอบที่ 2: 1 เม.ย. 2570 - 30 ก.ย. 2570</option>
+              <option value="FULL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบการประเมิน: ทั้งปีงบประมาณ 2570</option>
+              <option value="ROUND_1" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบที่ 1: 1 ต.ค. 2569 - 31 มี.ค. 2570</option>
+              <option value="ROUND_2" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบที่ 2: 1 เม.ย. 2570 - 30 ก.ย. 2570</option>
             </select>
           </div>
 
-          <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
+          <div className="h-10 flex items-center bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
+              className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-[#171a21]">กลุ่มสาระ / ฝ่ายงานทั้งหมด</option>
+              <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">กลุ่มสาระ / ฝ่ายงานทั้งหมด</option>
               {departments.map((d) => (
-                <option key={d} value={d} className="bg-[#171a21]">
+                <option key={d} value={d} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                   {d}
                 </option>
               ))}
@@ -131,10 +131,10 @@ export function ViewOfficialReports() {
         </div>
 
         {/* Web Summary Table */}
-        <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
-          <div className="p-4 bg-[#16202c] border-b border-slate-800 flex items-center justify-between">
-            <div className="text-xs text-slate-300">
-              แสดงข้อมูลบุคลากร <span className="font-bold text-white">{filteredTeachers.length}</span> ท่าน
+        <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between">
+            <div className="text-xs text-slate-700 dark:text-slate-300">
+              แสดงข้อมูลบุคลากร <span className="font-bold text-slate-900 dark:text-white">{filteredTeachers.length}</span> ท่าน
             </div>
             <span className="text-[11px] text-sky-400 font-mono">
               เกณฑ์ ว15/2561: ลาไม่เกิน 6 ครั้ง หรือ 23 วันทำการ
@@ -143,7 +143,7 @@ export function ViewOfficialReports() {
 
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131b25] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+              <thead className="bg-slate-100/80 dark:bg-[#131b25] text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="px-4 py-3 text-center min-w-[50px] shrink-0">ลำดับ</th>
                   <th className="px-4 py-3 min-w-[200px]">ชื่อ - นามสกุล</th>

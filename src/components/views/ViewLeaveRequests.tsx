@@ -124,14 +124,14 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   return (
     <div className="space-y-6">
       {/* Header & Action Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 rounded-2xl border border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
             <FileText className="w-4 h-4 shrink-0" />
             <span>Leave Request Management</span>
           </div>
-          <h2 className="text-xl font-bold text-white mt-1">รายการคำร้องและประวัติการลา</h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">รายการคำร้องและประวัติการลา</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             ตรวจสอบ อนุมัติ และพิมพ์แบบฟอร์มใบลาราชการมาตรฐาน A4 พร้อมระบบตรวจสอบ QR Code
           </p>
         </div>
@@ -157,7 +157,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             placeholder="ค้นหาชื่อครู, เลขที่หนังสือ, เหตุผลการลา..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+            className="w-full h-10 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
           />
         </div>
 
@@ -166,34 +166,34 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'pending' | 'approved' | 'rejected')}
-            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
+            className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL" className="bg-[#171a21]">สถานะทั้งหมด</option>
-            <option value="pending" className="bg-[#171a21]">รอการอนุมัติ (Pending)</option>
-            <option value="approved" className="bg-[#171a21]">อนุมัติแล้ว (Approved)</option>
-            <option value="rejected" className="bg-[#171a21]">ไม่อนุมัติ (Rejected)</option>
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">สถานะทั้งหมด</option>
+            <option value="pending" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอการอนุมัติ (Pending)</option>
+            <option value="approved" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">อนุมัติแล้ว (Approved)</option>
+            <option value="rejected" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ไม่อนุมัติ (Rejected)</option>
           </select>
         </div>
 
-        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
+        <div className="h-10 flex items-center bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as 'ALL' | 'sick' | 'personal' | 'vacation')}
-            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
+            className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL" className="bg-[#171a21]">ประเภทการลาทั้งหมด</option>
-            <option value="sick" className="bg-[#171a21]">ลาป่วย</option>
-            <option value="personal" className="bg-[#171a21]">ลากิจส่วนตัว</option>
-            <option value="vacation" className="bg-[#171a21]">ลาพักผ่อน</option>
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ประเภทการลาทั้งหมด</option>
+            <option value="sick" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลาป่วย</option>
+            <option value="personal" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลากิจส่วนตัว</option>
+            <option value="vacation" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลาพักผ่อน</option>
           </select>
         </div>
       </div>
 
       {/* Requests Table */}
-      <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
         <div className="w-full">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800 uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="w-10 px-3 py-3 text-center"></th>
                 <th className="px-4 py-3">ผู้ขอลา / ตำแหน่ง</th>
@@ -203,7 +203,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <th className="px-4 py-3 text-center min-w-[110px]">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-sans">
+            <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
               {filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
@@ -221,8 +221,8 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                     <React.Fragment key={req.id}>
                       <tr
                         onClick={() => toggleExpand(req.id)}
-                        className={`hover:bg-[#162231]/60 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-[#15202e]' : ''
+                        className={`hover:bg-slate-50 dark:hover:bg-[#162231]/60 transition-colors cursor-pointer ${
+                          isExpanded ? 'bg-slate-100/70 dark:bg-[#15202e]' : ''
                         }`}
                       >
                         <td className="w-10 px-3 py-3.5 text-center">
@@ -243,7 +243,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           </button>
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-white truncate max-w-[200px]" title={req.teacherName}>{req.teacherName}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={req.teacherName}>{req.teacherName}</div>
                           <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={req.position}>{posDisplay}</div>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
@@ -260,7 +260,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           </span>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap font-mono text-xs">
-                          <div className="text-slate-200">
+                          <div className="text-slate-800 dark:text-slate-200">
                             {new Date(req.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} – {new Date(req.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                           </div>
                           <div className="text-sky-400 font-semibold mt-0.5 text-[11px]">
@@ -301,7 +301,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                               href={`/leave/print/${req.id}`}
                               target="_blank"
                               title="พิมพ์แบบฟอร์ม A4"
-                              className="p-1.5 rounded-md text-slate-400 hover:text-sky-300 hover:bg-slate-800/50 transition-colors duration-200"
+                              className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:hover:text-sky-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
                             >
                               <Printer className="w-4 h-4 shrink-0" />
                             </Link>
@@ -319,11 +319,11 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
 
                       {/* Expanded Detail Panel */}
                       {isExpanded && (
-                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                        <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                           <td colSpan={6} className="px-6 py-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1">เลขที่เอกสาร &amp; วันที่ยื่น</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">เลขที่เอกสาร &amp; วันที่ยื่น</div>
                                 <div className="font-mono text-sky-400 font-medium">{req.docNo}</div>
                                 <div className="text-slate-400 text-[11px] mt-0.5">
                                   ยื่นเมื่อ: {new Date(req.submittedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -331,23 +331,23 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                               </div>
 
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1">ครูผู้ปฏิบัติหน้าที่แทน</div>
-                                <div className="text-slate-200 font-medium">{req.substituteTeacherName || 'ไม่มีการระบุ'}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">ครูผู้ปฏิบัติหน้าที่แทน</div>
+                                <div className="text-slate-800 dark:text-slate-200 font-medium">{req.substituteTeacherName || 'ไม่มีการระบุ'}</div>
                                 <div className="text-slate-400 text-[11px] mt-0.5">กลุ่มสาระ: {req.department}</div>
                               </div>
 
                               <div>
-                                <div className="text-[11px] text-slate-400 mb-1">คำสั่ง/ความเห็นผู้อำนวยการ</div>
-                                <div className="text-slate-200">{req.directorRemark || req.supervisorRemark || 'ยังไม่มีความเห็นเพิ่มเติม'}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">คำสั่ง/ความเห็นผู้อำนวยการ</div>
+                                <div className="text-slate-800 dark:text-slate-200">{req.directorRemark || req.supervisorRemark || 'ยังไม่มีความเห็นเพิ่มเติม'}</div>
                               </div>
 
                               <div className="flex flex-col justify-between">
-                                <div className="text-[11px] text-slate-400 mb-1">ลิงก์และเอกสารทางการ</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">ลิงก์และเอกสารทางการ</div>
                                 <div className="flex items-center gap-2">
                                   <Link
                                     href={`/verify/leave/${encodeURIComponent(req.docNo)}`}
                                     target="_blank"
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs transition-colors duration-200"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs transition-colors duration-200"
                                   >
                                     <QrCode className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                     <span>ตรวจสอบ QR</span>
@@ -355,7 +355,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                                   <Link
                                     href={`/leave/print/${req.id}`}
                                     target="_blank"
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs transition-colors duration-200"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs transition-colors duration-200"
                                   >
                                     <Printer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                     <span>พิมพ์ A4</span>
@@ -365,9 +365,9 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                             </div>
 
                             {req.reason && (
-                              <div className="mt-3 pt-3 border-t border-slate-800/60 text-xs">
+                              <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-800/60 text-xs">
                                 <span className="text-[11px] text-slate-400">เหตุผลความจำเป็น: </span>
-                                <span className="text-slate-200">{req.reason}</span>
+                                <span className="text-slate-800 dark:text-slate-200">{req.reason}</span>
                               </div>
                             )}
                           </td>
@@ -385,8 +385,8 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
       {/* Details & Action Modal */}
       {selectedRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-sky-400 font-bold text-sm">
                 <FileText className="w-4 h-4 shrink-0" />
                 <span>รายละเอียดคำร้องขอลา ({selectedRequest.docNo})</span>
@@ -453,7 +453,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <Link
                   href={`/leave/print/${selectedRequest.id}`}
                   target="_blank"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   <Printer className="w-3.5 h-3.5 shrink-0" />
                   <span>พิมพ์ใบลา A4</span>
@@ -491,7 +491,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <button
                   type="button"
                   onClick={() => setSelectedRequest(null)}
-                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ปิดหน้าต่าง
                 </button>

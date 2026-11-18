@@ -45,23 +45,23 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
       {items.map((item, idx) => (
         <div
           key={idx}
-          className="bg-[#121822] border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between"
+          className="bg-white dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800/80 rounded-xl p-4 flex flex-col justify-between shadow-sm dark:shadow-none transition-colors duration-200"
         >
           <div className="flex items-center justify-between gap-2 min-w-0">
-            <span className="text-xs font-medium text-slate-400 truncate" title={item.label}>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate" title={item.label}>
               {item.label}
             </span>
             <span className={`w-2 h-2 rounded-full shrink-0 ${item.dotColor}`} />
           </div>
           <div className="mt-3 flex items-baseline gap-1.5">
             {isLoading ? (
-              <div className="h-8 w-14 bg-slate-800 animate-pulse rounded" />
+              <div className="h-8 w-14 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
             ) : (
-              <span className="text-2xl font-mono font-bold tabular-nums text-white">
+              <span className="text-2xl font-mono font-bold tabular-nums text-slate-900 dark:text-white">
                 {item.value}
               </span>
             )}
-            <span className="text-xs text-slate-500">{item.unit}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{item.unit}</span>
           </div>
         </div>
       ))}

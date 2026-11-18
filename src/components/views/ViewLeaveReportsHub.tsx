@@ -27,15 +27,15 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
   return (
     <div className="space-y-5">
       {/* Top Segmented Tab Switcher */}
-      <div className="flex items-center justify-between bg-[#121822] p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
-        <div className="inline-flex p-1 bg-[#0b1016] border border-slate-800/80 rounded-lg">
+      <div className="flex items-center justify-between bg-white dark:bg-[#121822] p-2 sm:p-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
+        <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg">
           <button
             type="button"
             onClick={() => setActiveTab('analytics')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'analytics'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
             }`}
             title="กราฟและสถิติภาพรวม"
           >
@@ -48,8 +48,8 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
             onClick={() => setActiveTab('official')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
               activeTab === 'official'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
             }`}
             title="สรุปวันลา สพฐ. (รายงานทางการ)"
           >

@@ -183,12 +183,12 @@ export const ExcelExportButton: React.FC<ExcelExportButtonProps> = ({
       onClick={handleExport}
       disabled={isExporting}
       title="ส่งออกรายงานบุคลากรและสถิติการลาเป็นไฟล์ Excel (.xlsx) 4 แผ่นงานตามมาตรฐาน สพฐ."
-      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 disabled:opacity-50 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-700 ${className}`}
+      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 disabled:opacity-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700 ${className}`}
     >
       {isExporting ? (
-        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
       ) : (
-        <FileSpreadsheet className="w-4 h-4 shrink-0" />
+        <FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
       )}
       <span>ส่งออกรายงาน Excel (สพฐ.)</span>
     </button>

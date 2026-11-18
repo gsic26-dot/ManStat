@@ -49,27 +49,27 @@ export function ViewRegScout() {
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
         <div>
-          <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
             <Award className="w-4 h-4 shrink-0" />
             <span>Scout Leader Qualifications Registry</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white mt-1">ทะเบียนวุฒิทางลูกเสือ</h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1">ทะเบียนวุฒิทางลูกเสือ</h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ (รวม {scouts.length} รายการ)
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex p-1 bg-[#101822] border border-slate-800/80 rounded-lg">
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
             <button
               type="button"
               onClick={() => setViewMode('table')}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'table'
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
               }`}
             >
               <LayoutList className="w-4 h-4 shrink-0" />
@@ -80,8 +80,8 @@ export function ViewRegScout() {
               onClick={() => setViewMode('grid')}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                 viewMode === 'grid'
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
               }`}
             >
               <LayoutGrid className="w-4 h-4 shrink-0" />
@@ -100,19 +100,19 @@ export function ViewRegScout() {
             placeholder="ค้นหาชื่อครู, วุฒิการฝึกอบรม, เลขที่วุฒิบัตร..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 bg-[#111822] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 transition-all"
+            className="w-full h-10 bg-slate-50 dark:bg-[#111822] border border-slate-200 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500 transition-all"
           />
         </div>
 
-        <div className="h-10 flex items-center bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs sm:text-sm text-slate-200 focus-within:border-amber-500 transition-all">
+        <div className="h-10 flex items-center bg-slate-50 dark:bg-[#111822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus-within:border-amber-500 transition-all">
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
-            className="w-full bg-transparent text-slate-200 focus:outline-none cursor-pointer"
+            className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL" className="bg-[#171a21]">ระดับวุฒิทั้งหมด (All Levels)</option>
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-white">ระดับวุฒิทั้งหมด (All Levels)</option>
             {levels.map((lvl) => (
-              <option key={lvl} value={lvl} className="bg-[#171a21]">
+              <option key={lvl} value={lvl} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-white">
                 {lvl}
               </option>
             ))}
@@ -122,10 +122,10 @@ export function ViewRegScout() {
 
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
-        <div className="bg-[#111823] rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-[#111823] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-xl overflow-hidden transition-colors duration-200">
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm text-slate-200">
-              <thead className="bg-[#16202d] text-xs uppercase text-slate-400 tracking-wider font-semibold border-b border-slate-800">
+            <table className="w-full text-left text-sm text-slate-700 dark:text-slate-200">
+              <thead className="bg-slate-100/80 dark:bg-[#16202d] text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                 <tr>
                   <th scope="col" className="w-10 px-3 py-3.5 text-center">
                     <span className="sr-only">ขยายรายละเอียด</span>
@@ -136,7 +136,7 @@ export function ViewRegScout() {
                   <th scope="col" className="px-5 py-3.5 min-w-[240px]">หลักสูตร / วุฒิการฝึกอบรม</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/70 font-sans">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
                 {filteredScouts.map((s, index) => {
                   const posDisplay = s.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   const isExpanded = expandedId === s.id;
@@ -144,8 +144,8 @@ export function ViewRegScout() {
                     <React.Fragment key={s.id}>
                       <tr
                         onClick={() => toggleExpand(s.id)}
-                        className={`hover:bg-[#182536]/60 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-[#182536]/40' : ''
+                        className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                          isExpanded ? 'bg-slate-50/90 dark:bg-[#182536]/40' : ''
                         }`}
                       >
                         <td className="px-3 py-3.5 text-center">
@@ -155,12 +155,12 @@ export function ViewRegScout() {
                               e.stopPropagation();
                               toggleExpand(s.id);
                             }}
-                            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                            className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors"
                             aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                           >
                             <ChevronRight
                               className={`w-4 h-4 transition-transform duration-200 ${
-                                isExpanded ? 'rotate-90 text-amber-400' : ''
+                                isExpanded ? 'rotate-90 text-amber-500 dark:text-amber-400' : ''
                               }`}
                             />
                           </button>
@@ -169,19 +169,19 @@ export function ViewRegScout() {
                           {index + 1}
                         </td>
                         <td className="px-5 py-3.5">
-                          <div className="font-bold text-white text-sm truncate max-w-[200px]" title={s.teacherName}>{s.teacherName}</div>
-                          <div className="text-xs text-slate-400 truncate max-w-[200px]" title={s.position}>{posDisplay}</div>
+                          <div className="font-bold text-slate-900 dark:text-white text-sm truncate max-w-[200px]" title={s.teacherName}>{s.teacherName}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={s.position}>{posDisplay}</div>
                         </td>
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                             title={s.badgeLevel}
                           >
                             <Award className="w-3.5 h-3.5 shrink-0" />
                             {s.badgeLevel}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-300 font-medium">
+                        <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
                           <div className="truncate max-w-[320px]" title={s.qualification}>
                             {s.qualification}
                           </div>
@@ -190,37 +190,37 @@ export function ViewRegScout() {
 
                       {/* Detail Accordion Row */}
                       {isExpanded && (
-                        <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                        <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                           <td colSpan={5} className="px-6 py-4">
                             <div className="space-y-4">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                                 <div>
-                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                     หลักสูตรและวุฒิเต็ม
                                   </div>
-                                  <div className="text-slate-200 font-medium leading-relaxed">
+                                  <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                                     {s.qualification}
                                   </div>
-                                  <div className="text-[11px] text-slate-400 mt-0.5">ประเภท: {s.category}</div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">ประเภท: {s.category}</div>
                                 </div>
                                 <div>
-                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                     เลขที่วุฒิบัตร / ทะเบียน
                                   </div>
-                                  <div className="font-mono text-sky-400 font-medium text-sm">
+                                  <div className="font-mono text-sky-600 dark:text-sky-400 font-medium text-sm">
                                     {s.certificateNo}
                                   </div>
                                   {s.orderNumber && (
-                                    <div className="font-mono text-[11px] text-slate-400 mt-0.5">
+                                    <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                       อ้างอิง: {s.orderNumber}
                                     </div>
                                   )}
                                 </div>
                                 <div>
-                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                     วันที่ได้รับวุฒิบัตร
                                   </div>
-                                  <div className="text-slate-200 font-mono">
+                                  <div className="text-slate-800 dark:text-slate-200 font-mono">
                                     {new Date(s.issueDate).toLocaleDateString('th-TH', {
                                       year: 'numeric',
                                       month: 'long',
@@ -229,10 +229,10 @@ export function ViewRegScout() {
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                     หน่วยงานที่ออกวุฒิบัตร
                                   </div>
-                                  <div className="text-slate-300 font-medium">
+                                  <div className="text-slate-700 dark:text-slate-300 font-medium">
                                     {s.issuedBy}
                                   </div>
                                 </div>
@@ -254,37 +254,37 @@ export function ViewRegScout() {
           {filteredScouts.map((s) => (
             <div
               key={s.id}
-              className="bg-[#111822] rounded-2xl border border-slate-800 p-5 hover:border-amber-500/40 transition-all flex flex-col justify-between group"
+              className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="px-3 py-1 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  <span className="px-3 py-1 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                     {s.badgeLevel}
                   </span>
-                  <span className="text-xs font-mono text-slate-400">{s.category}</span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{s.category}</span>
                 </div>
 
-                <h3 className="font-bold text-white text-base group-hover:text-amber-300 transition-colors">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
                   {s.teacherName}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{s.position}</p>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">{s.position}</p>
 
-                <div className="mt-4 p-3.5 rounded-xl bg-[#151e2b] border border-slate-800/80 space-y-2 text-xs sm:text-sm">
+                <div className="mt-4 p-3.5 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2 text-xs sm:text-sm">
                   <div>
-                    <span className="text-slate-400 block text-xs uppercase font-semibold">
+                    <span className="text-slate-500 dark:text-slate-400 block text-xs uppercase font-semibold">
                       หลักสูตรและวุฒิการฝึกอบรม
                     </span>
-                    <p className="font-medium text-slate-200 mt-0.5">{s.qualification}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{s.qualification}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
                     <div>
-                      <span className="text-slate-400 block">เลขที่วุฒิบัตร</span>
-                      <span className="font-mono text-sky-400 font-medium">{s.certificateNo}</span>
+                      <span className="text-slate-500 dark:text-slate-400 block">เลขที่วุฒิบัตร</span>
+                      <span className="font-mono text-sky-600 dark:text-sky-400 font-medium">{s.certificateNo}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">วันที่ได้รับ</span>
-                      <span className="text-slate-300">
+                      <span className="text-slate-500 dark:text-slate-400 block">วันที่ได้รับ</span>
+                      <span className="text-slate-700 dark:text-slate-300">
                         {new Date(s.issueDate).toLocaleDateString('th-TH', {
                           year: 'numeric',
                           month: 'short',
@@ -296,11 +296,11 @@ export function ViewRegScout() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-slate-200/90 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                 <span className="truncate max-w-[200px]" title={s.issuedBy}>
                   {s.issuedBy}
                 </span>
-                <span className="font-mono text-xs text-slate-500">{s.orderNumber}</span>
+                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">{s.orderNumber}</span>
               </div>
             </div>
           ))}

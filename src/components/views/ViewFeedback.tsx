@@ -89,13 +89,13 @@ export function ViewFeedback() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-[#141b24] p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
           <MessageSquare className="w-4 h-4 shrink-0" />
           <span>System Feedback & Support</span>
         </div>
-        <h2 className="text-xl font-bold text-white mt-1">แจ้งปรับปรุงระบบและข้อเสนอแนะ</h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">แจ้งปรับปรุงระบบและข้อเสนอแนะ</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           รับฟังความคิดเห็นจากคณะครูและบุคลากร เพื่อพัฒนา ManStat-Modern ให้ตอบสนองการปฏิบัติงานดียิ่งขึ้น
         </p>
       </div>
@@ -105,38 +105,38 @@ export function ViewFeedback() {
         <div className="lg:col-span-1">
           <form
             onSubmit={handleSubmit}
-            className="bg-[#111822] p-5 rounded-2xl border border-slate-800 space-y-4"
+            className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4"
           >
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
               ส่งข้อคิดเห็นใหม่
             </h3>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 ประเภทข้อคิดเห็น
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as 'bug' | 'feature' | 'inquiry')}
-                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+                className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                <option value="feature" className="bg-[#171a21]">เสนอแนะฟังก์ชันการทำงานใหม่ (Feature Request)</option>
-                <option value="bug" className="bg-[#171a21]">แจ้งปัญหา / ข้อผิดพลาดของระบบ (Bug Report)</option>
-                <option value="inquiry" className="bg-[#171a21]">สอบถามการใช้งาน / ระเบียบการลา (Inquiry)</option>
+                <option value="feature" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">เสนอแนะฟังก์ชันการทำงานใหม่ (Feature Request)</option>
+                <option value="bug" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">แจ้งปัญหา / ข้อผิดพลาดของระบบ (Bug Report)</option>
+                <option value="inquiry" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">สอบถามการใช้งาน / ระเบียบการลา (Inquiry)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 ผู้ส่งข้อคิดเห็น
               </label>
               <select
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+                className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
                 {INITIAL_TEACHERS.map((t) => (
-                  <option key={t.id} value={t.name} className="bg-[#171a21]">
+                  <option key={t.id} value={t.name} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                     {t.name}
                   </option>
                 ))}
@@ -144,7 +144,7 @@ export function ViewFeedback() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 หัวข้อข้อคิดเห็น <span className="text-rose-400">*</span>
               </label>
               <input
@@ -152,12 +152,12 @@ export function ViewFeedback() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="ระบุหัวข้ออย่างกระชับ..."
-                className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+                className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 รายละเอียด <span className="text-rose-400">*</span>
               </label>
               <textarea
@@ -231,7 +231,7 @@ export function ViewFeedback() {
                 </div>
 
                 <h4 className="font-bold text-white text-xs truncate" title={item.title}>{item.title}</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">{item.description}</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{item.description}</p>
 
                 {item.response && (
                   <div className="mt-2 p-2.5 rounded-xl bg-[#151f2d] border border-sky-500/20 text-xs text-sky-200">

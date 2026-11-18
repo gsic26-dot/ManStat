@@ -60,13 +60,13 @@ export function ViewRetroLeave() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-[#141b24] p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
           <RotateCcw className="w-4 h-4 shrink-0" />
           <span>Retroactive Leave Logging</span>
         </div>
-        <h2 className="text-xl font-bold text-white mt-1">บันทึกการลาย้อนหลัง</h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">บันทึกการลาย้อนหลัง</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           ระบบบันทึกคำร้องขอลาย้อนหลังกรณีฉุกเฉิน เจ็บป่วยกะทันหัน หรือมีเหตุจำเป็นอันมิอาจก้าวล่วงได้ตามระเบียบสำนักนายกรัฐมนตรีฯ
         </p>
       </div>
@@ -76,7 +76,7 @@ export function ViewRetroLeave() {
         <div className="lg:col-span-2">
           <form
             onSubmit={handleSubmit}
-            className="bg-[#111822] p-6 rounded-2xl border border-slate-800 space-y-5"
+            className="bg-white dark:bg-[#111822] p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-5"
           >
             {/* Regulatory Notice */}
             <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl flex items-start gap-3">
@@ -91,7 +91,7 @@ export function ViewRetroLeave() {
 
             {/* Teacher Selection (Standard 40px Height) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 เลือกข้าราชการครู / บุคลากรผู้ขอลา <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
@@ -99,10 +99,10 @@ export function ViewRetroLeave() {
                 <select
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+                  className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
                 >
                   {INITIAL_TEACHERS.map((t) => (
-                    <option key={t.id} value={t.id} className="bg-[#171a21]">
+                    <option key={t.id} value={t.id} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                       {t.name} — {t.position} ({t.department})
                     </option>
                   ))}
@@ -113,21 +113,21 @@ export function ViewRetroLeave() {
             {/* Leave Type & Days */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   ประเภทการลา <span className="text-rose-400">*</span>
                 </label>
                 <select
                   value={leaveType}
                   onChange={(e) => setLeaveType(e.target.value as 'sick' | 'personal')}
-                  className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
+                  className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
                 >
-                  <option value="sick" className="bg-[#171a21]">ลาป่วย (Sick Leave)</option>
-                  <option value="personal" className="bg-[#171a21]">ลากิจส่วนตัว (Personal Leave)</option>
+                  <option value="sick" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลาป่วย (Sick Leave)</option>
+                  <option value="personal" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลากิจส่วนตัว (Personal Leave)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   จำนวนวันลา (วันทำการ)
                 </label>
                 <div className="flex items-center gap-3">
@@ -137,9 +137,9 @@ export function ViewRetroLeave() {
                     min="0.5"
                     value={totalDays}
                     onChange={(e) => setTotalDays(e.target.value)}
-                    className="w-24 h-10 bg-[#16202c] border border-slate-700/80 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                    className="w-24 h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
                   />
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={isHalfDay}
@@ -158,7 +158,7 @@ export function ViewRetroLeave() {
             {/* Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   ตั้งแต่วันที่ <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
@@ -167,13 +167,13 @@ export function ViewRetroLeave() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+                    className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   ถึงวันที่ <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
@@ -182,7 +182,7 @@ export function ViewRetroLeave() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full h-10 bg-[#16202c] border border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+                    className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
                   />
                 </div>
               </div>
@@ -190,7 +190,7 @@ export function ViewRetroLeave() {
 
             {/* Reason */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 เหตุผลการลา <span className="text-rose-400">*</span>
               </label>
               <textarea
@@ -198,7 +198,7 @@ export function ViewRetroLeave() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="ระบุอาการเจ็บป่วย หรือธุระจำเป็น..."
-                className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-sky-500"
+                className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
               />
             </div>
 
@@ -212,14 +212,14 @@ export function ViewRetroLeave() {
                 value={retroReason}
                 onChange={(e) => setRetroReason(e.target.value)}
                 placeholder="เช่น เกิดอุบัติเหตุกะทันหันขณะเดินทาง, อาการป่วยรุนแรงต้องเข้ารับการรักษาฉุกเฉินในโรงพยาบาล..."
-                className="w-full bg-[#16202c] border border-amber-500/40 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-amber-50/50 dark:bg-[#16202c] border border-amber-500/40 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
               />
             </div>
 
             {/* Medical Cert and Substitute */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   เลขที่ใบรับรองแพทย์ / เอกสารแนบ
                 </label>
                 <input
@@ -227,18 +227,18 @@ export function ViewRetroLeave() {
                   value={medicalCertNo}
                   onChange={(e) => setMedicalCertNo(e.target.value)}
                   placeholder="เช่น รพ.ปักธงชัย เล่ม 12 เลขที่ 450"
-                  className="w-full bg-[#16202c] border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   ผู้ปฏิบัติหน้าที่แทน
                 </label>
                 <select
                   value={substituteTeacher}
                   onChange={(e) => setSubstituteTeacher(e.target.value)}
-                  className="w-full bg-[#16202c] border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 >
                   {INITIAL_TEACHERS.map((t) => (
                     <option key={t.id} value={t.name}>
@@ -274,32 +274,32 @@ export function ViewRetroLeave() {
 
         {/* Right Info Column: Teacher Current Leave Quota */}
         <div className="space-y-4">
-          <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+          <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">
               ข้อมูลสถิติวันลาปัจจุบันของผู้ขอ
             </h3>
 
             {selectedTeacher && (
               <div className="space-y-3 text-xs">
-                <div className="p-3 bg-[#151d28] rounded-xl border border-slate-800">
-                  <div className="font-bold text-white text-sm truncate" title={selectedTeacher.name}>{selectedTeacher.name}</div>
-                  <div className="text-slate-400 text-[11px] mt-0.5 truncate" title={selectedTeacher.position}>{selectedTeacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}</div>
+                <div className="p-3 bg-slate-50 dark:bg-[#151d28] rounded-xl border border-slate-200/90 dark:border-slate-800">
+                  <div className="font-bold text-slate-900 dark:text-white text-sm truncate" title={selectedTeacher.name}>{selectedTeacher.name}</div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 truncate" title={selectedTeacher.position}>{selectedTeacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-slate-300">
-                  <div className="bg-[#151d28] p-2.5 rounded-lg border border-slate-800">
+                  <div className="bg-slate-50 dark:bg-[#151d28] p-2.5 rounded-lg border border-slate-200/90 dark:border-slate-800">
                     <span className="text-slate-500 text-[11px]">ลาป่วยที่ใช้ไป</span>
                     <p className="font-mono font-bold text-rose-400 text-sm mt-0.5">
                       {selectedTeacher.sickUsed} / 60 วัน
                     </p>
                   </div>
-                  <div className="bg-[#151d28] p-2.5 rounded-lg border border-slate-800">
+                  <div className="bg-slate-50 dark:bg-[#151d28] p-2.5 rounded-lg border border-slate-200/90 dark:border-slate-800">
                     <span className="text-slate-500 text-[11px]">ลากิจที่ใช้ไป</span>
                     <p className="font-mono font-bold text-amber-400 text-sm mt-0.5">
                       {selectedTeacher.personalUsed} / 45 วัน
                     </p>
                   </div>
-                  <div className="bg-[#151d28] p-2.5 rounded-lg border border-slate-800 col-span-2">
+                  <div className="bg-slate-50 dark:bg-[#151d28] p-2.5 rounded-lg border border-slate-200/90 dark:border-slate-800 col-span-2">
                     <span className="text-slate-500 text-[11px]">ลาพักผ่อนสะสม</span>
                     <p className="font-mono font-bold text-emerald-400 text-sm mt-0.5">
                       {selectedTeacher.vacationUsed} / 10 วัน
@@ -310,7 +310,7 @@ export function ViewRetroLeave() {
             )}
           </div>
 
-          <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-2">
+          <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-2">
             <div className="flex items-center gap-2 text-sky-400 font-semibold">
               <ShieldAlert className="w-4 h-4 shrink-0" />
               <span>ระบบตรวจสอบสิทธิ</span>

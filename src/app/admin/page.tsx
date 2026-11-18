@@ -51,6 +51,7 @@ import {
   BOARD_STATUTORY_ORDER,
 } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
 const BOARD_POSITIONS = [
   { value: 'CHAIR', title: 'ประธานกรรมการ' },
@@ -491,27 +492,28 @@ export default function AdminPage() {
     );
 
   return (
-    <div className="min-h-screen bg-[#0e141b] text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b1016] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-200">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#171a21]/95 backdrop-blur-md border-b border-slate-800">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#121822]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
               <span>กลับสู่หน้าหลัก</span>
             </Link>
-            <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
-              <span className="font-bold text-base text-white">ศูนย์ผู้ดูแลระบบ (Admin Center)</span>
-              <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-3">
+              <span className="font-bold text-base text-slate-900 dark:text-white">ศูนย์ผู้ดูแลระบบ (Admin Center)</span>
+              <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-bold rounded bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30">
                 Superuser / HR Admin
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeSwitcher />
             <ExcelExportButton fiscalYear={fiscalYearBE} />
           </div>
         </div>
@@ -520,14 +522,14 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Navigation Tabs Bar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/90 dark:border-slate-800/80 pb-3">
           <button
             type="button"
             onClick={() => setActiveTab('staff')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'staff'
-                ? 'bg-sky-600 text-white border border-transparent'
-                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
             <Users className="w-4 h-4 shrink-0" />
@@ -539,8 +541,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab('board')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'board'
-                ? 'bg-sky-600 text-white border border-transparent'
-                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
             <Award className="w-4 h-4 shrink-0" />
@@ -552,8 +554,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab('school')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'school'
-                ? 'bg-sky-600 text-white border border-transparent'
-                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
             <Building className="w-4 h-4 shrink-0" />
@@ -565,8 +567,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab('fiscal')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'fiscal'
-                ? 'bg-sky-600 text-white border border-transparent'
-                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
             <Calendar className="w-4 h-4 shrink-0" />
@@ -578,8 +580,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab('audit')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
               activeTab === 'audit'
-                ? 'bg-sky-600 text-white border border-transparent'
-                : 'bg-[#121822] text-slate-300 hover:bg-slate-800/70 hover:text-white border border-slate-800/80'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
             <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -592,7 +594,7 @@ export default function AdminPage() {
         {/* =================================================================== */}
         {activeTab === 'staff' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141b24] p-4 rounded-2xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#141b24] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
               <div className="relative flex-1 max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
                 <input
@@ -600,7 +602,7 @@ export default function AdminPage() {
                   placeholder="ค้นหาชื่อครู, รหัสบุคลากร, หรือกลุ่มสาระ..."
                   value={staffSearch}
                   onChange={(e) => setStaffSearch(e.target.value)}
-                  className="w-full bg-[#101822] border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
@@ -619,10 +621,10 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                  <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                     <tr>
                       <th scope="col" className="w-10 px-3 py-3 text-center">
                         <span className="sr-only">ขยายรายละเอียด</span>
@@ -633,7 +635,7 @@ export default function AdminPage() {
                       <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-sans">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                     {filteredTeachers.map((t) => {
                       const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                       const isExpanded = expandedStaffId === t.id;
@@ -641,8 +643,8 @@ export default function AdminPage() {
                         <React.Fragment key={t.id}>
                           <tr
                             onClick={() => setExpandedStaffId(isExpanded ? null : t.id)}
-                            className={`hover:bg-[#162231]/50 transition-colors cursor-pointer ${
-                              isExpanded ? 'bg-[#162231]/40' : ''
+                            className={`hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors cursor-pointer ${
+                              isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
                             }`}
                           >
                             <td className="px-3 py-3 text-center">
@@ -652,7 +654,7 @@ export default function AdminPage() {
                                   e.stopPropagation();
                                   setExpandedStaffId(isExpanded ? null : t.id);
                                 }}
-                                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                                 aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                               >
                                 <ChevronRight
@@ -663,14 +665,14 @@ export default function AdminPage() {
                               </button>
                             </td>
                             <td className="px-4 py-3">
-                              <div className="font-bold text-white truncate max-w-[180px]" title={t.name}>{t.name}</div>
+                              <div className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]" title={t.name}>{t.name}</div>
                               <div className="text-[11px] font-mono text-sky-400 mt-0.5 truncate max-w-[180px]" title={`${t.employeeCode} ${t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}`}>
                                 {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <div className="truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
-                              <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[180px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
+                              <div className="text-slate-800 dark:text-slate-200 truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[180px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
                                 {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
                               </div>
                             </td>
@@ -694,7 +696,7 @@ export default function AdminPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditStaff(t)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
                                   title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
@@ -713,11 +715,11 @@ export default function AdminPage() {
 
                           {/* Expanded Detail Panel */}
                           {isExpanded && (
-                            <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                            <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                               <td colSpan={5} className="px-6 py-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       วุฒิลูกเสือ &amp; ใบอนุญาต
                                     </div>
                                     <div className="space-y-1">
@@ -734,10 +736,10 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       ภาระงานสอนและ TA
                                     </div>
-                                    <div className="text-slate-200 font-mono">
+                                    <div className="text-slate-800 dark:text-slate-200 font-mono">
                                       <span className="text-sky-300 font-bold text-sm">{t.teachingHours ?? 18}</span>
                                       <span className="text-slate-500"> สอน + </span>
                                       <span className="text-amber-300 font-bold text-sm">{t.taHours ?? 0}</span>
@@ -745,7 +747,7 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       วันลาสะสม (ป่วย / กิจ / พักผ่อน)
                                     </div>
                                     <div className="font-mono text-xs">
@@ -755,10 +757,10 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       กลุ่มสาระ / ฝ่ายงาน
                                     </div>
-                                    <div className="text-slate-200 font-medium">
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
                                       {t.department}
                                     </div>
                                     <div className="text-[11px] text-slate-400 mt-0.5">
@@ -784,7 +786,7 @@ export default function AdminPage() {
         {/* =================================================================== */}
         {activeTab === 'board' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141b24] p-4 rounded-2xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#141b24] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
               <div className="relative flex-1 max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
                 <input
@@ -792,7 +794,7 @@ export default function AdminPage() {
                   placeholder="ค้นหาชื่อกรรมการ, ตำแหน่ง, หรือองค์กร..."
                   value={boardSearch}
                   onChange={(e) => setBoardSearch(e.target.value)}
-                  className="w-full bg-[#101822] border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
@@ -811,10 +813,10 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-sm text-slate-200">
-                  <thead className="bg-[#16202c] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-xs">
+                  <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800 text-xs">
                     <tr>
                       <th scope="col" className="w-10 px-3 py-3.5 text-center">
                         <span className="sr-only">ขยายรายละเอียด</span>
@@ -825,7 +827,7 @@ export default function AdminPage() {
                       <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-sans">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                     {filteredBoard.map((b, idx) => {
                       const isDirector = b.position === 'DIRECTOR_SEC';
                       const isExpanded = expandedBoardId === b.id;
@@ -833,8 +835,8 @@ export default function AdminPage() {
                         <React.Fragment key={b.id}>
                           <tr
                             onClick={() => setExpandedBoardId(isExpanded ? null : b.id)}
-                            className={`hover:bg-[#162231]/50 transition-colors cursor-pointer ${
-                              isExpanded ? 'bg-[#162231]/40' : ''
+                            className={`hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors cursor-pointer ${
+                              isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
                             }`}
                           >
                             <td className="px-3 py-3.5 text-center">
@@ -844,7 +846,7 @@ export default function AdminPage() {
                                   e.stopPropagation();
                                   setExpandedBoardId(isExpanded ? null : b.id);
                                 }}
-                                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                                 aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                               >
                                 <ChevronRight
@@ -856,7 +858,7 @@ export default function AdminPage() {
                             </td>
                             <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold whitespace-nowrap">{idx + 1}</td>
                             <td className="px-4 py-3.5">
-                              <div className="font-bold text-white text-base truncate max-w-[200px]" title={b.fullName}>{b.fullName}</div>
+                              <div className="font-bold text-slate-900 dark:text-white text-base truncate max-w-[200px]" title={b.fullName}>{b.fullName}</div>
                               {isDirector && (
                                 <span className="block text-xs text-sky-400 font-normal mt-0.5 truncate max-w-[200px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
                                   ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
@@ -873,7 +875,7 @@ export default function AdminPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditBoardMember(b)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
                                   title="แก้ไขข้อมูลกรรมการ"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
@@ -892,30 +894,30 @@ export default function AdminPage() {
 
                           {/* Expanded Detail Panel */}
                           {isExpanded && (
-                            <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                            <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                               <td colSpan={5} className="px-6 py-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       สังกัดองค์กร / หน่วยงาน
                                     </div>
-                                    <div className="text-slate-200 font-medium leading-relaxed">
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                                       {b.organization}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       อาชีพ / บทบาท
                                     </div>
-                                    <div className="text-slate-300 font-medium">
+                                    <div className="text-slate-700 dark:text-slate-300 font-medium">
                                       {b.occupation || 'ไม่ได้ระบุ'}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       วาระการดำรงตำแหน่ง
                                     </div>
-                                    <div className="text-slate-200 font-medium">
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
                                       {isDirector ? (
                                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
                                           โดยตำแหน่ง
@@ -926,7 +928,7 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       สถานะการดำรงตำแหน่ง
                                     </div>
                                     <div className="flex items-center gap-1.5">
@@ -957,10 +959,10 @@ export default function AdminPage() {
         {/* TAB 3: ข้อมูลสถานศึกษา (School Master Information) */}
         {/* =================================================================== */}
         {activeTab === 'school' && (
-          <div className="bg-[#111822] p-6 rounded-2xl border border-slate-800 max-w-4xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white dark:bg-[#111822] p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 max-w-4xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Building className="w-5 h-5 text-sky-400 shrink-0" />
                   <span>ข้อมูลพื้นฐานสถานศึกษา (School Profile Configuration)</span>
                 </h3>
@@ -977,27 +979,27 @@ export default function AdminPage() {
             <form onSubmit={handleSaveSchoolInfo} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">ชื่อสถานศึกษา</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ชื่อสถานศึกษา</label>
                   <input
                     type="text"
                     value={schoolInfo.schoolName}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, schoolName: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">หน่วยงานต้นสังกัด</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">หน่วยงานต้นสังกัด</label>
                   <input
                     type="text"
                     value={schoolInfo.affiliation}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, affiliation: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     ผู้อำนวยการสถานศึกษา
                   </label>
                   <input
@@ -1009,19 +1011,19 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">ตำแหน่งทางการบริหาร</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ตำแหน่งทางการบริหาร</label>
                   <input
                     type="text"
                     value={schoolInfo.directorPosition}
                     onChange={(e) =>
                       setSchoolInfo({ ...schoolInfo, directorPosition: e.target.value })
                     }
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     ผู้รักษาการแทนลำดับที่ 1
                   </label>
                   <input
@@ -1030,12 +1032,12 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setSchoolInfo({ ...schoolInfo, actingDirector1: e.target.value })
                     }
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     ผู้รักษาการแทนลำดับที่ 2
                   </label>
                   <input
@@ -1044,12 +1046,12 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setSchoolInfo({ ...schoolInfo, actingDirector2: e.target.value })
                     }
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     หมายเลขโทรศัพท์ติดต่อ
                   </label>
                   <input
@@ -1058,86 +1060,86 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setSchoolInfo({ ...schoolInfo, contactPhone: e.target.value })
                     }
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">อีเมลทางการ</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">อีเมลทางการ</label>
                   <input
                     type="email"
                     value={schoolInfo.email}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, email: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 10 หลัก</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 10 หลัก</label>
                   <input
                     type="text"
                     value={schoolInfo.schoolCode10}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, schoolCode10: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 8 หลัก (สพฐ.)</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">รหัสสถานศึกษา 8 หลัก (สพฐ.)</label>
                   <input
                     type="text"
                     value={schoolInfo.schoolCode8}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, schoolCode8: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">ปีการศึกษา</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ปีการศึกษา</label>
                   <input
                     type="text"
                     value={schoolInfo.academicYear}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, academicYear: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">ภาคเรียนที่</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ภาคเรียนที่</label>
                   <input
                     type="text"
                     value={schoolInfo.currentTerm}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, currentTerm: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-slate-300 font-semibold mb-1">จำนวนนักเรียนรวม (คน)</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">จำนวนนักเรียนรวม (คน)</label>
                   <input
                     type="number"
                     value={schoolInfo.studentCount}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, studentCount: Number(e.target.value) || 0 })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-slate-300 font-semibold mb-1">ที่ตั้งสถานศึกษา</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ที่ตั้งสถานศึกษา</label>
                   <input
                     type="text"
                     value={schoolInfo.address}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, address: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                   />
                 </div>
               </div>
 
               {/* Active Classes Management */}
-              <div className="pt-4 border-t border-slate-800 space-y-3">
+              <div className="pt-4 border-t border-slate-200/90 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <Building className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>ระดับชั้นเรียนที่เปิดทำการสอน (Active Classes)</span>
                     </h4>
@@ -1197,7 +1199,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Fiscal Year Overview */}
             <div className="lg:col-span-1 space-y-4">
-              <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
                   <span>รอบปีงบประมาณราชการ</span>
@@ -1210,24 +1212,24 @@ export default function AdminPage() {
                       type="number"
                       value={fiscalYearBE}
                       onChange={(e) => setFiscalYearBE(Number(e.target.value))}
-                      className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-mono font-bold"
+                      className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono font-bold"
                     />
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#151e2b] border border-slate-800/80 space-y-2">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2">
                     <div className="text-[11px] font-semibold text-sky-300">
                       รอบการประเมินที่ 1 (ก.ค.ศ. ว15/2561)
                     </div>
-                    <div className="text-slate-300 font-mono text-[11px]">
+                    <div className="text-slate-700 dark:text-slate-300 font-mono text-[11px]">
                       1 ตุลาคม {fiscalYearBE - 1} - 31 มีนาคม {fiscalYearBE}
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#151e2b] border border-slate-800/80 space-y-2">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2">
                     <div className="text-[11px] font-semibold text-emerald-300">
                       รอบการประเมินที่ 2 (ก.ค.ศ. ว15/2561)
                     </div>
-                    <div className="text-slate-300 font-mono text-[11px]">
+                    <div className="text-slate-700 dark:text-slate-300 font-mono text-[11px]">
                       1 เมษายน {fiscalYearBE} - 30 กันยายน {fiscalYearBE}
                     </div>
                   </div>
@@ -1237,9 +1239,9 @@ export default function AdminPage() {
               {/* Add Holiday Box */}
               <form
                 onSubmit={handleAddHoliday}
-                className="bg-[#111822] p-5 rounded-2xl border border-slate-800 space-y-3 text-xs"
+                className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-3 text-xs"
               >
-                <h4 className="font-bold text-white flex items-center gap-2">
+                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <PlusCircle className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>เพิ่มวันหยุดราชการ</span>
                 </h4>
@@ -1252,7 +1254,7 @@ export default function AdminPage() {
                     value={newHolidayName}
                     onChange={(e) => setNewHolidayName(e.target.value)}
                     required
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -1278,10 +1280,10 @@ export default function AdminPage() {
             </div>
 
             {/* Holiday Calendar List */}
-            <div className="lg:col-span-2 bg-[#111822] rounded-2xl border border-slate-800 overflow-hidden">
-              <div className="p-4 bg-[#16202c] border-b border-slate-800 flex items-center justify-between">
+            <div className="lg:col-span-2 bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden">
+              <div className="p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-white">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                     ปฏิทินวันหยุดราชการประจำปีงบประมาณ {fiscalYearBE}
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1334,7 +1336,7 @@ export default function AdminPage() {
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
                   <span>บันทึกประวัติการเข้าถึงข้อมูลอ่อนไหว (PDPA Audit Logs)</span>
                 </h3>
@@ -1349,7 +1351,7 @@ export default function AdminPage() {
 
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#101822] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                   <tr>
                     <th scope="col" className="w-10 px-3 py-3 text-center">
                       <span className="sr-only">ขยายรายละเอียด</span>
@@ -1360,15 +1362,15 @@ export default function AdminPage() {
                     <th scope="col" className="px-4 py-3 min-w-[170px]">เป้าหมายข้อมูล</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-sans">
+                <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                   {sampleAuditLogs.map((log) => {
                     const isExpanded = expandedLogId === log.id;
                     return (
                       <React.Fragment key={log.id}>
                         <tr
                           onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                          className={`hover:bg-[#1a2636]/50 transition-colors cursor-pointer ${
-                            isExpanded ? 'bg-[#1a2636]/40' : ''
+                          className={`hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors cursor-pointer ${
+                            isExpanded ? 'bg-slate-100/70 dark:bg-[#1a2636]/40' : ''
                           }`}
                         >
                           <td className="px-3 py-3 text-center">
@@ -1378,7 +1380,7 @@ export default function AdminPage() {
                                 e.stopPropagation();
                                 setExpandedLogId(isExpanded ? null : log.id);
                               }}
-                              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                               aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                             >
                               <ChevronRight
@@ -1402,7 +1404,7 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-slate-300">
-                            <div className="truncate max-w-[180px]" title={log.targetName}>
+                            <div className="text-slate-800 dark:text-slate-200 truncate max-w-[180px]" title={log.targetName}>
                               {log.targetName}
                             </div>
                           </td>
@@ -1410,20 +1412,20 @@ export default function AdminPage() {
 
                         {/* Expanded Detail Panel */}
                         {isExpanded && (
-                          <tr className="bg-[#0b1016]/90 border-y border-slate-800/80">
+                          <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                             <td colSpan={5} className="px-6 py-4">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                                 <div className="sm:col-span-2">
-                                  <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                     รายละเอียดกิจกรรม (Audit Details)
                                   </div>
-                                  <div className="text-slate-200 font-medium leading-relaxed bg-[#141d27] p-3 rounded-xl border border-slate-800">
+                                  <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed bg-white dark:bg-[#141d27] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800">
                                     {log.details}
                                   </div>
                                 </div>
                                 <div className="space-y-3">
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       IP Address &amp; การเชื่อมต่อ
                                     </div>
                                     <div className="font-mono text-slate-300 font-medium">
@@ -1431,7 +1433,7 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                       มาตรฐานการคุ้มครองข้อมูล
                                     </div>
                                     <div className="text-emerald-400 text-[11px] flex items-center gap-1.5">
@@ -1457,15 +1459,15 @@ export default function AdminPage() {
       {/* Staff Master Modal (Feature-complete legacy GAS restoration) */}
       {isStaffModalOpen && selectedStaff && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 text-xs my-8 max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 text-xs my-8 max-h-[90vh] flex flex-col text-slate-800 dark:text-slate-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-sky-500/15 text-sky-400">
                   <UserCheck className="w-5 h-5 shrink-0" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-sm">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                     {isNewStaff ? 'เพิ่มข้อมูลบุคลากรใหม่' : `ตั้งค่าและแก้ไขบุคลากร: ${selectedStaff.name || 'ไม่ระบุชื่อ'}`}
                   </h3>
                   <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
@@ -1476,21 +1478,21 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setIsStaffModalOpen(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Sub-Tabs Navigation (Google Segmented Control style) */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#0d141d] rounded-lg border border-slate-800 shrink-0">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-[#0d141d] rounded-lg border border-slate-200/80 dark:border-slate-800 shrink-0">
               <button
                 type="button"
                 onClick={() => setStaffModalTab('profile')}
                 className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'profile'
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <Users className="w-3.5 h-3.5 shrink-0" />
@@ -1501,8 +1503,8 @@ export default function AdminPage() {
                 onClick={() => setStaffModalTab('licenses')}
                 className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'licenses'
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
@@ -1516,8 +1518,8 @@ export default function AdminPage() {
                 onClick={() => setStaffModalTab('workload')}
                 className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'workload'
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5 shrink-0" />
@@ -1528,8 +1530,8 @@ export default function AdminPage() {
                 onClick={() => setStaffModalTab('history')}
                 className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
                   staffModalTab === 'history'
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
               >
                 <GraduationCap className="w-3.5 h-3.5 shrink-0" />
@@ -1543,7 +1545,7 @@ export default function AdminPage() {
               {staffModalTab === 'profile' && (
                 <div className="space-y-4">
                   {/* Identification Card */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 shrink-0" />
                       <span>ข้อมูลระบุตัวตนและเลขทะเบียนทางราชการ</span>
@@ -1557,7 +1559,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, employeeCode: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1569,7 +1571,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, positionNo: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1581,7 +1583,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, memberId: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1594,14 +1596,14 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, idCard: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Name and Official Placement */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                       <Briefcase className="w-4 h-4 shrink-0" />
                       <span>ข้อมูลชื่อ ตำแหน่ง และสังกัดฝ่ายงาน</span>
@@ -1614,7 +1616,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, prefix: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           <option value="นาย">นาย</option>
                           <option value="นาง">นาง</option>
@@ -1636,7 +1638,7 @@ export default function AdminPage() {
                               name: `${selectedStaff.prefix || ''}${e.target.value} ${selectedStaff.lastName || ''}`.trim(),
                             })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -1652,7 +1654,7 @@ export default function AdminPage() {
                               name: `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${e.target.value}`.trim(),
                             })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -1665,7 +1667,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, position: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           {TEACHER_ROLES.map((role) => (
                             <option key={role} value={role}>
@@ -1683,7 +1685,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -1696,7 +1698,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, department: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           {DEPARTMENTS.map((dept) => (
                             <option key={dept} value={dept}>
@@ -1714,7 +1716,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, division: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -1727,7 +1729,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, classLevel: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           <option value="-">- ไม่ระบุ / ไม่มี -</option>
                           {ACTIVE_CLASSES.map((cls) => (
@@ -1744,7 +1746,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, dutyDay: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           <option value="-">- ไม่ระบุ -</option>
                           <option value="จันทร์">วันจันทร์</option>
@@ -1762,14 +1764,14 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, startDate: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Contact & Access Card */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                       <Lock className="w-4 h-4 shrink-0" />
                       <span>สิทธิ์การใช้งานระบบ และการติดต่อ</span>
@@ -1782,7 +1784,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, accessLevel: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-semibold"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-semibold"
                         >
                           <option value="Superuser">Superuser (สูงสุด)</option>
                           <option value="Admin">Admin (ฝ่ายบริหาร/งานบุคคล)</option>
@@ -1798,7 +1800,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, phone: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1810,7 +1812,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, email: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                     </div>
@@ -1827,7 +1829,7 @@ export default function AdminPage() {
                               sickUsed: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1841,7 +1843,7 @@ export default function AdminPage() {
                               personalUsed: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
@@ -1855,7 +1857,7 @@ export default function AdminPage() {
                               vacationUsed: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                     </div>
@@ -1867,7 +1869,7 @@ export default function AdminPage() {
               {staffModalTab === 'licenses' && (
                 <div className="space-y-4">
                   {/* Khurusapha Licenses Section */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                         <Award className="w-4 h-4 shrink-0" />
@@ -1986,7 +1988,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Scout Qualifications Section */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
                       <Compass className="w-4 h-4 shrink-0" />
                       <span>วุฒิทางลูกเสือ (Scout Qualifications)</span>
@@ -1999,7 +2001,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, highestScout: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-semibold"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-semibold"
                         >
                           {SCOUT_QUALIFICATIONS.map((scout) => (
                             <option key={scout} value={scout}>
@@ -2017,7 +2019,7 @@ export default function AdminPage() {
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, scoutCertNo: e.target.value })
                           }
-                          className="w-full bg-[#16212e] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                     </div>
@@ -2129,7 +2131,7 @@ export default function AdminPage() {
               {staffModalTab === 'history' && (
                 <div className="space-y-4">
                   {/* Standings Section */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
                         <Award className="w-4 h-4 shrink-0" />
@@ -2218,7 +2220,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Education History Section */}
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                         <GraduationCap className="w-4 h-4 shrink-0" />
@@ -2341,7 +2343,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsStaffModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>
@@ -2363,13 +2365,13 @@ export default function AdminPage() {
       {isBoardModalOpen && selectedBoardMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400">
                   <Award className="w-5 h-5 shrink-0" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-sm">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                     {isNewBoardMember ? 'เพิ่มกรรมการสถานศึกษาใหม่' : `แก้ไขข้อมูลกรรมการ: ${selectedBoardMember.fullName}`}
                   </h3>
                   <div className="text-[11px] text-slate-400 mt-0.5">
@@ -2380,7 +2382,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setIsBoardModalOpen(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2532,7 +2534,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsBoardModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>

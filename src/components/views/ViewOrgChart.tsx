@@ -79,12 +79,12 @@ export const ViewOrgChart: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-[#141b24] p-5 rounded-2xl border border-slate-800">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+      <div className="bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Layers className="w-5 h-5 text-sky-400 shrink-0" />
           <span>แผนผังโครงสร้างการบริหารงานโรงเรียนชุมชนบ้านตะขบ</span>
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           โครงสร้างการบริหารสถานศึกษา 4 ฝ่าย ตามพระราชบัญญัติระเบียบบริหารราชการกระทรวงศึกษาธิการ
         </p>
       </div>
@@ -92,12 +92,12 @@ export const ViewOrgChart: React.FC = () => {
       {/* Top Director Card */}
       <div className="max-w-md mx-auto">
         <div className="bg-[#141b24] p-6 rounded-2xl border-2 border-sky-500/60 shadow-xl text-center bg-gradient-to-b from-[#1b2838] to-[#121c27]">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-600 to-blue-800 border-2 border-sky-400 mx-auto flex items-center justify-center text-white mb-3 shadow-md">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-600 to-blue-800 border-2 border-sky-400 mx-auto flex items-center justify-center text-slate-900 dark:text-white mb-3 shadow-md">
             <School className="w-8 h-8" />
           </div>
-          <div className="text-base font-bold text-white">นายธีรศักดิ์ มโนธรรม</div>
+          <div className="text-base font-bold text-slate-900 dark:text-white">นายธีรศักดิ์ มโนธรรม</div>
           <div className="text-xs text-sky-300 font-medium mt-0.5">ผู้อำนวยการสถานศึกษา</div>
-          <p className="text-[11px] text-slate-400 mt-2">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
             ผู้บริหารสถานศึกษา โรงเรียนชุมชนบ้านตะขบ สพป.นม. 3
           </p>
         </div>
@@ -113,7 +113,7 @@ export const ViewOrgChart: React.FC = () => {
           return (
             <div
               key={idx}
-              className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-800/80 hover:border-sky-500/40 hover:shadow-lg hover:shadow-black/20 transition-all flex flex-col justify-between"
+              className="bg-[#111823]/80 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-sky-500/40 hover:shadow-lg hover:shadow-black/20 transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center gap-2.5 mb-3">
@@ -121,21 +121,21 @@ export const ViewOrgChart: React.FC = () => {
                     <Icon className="w-5 h-5 shrink-0" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white leading-tight">{div.title}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{div.title}</h3>
                   </div>
                 </div>
 
-                <div className="bg-[#101822] p-3 rounded-xl border border-slate-800/80 mb-3 text-xs">
+                <div className="bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800/80 mb-3 text-xs">
                   <span className="text-[10px] text-slate-500 block">หัวหน้าฝ่าย:</span>
                   <div className="font-semibold text-slate-100 truncate" title={div.head}>{div.head}</div>
                   <div className="text-[11px] text-sky-300 mt-0.5 truncate" title={div.role}>{div.role}</div>
                 </div>
 
                 <div>
-                  <span className="text-[11px] text-slate-400 block mb-1.5 font-medium">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">
                     ขอบข่ายภารกิจหลัก:
                   </span>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
+                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
                     {div.duties.map((duty, dIdx) => (
                       <li key={dIdx} className="flex items-start gap-2">
                         <span className="text-sky-400 font-bold">•</span>

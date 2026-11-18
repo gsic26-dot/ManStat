@@ -68,39 +68,39 @@ export function ViewLeaveAnalytics() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#141b24] p-5 rounded-2xl border border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
             <TrendingUp className="w-4 h-4 shrink-0" />
             <span>Leave Statistics & Executive Analytics</span>
           </div>
-          <h2 className="text-xl font-bold text-white mt-1">กราฟสถิติและบทวิเคราะห์การลา</h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">กราฟสถิติและบทวิเคราะห์การลา</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             ภาพรวมความสม่ำเสมอในการปฏิบัติงาน แนวโน้มการลา และการปฏิบัติตามเกณฑ์สำนักนายกรัฐมนตรีฯ
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="h-10 flex items-center gap-2 bg-[#101822] px-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300">
+          <div className="h-10 flex items-center gap-2 bg-white dark:bg-[#101822] px-3.5 rounded-xl border border-slate-200/90 dark:border-slate-700/80 text-xs text-slate-700 dark:text-slate-300">
             <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
             <span>ปีงบประมาณ:</span>
             <select
               value={fiscalYear}
               onChange={(e) => setFiscalYear(e.target.value)}
-              className="bg-transparent text-sky-300 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-sky-600 dark:text-sky-300 font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="2570" className="bg-[#171a21]">2570 (ปัจจุบัน)</option>
-              <option value="2569" className="bg-[#171a21]">2569</option>
-              <option value="2568" className="bg-[#171a21]">2568</option>
+              <option value="2570" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2570 (ปัจจุบัน)</option>
+              <option value="2569" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2569</option>
+              <option value="2568" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2568</option>
             </select>
           </div>
 
-          <div className="h-10 flex items-center gap-1 bg-[#101822] p-1 rounded-lg border border-slate-700/80 text-xs">
+          <div className="h-10 flex items-center gap-1 bg-white dark:bg-[#101822] p-1 rounded-lg border border-slate-200/90 dark:border-slate-700/80 text-xs">
             <button
               type="button"
               onClick={() => setSelectedSemester('ALL')}
               className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
-                selectedSemester === 'ALL' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                selectedSemester === 'ALL' ? 'bg-sky-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
               }`}
             >
               ทั้งปี
@@ -109,7 +109,7 @@ export function ViewLeaveAnalytics() {
               type="button"
               onClick={() => setSelectedSemester('H1')}
               className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
-                selectedSemester === 'H1' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                selectedSemester === 'H1' ? 'bg-sky-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
               }`}
             >
               รอบที่ 1
@@ -118,7 +118,7 @@ export function ViewLeaveAnalytics() {
               type="button"
               onClick={() => setSelectedSemester('H2')}
               className={`h-8 px-3 rounded-md text-xs font-medium transition-colors duration-200 ${
-                selectedSemester === 'H2' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                selectedSemester === 'H2' ? 'bg-sky-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
               }`}
             >
               รอบที่ 2
@@ -129,73 +129,73 @@ export function ViewLeaveAnalytics() {
 
       {/* KPI Highlight Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#111822] p-4 rounded-2xl border border-slate-800">
+        <div className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">วันลารวมทั้งสถานศึกษา</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วันลารวมทั้งสถานศึกษา</span>
             <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
               <BarChart3 className="w-4 h-4 shrink-0" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white">{totalAllDays}</span>
-            <span className="text-xs text-slate-400">วันทำการ</span>
+            <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{totalAllDays}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วันทำการ</span>
           </div>
           <p className="text-[11px] text-emerald-400 mt-1">อยู่ในเกณฑ์ปกติ (เฉลี่ย {avgLeavePerPerson} วัน/คน)</p>
         </div>
 
-        <div className="bg-[#111822] p-4 rounded-2xl border border-slate-800">
+        <div className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">สถิติมาปฏิบัติราชการ 100%</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">สถิติมาปฏิบัติราชการ 100%</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
               <Award className="w-4 h-4 shrink-0" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-emerald-400">{zeroLeaveTeachers}</span>
-            <span className="text-xs text-slate-400">/ {totalTeachers} ท่าน</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">/ {totalTeachers} ท่าน</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             คิดเป็น {Math.round((zeroLeaveTeachers / totalTeachers) * 100)}% ของบุคลากรทั้งหมด
           </p>
         </div>
 
-        <div className="bg-[#111822] p-4 rounded-2xl border border-slate-800">
+        <div className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">ลาป่วยสะสม</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">ลาป่วยสะสม</span>
             <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
               <Clock className="w-4 h-4 shrink-0" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-rose-400">{totalSickDays}</span>
-            <span className="text-xs text-slate-400">วัน (สิทธิ 60 วัน)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน (สิทธิ 60 วัน)</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ไม่มีผู้มีสถิติเสี่ยงเกินเกณฑ์</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">ไม่มีผู้มีสถิติเสี่ยงเกินเกณฑ์</p>
         </div>
 
-        <div className="bg-[#111822] p-4 rounded-2xl border border-slate-800">
+        <div className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">ลากิจส่วนตัวสะสม</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">ลากิจส่วนตัวสะสม</span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
               <PieChart className="w-4 h-4 shrink-0" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-amber-400">{totalPersonalDays}</span>
-            <span className="text-xs text-slate-400">วัน (สิทธิ 45 วัน)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน (สิทธิ 45 วัน)</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ส่งมอบงานสอนแทนเรียบร้อย 100%</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">ส่งมอบงานสอนแทนเรียบร้อย 100%</p>
         </div>
       </div>
 
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Monthly Trend Bars */}
-        <div className="lg:col-span-2 bg-[#111822] p-5 rounded-2xl border border-slate-800">
+        <div className="lg:col-span-2 bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-white">แนวโน้มการลาในรอบปีงบประมาณ (รายเดือน)</h3>
-              <p className="text-[11px] text-slate-400">เปรียบเทียบจำนวนวันลาในแต่ละเดือนของปีงบประมาณ</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">แนวโน้มการลาในรอบปีงบประมาณ (รายเดือน)</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">เปรียบเทียบจำนวนวันลาในแต่ละเดือนของปีงบประมาณ</p>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 text-slate-400">
@@ -205,7 +205,7 @@ export function ViewLeaveAnalytics() {
             </div>
           </div>
 
-          <div className="h-56 flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b border-slate-800">
+          <div className="h-56 flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b border-slate-200/90 dark:border-slate-800">
             {monthlyData.map((m) => (
               <div key={m.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                 <span className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -226,20 +226,20 @@ export function ViewLeaveAnalytics() {
         </div>
 
         {/* Leave Type Distribution */}
-        <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white mb-1">สัดส่วนประเภทการลา</h3>
-            <p className="text-[11px] text-slate-400 mb-4">จำแนกตามระเบียบสำนักนายกรัฐมนตรีฯ</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">สัดส่วนประเภทการลา</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4">จำแนกตามระเบียบสำนักนายกรัฐมนตรีฯ</p>
 
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-rose-300 font-medium">ลาป่วย (Sick Leave)</span>
-                  <span className="text-slate-300 font-mono font-bold">
+                  <span className="text-slate-700 dark:text-slate-300 font-mono font-bold">
                     {totalSickDays} วัน ({Math.round((totalSickDays / (totalAllDays || 1)) * 100)}%)
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                   <div
                     className="bg-rose-500 h-full rounded-full"
                     style={{ width: `${Math.round((totalSickDays / (totalAllDays || 1)) * 100)}%` }}
@@ -250,11 +250,11 @@ export function ViewLeaveAnalytics() {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-amber-300 font-medium">ลากิจส่วนตัว (Personal Leave)</span>
-                  <span className="text-slate-300 font-mono font-bold">
+                  <span className="text-slate-700 dark:text-slate-300 font-mono font-bold">
                     {totalPersonalDays} วัน ({Math.round((totalPersonalDays / (totalAllDays || 1)) * 100)}%)
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                   <div
                     className="bg-amber-500 h-full rounded-full"
                     style={{ width: `${Math.round((totalPersonalDays / (totalAllDays || 1)) * 100)}%` }}
@@ -265,11 +265,11 @@ export function ViewLeaveAnalytics() {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-emerald-300 font-medium">ลาพักผ่อน (Vacation Leave)</span>
-                  <span className="text-slate-300 font-mono font-bold">
+                  <span className="text-slate-700 dark:text-slate-300 font-mono font-bold">
                     {totalVacationDays} วัน ({Math.round((totalVacationDays / (totalAllDays || 1)) * 100)}%)
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                   <div
                     className="bg-emerald-500 h-full rounded-full"
                     style={{ width: `${Math.round((totalVacationDays / (totalAllDays || 1)) * 100)}%` }}
