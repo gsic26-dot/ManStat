@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { InactivityGuard } from '@/components/security/InactivityGuard';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { UserSettingsProvider } from '@/context/UserSettingsContext';
 
 export const metadata: Metadata = {
   title: 'ManStat-Modern | ระบบบริหารงานบุคคลโรงเรียนชุมชนบ้านตะขบ',
@@ -53,9 +54,11 @@ export default function RootLayout({
       </head>
       <body className="bg-[#f8fafc] text-slate-900 dark:bg-[#0b1016] dark:text-slate-100 min-h-screen antialiased selection:bg-sky-500 selection:text-white transition-colors duration-200">
         <ThemeProvider>
-          {/* Session Inactivity Guard (44 min alert, 45 min auto-logout) */}
-          <InactivityGuard warningMinutes={44} timeoutMinutes={45} />
-          {children}
+          <UserSettingsProvider>
+            {/* Session Inactivity Guard (44 min alert, 45 min auto-logout) */}
+            <InactivityGuard warningMinutes={44} timeoutMinutes={45} />
+            {children}
+          </UserSettingsProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -32,11 +32,17 @@ import {
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
+import { useUserSettings } from '@/context/UserSettingsContext';
 
 export const ViewStaffDirectory: React.FC = () => {
+  const { preferences, updatePreferences } = useUserSettings();
+  const viewMode = preferences.preferred_view;
+  const setViewMode = (mode: 'table' | 'grid') => updatePreferences({ preferred_view: mode });
+  const isCompact = preferences.compact_mode;
+  const cellPy = isCompact ? 'py-2' : 'py-3.5';
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
 
@@ -195,7 +201,7 @@ export const ViewStaffDirectory: React.FC = () => {
                         } ${isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''}`}
                       >
                         {/* Expand Button */}
-                        <td className="w-10 px-3 py-3.5 text-center">
+                        <td className={`w-10 px-3 ${cellPy} text-center`}>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -214,12 +220,12 @@ export const ViewStaffDirectory: React.FC = () => {
                         </td>
 
                         {/* Sequence */}
-                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
+                        <td className={`px-3 ${cellPy} text-center font-mono font-bold text-slate-400 whitespace-nowrap`}>
                           {index + 1}
                         </td>
 
                         {/* Staff Name & Initials */}
-                        <td className="px-4 py-3.5">
+                        <td className={`px-4 ${cellPy}`}>
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-sm shrink-0">
                               {teacher.firstName ? teacher.firstName[0] : 'ค'}
@@ -236,7 +242,7 @@ export const ViewStaffDirectory: React.FC = () => {
                         </td>
 
                         {/* Position & Standing */}
-                        <td className="px-4 py-3.5">
+                        <td className={`px-4 ${cellPy}`}>
                           <div className="font-medium text-sky-600 dark:text-sky-300 text-xs sm:text-sm truncate max-w-[190px]" title={teacher.position}>
                             {displayPosition}
                           </div>
@@ -250,14 +256,14 @@ export const ViewStaffDirectory: React.FC = () => {
                         </td>
 
                         {/* Department */}
-                        <td className="px-4 py-3.5">
+                        <td className={`px-4 ${cellPy}`}>
                           <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate max-w-[190px]" title={teacher.department}>
                             {displayDept}
                           </span>
                         </td>
 
                         {/* Tenure */}
-                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        <td className={`px-4 ${cellPy} text-center whitespace-nowrap`}>
                           <span className="font-mono font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
                             {tenure.years} ปี {tenure.months} เดือน
                           </span>

@@ -42,7 +42,9 @@ import {
   MessageSquare,
   Menu,
   Scale,
+  Sliders,
 } from 'lucide-react';
+import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 
 // Core Dashboard Components
 import { PersonnelSummaryCards } from '@/components/dashboard/PersonnelSummaryCards';
@@ -88,6 +90,7 @@ export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [currentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
 
   // Real-time toast notifications hook
@@ -143,6 +146,17 @@ export default function DashboardPage() {
             {/* 3-Mode Theme Switcher (Light / Dark / Auto) */}
             <ThemeSwitcher />
 
+            {/* User Preferences Button */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
+              title="ตั้งค่าการใช้งานส่วนบุคคล (User Preferences)"
+            >
+              <Sliders className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
+              <span className="hidden md:inline">ตั้งค่า</span>
+            </button>
+
             {/* Admin Management Link */}
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
@@ -151,12 +165,17 @@ export default function DashboardPage() {
                 title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
               >
                 <Settings className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
-                <span className="hidden sm:inline">ตั้งค่าระบบ</span>
+                <span className="hidden sm:inline">ศูนย์ดูแลระบบ</span>
               </Link>
             )}
 
             {/* User Profile Pill */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 hover:opacity-85 transition-opacity text-left cursor-pointer"
+              title="คลิกเพื่อตั้งค่าโปรไฟล์ส่วนบุคคล"
+            >
               <div
                 className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-300 font-bold font-mono text-sm shrink-0"
                 title="ระดับสิทธิ์: Superuser"
@@ -174,7 +193,7 @@ export default function DashboardPage() {
                   นายธีรศักดิ์ มโนธรรม
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Logout Link */}
             <Link
@@ -961,6 +980,11 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+      {/* User Preferences Modal */}
+      <UserSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   );
 }

@@ -50,6 +50,13 @@ export type HalfDayPeriod = HalfDayEnum;
 export type LicenseType = LicenseTypeEnum;
 export type StaffRole = UserRole;
 
+export interface UserPreferences {
+  theme_mode: 'light' | 'dark' | 'auto';
+  preferred_view: 'table' | 'grid';
+  compact_mode: boolean;
+  mask_citizen_id: boolean;
+}
+
 // ----------------------------------------------------------------------------
 // Supabase Database Interface
 // ----------------------------------------------------------------------------
@@ -111,6 +118,7 @@ export interface Database {
           is_year_round_staff: boolean;
           role: UserRole;
           signature_url: string | null;
+          preferences?: Json | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -129,6 +137,7 @@ export interface Database {
           is_year_round_staff?: boolean;
           role?: UserRole;
           signature_url?: string | null;
+          preferences?: Json | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -147,6 +156,7 @@ export interface Database {
           is_year_round_staff?: boolean;
           role?: UserRole;
           signature_url?: string | null;
+          preferences?: Json | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;

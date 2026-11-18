@@ -40,7 +40,9 @@ import {
   X,
   Plus,
   ChevronRight,
+  Sliders,
 } from 'lucide-react';
+import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
@@ -117,6 +119,7 @@ const DEPARTMENTS = [
 ];
 
 export default function AdminPage() {
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     'staff' | 'board' | 'school' | 'fiscal' | 'audit'
   >('staff');
@@ -512,7 +515,16 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
+              title="ตั้งค่าการใช้งานส่วนบุคคล (User Preferences)"
+            >
+              <Sliders className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
+              <span className="hidden md:inline">ตั้งค่า</span>
+            </button>
             <ThemeSwitcher />
             <ExcelExportButton fiscalYear={fiscalYearBE} />
           </div>
@@ -2551,6 +2563,11 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      {/* User Preferences Modal */}
+      <UserSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   );
 }
