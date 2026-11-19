@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export async function GET(request: Request) {
@@ -78,10 +79,14 @@ export async function POST(request: Request) {
 
     saveDatabase(db);
 
+    const sessionUser = await getSessionUser();
+    const actorName = sessionUser ? `${sessionUser.name} (${sessionUser.position})` : 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการสถานศึกษา)';
+    const actorRole = sessionUser?.role || 'superuser';
+
     recordAuditLog(
       actionType,
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       `${savedRequest.teacherName} (เลขที่ ${savedRequest.docNo})`,
       `${actionType === 'APPROVE_LEAVE_REQUEST' ? 'อนุมัติคำขอลา' : actionType === 'REJECT_LEAVE_REQUEST' ? 'ไม่อนุมัติคำขอลา' : 'บันทึกคำขอลา'}: ${savedRequest.leaveTypeName} (${savedRequest.startDate} ถึง ${savedRequest.endDate}) ${savedRequest.directorRemark ? `หมายเหตุ: ${savedRequest.directorRemark}` : ''}`
     );
@@ -98,6 +103,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     let id = searchParams.get('id');
 
@@ -120,10 +133,13 @@ export async function DELETE(request: Request) {
     db.leaveRequests = (db.leaveRequests || []).filter((r) => r.id !== id);
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'DELETE_LEAVE_REQUEST',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       `${target.teacherName} (เลขที่ ${target.docNo})`,
       `ลบคำร้องขอลา รหัส ${target.id} ออกจากระบบฐานข้อมูล`
     );

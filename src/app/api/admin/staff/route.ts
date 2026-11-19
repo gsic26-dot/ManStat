@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import { verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { TeacherRecord } from '@/lib/data/schoolData';
 
 export async function GET() {
@@ -13,6 +14,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // 1. Verify administrative privileges
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const body = await request.json();
     const updatedStaff: TeacherRecord = body;
 
@@ -47,7 +57,7 @@ export async function POST(request: Request) {
     // Save persistent database
     saveDatabase(db);
 
-    // Record Immutable PDPA Audit Log
+    // Record Immutable PDPA Audit Log with actual authenticated admin identity
     const changes: string[] = [];
     if (isNew) {
       changes.push(`เพิ่มบุคลากรใหม่: ${updatedStaff.name} (${updatedStaff.position})`);
@@ -69,10 +79,13 @@ export async function POST(request: Request) {
       }
     }
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       isNew ? 'CREATE_STAFF' : 'UPDATE_STAFF',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       updatedStaff.name,
       changes.join(', ')
     );
@@ -90,6 +103,15 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    // 1. Verify administrative privileges
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -107,10 +129,13 @@ export async function DELETE(request: Request) {
     db.teachers = db.teachers.filter((t) => t.id !== id);
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'DELETE_STAFF',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       target.name,
       `ลบข้อมูลบุคลากร ${target.name} (${target.position}) ออกจากระบบ`
     );

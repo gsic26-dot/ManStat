@@ -36,9 +36,9 @@ export default function LoginPage() {
   }, []);
 
   /**
-   * Sets or clears persistent session token cookie
+   * Sets or clears persistent session token cookie with real role
    */
-  const applySessionToken = (remember: boolean, tokenValue?: string) => {
+  const applySessionToken = (remember: boolean, role: string = 'teacher', tokenValue?: string, userId?: string) => {
     if (typeof window === 'undefined') return;
     const token = tokenValue || `mst_${Math.random().toString(36).substring(2)}_${Date.now()}`;
     const isHttps = window.location.protocol === 'https:';
@@ -47,12 +47,18 @@ export default function LoginPage() {
     if (remember) {
       const maxAge = 30 * 24 * 60 * 60; // 30 days
       document.cookie = `manstat_session_token=${token}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
-      document.cookie = `manstat_auth_role=superuser; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
+      document.cookie = `manstat_auth_role=${role}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
+      if (userId) {
+        document.cookie = `manstat_user_id=${userId}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
+      }
       localStorage.setItem('manstat_remember_me', 'true');
     } else {
       // Session cookie without max-age (clears on browser session close)
       document.cookie = `manstat_session_token=${token}; path=/; SameSite=Lax${secureFlag}`;
-      document.cookie = `manstat_auth_role=superuser; path=/; SameSite=Lax${secureFlag}`;
+      document.cookie = `manstat_auth_role=${role}; path=/; SameSite=Lax${secureFlag}`;
+      if (userId) {
+        document.cookie = `manstat_user_id=${userId}; path=/; SameSite=Lax${secureFlag}`;
+      }
       localStorage.setItem('manstat_remember_me', 'false');
     }
   };
@@ -62,60 +68,51 @@ export default function LoginPage() {
     setErrorMessage(null);
     setIsLoading(true);
 
-    const trimmedEmail = email.trim().toLowerCase();
-
-    // 1. Superuser / Admin master override (Legacy ManStat feature)
-    const isSuperuserLogin =
-      (trimmedEmail === 'superuser' ||
-        trimmedEmail === 'admin' ||
-        trimmedEmail === '44123130114' ||
-        trimmedEmail === 'root' ||
-        trimmedEmail === 'gsic26@gmail.com') &&
-      (password === '44123130114' ||
-        password === '123456' ||
-        password === 'admin' ||
-        password === 'superuser');
-
-    if (isSuperuserLogin) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('manstat_auth_role', 'superuser');
-        localStorage.setItem(
-          'manstat_auth_user',
-          JSON.stringify({
-            id: 'EXE-001',
-            name: 'Superuser',
-            fullName: 'นายธีรศักดิ์ มโนธรรม',
-            role: 'superuser',
-            email: 'superuser',
-          })
-        );
-      }
-      applySessionToken(rememberMe);
-      setIsLoading(false);
-      router.push('/');
-      return;
-    }
-
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
+      // 1. Authenticate via centralized Server Auth API (checks manstat_db.json & assigns real RBAC role)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+          rememberMe,
+        }),
       });
 
-      if (error) {
-        setErrorMessage(error.message || 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง');
-      } else if (data.session) {
-        applySessionToken(rememberMe, data.session.access_token);
+      const data = await res.json();
+
+      if (data.success && data.user) {
+        const user = data.user;
+        const role = user.role || 'teacher';
+
+        // Apply local storage and cookies
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('manstat_auth_role', role);
+          localStorage.setItem('manstat_auth_user', JSON.stringify(user));
+        }
+
+        applySessionToken(rememberMe, role, undefined, user.id);
+
+        // Optional: Also sign in with Supabase Auth in background if credentials exist
+        try {
+          const supabase = createClient();
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
+        } catch {
+          // Ignored (offline / local DB mode)
+        }
+
         router.push('/');
+        return;
       } else {
-        applySessionToken(rememberMe);
-        router.push('/');
+        setErrorMessage(data.error || 'ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
       }
-    } catch {
-      // For demo or offline preview fallback
-      applySessionToken(rememberMe);
-      router.push('/');
+    } catch (err: any) {
+      console.error('[Login Error]', err);
+      setErrorMessage(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setIsLoading(false);
     }

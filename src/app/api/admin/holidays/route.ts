@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog, type HolidayRecord } from '@/lib/db/serverDb';
+import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export async function GET() {
   try {
@@ -12,6 +13,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const body = await request.json();
     const { name, date, type = 'วันหยุดพิเศษ / ตามมติ ครม.' } = body;
 
@@ -36,10 +45,13 @@ export async function POST(request: Request) {
 
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'ADD_HOLIDAY',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       name,
       `เพิ่มวันหยุดราชการ: ${name} (${date})`
     );
@@ -56,6 +68,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -73,10 +93,13 @@ export async function DELETE(request: Request) {
     db.holidays = db.holidays.filter((h) => h.id !== id);
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'DELETE_HOLIDAY',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       target.name,
       `ลบวันหยุดราชการ: ${target.name} (${target.date})`
     );

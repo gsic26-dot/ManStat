@@ -33,31 +33,79 @@ import {
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { getRoleBadgeConfig } from '@/lib/auth/roles';
+
+interface CurrentUserRecord {
+  id?: string;
+  employeeCode?: string;
+  name?: string;
+  fullName?: string;
+  position?: string;
+  department?: string;
+  accessLevel?: string;
+  role?: string;
+  email?: string;
+}
 
 interface UserProfileDropdownProps {
   onOpenSettings?: () => void;
   showAdminCenterLink?: boolean;
+  currentUser?: CurrentUserRecord | null;
+  currentRole?: string;
 }
 
 export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
   onOpenSettings,
   showAdminCenterLink = false,
+  currentUser: propUser,
+  currentRole: propRole,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [localUser, setLocalUser] = useState<CurrentUserRecord | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { mode, resolvedTheme, setMode } = useTheme();
   const router = useRouter();
 
+  // Read cached user from localStorage if prop not available
+  useEffect(() => {
+    if (!propUser && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('manstat_auth_user');
+        if (stored) {
+          setLocalUser(JSON.parse(stored));
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [propUser]);
+
+  const activeUser = propUser || localUser;
+  const effectiveRole = propRole || activeUser?.role || 'teacher';
+  const badgeConfig = getRoleBadgeConfig(effectiveRole);
+
+  const displayName = activeUser?.fullName || activeUser?.name || 'ผู้ใช้งานระบบ';
+  const displayPosition = activeUser?.position || 'บุคลากรสถานศึกษา';
+  const displayCode = activeUser?.employeeCode || activeUser?.id || '';
+  const initialLetter = activeUser?.name ? activeUser.name.replace(/^(นาย|นางสาว|นาง|ว่าที่ร\.ต\.|ดร\.)\s*/, '').charAt(0) : badgeConfig.initial;
+
   const handleLogout = async () => {
     setIsOpen(false);
     try {
+      // 1. Call server logout API to clear server cookies
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+
+      // 2. Clear client-side cookies and storage
       if (typeof window !== 'undefined') {
-        // Clear persistent session cookie
         document.cookie = 'manstat_session_token=; max-age=0; path=/;';
         document.cookie = 'manstat_auth_role=; max-age=0; path=/;';
+        document.cookie = 'manstat_user_id=; max-age=0; path=/;';
         localStorage.removeItem('manstat_auth_role');
         localStorage.removeItem('manstat_auth_user');
+        localStorage.removeItem('manstat_remember_me');
       }
+
+      // 3. Supabase Auth signOut if applicable
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch {
@@ -103,29 +151,29 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
         title="เมนูบัญชีผู้ใช้และการตั้งค่า"
       >
         <div
-          className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-300 font-bold font-mono text-sm shrink-0"
-          title="ระดับสิทธิ์: Superuser"
+          className={`w-8 h-8 rounded-lg ${badgeConfig.bgClass} border ${badgeConfig.borderClass} flex items-center justify-center ${badgeConfig.textClass} font-bold font-mono text-sm shrink-0`}
+          title={`ระดับสิทธิ์: ${badgeConfig.label}`}
         >
-          S
+          {initialLetter}
         </div>
 
         <div className="hidden lg:block text-left min-w-0">
           <div className="flex items-center gap-1.5">
             <span
               className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[100px]"
-              title="Superuser"
+              title={displayName}
             >
-              Superuser
+              {displayName}
             </span>
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
-              ROOT
+            <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${badgeConfig.bgClass} ${badgeConfig.textClass} border ${badgeConfig.borderClass} shrink-0`}>
+              {badgeConfig.shortLabel}
             </span>
           </div>
           <div
             className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[110px]"
-            title="นายธีรศักดิ์ มโนธรรม"
+            title={displayPosition}
           >
-            นายธีรศักดิ์ มโนธรรม
+            {displayPosition}
           </div>
         </div>
 
@@ -146,20 +194,20 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
           {/* User Header Profile Card */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 mb-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-300 font-bold font-mono text-base shrink-0">
-                S
+              <div className={`w-10 h-10 rounded-xl ${badgeConfig.bgClass} border ${badgeConfig.borderClass} flex items-center justify-center ${badgeConfig.textClass} font-bold font-mono text-base shrink-0`}>
+                {initialLetter}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    นายธีรศักดิ์ มโนธรรม
+                    {displayName}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
-                    ROOT
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${badgeConfig.bgClass} ${badgeConfig.textClass} border ${badgeConfig.borderClass} shrink-0`}>
+                    {badgeConfig.shortLabel}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  ผู้อำนวยการสถานศึกษา • EXE-001
+                  {displayPosition} {displayCode ? `• ${displayCode}` : ''}
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                   <Building className="w-3 h-3 shrink-0" />

@@ -20,6 +20,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
+import { isAdminRole } from '@/lib/auth/roles';
+import type { UserRole } from '@/types/database.types';
 import {
   INITIAL_SCHOOL_INFO,
   INITIAL_TEACHERS,
@@ -106,7 +108,43 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
-  const [currentRole] = useState<'superuser' | 'director' | 'hr_admin' | 'teacher'>('superuser');
+  // Default to safe 'teacher' role - NEVER default to superuser
+  const [currentRole, setCurrentRole] = useState<UserRole>('teacher');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Synchronize authenticated user and real role from Server Auth & localStorage
+  useEffect(() => {
+    // 1. Initial 0ms hydration from localStorage
+    if (typeof window !== 'undefined') {
+      const storedRole = localStorage.getItem('manstat_auth_role') as UserRole;
+      if (storedRole) {
+        setCurrentRole(storedRole);
+      }
+      const storedUser = localStorage.getItem('manstat_auth_user');
+      if (storedUser) {
+        try {
+          setCurrentUser(JSON.parse(storedUser));
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // 2. Real-time verification from /api/auth/me
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser(res.user);
+          setCurrentRole(res.user.role || 'teacher');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('manstat_auth_role', res.user.role || 'teacher');
+            localStorage.setItem('manstat_auth_user', JSON.stringify(res.user));
+          }
+        }
+      })
+      .catch((err) => console.warn('[Auth Me Error]', err));
+  }, []);
 
   // Real-time toast notifications hook
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });
@@ -244,7 +282,7 @@ export default function DashboardPage() {
             <ThemeSwitcher />
 
             {/* Admin Management Link */}
-            {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
+            {isAdminRole(currentRole) && (
               <Link
                 href="/admin"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
@@ -258,7 +296,9 @@ export default function DashboardPage() {
             {/* Consolidated User Profile Dropdown */}
             <UserProfileDropdown
               onOpenSettings={() => setIsSettingsModalOpen(true)}
-              showAdminCenterLink={true}
+              showAdminCenterLink={isAdminRole(currentRole)}
+              currentUser={currentUser}
+              currentRole={currentRole}
             />
           </div>
         </div>
@@ -498,7 +538,7 @@ export default function DashboardPage() {
 
             {/* Footer Utility Link: แจ้งปรับปรุงระบบ & ศูนย์ผู้ดูแลระบบ */}
             <div className="pt-2.5 mt-2.5 border-t border-slate-200/90 dark:border-slate-800/80 space-y-1">
-              {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
+              {isAdminRole(currentRole) && (
                 <Link
                   href="/admin"
                   className="w-full flex items-center justify-between py-1.5 px-3 text-xs rounded-md transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30"
@@ -750,7 +790,7 @@ export default function DashboardPage() {
 
                 {/* Mobile Secondary Utility */}
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1">
-                  {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
+                  {isAdminRole(currentRole) && (
                     <Link
                       href="/admin"
                       onClick={() => setIsMobileMenuOpen(false)}
@@ -838,7 +878,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Left Primary Column (8 Cols): คิวคำขอรออนุมัติ (Actionable Inbox) */}
                 <div className="lg:col-span-8">
-                  {currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin' ? (
+                  {isAdminRole(currentRole) ? (
                     <PendingApprovalQueue
                       requests={leaveList}
                       currentUserId="director-001"

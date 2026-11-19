@@ -10,6 +10,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database, UserRole } from '@/types/database.types';
+import { isAdminRole } from '@/lib/auth/roles';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -43,43 +44,39 @@ export async function middleware(request: NextRequest) {
     supabaseUrl.startsWith('http') &&
     !supabaseUrl.includes('your-project.supabase.co');
 
-  if (!isSupabaseValid) {
-    return response;
-  }
-
   // 4. Safely initialize Supabase SSR client inside try/catch
   let user = null;
-  try {
-    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  if (isSupabaseValid) {
+    try {
+      const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            response = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    });
+      });
 
-    const { data } = await supabase.auth.getUser();
-    user = data?.user ?? null;
-  } catch (err) {
-    // If Supabase is unreachable or session invalid, fail safely without throwing 500
-    user = null;
+      const { data } = await supabase.auth.getUser();
+      user = data?.user ?? null;
+    } catch {
+      user = null;
+    }
   }
 
   const isLoginPage = pathname === '/login';
 
   // 5. Check authentication (Supabase or ManStat persistent session token)
   const sessionToken = request.cookies.get('manstat_session_token')?.value;
-  const authRoleCookie = request.cookies.get('manstat_auth_role')?.value;
-  const isSuperuserCookie = authRoleCookie === 'superuser' || Boolean(sessionToken);
+  const authRoleCookie = request.cookies.get('manstat_auth_role')?.value as UserRole | undefined;
 
   const isAuthenticated = Boolean(user) || Boolean(sessionToken);
 
@@ -95,14 +92,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // 7. Role-Based Access Control (RBAC) for /admin/*
+  // 7. Strict Role-Based Access Control (RBAC) for /admin/*
   if (pathname.startsWith('/admin')) {
-    const userRole = (user?.user_metadata?.role as UserRole) || authRoleCookie || (sessionToken ? 'superuser' : 'teacher');
-    const hasAdminAccess =
-      isSuperuserCookie ||
-      userRole === 'superuser' ||
-      userRole === 'hr_admin' ||
-      userRole === 'director';
+    // Resolve user role with safe default 'teacher' (NEVER fallback to superuser)
+    const userRole: UserRole =
+      (user?.user_metadata?.role as UserRole) ||
+      authRoleCookie ||
+      'teacher';
+
+    const hasAdminAccess = isAdminRole(userRole);
 
     if (!hasAdminAccess) {
       const dashboardUrl = new URL('/', request.url);

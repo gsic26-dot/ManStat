@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog, type SystemSettingsRecord } from '@/lib/db/serverDb';
+import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export async function GET() {
   try {
@@ -12,11 +13,18 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const body = await request.json();
     const updatedSettings: Partial<SystemSettingsRecord> = body;
 
     const db = loadDatabase();
-    const oldSettings = { ...db.settings };
     db.settings = {
       ...db.settings,
       ...updatedSettings,
@@ -24,10 +32,13 @@ export async function POST(request: Request) {
 
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'UPDATE_SYSTEM_SETTINGS',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       'การตั้งค่าระบบ (System Preferences)',
       `ปรับปรุงการตั้งค่าระบบ: Theme=${db.settings.themeMode}, View=${db.settings.preferredView}, MaskPDPA=${db.settings.maskCitizenId}`
     );

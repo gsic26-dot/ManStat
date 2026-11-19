@@ -47,6 +47,7 @@ import {
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
+import { isAdminRole } from '@/lib/auth/roles';
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
@@ -151,6 +152,10 @@ export default function AdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Authenticated User & RBAC State
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentRole, setCurrentRole] = useState<string>('superuser');
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
@@ -242,6 +247,16 @@ export default function AdminPage() {
         ]);
 
         if (isMounted) {
+          fetch('/api/auth/me')
+            .then((r) => r.json())
+            .then((authRes) => {
+              if (isMounted && authRes?.success && authRes.user) {
+                setCurrentUser(authRes.user);
+                setCurrentRole(authRes.user.role || 'superuser');
+              }
+            })
+            .catch(() => {});
+
           if (staffRes?.success && Array.isArray(staffRes.data)) {
             setTeachers(staffRes.data);
             try {
@@ -453,6 +468,25 @@ export default function AdminPage() {
         showToast('บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
         setIsStaffModalOpen(false);
+
+        // Immediate Real-Time Session & RBAC Re-Sync
+        try {
+          const authMeRes = await fetch('/api/auth/me').then((r) => r.json());
+          if (authMeRes?.success && authMeRes.user) {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('manstat_auth_role', authMeRes.user.role);
+              localStorage.setItem('manstat_auth_user', JSON.stringify(authMeRes.user));
+            }
+            // If the current logged-in user was demoted to 'teacher' (User), kick them back to /
+            if (!isAdminRole(authMeRes.user.role)) {
+              alert('ระดับสิทธิ์ของท่านถูกปรับเป็นผู้ใช้งานทั่วไป (User) ระบบจะนำท่านกลับสู่หน้าหลัก');
+              window.location.href = '/';
+              return;
+            }
+          }
+        } catch {
+          // ignore
+        }
       } else {
         showToast(data.error || 'บันทึกข้อมูลบุคลากรไม่สำเร็จ', 'error');
       }
@@ -705,7 +739,11 @@ export default function AdminPage() {
           <div className="flex items-center gap-2 sm:gap-2.5">
             <ThemeSwitcher />
             <ExcelExportButton fiscalYear={fiscalYearBE} />
-            <UserProfileDropdown onOpenSettings={() => setActiveTab('preferences')} />
+            <UserProfileDropdown
+              currentUser={currentUser}
+              currentRole={currentRole}
+              onOpenSettings={() => setActiveTab('preferences')}
+            />
           </div>
         </div>
       </header>

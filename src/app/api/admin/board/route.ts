@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import { verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { BoardMemberRecord } from '@/lib/data/schoolData';
 
 const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -52,6 +53,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const body = await request.json();
     const member: BoardMemberRecord = normalizeMember(body);
 
@@ -81,10 +90,13 @@ export async function POST(request: Request) {
 
     saveDatabase(db);
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       isNew ? 'CREATE_BOARD_MEMBER' : 'UPDATE_BOARD_MEMBER',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       member.fullName,
       `${isNew ? 'เพิ่ม' : 'แก้ไข'}กรรมการสถานศึกษา: ${member.fullName} (${member.positionTitle})`
     );
@@ -101,6 +113,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -125,10 +145,13 @@ export async function DELETE(request: Request) {
     const name = (target as any).fullName || (target as any).full_name || id;
     const title = (target as any).positionTitle || (target as any).board_position || 'กรรมการสถานศึกษา';
 
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+
     recordAuditLog(
       'DELETE_BOARD_MEMBER',
-      'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      'superuser',
+      actorName,
+      actorRole,
       name,
       `ลบกรรมการสถานศึกษา: ${name} (${title})`
     );
