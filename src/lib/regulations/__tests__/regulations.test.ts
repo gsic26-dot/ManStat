@@ -19,7 +19,11 @@ import {
   validateLeaveQuotaAndRules,
   getLicenseValidityYears,
   evaluateLicenseHealth,
-  evaluatePAWorkload
+  evaluatePAWorkload,
+  MASTER_LEAVE_TYPES,
+  isZeroDayLeaveType,
+  isSchoolExitPermit,
+  isOfficialMission
 } from '../index';
 
 describe('1. Fiscal Year & Evaluation Rounds (ก.ค.ศ. ว15/2561 & ปฏิทินงบประมาณ)', () => {
@@ -126,6 +130,14 @@ describe('4. Leave Calculation & Working Days (ระเบียบสำนั
     // 2026-11-02 (Mon) to 2026-11-08 (Sun) = 7 calendar days
     const days = calculateLeaveDays('2026-11-02', '2026-11-08', 'ลาคลอดบุตร', 'full');
     assert.equal(days, 7);
+  });
+
+  it('CRITICAL: should calculate 0 days for school exit permission (<= 3h) and official mission', () => {
+    const exitDays = calculateLeaveDays('2026-11-02', '2026-11-02', 'ขออนุญาตออกนอกบริเวณโรงเรียน', 'full');
+    assert.equal(exitDays, 0);
+
+    const missionDays = calculateLeaveDays('2026-11-02', '2026-11-04', 'ขออนุญาตไปราชการ', 'full');
+    assert.equal(missionDays, 0);
   });
 });
 
@@ -265,5 +277,47 @@ describe('6. Khurusapha Licenses & PA Workload Evaluation (ว9/2564 & ว21/256
     });
     assert.equal(failedTeaching.isTeachingHoursPassed, false);
     assert.equal(failedTeaching.isAllPassed, false);
+  });
+});
+
+describe('7. Master 13 Leave Types & School Exit / Official Mission (สพฐ. Standards)', () => {
+  it('should define exactly 13 leave types partitioned into 2 distinct groups', () => {
+    assert.equal(MASTER_LEAVE_TYPES.length, 13);
+    const statutory = MASTER_LEAVE_TYPES.filter(t => t.category === 'statutory');
+    const permissions = MASTER_LEAVE_TYPES.filter(t => t.category === 'special_permission');
+
+    assert.equal(statutory.length, 11);
+    assert.equal(permissions.length, 2);
+  });
+
+  it('should identify zero-day leave types correctly', () => {
+    assert.equal(isZeroDayLeaveType('ขออนุญาตออกนอกบริเวณโรงเรียน'), true);
+    assert.equal(isZeroDayLeaveType('ขออนุญาตไปราชการ'), true);
+    assert.equal(isZeroDayLeaveType('ลาป่วย'), false);
+    assert.equal(isZeroDayLeaveType('ลากิจส่วนตัว'), false);
+  });
+
+  it('should validate school exit permit and official mission as 0 days without quota deduction or promotion risk', () => {
+    const exitValidation = validateLeaveQuotaAndRules({
+      leaveType: 'ขออนุญาตออกนอกบริเวณโรงเรียน',
+      requestedDays: 0,
+      usedDaysInFiscalYear: 10,
+      usedOccurrencesInRound: 6,
+      usedSickPersonalDaysInRound: 23,
+    });
+    assert.equal(exitValidation.isValid, true);
+    assert.equal(exitValidation.isPromotionRisk, false);
+    assert.equal(exitValidation.errors.length, 0);
+
+    const missionValidation = validateLeaveQuotaAndRules({
+      leaveType: 'ขออนุญาตไปราชการ',
+      requestedDays: 0,
+      usedDaysInFiscalYear: 10,
+      usedOccurrencesInRound: 6,
+      usedSickPersonalDaysInRound: 23,
+    });
+    assert.equal(missionValidation.isValid, true);
+    assert.equal(missionValidation.isPromotionRisk, false);
+    assert.equal(missionValidation.errors.length, 0);
   });
 });

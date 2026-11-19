@@ -9,6 +9,7 @@
  */
 
 import type { LeaveType, HalfDayPeriod } from '@/types/database.types';
+import { isZeroDayLeaveType } from './leaveTypes';
 
 export interface LeaveRuleValidationParams {
   leaveType: LeaveType;
@@ -52,6 +53,11 @@ export function calculateLeaveDays(
   end.setHours(0, 0, 0, 0);
 
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return 0;
+  }
+
+  // การขออนุญาตออกนอกบริเวณสถานศึกษาและการไปราชการ ไม่นับเป็นวันลา (0 วันทำการ)
+  if (isZeroDayLeaveType(leaveType)) {
     return 0;
   }
 
@@ -120,6 +126,20 @@ export function validateLeaveQuotaAndRules(
   const warnings: string[] = [];
   const errors: string[] = [];
   let isPromotionRisk = false;
+
+  // การขออนุญาตออกนอกบริเวณสถานศึกษา และการไปราชการ (ไม่นับเป็นวันลา ไม่ตัดโควตา ไม่กระทบเงินเดือน)
+  if (isZeroDayLeaveType(leaveType)) {
+    return {
+      isValid: true,
+      maxQuota: 0,
+      remainingQuotaBefore: 0,
+      remainingQuotaAfter: 0,
+      requireMedicalCert: false,
+      warnings: [],
+      errors: [],
+      isPromotionRisk: false,
+    };
+  }
 
   switch (leaveType) {
     case 'ลาป่วย': {

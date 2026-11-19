@@ -31,6 +31,8 @@ import {
   Building,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface UserProfileDropdownProps {
   onOpenSettings?: () => void;
@@ -44,6 +46,25 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { mode, resolvedTheme, setMode } = useTheme();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    setIsOpen(false);
+    try {
+      if (typeof window !== 'undefined') {
+        // Clear persistent session cookie
+        document.cookie = 'manstat_session_token=; max-age=0; path=/;';
+        localStorage.removeItem('manstat_auth_role');
+        localStorage.removeItem('manstat_auth_user');
+      }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignored
+    } finally {
+      router.push('/login');
+    }
+  };
 
   // Close on outside click & Escape
   useEffect(() => {
@@ -227,14 +248,14 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
               </Link>
             )}
 
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer text-left"
             >
               <LogOut className="w-4 h-4 shrink-0" />
               <span>ออกจากระบบ</span>
-            </Link>
+            </button>
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { School, Lock, Mail, ArrowRight, AlertCircle, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -21,8 +21,39 @@ export default function LoginPage() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Initialize Remember Me state from previous choice
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedRemember = localStorage.getItem('manstat_remember_me');
+      if (savedRemember !== null) {
+        setRememberMe(savedRemember === 'true');
+      }
+    }
+  }, []);
+
+  /**
+   * Sets or clears persistent session token cookie
+   */
+  const applySessionToken = (remember: boolean, tokenValue?: string) => {
+    if (typeof window === 'undefined') return;
+    const token = tokenValue || `mst_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+    const isHttps = window.location.protocol === 'https:';
+    const secureFlag = isHttps ? '; Secure' : '';
+
+    if (remember) {
+      const maxAge = 30 * 24 * 60 * 60; // 30 days
+      document.cookie = `manstat_session_token=${token}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
+      localStorage.setItem('manstat_remember_me', 'true');
+    } else {
+      // Session cookie without max-age (clears on browser session close)
+      document.cookie = `manstat_session_token=${token}; path=/; SameSite=Lax${secureFlag}`;
+      localStorage.setItem('manstat_remember_me', 'false');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +88,7 @@ export default function LoginPage() {
           })
         );
       }
+      applySessionToken(rememberMe);
       setIsLoading(false);
       router.push('/');
       return;
@@ -72,12 +104,15 @@ export default function LoginPage() {
       if (error) {
         setErrorMessage(error.message || 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง');
       } else if (data.session) {
+        applySessionToken(rememberMe, data.session.access_token);
         router.push('/');
       } else {
+        applySessionToken(rememberMe);
         router.push('/');
       }
     } catch {
       // For demo or offline preview fallback
+      applySessionToken(rememberMe);
       router.push('/');
     } finally {
       setIsLoading(false);
@@ -119,7 +154,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label htmlFor="username" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
                 ชื่อผู้ใช้ หรือ อีเมล (Username / Email)
               </label>
               <div className="relative flex items-center">
@@ -127,18 +162,21 @@ export default function LoginPage() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
+                  id="username"
+                  name="username"
                   type="text"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="superuser หรือ email@school.ac.th"
+                  placeholder="กรอกชื่อผู้ใช้หรืออีเมล"
                   className="w-full bg-slate-50 dark:bg-[#0b1016] border border-slate-200 dark:border-slate-800 focus:border-sky-500/80 focus:ring-1 focus:ring-sky-500/30 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label htmlFor="password" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
                 รหัสผ่าน (Password)
               </label>
               <div className="relative flex items-center">
@@ -146,7 +184,10 @@ export default function LoginPage() {
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -166,6 +207,21 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-sky-600 focus:ring-sky-500/30 dark:bg-[#0b1016] cursor-pointer"
+                />
+                <span className="text-xs text-slate-700 dark:text-slate-300">
+                  จดจำการเข้าสู่ระบบในเครื่องนี้
+                </span>
+              </label>
             </div>
 
             {errorMessage && (

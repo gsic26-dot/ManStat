@@ -691,7 +691,7 @@ export interface LeaveRequestRecord {
   teacherName: string;
   position: string;
   department: string;
-  leaveType: 'sick' | 'personal' | 'vacation' | 'maternity' | 'ordination';
+  leaveType: string;
   leaveTypeName: string;
   startDate: string;
   endDate: string;
@@ -700,6 +700,14 @@ export interface LeaveRequestRecord {
   substituteTeacherName: string;
   status: 'pending' | 'supervisor_approved' | 'approved' | 'rejected';
   submittedAt: string;
+  contactInfo?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  totalHours?: number | null;
+  destination?: string | null;
+  officialOrderNo?: string | null;
+  hasWorkload?: 'มี' | 'ไม่มี' | null;
+  workloads?: Array<{ cls?: string; period?: string; task?: string; sub?: string }> | null;
   supervisorRemark?: string;
   directorRemark?: string;
   currentStep: number;

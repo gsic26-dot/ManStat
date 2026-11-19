@@ -66,6 +66,7 @@ import { LeaveProgressRings } from '@/components/dashboard/LeaveProgressRings';
 import { PromotionRadarCard } from '@/components/dashboard/PromotionRadarCard';
 import { PendingApprovalQueue } from '@/components/dashboard/PendingApprovalQueue';
 import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
+import { isZeroDayLeaveType } from '@/lib/regulations/leaveTypes';
 
 // View Components
 import { ViewStaffDirectory } from '@/components/views/ViewStaffDirectory';
@@ -166,9 +167,10 @@ export default function DashboardPage() {
   // Live Metrics Calculations
   const todayISO = now.toISOString().split('T')[0];
 
-  // 1. Staff on leave today (approved requests whose range covers today)
+  // 1. Staff on leave today (approved requests whose range covers today; excluding 0-day school exit / official mission)
   const staffOnLeaveToday = leaveList.filter((r) => {
     if (r.status !== 'approved') return false;
+    if (r.totalDays === 0 || isZeroDayLeaveType(r.leaveTypeName) || isZeroDayLeaveType(r.leaveType)) return false;
     return r.startDate <= todayISO && todayISO <= r.endDate;
   });
   const onLeaveCount = staffOnLeaveToday.length;
