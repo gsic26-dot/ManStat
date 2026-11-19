@@ -4,7 +4,7 @@
  * ============================================================================
  * ManStat-Modern: UserSettingsContext & useUserSettings
  * ============================================================================
- * Per-User UI/UX Preferences Persistence (Supabase + LocalStorage)
+ * Per-User UI/UX Preferences Persistence (Server DB + Supabase + LocalStorage)
  *
  * Supported Preferences:
  * - theme_mode: 'light' | 'dark' | 'auto'
@@ -14,15 +14,15 @@
  *
  * Synchronization Guarantees:
  * 1. Zero-latency instant hydration from localStorage upon render.
- * 2. Background sync with Supabase Auth (user_metadata) and public.staff.
+ * 2. Background sync with Server DB (/api/admin/settings) and Supabase Auth.
  * 3. Bidirectional integration with ThemeContext for seamless dark/light toggle.
- * 4. Graceful offline / demo fallback when Supabase connection is unreachable.
+ * 4. Graceful offline / local fallback when connection is unreachable.
  * ============================================================================
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useTheme, type ThemeMode } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import type { UserPreferences } from '@/types/database.types';
 
 export type SyncStatus = 'synced' | 'syncing' | 'local_only';
@@ -84,77 +84,73 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setIsLoaded(true);
   }, [themeMode]);
 
-  // 2. Fetch authenticated user from Supabase and synchronize remote preferences
+  // 2. Fetch authenticated user from Supabase and synchronize remote preferences from server DB
   useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
 
     async function loadRemoteSettings() {
+      // Fetch from Server DB API first
+      try {
+        const res = await fetch('/api/admin/settings');
+        const json = await res.json();
+        if (json.success && json.data && isMounted) {
+          const s = json.data;
+          setPreferences((prev) => {
+            const next: UserPreferences = {
+              ...prev,
+              theme_mode: s.themeMode || prev.theme_mode,
+              preferred_view: s.preferredView || prev.preferred_view,
+              compact_mode: s.compactMode !== undefined ? s.compactMode : prev.compact_mode,
+              mask_citizen_id: s.maskCitizenId !== undefined ? s.maskCitizenId : prev.mask_citizen_id,
+            };
+            if (s.themeMode && s.themeMode !== themeMode) {
+              setThemeMode(s.themeMode);
+            }
+            return next;
+          });
+          setSyncStatus('synced');
+        }
+      } catch {
+        // continue to Supabase
+      }
+
+      // Check Supabase Auth
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-          if (isMounted) setSyncStatus('local_only');
           return;
         }
 
-        if (!isMounted) return;
-        setUserId(user.id);
-
-        const userKey = getStorageKey(user.id);
-        let currentPrefs = { ...DEFAULT_PREFERENCES };
-
-        // Check user-specific localStorage first
-        try {
-          const userStored = localStorage.getItem(userKey);
-          if (userStored) {
-            currentPrefs = { ...currentPrefs, ...JSON.parse(userStored) };
-          }
-        } catch {
-          // ignore error
-        }
-
-        // Check user metadata from Supabase Auth
-        const metaPrefs = user.user_metadata?.preferences as Partial<UserPreferences> | undefined;
-        if (metaPrefs && typeof metaPrefs === 'object') {
-          currentPrefs = { ...currentPrefs, ...metaPrefs };
-        }
-
-        // Optionally query public.staff table preferences column
-        try {
-          const { data: staffData } = await supabase
-            .from('staff')
-            .select('preferences')
-            .eq('id', user.id)
-            .maybeSingle();
-
-          if (staffData?.preferences && typeof staffData.preferences === 'object') {
-            currentPrefs = { ...currentPrefs, ...(staffData.preferences as Partial<UserPreferences>) };
-          }
-        } catch {
-          // Column might not exist yet, safe fallback
-        }
-
         if (isMounted) {
-          setPreferences(currentPrefs);
-          setSyncStatus('synced');
+          setUserId(user.id);
+          const userKey = getStorageKey(user.id);
+          const metaPrefs = user.user_metadata?.preferences as Partial<UserPreferences> | undefined;
 
-          // Keep ThemeContext aligned if remote preferences have theme_mode
-          if (currentPrefs.theme_mode && currentPrefs.theme_mode !== themeMode) {
-            setThemeMode(currentPrefs.theme_mode);
-          }
+          if (metaPrefs) {
+            setPreferences((prev) => {
+              const merged: UserPreferences = {
+                ...prev,
+                ...metaPrefs,
+              };
+              if (metaPrefs.theme_mode && metaPrefs.theme_mode !== themeMode) {
+                setThemeMode(metaPrefs.theme_mode);
+              }
+              return merged;
+            });
+            setSyncStatus('synced');
 
-          // Mirror to both storage keys for fast access
-          try {
-            localStorage.setItem(userKey, JSON.stringify(currentPrefs));
-            localStorage.setItem(STORAGE_GLOBAL_KEY, JSON.stringify(currentPrefs));
-          } catch {
-            // ignore
+            try {
+              localStorage.setItem(userKey, JSON.stringify(metaPrefs));
+              localStorage.setItem(STORAGE_GLOBAL_KEY, JSON.stringify(metaPrefs));
+            } catch {
+              // ignore
+            }
           }
         }
       } catch (err) {
         console.warn('[UserSettings] Supabase sync error, operating in local mode:', err);
-        if (isMounted) setSyncStatus('local_only');
       }
     }
 
@@ -167,7 +163,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         loadRemoteSettings();
       } else {
         setUserId(null);
-        setSyncStatus('local_only');
       }
     });
 
@@ -177,7 +172,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [setThemeMode, themeMode]);
 
-  // 3. Update preferences handler (Instant UI update + localStorage + async Supabase sync)
+  // 3. Update preferences handler (Instant UI update + localStorage + server DB sync)
   const updatePreferences = useCallback(
     async (partial: Partial<UserPreferences>) => {
       const updated: UserPreferences = {
@@ -202,54 +197,62 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.warn('[UserSettings] Failed saving to localStorage:', e);
       }
 
-      // D. Asynchronously sync to Supabase if authenticated
+      // D. Persist to Server DB API
+      setSyncStatus('syncing');
+      try {
+        await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            themeMode: updated.theme_mode,
+            preferredView: updated.preferred_view,
+            compactMode: updated.compact_mode,
+            maskCitizenId: updated.mask_citizen_id,
+          }),
+        });
+        setSyncStatus('synced');
+      } catch (e) {
+        console.warn('[UserSettings] Failed saving to /api/admin/settings:', e);
+      }
+
+      // E. Sync to Supabase if authenticated
       if (userId) {
-        setSyncStatus('syncing');
         try {
           const supabase = createClient();
-
-          // Update Supabase Auth user_metadata
-          const { error: updateAuthErr } = await supabase.auth.updateUser({
+          await supabase.auth.updateUser({
             data: { preferences: updated },
           });
-
-          // Attempt updating public.staff table column as well
           await supabase
             .from('staff')
             .update({ preferences: updated as any })
             .eq('id', userId);
-
-          if (!updateAuthErr) {
-            setSyncStatus('synced');
-          } else {
-            setSyncStatus('local_only');
-          }
-        } catch (e) {
-          console.warn('[UserSettings] Background Supabase update failed:', e);
-          setSyncStatus('local_only');
+        } catch {
+          // ignore
         }
-      } else {
-        setSyncStatus('local_only');
       }
     },
     [preferences, themeMode, userId, setThemeMode]
   );
 
-  // 4. Reset preferences to defaults
+  // 4. Reset preferences to school system defaults
   const resetPreferences = useCallback(async () => {
     await updatePreferences(DEFAULT_PREFERENCES);
   }, [updatePreferences]);
 
-  const value = {
-    preferences,
-    updatePreferences,
-    resetPreferences,
-    syncStatus,
-    userId,
-    isLoaded,
-  };
-
-  return <UserSettingsContext.Provider value={value}>{children}</UserSettingsContext.Provider>;
+  return (
+    <UserSettingsContext.Provider
+      value={{
+        preferences,
+        updatePreferences,
+        resetPreferences,
+        syncStatus,
+        userId,
+        isLoaded,
+      }}
+    >
+      {children}
+    </UserSettingsContext.Provider>
+  );
 };
 
 export function useUserSettings(): UserSettingsContextType {

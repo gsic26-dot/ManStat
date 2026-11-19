@@ -16,10 +16,11 @@
  * ============================================================================
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
+import { INITIAL_SCHOOL_INFO, INITIAL_TEACHERS, SchoolInfoRecord, TeacherRecord } from '@/lib/data/schoolData';
 import {
   School,
   Calendar,
@@ -97,8 +98,36 @@ export default function DashboardPage() {
   // Real-time toast notifications hook
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });
 
+  const [staffList, setStaffList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setStaffList(res.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/school')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data && isMounted) {
+          setSchoolInfo(res.data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const currentDateThai = 'วันจันทร์ที่ 16 พฤศจิกายน 2569';
-  const fiscalYearBE = 2570;
+  const fiscalYearBE = parseInt(schoolInfo.fiscalYear) || 2570;
 
   const handleSelectView = (view: ActiveView) => {
     setActiveView(view);
@@ -137,7 +166,7 @@ export default function DashboardPage() {
                     สพป.นม. 3
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">โรงเรียนชุมชนบ้านตะขบ (Zero-GAS Cloud)</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{schoolInfo.schoolName} (Zero-GAS Cloud)</p>
               </div>
             </button>
           </div>
@@ -695,8 +724,8 @@ export default function DashboardPage() {
               <section aria-label="Personnel Summary Statistics">
                 <PersonnelSummaryCards
                   stats={{
-                    totalStaff: 15,
-                    onDutyCount: 14,
+                    totalStaff: staffList.length,
+                    onDutyCount: Math.max(0, staffList.length - 1),
                     onLeaveCount: 1,
                     expiringOrRetiringCount: 2,
                   }}

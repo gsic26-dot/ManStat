@@ -26,7 +26,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   School,
   BookOpen,
@@ -40,7 +40,7 @@ import {
   UserCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { INITIAL_BOARD_MEMBERS } from '@/lib/data/schoolData';
+import { INITIAL_BOARD_MEMBERS, INITIAL_SCHOOL_INFO, BoardMemberRecord, SchoolInfoRecord } from '@/lib/data/schoolData';
 
 interface DivisionData {
   id: string;
@@ -58,6 +58,33 @@ interface DivisionData {
 
 export const ViewOrgChart: React.FC = () => {
   const [expandedDivision, setExpandedDivision] = useState<string | null>(null);
+  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
+  const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/board')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setBoardList(res.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/school')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data && isMounted) {
+          setSchool(res.data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleDivision = (id: string) => {
     setExpandedDivision((prev) => (prev === id ? null : id));
@@ -65,9 +92,9 @@ export const ViewOrgChart: React.FC = () => {
 
   // ดึงชื่อประธานกรรมการสถานศึกษาจริงจากฐานข้อมูล
   const boardChair =
-    INITIAL_BOARD_MEMBERS.find((b) => b.position === 'CHAIR')?.fullName ||
+    boardList.find((b) => b.position === 'CHAIR')?.fullName ||
     'นางเสาวนีย์ ศิริวรรณโยธา';
-  const totalBoardMembers = INITIAL_BOARD_MEMBERS.length || 9;
+  const totalBoardMembers = boardList.length || 9;
 
   const divisions: DivisionData[] = [
     {
@@ -253,17 +280,17 @@ export const ViewOrgChart: React.FC = () => {
                     คศ. 3
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate" title="นายธีรศักดิ์ มโนธรรม">
-                  นายธีรศักดิ์ มโนธรรม
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate" title={school.directorName}>
+                  {school.directorName}
                 </h3>
-                <div className="text-xs text-sky-600 dark:text-sky-400 font-medium truncate" title="ผู้อำนวยการสถานศึกษา (ชำนาญการพิเศษ)">
-                  ผู้อำนวยการสถานศึกษา
+                <div className="text-xs text-sky-600 dark:text-sky-400 font-medium truncate" title={school.directorPosition || 'ผู้อำนวยการสถานศึกษา'}>
+                  {school.directorPosition || 'ผู้อำนวยการสถานศึกษา'}
                 </div>
               </div>
             </div>
             
             <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="truncate" title="โรงเรียนชุมชนบ้านตะขบ">โรงเรียนชุมชนบ้านตะขบ</span>
+              <span className="truncate" title={school.schoolName}>{school.schoolName}</span>
               <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นม. 3</span>
             </div>
           </div>

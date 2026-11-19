@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Shield,
   Phone,
@@ -25,12 +25,28 @@ import {
   Award,
   ChevronRight,
 } from 'lucide-react';
-import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER } from '@/lib/data/schoolData';
+import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 
 export const ViewSchoolBoard: React.FC = () => {
+  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/board')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && isMounted) {
+          setBoardList(json.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedMemberId((prev) => (prev === id ? null : id));
@@ -38,7 +54,7 @@ export const ViewSchoolBoard: React.FC = () => {
 
   // Sort strictly by statutory hierarchy
   const sortedMembers = useMemo(() => {
-    return [...INITIAL_BOARD_MEMBERS]
+    return [...boardList]
       .sort((a, b) => {
         const orderA = BOARD_STATUTORY_ORDER[a.position] ?? 99;
         const orderB = BOARD_STATUTORY_ORDER[b.position] ?? 99;
@@ -54,7 +70,7 @@ export const ViewSchoolBoard: React.FC = () => {
           m.occupation.toLowerCase().includes(q)
         );
       });
-  }, [searchTerm]);
+  }, [boardList, searchTerm]);
 
   const getPositionBadgeStyle = (position: string) => {
     switch (position) {

@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ShieldAlert,
@@ -41,6 +41,8 @@ import {
   Plus,
   ChevronRight,
   Sliders,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
@@ -120,11 +122,41 @@ const DEPARTMENTS = [
   'สายงานบริหารและสนับสนุนการศึกษา',
 ];
 
+export interface HolidayRecord {
+  id: string;
+  date: string;
+  name: string;
+  type: string;
+}
+
+export interface AuditLogRecord {
+  id: string;
+  action: string;
+  actorName: string;
+  actorRole: string;
+  targetName: string;
+  ipAddress: string;
+  timestamp: string;
+  details: string;
+}
+
 export default function AdminPage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     'staff' | 'board' | 'school' | 'fiscal' | 'audit' | 'preferences'
   >('staff');
+
+  // Loading & Feedback State
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 4000);
+  };
 
   // Staff State
   const [teachers, setTeachers] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -168,7 +200,7 @@ export default function AdminPage() {
 
   // Fiscal Year & Holidays State
   const [fiscalYearBE, setFiscalYearBE] = useState(2570);
-  const [holidays, setHolidays] = useState([
+  const [holidays, setHolidays] = useState<HolidayRecord[]>([
     { id: 'h1', date: '2026-10-23', name: 'วันปิยมหาราช', type: 'วันหยุดราชการประจำปี' },
     { id: 'h2', date: '2026-12-05', name: 'วันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ', type: 'วันหยุดราชการประจำปี' },
     { id: 'h3', date: '2026-12-10', name: 'วันรัฐธรรมนูญ', type: 'วันหยุดราชการประจำปี' },
@@ -179,74 +211,138 @@ export default function AdminPage() {
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
 
-  // Sample Immutable Audit Logs
-  const sampleAuditLogs = [
-    {
-      id: 'log-001',
-      action: 'REVEAL_CITIZEN_ID',
-      actorName: 'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      actorRole: 'superuser',
-      targetName: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
-      ipAddress: '192.168.1.45',
-      timestamp: '2026-11-16T10:45:12Z',
-      details: 'ตรวจสอบเพื่อประกอบการจัดทำทะเบียนประวัติ ก.พ.7',
-    },
-    {
-      id: 'log-002',
-      action: 'APPROVE_LEAVE',
-      actorName: 'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      actorRole: 'superuser',
-      targetName: 'นายธวัชชัย เหลืองโอฬาร',
-      ipAddress: '192.168.1.45',
-      timestamp: '2026-11-16T10:00:00Z',
-      details: 'อนุมัติคำขอลาป่วย 2 วันทำการ',
-    },
-    {
-      id: 'log-003',
-      action: 'UPDATE_SETTINGS',
-      actorName: 'นายธวัชชัย เหลืองโอฬาร',
-      actorRole: 'hr_admin',
-      targetName: 'ระบบส่วนกลาง',
-      ipAddress: '192.168.1.50',
-      timestamp: '2026-11-15T14:20:00Z',
-      details: 'ปรับปรุงปฏิทินวันหยุดราชการประจำปีงบประมาณ 2570',
-    },
-    {
-      id: 'log-004',
-      action: 'UPDATE_STAFF_RECORD',
-      actorName: 'Superuser (นายธีรศักดิ์ มโนธรรม)',
-      actorRole: 'superuser',
-      targetName: 'นางสาวทัชชกร ช่วยจังหรีด',
-      ipAddress: '192.168.1.45',
-      timestamp: '2026-11-14T09:12:00Z',
-      details: 'บันทึกใบอนุญาตประกอบวิชาชีพ B-License ฉบับใหม่',
-    },
-  ];
+  // Real Immutable Audit Logs from Database
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
 
-  const handleSaveSchoolInfo = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert('บันทึกข้อมูลสถานศึกษาเรียบร้อยแล้ว');
+  // Function to refresh audit logs
+  const refreshAuditLogs = async () => {
+    try {
+      const res = await fetch('/api/admin/audit');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setAuditLogs(data.data);
+      }
+    } catch {
+      // silent
+    }
   };
 
-  const handleAddHoliday = (e: React.FormEvent) => {
+  // Initial Load from Persistent Database
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAllAdminData() {
+      setIsLoading(true);
+      try {
+        const [staffRes, boardRes, schoolRes, holRes, auditRes] = await Promise.all([
+          fetch('/api/admin/staff').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/board').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/school').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/holidays').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/audit').then((r) => r.json()).catch(() => null),
+        ]);
+
+        if (isMounted) {
+          if (staffRes?.success && Array.isArray(staffRes.data)) {
+            setTeachers(staffRes.data);
+          }
+          if (boardRes?.success && Array.isArray(boardRes.data)) {
+            setBoardMembers(boardRes.data);
+          }
+          if (schoolRes?.success && schoolRes.data) {
+            setSchoolInfo(schoolRes.data);
+            if (schoolRes.data.fiscalYear) {
+              setFiscalYearBE(parseInt(schoolRes.data.fiscalYear) || 2570);
+            }
+          }
+          if (holRes?.success && Array.isArray(holRes.data)) {
+            setHolidays(holRes.data);
+          }
+          if (auditRes?.success && Array.isArray(auditRes.data)) {
+            setAuditLogs(auditRes.data);
+          }
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadAllAdminData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSaveSchoolInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/school', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schoolInfo),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchoolInfo(data.data);
+        showToast('บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
+        refreshAuditLogs();
+      } else {
+        showToast(data.error || 'บันทึกข้อมูลไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHolidayName || !newHolidayDate) return;
-    setHolidays((prev) => [
-      ...prev,
-      {
-        id: `h-${Date.now()}`,
-        date: newHolidayDate,
-        name: newHolidayName,
-        type: 'วันหยุดพิเศษ / ตามมติ ครม.',
-      },
-    ]);
-    setNewHolidayName('');
-    setNewHolidayDate('');
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/holidays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newHolidayName, date: newHolidayDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHolidays(data.data);
+        setNewHolidayName('');
+        setNewHolidayDate('');
+        showToast('เพิ่มวันหยุดราชการลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
+        refreshAuditLogs();
+      } else {
+        showToast(data.error || 'เพิ่มวันหยุดไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการบันทึกวันหยุด', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteHoliday = (id: string) => {
-    if (confirm('คุณต้องการลบวันหยุดนี้ใช่หรือไม่?')) {
-      setHolidays((prev) => prev.filter((h) => h.id !== id));
+  const handleDeleteHoliday = async (id: string) => {
+    const target = holidays.find((h) => h.id === id);
+    if (!confirm(`คุณต้องการลบวันหยุด "${target?.name || id}" ใช่หรือไม่?`)) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/holidays?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHolidays(data.data);
+        showToast('ลบวันหยุดราชการเรียบร้อยแล้ว', 'success');
+        refreshAuditLogs();
+      } else {
+        showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการลบวันหยุด', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -308,13 +404,13 @@ export default function AdminPage() {
     setIsStaffModalOpen(true);
   };
 
-  const handleSaveStaff = () => {
+  const handleSaveStaff = async () => {
     if (!selectedStaff) return;
     const computedName =
       selectedStaff.name.trim() ||
       `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim();
     if (!computedName) {
-      alert('กรุณาระบุชื่อ-นามสกุลบุคลากร');
+      showToast('กรุณาระบุชื่อ-นามสกุลบุคลากร', 'error');
       return;
     }
 
@@ -326,23 +422,60 @@ export default function AdminPage() {
         : selectedStaff.maskedCitizenId,
     };
 
-    if (isNewStaff) {
-      setTeachers((prev) => [updatedStaff, ...prev]);
-    } else {
-      setTeachers((prev) =>
-        prev.map((t) => (t.id === updatedStaff.id ? updatedStaff : t))
-      );
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedStaff),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const savedItem: TeacherRecord = data.data;
+        if (isNewStaff) {
+          setTeachers((prev) => [savedItem, ...prev]);
+        } else {
+          setTeachers((prev) =>
+            prev.map((t) => (t.id === savedItem.id ? savedItem : t))
+          );
+        }
+        showToast('บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
+        refreshAuditLogs();
+        setIsStaffModalOpen(false);
+      } else {
+        showToast(data.error || 'บันทึกข้อมูลบุคลากรไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    } finally {
+      setIsSaving(false);
     }
-    setIsStaffModalOpen(false);
   };
 
-  const handleDeleteStaff = (staffId: string) => {
+  const handleDeleteStaff = async (staffId: string) => {
     const target = teachers.find((t) => t.id === staffId);
     if (!target) return;
     if (confirm(`คุณต้องการลบข้อมูลบุคลากร "${target.name}" ใช่หรือไม่?`)) {
-      setTeachers((prev) => prev.filter((t) => t.id !== staffId));
-      if (selectedStaff?.id === staffId) {
-        setIsStaffModalOpen(false);
+      setIsSaving(true);
+      try {
+        const res = await fetch(`/api/admin/staff?id=${encodeURIComponent(staffId)}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json();
+        if (data.success) {
+          setTeachers((prev) => prev.filter((t) => t.id !== staffId));
+          if (selectedStaff?.id === staffId) {
+            setIsStaffModalOpen(false);
+          }
+          showToast(`ลบข้อมูลบุคลากร ${target.name} เรียบร้อยแล้ว`, 'success');
+          refreshAuditLogs();
+        } else {
+          showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+        }
+      } catch (err: any) {
+        showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -449,28 +582,65 @@ export default function AdminPage() {
     setIsBoardModalOpen(true);
   };
 
-  const handleSaveBoardMember = () => {
+  const handleSaveBoardMember = async () => {
     if (!selectedBoardMember || !selectedBoardMember.fullName.trim()) {
-      alert('กรุณากรอกชื่อ-นามสกุลกรรมการสถานศึกษา');
+      showToast('กรุณากรอกชื่อ-นามสกุลกรรมการสถานศึกษา', 'error');
       return;
     }
-    if (isNewBoardMember) {
-      setBoardMembers((prev) => [...prev, selectedBoardMember]);
-    } else {
-      setBoardMembers((prev) =>
-        prev.map((b) => (b.id === selectedBoardMember.id ? selectedBoardMember : b))
-      );
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/board', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedBoardMember),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const savedMember: BoardMemberRecord = data.data;
+        if (isNewBoardMember) {
+          setBoardMembers((prev) => [...prev, savedMember]);
+        } else {
+          setBoardMembers((prev) =>
+            prev.map((b) => (b.id === savedMember.id ? savedMember : b))
+          );
+        }
+        showToast('บันทึกข้อมูลคณะกรรมการสถานศึกษาเรียบร้อยแล้ว', 'success');
+        refreshAuditLogs();
+        setIsBoardModalOpen(false);
+      } else {
+        showToast(data.error || 'บันทึกไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    } finally {
+      setIsSaving(false);
     }
-    setIsBoardModalOpen(false);
   };
 
-  const handleDeleteBoardMember = (id: string) => {
+  const handleDeleteBoardMember = async (id: string) => {
     const target = boardMembers.find((b) => b.id === id);
     if (!target) return;
     if (confirm(`คุณต้องการลบกรรมการสถานศึกษา "${target.fullName}" ใช่หรือไม่?`)) {
-      setBoardMembers((prev) => prev.filter((b) => b.id !== id));
-      if (selectedBoardMember?.id === id) {
-        setIsBoardModalOpen(false);
+      setIsSaving(true);
+      try {
+        const res = await fetch(`/api/admin/board?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json();
+        if (data.success) {
+          setBoardMembers((prev) => prev.filter((b) => b.id !== id));
+          if (selectedBoardMember?.id === id) {
+            setIsBoardModalOpen(false);
+          }
+          showToast(`ลบกรรมการสถานศึกษา ${target.fullName} เรียบร้อยแล้ว`, 'success');
+          refreshAuditLogs();
+        } else {
+          showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+        }
+      } catch (err: any) {
+        showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -1364,7 +1534,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <span className="text-xs text-slate-400 font-mono">
-                ทั้งหมด {sampleAuditLogs.length} รายการล่าสุด
+                ทั้งหมด {auditLogs.length} รายการล่าสุด
               </span>
             </div>
 
@@ -1382,7 +1552,14 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                  {sampleAuditLogs.map((log) => {
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10 text-slate-400 dark:text-slate-500 font-medium">
+                        ยังไม่มีประวัติการบันทึก Audit Logs ในระบบ
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs.map((log) => {
                     const isExpanded = expandedLogId === log.id;
                     return (
                       <React.Fragment key={log.id}>
@@ -1467,7 +1644,7 @@ export default function AdminPage() {
                         )}
                       </React.Fragment>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>
@@ -2367,17 +2544,23 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsStaffModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 disabled:opacity-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveStaff}
-                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200 disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4 shrink-0" />
-                  <span>{isNewStaff ? 'บันทึกเพิ่มบุคลากรใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{isSaving ? 'กำลังบันทึกลงฐานข้อมูล...' : isNewStaff ? 'บันทึกเพิ่มบุคลากรใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
                 </button>
               </div>
             </div>
@@ -2558,17 +2741,23 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setIsBoardModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 disabled:opacity-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveBoardMember}
-                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200 disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4 shrink-0" />
-                  <span>{isNewBoardMember ? 'บันทึกเพิ่มกรรมการใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{isSaving ? 'กำลังบันทึกลงฐานข้อมูล...' : isNewBoardMember ? 'บันทึกเพิ่มกรรมการใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
                 </button>
               </div>
             </div>
@@ -2580,6 +2769,25 @@ export default function AdminPage() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
       />
+
+      {/* Real-time Toast Notification Overlay */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 bg-white dark:bg-[#121a24] text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors ml-2"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

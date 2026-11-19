@@ -14,7 +14,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -41,10 +41,26 @@ export const ViewStaffDirectory: React.FC = () => {
   const isCompact = preferences.compact_mode;
   const cellPy = isCompact ? 'py-2' : 'py-3.5';
 
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && isMounted) {
+          setTeachersList(json.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedTeacherId((prev) => (prev === id ? null : id));
@@ -53,14 +69,14 @@ export const ViewStaffDirectory: React.FC = () => {
   // Unique departments for filter pills
   const departments = useMemo(() => {
     const set = new Set<string>();
-    INITIAL_TEACHERS.forEach((t) => {
+    teachersList.forEach((t) => {
       if (t.department) set.add(t.department);
     });
     return Array.from(set);
-  }, []);
+  }, [teachersList]);
 
   const filteredTeachers = useMemo(() => {
-    return INITIAL_TEACHERS.filter((t) => {
+    return teachersList.filter((t) => {
       const matchSearch =
         t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,7 +87,7 @@ export const ViewStaffDirectory: React.FC = () => {
 
       return matchSearch && matchDept;
     });
-  }, [searchTerm, selectedDept]);
+  }, [teachersList, searchTerm, selectedDept]);
 
   return (
     <div className="space-y-6">
@@ -84,7 +100,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <span>ทะเบียนประวัติบุคลากร (Staff Directory)</span>
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              โรงเรียนชุมชนบ้านตะขบ สพป.นครราชสีมา เขต 3 (รวมบุคลากร {INITIAL_TEACHERS.length} คน)
+              โรงเรียนชุมชนบ้านตะขบ สพป.นครราชสีมา เขต 3 (รวมบุคลากร {teachersList.length} คน)
             </p>
           </div>
 

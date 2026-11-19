@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar,
   Clock,
@@ -91,13 +91,29 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
 
-  // Pre-configured official school holidays list for Ban Takhob
-  const officialHolidays = useMemo(() => [
+  // Dynamic official school holidays list synchronized with database
+  const [officialHolidays, setOfficialHolidays] = useState<string[]>([
     '2026-10-13', '2026-10-23', '2026-12-05', '2026-12-10', '2026-12-31',
     '2027-01-01', '2027-02-21', '2027-04-06', '2027-04-13', '2027-04-14',
     '2027-04-15', '2027-05-01', '2027-05-04', '2027-05-20', '2027-06-03',
     '2027-07-18', '2027-07-19', '2027-07-28', '2027-08-12', '2027-10-13',
-  ], []);
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/holidays')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && isMounted) {
+          const dates = json.data.map((h: any) => h.date).filter(Boolean);
+          if (dates.length > 0) setOfficialHolidays(dates);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Compute Fiscal Year and Evaluation Round dynamically
   const fiscalYear = useMemo(() => getFiscalYearBE(startDate), [startDate]);
