@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import type { TeacherRecord } from '@/lib/data/schoolData';
 
 export async function GET() {
@@ -40,18 +41,26 @@ export async function POST(request: Request) {
 
     const isNew = existingIndex === -1;
     let oldStaff: TeacherRecord | null = null;
+    if (!isNew) {
+      oldStaff = db.teachers[existingIndex];
+    }
+
+    // Map and synchronize role with accessLevel
+    const mappedRole = mapAccessLevelToRole(updatedStaff.accessLevel);
+    const staffToSave: TeacherRecord = {
+      ...(oldStaff || {}),
+      ...updatedStaff,
+      accessLevel: updatedStaff.accessLevel || 'User',
+      role: mappedRole,
+      standings: updatedStaff.standings || oldStaff?.standings || [],
+      licenses: updatedStaff.licenses || oldStaff?.licenses || [],
+      educations: updatedStaff.educations || oldStaff?.educations || [],
+    };
 
     if (isNew) {
-      db.teachers.unshift(updatedStaff);
+      db.teachers.unshift(staffToSave);
     } else {
-      oldStaff = db.teachers[existingIndex];
-      db.teachers[existingIndex] = {
-        ...oldStaff,
-        ...updatedStaff,
-        standings: updatedStaff.standings || oldStaff.standings || [],
-        licenses: updatedStaff.licenses || oldStaff.licenses || [],
-        educations: updatedStaff.educations || oldStaff.educations || [],
-      };
+      db.teachers[existingIndex] = staffToSave;
     }
 
     // Save persistent database
@@ -93,7 +102,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: 'บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว',
-      data: isNew ? updatedStaff : db.teachers[existingIndex],
+      data: staffToSave,
     });
   } catch (err: any) {
     console.error('[API /api/admin/staff POST Error]', err);

@@ -94,19 +94,29 @@ const LICENSE_TYPES = [
 ];
 
 const TEACHER_ROLES = [
+  'ผู้อำนวยการโรงเรียน',
   'ผู้อำนวยการสถานศึกษา',
+  'รองผู้อำนวยการโรงเรียน',
   'รองผู้อำนวยการสถานศึกษา',
-  'ครูเชี่ยวชาญพิเศษ',
-  'ครูเชี่ยวชาญ',
-  'ครูชำนาญการพิเศษ',
-  'ครูชำนาญการ',
   'ครู',
   'ครูผู้ช่วย',
-  'ศึกษานิเทศก์',
   'พนักงานราชการ',
   'ครูอัตราจ้าง',
   'ลูกจ้างประจำ',
   'เจ้าหน้าที่ธุรการ',
+  'ศึกษานิเทศก์',
+];
+
+const STANDARD_STANDINGS = [
+  '-',
+  'ไม่มีวิทยฐานะ',
+  'ครูชำนาญการ (คศ. 2)',
+  'ครูชำนาญการพิเศษ (คศ. 3)',
+  'ครูเชี่ยวชาญ (คศ. 4)',
+  'ครูเชี่ยวชาญพิเศษ (คศ. 5)',
+  'ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)',
+  'ผู้อำนวยการเชี่ยวชาญ (คศ. 4)',
+  'ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)',
 ];
 
 const DEPARTMENTS = [
@@ -410,6 +420,7 @@ export default function AdminPage() {
     setIsNewStaff(false);
     setSelectedStaff({
       ...t,
+      accessLevel: t.accessLevel || (t.role === 'superuser' ? 'Superuser' : t.role === 'hr_admin' ? 'Admin' : 'User'),
       licenses: t.licenses || [],
       standings: t.standings || [],
       educations: t.educations || [],
@@ -460,7 +471,11 @@ export default function AdminPage() {
           });
         } else {
           setTeachers((prev) => {
-            const next = prev.map((t) => (t.id === savedItem.id ? savedItem : t));
+            const next = prev.map((t) =>
+              t.id === savedItem.id || (savedItem.employeeCode && t.employeeCode === savedItem.employeeCode)
+                ? savedItem
+                : t
+            );
             try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
             return next;
           });
@@ -468,6 +483,17 @@ export default function AdminPage() {
         showToast('บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
         setIsStaffModalOpen(false);
+
+        // Immediate re-fetch from server to guarantee 100% database persistence
+        fetch('/api/admin/staff')
+          .then((r) => r.json())
+          .then((sRes) => {
+            if (sRes?.success && Array.isArray(sRes.data)) {
+              setTeachers(sRes.data);
+              try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(sRes.data)); } catch {}
+            }
+          })
+          .catch(() => {});
 
         // Immediate Real-Time Session & RBAC Re-Sync
         try {
@@ -879,7 +905,9 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                     {filteredTeachers.map((t) => {
-                      const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                      const posDisplay = t.position
+                        .replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')
+                        .replace('ผู้อำนวยการโรงเรียน', 'ผอ.โรงเรียน');
                       const isExpanded = expandedStaffId === t.id;
                       return (
                         <React.Fragment key={t.id}>
@@ -919,16 +947,16 @@ export default function AdminPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-center whitespace-nowrap">
-                              {t.employeeCode === 'EXE-001' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
+                              {t.accessLevel === 'Superuser' || t.role === 'superuser' ? (
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                                   Superuser
                                 </span>
-                              ) : t.employeeCode === 'TCH-002' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30">
-                                  HR Admin
+                              ) : t.accessLevel === 'Admin' || t.role === 'hr_admin' ? (
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30">
+                                  Admin
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
                                   Teacher
                                 </span>
                               )}
@@ -1931,16 +1959,55 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-slate-400 mb-1">วิทยฐานะ</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.academicStanding}
-                          placeholder="เช่น ครูชำนาญการพิเศษ หรือ -"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-400">วิทยฐานะ</label>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStaff({ ...selectedStaff, academicStanding: '-' })}
+                            className="text-[10px] text-sky-500 hover:text-sky-400 font-medium underline"
+                            title="ตั้งค่าเป็นไม่มีวิทยฐานะ (-)"
+                          >
+                            ไม่มีวิทยฐานะ
+                          </button>
+                        </div>
+                        <div className="space-y-1.5">
+                          <select
+                            value={
+                              STANDARD_STANDINGS.includes(selectedStaff.academicStanding)
+                                ? selectedStaff.academicStanding
+                                : selectedStaff.academicStanding === ''
+                                ? '-'
+                                : 'custom'
+                            }
+                            onChange={(e) => {
+                              if (e.target.value !== 'custom') {
+                                setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value });
+                              }
+                            }}
+                            className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                          >
+                            <option value="-">- ไม่มีวิทยฐานะ -</option>
+                            <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+                            <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+                            <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+                            <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+                            <option value="ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)">ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)</option>
+                            <option value="ผู้อำนวยการเชี่ยวชาญ (คศ. 4)">ผู้อำนวยการเชี่ยวชาญ (คศ. 4)</option>
+                            <option value="ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)">ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)</option>
+                            <option value="custom">ระบุเอง...</option>
+                          </select>
+                          {(!STANDARD_STANDINGS.includes(selectedStaff.academicStanding) || selectedStaff.academicStanding === 'custom') && (
+                            <input
+                              type="text"
+                              value={selectedStaff.academicStanding === 'custom' ? '' : selectedStaff.academicStanding}
+                              placeholder="ระบุวิทยฐานะ หรือพิมพ์ -"
+                              onChange={(e) =>
+                                setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
+                              }
+                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
 

@@ -19,6 +19,7 @@ export interface TeacherRecord {
   classLevel?: string;
   dutyDay?: string;
   accessLevel?: string;
+  role?: string;
   startDate: string;
   birthDate?: string;
   email: string;
@@ -127,13 +128,14 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "prefix": "นาย",
     "firstName": "ธีรศักดิ์",
     "lastName": "มโนธรรม",
-    "position": "ผู้อำนวยการสถานศึกษา",
+    "position": "ผู้อำนวยการโรงเรียน",
     "academicStanding": "-",
     "department": "สายงานบริหารและสนับสนุนการศึกษา",
     "division": "ผู้บริหารสถานศึกษา",
     "classLevel": "-",
     "dutyDay": "-",
     "accessLevel": "Superuser",
+    "role": "superuser",
     "startDate": "2012-01-10",
     "email": "gsic26@gmail.com",
     "phone": "099-173-2233",

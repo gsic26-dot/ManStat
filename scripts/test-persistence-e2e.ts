@@ -16,13 +16,13 @@ async function runTest() {
 
   // 2. Staff Mutation
   console.log('\n2. Testing Staff Update & Audit Log...');
-  const targetTeacher = initialDb.teachers[0];
+  const targetTeacher = initialDb.teachers[1];
   const oldStanding = targetTeacher.academicStanding;
   const updatedTeacher = {
     ...targetTeacher,
-    academicStanding: 'ครูเชี่ยวชาญพิเศษ (คศ. 5)',
-    accessLevel: 'Superuser' as const,
-    position: 'ผู้อำนวยการเชี่ยวชาญพิเศษ',
+    academicStanding: 'ครูชำนาญการพิเศษ (คศ. 3)',
+    accessLevel: 'Admin' as const,
+    position: 'ครู',
   };
   
   // Upsert
@@ -41,10 +41,14 @@ async function runTest() {
   // Directly inspect JSON file from disk to ensure zero-in-memory-illusion
   const diskRaw1 = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'manstat_db.json'), 'utf8'));
   const diskTeacher = diskRaw1.teachers.find((t: any) => t.id === targetTeacher.id);
-  if (diskTeacher?.academicStanding !== 'ครูเชี่ยวชาญพิเศษ (คศ. 5)' || diskTeacher?.accessLevel !== 'Superuser') {
+  if (diskTeacher?.academicStanding !== 'ครูชำนาญการพิเศษ (คศ. 3)' || diskTeacher?.accessLevel !== 'Admin') {
     throw new Error('Staff update failed to persist to disk JSON!');
   }
   console.log('   [SUCCESS] Staff persisted directly to manstat_db.json: academicStanding & accessLevel verified.');
+
+  // Reset back to original state
+  dbAfterStaff.teachers[idx] = targetTeacher;
+  saveDatabase(dbAfterStaff);
 
   // 3. School Board Mutation
   console.log('\n3. Testing Board Member Add & Delete...');
