@@ -80,6 +80,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setModeState(newMode);
     try {
       localStorage.setItem(STORAGE_KEY, newMode);
+      // Synchronize with user preferences localStorage key
+      const rawPrefs = localStorage.getItem('manstat-user-preferences');
+      const prefs = rawPrefs ? JSON.parse(rawPrefs) : {};
+      localStorage.setItem(
+        'manstat-user-preferences',
+        JSON.stringify({ ...prefs, theme_mode: newMode })
+      );
     } catch {
       // Ignore localStorage errors
     }
@@ -87,6 +94,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const resolved = newMode === 'auto' ? resolveTimeBasedTheme() : newMode;
     setResolvedTheme(resolved);
     applyThemeToDocument(resolved);
+
+    // Asynchronous background sync to server API (non-blocking)
+    try {
+      fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ themeMode: newMode }),
+      }).catch(() => {});
+    } catch {
+      // ignore network errors
+    }
   }, []);
 
   // Timer interval for 'auto' mode: checks clock every 60 seconds

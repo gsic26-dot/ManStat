@@ -82,14 +82,31 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       theme_mode: themeMode || localPrefs.theme_mode || 'auto',
     }));
     setIsLoaded(true);
+  }, []);
+
+  // Synchronize preferences.theme_mode when themeMode changes from ThemeContext
+  useEffect(() => {
+    setPreferences((prev) => {
+      if (prev.theme_mode === themeMode) return prev;
+      return { ...prev, theme_mode: themeMode };
+    });
   }, [themeMode]);
 
-  // 2. Fetch authenticated user from Supabase and synchronize remote preferences from server DB
+  // 2. Fetch authenticated user from Supabase and synchronize remote preferences from server DB ON MOUNT ONLY
   useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
 
     async function loadRemoteSettings() {
+      // Check if user already has an explicit preference in localStorage
+      let hasExplicitLocalTheme = false;
+      try {
+        const storedTheme = localStorage.getItem('manstat-theme-mode');
+        if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'auto') {
+          hasExplicitLocalTheme = true;
+        }
+      } catch {}
+
       // Fetch from Server DB API first
       try {
         const res = await fetch('/api/admin/settings');
@@ -99,12 +116,12 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setPreferences((prev) => {
             const next: UserPreferences = {
               ...prev,
-              theme_mode: s.themeMode || prev.theme_mode,
               preferred_view: s.preferredView || prev.preferred_view,
               compact_mode: s.compactMode !== undefined ? s.compactMode : prev.compact_mode,
               mask_citizen_id: s.maskCitizenId !== undefined ? s.maskCitizenId : prev.mask_citizen_id,
             };
-            if (s.themeMode && s.themeMode !== themeMode) {
+            if (!hasExplicitLocalTheme && s.themeMode) {
+              next.theme_mode = s.themeMode;
               setThemeMode(s.themeMode);
             }
             return next;
@@ -134,7 +151,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 ...prev,
                 ...metaPrefs,
               };
-              if (metaPrefs.theme_mode && metaPrefs.theme_mode !== themeMode) {
+              if (!hasExplicitLocalTheme && metaPrefs.theme_mode) {
                 setThemeMode(metaPrefs.theme_mode);
               }
               return merged;
@@ -170,7 +187,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [setThemeMode, themeMode]);
+  }, [setThemeMode]);
 
   // 3. Update preferences handler (Instant UI update + localStorage + server DB sync)
   const updatePreferences = useCallback(
