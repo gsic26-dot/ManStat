@@ -244,6 +244,11 @@ export default function AdminPage() {
         if (isMounted) {
           if (staffRes?.success && Array.isArray(staffRes.data)) {
             setTeachers(staffRes.data);
+            try {
+              localStorage.setItem('manstat_admin_teachers', JSON.stringify(staffRes.data));
+            } catch {
+              // ignore
+            }
           }
           if (boardRes?.success && Array.isArray(boardRes.data)) {
             setBoardMembers(boardRes.data);
@@ -433,11 +438,17 @@ export default function AdminPage() {
       if (data.success) {
         const savedItem: TeacherRecord = data.data;
         if (isNewStaff) {
-          setTeachers((prev) => [savedItem, ...prev]);
+          setTeachers((prev) => {
+            const next = [savedItem, ...prev];
+            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
+            return next;
+          });
         } else {
-          setTeachers((prev) =>
-            prev.map((t) => (t.id === savedItem.id ? savedItem : t))
-          );
+          setTeachers((prev) => {
+            const next = prev.map((t) => (t.id === savedItem.id ? savedItem : t));
+            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
+            return next;
+          });
         }
         showToast('บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
@@ -463,7 +474,11 @@ export default function AdminPage() {
         });
         const data = await res.json();
         if (data.success) {
-          setTeachers((prev) => prev.filter((t) => t.id !== staffId));
+          setTeachers((prev) => {
+            const next = prev.filter((t) => t.id !== staffId);
+            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
+            return next;
+          });
           if (selectedStaff?.id === staffId) {
             setIsStaffModalOpen(false);
           }

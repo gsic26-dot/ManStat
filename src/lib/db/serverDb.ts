@@ -15,6 +15,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
@@ -64,9 +65,6 @@ export interface DatabaseState {
   settings: SystemSettingsRecord;
 }
 
-const DB_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DB_DIR, 'manstat_db.json');
-
 const INITIAL_HOLIDAYS: HolidayRecord[] = [
   { id: 'h-01', date: '2026-10-13', name: 'วันนวมินทรมหาราช', type: 'วันหยุดราชการประจำปี' },
   { id: 'h-02', date: '2026-10-23', name: 'วันปิยมหาราช', type: 'วันหยุดราชการประจำปี' },
@@ -115,55 +113,117 @@ const INITIAL_SETTINGS: SystemSettingsRecord = {
   academicYear: '2569',
 };
 
-// Ensure directory exists
-function ensureDbDir() {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+const BUNDLED_DB_DIR = path.join(process.cwd(), 'data');
+const BUNDLED_DB_FILE = path.join(BUNDLED_DB_DIR, 'manstat_db.json');
+const TMP_DB_FILE = path.join(os.tmpdir(), 'manstat_db.json');
+
+// Cached path resolution for writable storage
+let cachedWritableFile: string | null = null;
+
+function getWritableDbFile(): string {
+  if (cachedWritableFile) return cachedWritableFile;
+
+  // On Vercel, AWS Lambda, or any Serverless platform, the deployment directory (/var/task) is read-only
+  if (
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT ||
+    process.env.NEXT_RUNTIME === 'edge'
+  ) {
+    cachedWritableFile = TMP_DB_FILE;
+    return TMP_DB_FILE;
+  }
+
+  // Check if process.cwd()/data is writable in the current runtime environment
+  try {
+    if (!fs.existsSync(BUNDLED_DB_DIR)) {
+      fs.mkdirSync(BUNDLED_DB_DIR, { recursive: true });
+    }
+    const testFile = path.join(BUNDLED_DB_DIR, `.write_test_${Date.now()}`);
+    fs.writeFileSync(testFile, '1', 'utf8');
+    fs.unlinkSync(testFile);
+    cachedWritableFile = BUNDLED_DB_FILE;
+    return BUNDLED_DB_FILE;
+  } catch {
+    cachedWritableFile = TMP_DB_FILE;
+    return TMP_DB_FILE;
   }
 }
 
 // In-memory cache for fast read
 let memoryDb: DatabaseState | null = null;
 
+function parseDatabaseState(parsed: any): DatabaseState {
+  return {
+    schoolInfo: parsed.schoolInfo || INITIAL_SCHOOL_INFO,
+    teachers:
+      Array.isArray(parsed.teachers) && parsed.teachers.length > 0 && parsed.teachers[0].employeeCode
+        ? parsed.teachers
+        : INITIAL_TEACHERS,
+    boardMembers:
+      Array.isArray(parsed.boardMembers) && parsed.boardMembers.length > 0
+        ? parsed.boardMembers
+        : INITIAL_BOARD_MEMBERS,
+    holidays:
+      Array.isArray(parsed.holidays) && parsed.holidays.length > 0
+        ? parsed.holidays
+        : INITIAL_HOLIDAYS,
+    leaveRequests:
+      Array.isArray(parsed.leaveRequests) && parsed.leaveRequests.length > 0
+        ? parsed.leaveRequests
+        : INITIAL_LEAVE_REQUESTS,
+    auditLogs:
+      Array.isArray(parsed.auditLogs) && parsed.auditLogs.length > 0
+        ? parsed.auditLogs
+        : Array.isArray(parsed.logs) && parsed.logs.length > 0
+        ? parsed.logs
+        : INITIAL_AUDIT_LOGS,
+    settings: parsed.settings || INITIAL_SETTINGS,
+  };
+}
+
 export function loadDatabase(): DatabaseState {
   if (memoryDb) return memoryDb;
 
-  ensureDbDir();
+  const writableFile = getWritableDbFile();
 
-  if (fs.existsSync(DB_FILE)) {
+  // Priority 1: In serverless mode, load from /tmp if modified previously in this warm instance
+  if (writableFile === TMP_DB_FILE && fs.existsSync(TMP_DB_FILE)) {
     try {
-      const raw = fs.readFileSync(DB_FILE, 'utf8');
+      const raw = fs.readFileSync(TMP_DB_FILE, 'utf8');
       const parsed = JSON.parse(raw);
-
-      // Verify and backfill if necessary
-      const state: DatabaseState = {
-        schoolInfo: parsed.schoolInfo || INITIAL_SCHOOL_INFO,
-        teachers: Array.isArray(parsed.teachers) && parsed.teachers.length > 0 && parsed.teachers[0].employeeCode
-          ? parsed.teachers
-          : INITIAL_TEACHERS,
-        boardMembers: Array.isArray(parsed.boardMembers) && parsed.boardMembers.length > 0
-          ? parsed.boardMembers
-          : INITIAL_BOARD_MEMBERS,
-        holidays: Array.isArray(parsed.holidays) && parsed.holidays.length > 0
-          ? parsed.holidays
-          : INITIAL_HOLIDAYS,
-        leaveRequests: Array.isArray(parsed.leaveRequests) && parsed.leaveRequests.length > 0
-          ? parsed.leaveRequests
-          : INITIAL_LEAVE_REQUESTS,
-        auditLogs: Array.isArray(parsed.auditLogs) && parsed.auditLogs.length > 0
-          ? parsed.auditLogs
-          : (Array.isArray(parsed.logs) && parsed.logs.length > 0 ? parsed.logs : INITIAL_AUDIT_LOGS),
-        settings: parsed.settings || INITIAL_SETTINGS,
-      };
-
+      const state = parseDatabaseState(parsed);
       memoryDb = state;
       return state;
     } catch (err) {
-      console.error('[loadDatabase] Parse error, reinitializing default:', err);
+      console.warn('[loadDatabase] Failed reading from /tmp DB, falling back to bundled data:', err);
     }
   }
 
-  // Create initial state
+  // Priority 2: Load from bundled data/manstat_db.json
+  if (fs.existsSync(BUNDLED_DB_FILE)) {
+    try {
+      const raw = fs.readFileSync(BUNDLED_DB_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      const state = parseDatabaseState(parsed);
+      memoryDb = state;
+
+      // Seed /tmp store on first load if running in serverless mode
+      if (writableFile === TMP_DB_FILE && !fs.existsSync(TMP_DB_FILE)) {
+        try {
+          fs.writeFileSync(TMP_DB_FILE, JSON.stringify(state, null, 2), 'utf8');
+        } catch {
+          // ignore
+        }
+      }
+
+      return state;
+    } catch (err) {
+      console.error('[loadDatabase] Bundled parse error, reinitializing default:', err);
+    }
+  }
+
+  // Priority 3: Fallback default state
   const defaultState: DatabaseState = {
     schoolInfo: INITIAL_SCHOOL_INFO,
     teachers: INITIAL_TEACHERS,
@@ -180,11 +240,36 @@ export function loadDatabase(): DatabaseState {
 }
 
 export function saveDatabase(state: DatabaseState): void {
-  ensureDbDir();
   memoryDb = state;
-  const tempFile = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf8');
-  fs.renameSync(tempFile, DB_FILE);
+
+  const targetFile = getWritableDbFile();
+  const targetDir = path.dirname(targetFile);
+
+  try {
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    const tempFile = `${targetFile}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf8');
+    fs.renameSync(tempFile, targetFile);
+  } catch (err: any) {
+    console.warn(`[saveDatabase] Primary write to ${targetFile} failed (${err.code || err.message}). Attempting fallback.`);
+
+    // If writing to primary failed (e.g., EROFS in serverless), fallback to /tmp
+    if (targetFile !== TMP_DB_FILE) {
+      try {
+        const tmpTemp = `${TMP_DB_FILE}.tmp`;
+        fs.writeFileSync(tmpTemp, JSON.stringify(state, null, 2), 'utf8');
+        fs.renameSync(tmpTemp, TMP_DB_FILE);
+        cachedWritableFile = TMP_DB_FILE;
+        console.log('[saveDatabase] Successfully wrote to /tmp fallback');
+        return;
+      } catch (fallbackErr: any) {
+        console.error('[saveDatabase] Fallback write to /tmp also failed:', fallbackErr.message);
+      }
+    }
+    // Note: memoryDb is already updated, preserving state in the active Node/Lambda process
+  }
 }
 
 // ============================================================================
