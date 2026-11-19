@@ -279,18 +279,18 @@ export function ViewLeaveAnalytics() {
             </div>
           </div>
 
-          <div className="mt-6 p-3 rounded-xl bg-[#151e2b] border border-slate-800 text-[11px] text-slate-300">
-            <span className="font-semibold text-sky-400">ข้อควรทราบ:</span> การลาเกิน 6 ครั้งในรอบครึ่งปีงบประมาณ หรือลาเกิน 23 วันทำการ อาจมีผลต่อการประเมินการเลื่อนขั้นเงินเดือน ว15/2561
+          <div className="mt-6 p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-[#151e2b] border-l-4 border-l-[#0284C7] border border-sky-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+            <span className="font-semibold text-sky-700 dark:text-sky-400">ข้อควรทราบ:</span> การลาเกิน 6 ครั้งในรอบครึ่งปีงบประมาณ หรือลาเกิน 23 วันทำการ อาจมีผลต่อการประเมินการเลื่อนขั้นเงินเดือน ว15/2561
           </div>
         </div>
       </div>
 
       {/* Department Breakdown Table */}
-      <div className="bg-[#111822] p-5 rounded-2xl border border-slate-800">
-        <h3 className="text-sm font-bold text-white mb-3">สรุปสถิติการลาแยกตามกลุ่มสาระการเรียนรู้ / สายงาน</h3>
+      <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">สรุปสถิติการลาแยกตามกลุ่มสาระการเรียนรู้ / สายงาน</h3>
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#16202c] text-slate-400 font-semibold border-b border-slate-800">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800">
               <tr>
                 <th className="px-4 py-2.5 min-w-[240px]">กลุ่มสาระการเรียนรู้ / สายงาน</th>
                 <th className="px-4 py-2.5 text-center min-w-[120px]">จำนวนบุคลากร</th>
@@ -299,19 +299,19 @@ export function ViewLeaveAnalytics() {
                 <th className="px-4 py-2.5 min-w-[110px]">สถานะ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-sans">
+            <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
               {departments.map((d) => {
                 const displayName = d.name.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
                 return (
-                  <tr key={d.name} className="hover:bg-[#162231]/40 transition-colors">
-                    <td className="px-4 py-3 font-medium text-white">
+                  <tr key={d.name} className="hover:bg-slate-50 dark:hover:bg-[#162231]/40 transition-colors">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
                       <div className="truncate max-w-[220px]" title={d.name}>{displayName}</div>
                     </td>
                     <td className="px-4 py-3 text-center font-mono whitespace-nowrap">{d.count} ท่าน</td>
-                    <td className="px-4 py-3 text-center font-mono font-bold text-sky-400 whitespace-nowrap">{d.days}</td>
+                    <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">{d.days}</td>
                     <td className="px-4 py-3 text-center font-mono whitespace-nowrap">{(d.days / d.count).toFixed(1)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30">
                         <CheckCircle2 className="w-3 h-3 shrink-0" />
                         <span>ปกติ</span>
                       </span>

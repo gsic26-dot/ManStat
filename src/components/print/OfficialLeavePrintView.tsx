@@ -115,20 +115,20 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
   return (
     <div className="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 font-sarabun antialiased print:bg-white print:p-0">
       {/* Top Controls Bar (Hidden during printing) */}
-      <div className="print:hidden sticky top-0 z-50 bg-[#141a24] border-b border-slate-800 text-white px-6 py-3 shadow-lg flex items-center justify-between">
+      <div className="print:hidden sticky top-0 z-50 bg-white dark:bg-[#141a24] border-b border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-white px-6 py-3 shadow-sm flex items-center justify-between transition-colors duration-200">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>กลับหน้าหลัก</span>
           </Link>
-          <span className="text-slate-600">|</span>
-          <span className="text-xs text-slate-300 font-mono">
+          <span className="text-slate-300 dark:text-slate-600">|</span>
+          <span className="text-xs text-slate-500 dark:text-slate-300 font-mono">
             เลขที่เอกสาร: {data.documentNo}
           </span>
-          <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+          <span className="text-xs text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/30 px-2 py-0.5 rounded border">
             แฟ้ม บค 4/1 (A4 แนวตั้ง 1 หน้าพอดี)
           </span>
         </div>
@@ -138,7 +138,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
           <button
             type="button"
             onClick={() => setUseThaiNumerals((prev) => !prev)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121822] hover:bg-slate-800/70 border border-slate-800/80 text-xs font-medium text-slate-300 hover:text-white transition-colors duration-200"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
           >
             <Languages className="w-4 h-4 shrink-0" />
             <span>{useThaiNumerals ? 'เปลี่ยนเป็นเลขอารบิก (1, 2, 3)' : 'เปลี่ยนเป็นเลขไทย (๑, ๒, ๓)'}</span>

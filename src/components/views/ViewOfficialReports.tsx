@@ -142,20 +142,20 @@ export function ViewOfficialReports() {
           </div>
 
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-xs text-slate-300">
+            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
               <thead className="bg-slate-100/80 dark:bg-[#131b25] text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="px-4 py-3 text-center min-w-[50px] shrink-0">ลำดับ</th>
                   <th className="px-4 py-3 min-w-[200px]">ชื่อ - นามสกุล</th>
                   <th className="px-4 py-3 min-w-[190px]">ตำแหน่ง / สังกัด</th>
-                  <th className="px-4 py-3 text-center text-rose-400 min-w-[110px]">ลาป่วย (วัน)</th>
-                  <th className="px-4 py-3 text-center text-amber-400 min-w-[110px]">ลากิจ (วัน)</th>
-                  <th className="px-4 py-3 text-center text-emerald-400 min-w-[110px]">พักผ่อน (วัน)</th>
-                  <th className="px-4 py-3 text-center text-sky-400 font-bold min-w-[110px]">รวมวันลา</th>
+                  <th className="px-4 py-3 text-center text-rose-600 dark:text-rose-400 min-w-[110px]">ลาป่วย (วัน)</th>
+                  <th className="px-4 py-3 text-center text-amber-600 dark:text-amber-400 min-w-[110px]">ลากิจ (วัน)</th>
+                  <th className="px-4 py-3 text-center text-emerald-600 dark:text-emerald-400 min-w-[110px]">พักผ่อน (วัน)</th>
+                  <th className="px-4 py-3 text-center text-sky-600 dark:text-sky-400 font-bold min-w-[110px]">รวมวันลา</th>
                   <th className="px-4 py-3 text-center min-w-[125px]">สิทธิ์เลื่อนเงินเดือน</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-sans">
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                 {filteredTeachers.map((t, idx) => {
                   const total = t.sickUsed + t.personalUsed + t.vacationUsed;
                   const isEligible = total <= 23;
@@ -163,36 +163,36 @@ export function ViewOfficialReports() {
                   const deptDisplay = t.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
 
                   return (
-                    <tr key={t.id} className="hover:bg-[#162231]/50 transition-colors">
+                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors">
                       <td className="px-4 py-3 text-center font-mono text-slate-500 whitespace-nowrap">{idx + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-white">
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
                         <div className="truncate max-w-[180px]" title={t.name}>{t.name}</div>
                         <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[180px]" title={`รหัส: ${t.employeeCode}`}>{t.employeeCode}</div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-800 dark:text-slate-200">
                         <div className="truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-[180px]" title={t.department}>{deptDisplay}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px]" title={t.department}>{deptDisplay}</div>
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-rose-300 font-medium whitespace-nowrap">
+                      <td className="px-4 py-3 text-center font-mono text-rose-600 dark:text-rose-300 font-medium whitespace-nowrap">
                         {t.sickUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-amber-300 font-medium whitespace-nowrap">
+                      <td className="px-4 py-3 text-center font-mono text-amber-600 dark:text-amber-300 font-medium whitespace-nowrap">
                         {t.personalUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono text-emerald-300 font-medium whitespace-nowrap">
+                      <td className="px-4 py-3 text-center font-mono text-emerald-600 dark:text-emerald-300 font-medium whitespace-nowrap">
                         {t.vacationUsed}
                       </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-sky-400 whitespace-nowrap">
+                      <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
                         {total}
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
                         {isEligible ? (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>ผ่านเกณฑ์</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 min-w-[95px]">
+                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 min-w-[95px]">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                             <span>เกินเกณฑ์</span>
                           </span>

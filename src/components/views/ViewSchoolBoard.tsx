@@ -59,13 +59,13 @@ export const ViewSchoolBoard: React.FC = () => {
   const getPositionBadgeStyle = (position: string) => {
     switch (position) {
       case 'CHAIR':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        return 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40';
       case 'DIRECTOR_SEC':
-        return 'bg-sky-500/20 text-sky-300 border-sky-500/40';
+        return 'bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/40';
       case 'EXPERT':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+        return 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/40';
       default:
-        return 'bg-slate-800 text-slate-200 border-slate-700';
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
   };
 

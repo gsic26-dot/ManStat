@@ -165,7 +165,7 @@ export function ViewFeedback() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="อธิบายรายละเอียดขั้นตอน หรือสิ่งที่ต้องการปรับปรุง..."
-                className="w-full bg-[#16202c] border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
+                className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
               />
             </div>
 
@@ -182,7 +182,7 @@ export function ViewFeedback() {
 
         {/* Feedback List */}
         <div className="lg:col-span-2 space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
             รายการข้อคิดเห็นและการดำเนินการ ({feedbacks.length} รายการ)
           </h3>
 
@@ -190,17 +190,17 @@ export function ViewFeedback() {
             {feedbacks.map((item) => (
               <div
                 key={item.id}
-                className="bg-[#111822] p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-slate-700 transition-colors"
+                className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
                         item.category === 'feature'
-                          ? 'bg-sky-500/10 text-sky-300 border-sky-500/30'
+                          ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30'
                           : item.category === 'bug'
-                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                          : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30'
+                          : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30'
                       }`}
                     >
                       {item.category === 'feature'
@@ -213,34 +213,34 @@ export function ViewFeedback() {
                   </div>
 
                   {item.status === 'resolved' ? (
-                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 min-w-[95px]">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                       <span>ดำเนินการแล้ว</span>
                     </span>
                   ) : item.status === 'in_progress' ? (
-                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 min-w-[95px]">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/30 min-w-[95px]">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       <span>กำลังปรับปรุง</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 min-w-[95px]">
+                    <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30 min-w-[95px]">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       <span>รอตรวจสอบ</span>
                     </span>
                   )}
                 </div>
 
-                <h4 className="font-bold text-white text-xs truncate" title={item.title}>{item.title}</h4>
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs truncate" title={item.title}>{item.title}</h4>
                 <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{item.description}</p>
 
                 {item.response && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-[#151f2d] border border-sky-500/20 text-xs text-sky-200">
-                    <span className="font-semibold text-sky-400 block text-[11px]">การตอบกลับจากทีมงาน:</span>
+                  <div className="mt-2 p-2.5 rounded-xl bg-sky-50 dark:bg-[#151f2d] border border-sky-200 dark:border-sky-500/20 text-xs text-sky-900 dark:text-sky-200">
+                    <span className="font-semibold text-sky-700 dark:text-sky-400 block text-[11px]">การตอบกลับจากทีมงาน:</span>
                     {item.response}
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
                   <span className="truncate max-w-[200px]" title={`ผู้ส่ง: ${item.senderName}`}>ผู้ส่ง: {item.senderName}</span>
                   <span>
                     {new Date(item.submittedAt).toLocaleDateString('th-TH', {

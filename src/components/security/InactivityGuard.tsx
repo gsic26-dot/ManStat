@@ -126,23 +126,23 @@ export const InactivityGuard: React.FC<InactivityGuardProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-[#171a21] border border-[#2a475e] rounded-xl shadow-2xl p-6 text-slate-100 animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center gap-2 text-amber-400 mb-4 pb-3 border-b border-slate-700/60">
+      <div className="w-full max-w-md bg-white dark:bg-[#171a21] border border-slate-200/90 dark:border-[#2a475e] rounded-xl shadow-2xl p-6 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-4 pb-3 border-b border-slate-200/80 dark:border-slate-700/60">
           <ShieldAlert className="w-6 h-6 shrink-0" />
-          <h3 className="text-lg font-semibold text-slate-100">แจ้งเตือนความปลอดภัยของเซสชัน</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">แจ้งเตือนความปลอดภัยของเซสชัน</h3>
         </div>
 
-        <p className="text-sm text-slate-300 leading-relaxed mb-4">
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
           ไม่มีการใช้งานระบบเป็นเวลานานเกินกำหนด เพื่อความปลอดภัยของข้อมูลบุคลากรและระเบียบราชการ ระบบจะทำการออกจากระบบอัตโนมัติใน:
         </p>
 
         {/* Big Countdown Box */}
-        <div className="bg-[#101822] border border-amber-500/30 rounded-lg p-4 mb-6 flex items-center justify-center gap-3">
-          <Clock className="w-8 h-8 text-amber-400 animate-pulse shrink-0" />
-          <span className="font-mono text-3xl font-bold text-amber-400 tracking-wider">
+        <div className="bg-amber-50/70 dark:bg-[#101822] border border-amber-300 dark:border-amber-500/30 rounded-lg p-4 mb-6 flex items-center justify-center gap-3">
+          <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
+          <span className="font-mono text-3xl font-bold text-amber-600 dark:text-amber-400 tracking-wider">
             {countdownSeconds}
           </span>
-          <span className="text-sm text-slate-400">วินาที</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">วินาที</span>
         </div>
 
         {/* Action Buttons */}

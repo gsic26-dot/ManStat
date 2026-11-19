@@ -10,6 +10,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        app: 'var(--bg-app)',
+        surface: 'var(--bg-surface)',
+        subtle: 'var(--bg-subtle)',
+        input: 'var(--bg-input)',
+        'border-default': 'var(--border-default)',
+        'text-main': 'var(--text-primary)',
+        'text-sub': 'var(--text-secondary)',
         steam: {
           dark: '#171a21',
           card: '#1b2838',

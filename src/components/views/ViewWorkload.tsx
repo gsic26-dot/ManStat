@@ -610,7 +610,7 @@ export const ViewWorkload: React.FC = () => {
       {/* Workload Table (Master-Detail Accordion) */}
       <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 space-y-4 shadow-sm transition-colors duration-200">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs text-slate-300">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
               <tr>
                 <th scope="col" className="w-10 px-3 py-3.5 text-center">
@@ -650,7 +650,7 @@ export const ViewWorkload: React.FC = () => {
                             e.stopPropagation();
                             toggleExpand(w.id);
                           }}
-                          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                          className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                           aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
                         >
                           <ChevronRight
@@ -1020,16 +1020,16 @@ export const ViewWorkload: React.FC = () => {
       {/* =================================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-sky-400 font-bold text-sm">
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 my-8 text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold text-sm">
                 <Briefcase className="w-4 h-4 shrink-0" />
                 <span>มอบหมายภาระงานบุคลากร (Staff Workload Assignment)</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1038,7 +1038,7 @@ export const ViewWorkload: React.FC = () => {
             <form onSubmit={handleSaveWorkload} className="space-y-4 text-xs">
               {/* Field 1: เลือกผู้รับผิดชอบหลัก */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                   บุคลากรผู้รับผิดชอบหลัก *
                 </label>
                 <select
@@ -1057,7 +1057,7 @@ export const ViewWorkload: React.FC = () => {
 
               {/* Field 2: หมวดหมู่ภาระงาน */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                   หมวดหมู่ภาระงาน (4 หมวดตามเกณฑ์ สพฐ. และ ว9/2564) *
                 </label>
                 <select
@@ -1074,10 +1074,10 @@ export const ViewWorkload: React.FC = () => {
               </div>
 
               {/* Field 3: ดรอปดาวน์เลือกภาระงานมาตรฐาน (Preset Dropdown) */}
-              <div className="bg-[#101824] p-3 rounded-xl border border-sky-950/70 space-y-1">
-                <div className="flex items-center justify-between text-slate-300 font-medium">
+              <div className="bg-sky-50/70 dark:bg-[#101824] p-3 rounded-xl border border-sky-100 dark:border-sky-950/70 space-y-1">
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
                   <span>เลือกรายการภาระงานมาตรฐานในหมวดนี้</span>
-                  <span className="text-[11px] text-sky-400 font-normal">เลือกเพื่อเติมข้อมูลอัตโนมัติ</span>
+                  <span className="text-[11px] text-sky-600 dark:text-sky-400 font-normal">เลือกเพื่อเติมข้อมูลอัตโนมัติ</span>
                 </div>
                 <select
                   value={formSelectedPreset}
@@ -1097,7 +1097,7 @@ export const ViewWorkload: React.FC = () => {
               {/* Field 4 & 5: ชื่องาน และ ฝ่ายงาน/ระดับชั้น */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     ชื่องาน / รายวิชา / หน้าที่ความรับผิดชอบ *
                   </label>
                   <input
@@ -1111,7 +1111,7 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     ฝ่ายงาน / กลุ่มสาระ / ระดับชั้น
                   </label>
                   <input
@@ -1124,7 +1124,7 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     จำนวนชั่วโมง / สัปดาห์ *
                   </label>
                   <input
@@ -1142,9 +1142,9 @@ export const ViewWorkload: React.FC = () => {
 
               {/* เฉพาะหมวดที่ 1 (งานสอน): ตัวเลือกรหัสวิชา และประเภทสอนหลัก/TA */}
               {formCategory === 'งานสอนและการจัดการเรียนรู้' && (
-                <div className="grid grid-cols-2 gap-3 bg-[#0d141d] p-3 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-[#0d141d] p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
                   <div>
-                    <label className="block text-slate-300 font-medium mb-1">
+                    <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                       รหัสวิชา (ถ้ามี)
                     </label>
                     <input
@@ -1152,11 +1152,11 @@ export const ViewWorkload: React.FC = () => {
                       placeholder="เช่น ท15101 หรือ ค16101"
                       value={formCourseCode}
                       onChange={(e) => setFormCourseCode(e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                      className="w-full h-9 bg-white dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 font-medium mb-1">
+                    <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                       ประเภทภาระงานสอน
                     </label>
                     <select
@@ -1174,7 +1174,7 @@ export const ViewWorkload: React.FC = () => {
               {/* Field 8, 9, 10: บทบาท, คำสั่งอ้างอิง, สถานะ */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     บทบาทในงาน
                   </label>
                   <select
@@ -1194,7 +1194,7 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     คำสั่งที่ / หนังสืออ้างอิง
                   </label>
                   <input
@@ -1207,7 +1207,7 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     สถานะการดำเนินงาน
                   </label>
                   <select
@@ -1226,7 +1226,7 @@ export const ViewWorkload: React.FC = () => {
 
               {/* Field 11: ผู้ร่วมรับผิดชอบ */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                   ผู้ร่วมรับผิดชอบ (ถ้ามี)
                 </label>
                 <input
@@ -1239,11 +1239,11 @@ export const ViewWorkload: React.FC = () => {
               </div>
 
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200/90 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
                 >
                   ยกเลิก
                 </button>

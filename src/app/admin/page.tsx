@@ -43,6 +43,8 @@ import {
   Sliders,
 } from 'lucide-react';
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
+import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
+import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
@@ -121,7 +123,7 @@ const DEPARTMENTS = [
 export default function AdminPage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'staff' | 'board' | 'school' | 'fiscal' | 'audit'
+    'staff' | 'board' | 'school' | 'fiscal' | 'audit' | 'preferences'
   >('staff');
 
   // Staff State
@@ -515,18 +517,10 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
-              title="ตั้งค่าการใช้งานส่วนบุคคล (User Preferences)"
-            >
-              <Sliders className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
-              <span className="hidden md:inline">ตั้งค่า</span>
-            </button>
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <ThemeSwitcher />
             <ExcelExportButton fiscalYear={fiscalYearBE} />
+            <UserProfileDropdown onOpenSettings={() => setActiveTab('preferences')} />
           </div>
         </div>
       </header>
@@ -598,6 +592,19 @@ export default function AdminPage() {
           >
             <ShieldAlert className="w-4 h-4 shrink-0" />
             <span>ตรวจสอบ PDPA Audit Logs</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('preferences')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
+              activeTab === 'preferences'
+                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
+            }`}
+          >
+            <Sliders className="w-4 h-4 shrink-0" />
+            <span>ตั้งค่าระบบ</span>
           </button>
         </div>
 
@@ -690,15 +697,15 @@ export default function AdminPage() {
                             </td>
                             <td className="px-4 py-3 text-center whitespace-nowrap">
                               {t.employeeCode === 'EXE-001' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                                   Superuser
                                 </span>
                               ) : t.employeeCode === 'TCH-002' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30">
                                   HR Admin
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
                                   Teacher
                                 </span>
                               )}
@@ -1018,7 +1025,7 @@ export default function AdminPage() {
                     type="text"
                     value={schoolInfo.directorName}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, directorName: e.target.value })}
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
@@ -1259,7 +1266,7 @@ export default function AdminPage() {
                 </h4>
 
                 <div>
-                  <label className="block text-slate-400 mb-1">ชื่อวันหยุด</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ชื่อวันหยุด</label>
                   <input
                     type="text"
                     placeholder="เช่น วันหยุดราชการเป็นกรณีพิเศษ..."
@@ -1271,13 +1278,13 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1">วันที่</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่</label>
                   <input
                     type="date"
                     value={newHolidayDate}
                     onChange={(e) => setNewHolidayDate(e.target.value)}
                     required
-                    className="w-full bg-[#16202c] border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                   />
                 </div>
 
@@ -1298,24 +1305,24 @@ export default function AdminPage() {
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                     ปฏิทินวันหยุดราชการประจำปีงบประมาณ {fiscalYearBE}
                   </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     ระบบคำนวณวันลาจะนำวันหยุดเหล่านี้ไปหักลบออกจากวันลาจริงโดยอัตโนมัติ (Zero-GAS Engine)
                   </p>
                 </div>
-                <span className="font-mono text-xs text-amber-400 font-bold">
+                <span className="font-mono text-xs text-amber-600 dark:text-amber-400 font-bold">
                   {holidays.length} วัน
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-800/60 text-xs">
+              <div className="divide-y divide-slate-200/80 dark:divide-slate-800/60 text-xs">
                 {holidays.map((h) => (
                   <div
                     key={h.id}
-                    className="p-3.5 flex items-center justify-between hover:bg-[#151f2c] transition-colors"
+                    className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-[#151f2c] transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-white">{h.name}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{h.type}</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{h.name}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{h.type}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-xs text-sky-400">
@@ -1466,6 +1473,11 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* =================================================================== */}
+        {/* TAB 6: ตั้งค่าระบบ (System Preferences & Configuration) */}
+        {/* =================================================================== */}
+        {activeTab === 'preferences' && <SystemSettingsTab />}
       </main>
 
       {/* Staff Master Modal (Feature-complete legacy GAS restoration) */}
@@ -1521,7 +1533,7 @@ export default function AdminPage() {
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
                 <span>ใบอนุญาต & วุฒิลูกเสือ</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900 text-slate-300 font-mono">
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-200 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono">
                   {(selectedStaff.licenses || []).length}
                 </span>
               </button>
@@ -1895,32 +1907,32 @@ export default function AdminPage() {
                     {/* Current Licenses List */}
                     <div className="space-y-2">
                       {(!selectedStaff.licenses || selectedStaff.licenses.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-[#16212e] text-slate-400 text-center">
+                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
                           ยังไม่มีข้อมูลใบอนุญาตประกอบวิชาชีพ
                         </div>
                       ) : (
                         selectedStaff.licenses.map((lic, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-lg bg-[#16212e] border border-slate-700 flex items-center justify-between gap-3"
+                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
                           >
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-white text-xs">{lic.type}</span>
-                                <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                <span className="font-bold text-slate-900 dark:text-white text-xs">{lic.type}</span>
+                                <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                                   {lic.category}
                                 </span>
                               </div>
-                              <div className="text-[11px] font-mono text-slate-400 flex items-center gap-3">
-                                <span>เลขที่: <b className="text-sky-300">{lic.number}</b></span>
+                              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-3">
+                                <span>เลขที่: <b className="text-sky-600 dark:text-sky-300">{lic.number}</b></span>
                                 <span>ออกให้: {lic.issueDate}</span>
-                                <span>หมดอายุ: <b className="text-amber-300">{lic.expiryDate}</b></span>
+                                <span>หมดอายุ: <b className="text-amber-600 dark:text-amber-300">{lic.expiryDate}</b></span>
                               </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleDeleteLicenseFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
                               title="ลบใบอนุญาตฉบับนี้"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
@@ -1931,14 +1943,14 @@ export default function AdminPage() {
                     </div>
 
                     {/* Add New License Form */}
-                    <div className="p-3 rounded-lg bg-[#141d28] border border-dashed border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                         <span>เพิ่มใบอนุญาตประกอบวิชาชีพใหม่</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-400 mb-1">ประเภทใบอนุญาต</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ประเภทใบอนุญาต</label>
                           <select
                             value={newLicType}
                             onChange={(e) => {
@@ -1946,7 +1958,7 @@ export default function AdminPage() {
                               const match = LICENSE_TYPES.find((lt) => lt.type === e.target.value);
                               if (match) setNewLicCategory(match.category);
                             }}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           >
                             {LICENSE_TYPES.map((lt) => (
                               <option key={lt.type} value={lt.type}>
@@ -1956,33 +1968,33 @@ export default function AdminPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">เลขที่ใบอนุญาต</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่ใบอนุญาต</label>
                           <input
                             type="text"
                             value={newLicNumber}
                             placeholder="เช่น 6520112000000"
                             onChange={(e) => setNewLicNumber(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-400 mb-1">วันที่ออกเอกสาร</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่ออกเอกสาร</label>
                           <input
                             type="date"
                             value={newLicIssue}
                             onChange={(e) => setNewLicIssue(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">วันหมดอายุ</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันหมดอายุ</label>
                           <input
                             type="date"
                             value={newLicExpiry}
                             onChange={(e) => setNewLicExpiry(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                       </div>
@@ -2042,15 +2054,15 @@ export default function AdminPage() {
               {/* TAB 3: ภาระงานสอน & TA */}
               {staffModalTab === 'workload' && (
                 <div className="space-y-4">
-                  <div className="bg-[#101822] p-4 rounded-xl border border-slate-800 space-y-4">
-                    <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-4">
+                    <div className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-2">
                       <Briefcase className="w-4 h-4 shrink-0" />
                       <span>กำหนดภาระงานสอนและผู้ช่วยสอน (ก.ค.ศ. ว9/2564 & ว21/2564)</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-[#16212e] border border-slate-700 space-y-2">
-                        <label className="block font-semibold text-sky-300">
+                      <div className="p-4 rounded-xl bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 space-y-2">
+                        <label className="block font-semibold text-sky-700 dark:text-sky-300">
                           ภาระงานสอนตามตาราง (ชั่วโมง/สัปดาห์)
                         </label>
                         <input
@@ -2064,15 +2076,15 @@ export default function AdminPage() {
                               teachingHours: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-[#101822] border border-slate-700 rounded-lg p-3 text-white text-lg font-mono font-bold"
+                          className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white text-lg font-mono font-bold focus:outline-none focus:border-sky-500"
                         />
-                        <span className="text-[11px] text-slate-400 block">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
                           ตามเกณฑ์ ก.ค.ศ. ต้องมีชั่วโมงสอนตามตารางไม่น้อยกว่า 12 ชั่วโมง/สัปดาห์
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-[#16212e] border border-slate-700 space-y-2">
-                        <label className="block font-semibold text-amber-300">
+                      <div className="p-4 rounded-xl bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 space-y-2">
+                        <label className="block font-semibold text-amber-700 dark:text-amber-300">
                           ชั่วโมงผู้ช่วยสอน TA (ชั่วโมง/สัปดาห์)
                         </label>
                         <input
@@ -2086,9 +2098,9 @@ export default function AdminPage() {
                               taHours: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-[#101822] border border-slate-700 rounded-lg p-3 text-white text-lg font-mono font-bold"
+                          className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white text-lg font-mono font-bold focus:outline-none focus:border-amber-500"
                         />
-                        <span className="text-[11px] text-slate-400 block">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
                           ชั่วโมงสนับสนุนการจัดการเรียนรู้ / ผู้ช่วยสอนในห้องเรียน
                         </span>
                       </div>
@@ -2156,25 +2168,25 @@ export default function AdminPage() {
 
                     <div className="space-y-2">
                       {(!selectedStaff.standings || selectedStaff.standings.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-[#16212e] text-slate-400 text-center">
+                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
                           ยังไม่มีข้อมูลประวัติวิทยฐานะ
                         </div>
                       ) : (
                         selectedStaff.standings.map((std, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-lg bg-[#16212e] border border-slate-700 flex items-center justify-between gap-3"
+                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
                           >
                             <div>
-                              <div className="font-bold text-white text-xs">{std.level}</div>
-                              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              <div className="font-bold text-slate-900 dark:text-white text-xs">{std.level}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                                 วันที่มีผล: {std.effectiveDate} | คำสั่ง: {std.orderNumber}
                               </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleDeleteStandingFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
                             </button>
@@ -2183,38 +2195,38 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    <div className="p-3 rounded-lg bg-[#141d28] border border-dashed border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-sky-400" />
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
                         <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="sm:col-span-1">
-                          <label className="block text-slate-400 mb-1">ตำแหน่ง/วิทยฐานะ</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ตำแหน่ง/วิทยฐานะ</label>
                           <input
                             type="text"
                             value={newStdLevel}
                             onChange={(e) => setNewStdLevel(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">วันที่มีผล</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่มีผล</label>
                           <input
                             type="date"
                             value={newStdDate}
                             onChange={(e) => setNewStdDate(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">เลขที่คำสั่ง</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่คำสั่ง</label>
                           <input
                             type="text"
                             value={newStdOrder}
                             placeholder="เช่น ศธ 04123/2565"
                             onChange={(e) => setNewStdOrder(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                       </div>
@@ -2245,27 +2257,27 @@ export default function AdminPage() {
 
                     <div className="space-y-2">
                       {(!selectedStaff.educations || selectedStaff.educations.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-[#16212e] text-slate-400 text-center">
+                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
                           ยังไม่มีข้อมูลวุฒิการศึกษา
                         </div>
                       ) : (
                         selectedStaff.educations.map((edu, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-lg bg-[#16212e] border border-slate-700 flex items-center justify-between gap-3"
+                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
                           >
                             <div>
-                              <div className="font-bold text-white text-xs">
+                              <div className="font-bold text-slate-900 dark:text-white text-xs">
                                 {edu.degree} สาขา {edu.major}
                               </div>
-                              <div className="text-[11px] text-slate-400 mt-0.5">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                 {edu.institute} (พ.ศ. {edu.gradYear})
                               </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleDeleteEducationFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
                             >
                               <Trash2 className="w-4 h-4 shrink-0" />
                             </button>
@@ -2274,50 +2286,50 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    <div className="p-3 rounded-lg bg-[#141d28] border border-dashed border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-amber-400" />
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                         <span>เพิ่มวุฒิการศึกษา</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <div>
-                          <label className="block text-slate-400 mb-1">วุฒิ (อักษรย่อ)</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วุฒิ (อักษรย่อ)</label>
                           <input
                             type="text"
                             value={newEduDegree}
                             placeholder="เช่น ค.บ., ศศ.บ."
                             onChange={(e) => setNewEduDegree(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">สาขาวิชาเอก</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สาขาวิชาเอก</label>
                           <input
                             type="text"
                             value={newEduMajor}
                             placeholder="เช่น ภาษาไทย, คณิตศาสตร์"
                             onChange={(e) => setNewEduMajor(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">สถาบันการศึกษา</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สถาบันการศึกษา</label>
                           <input
                             type="text"
                             value={newEduInst}
                             placeholder="ชื่อมหาวิทยาลัย"
                             onChange={(e) => setNewEduInst(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">ปี พ.ศ. ที่จบ</label>
+                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ปี พ.ศ. ที่จบ</label>
                           <input
                             type="text"
                             value={newEduYear}
                             placeholder="เช่น 2565"
                             onChange={(e) => setNewEduYear(e.target.value)}
-                            className="w-full bg-[#101822] border border-slate-700 rounded-lg p-2 text-white font-mono"
+                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                           />
                         </div>
                       </div>
@@ -2376,17 +2388,17 @@ export default function AdminPage() {
       {/* School Board Modal (Feature-complete legacy GAS restoration) */}
       {isBoardModalOpen && selectedBoardMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-[#141d27] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs my-8">
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs my-8 text-slate-800 dark:text-slate-200">
             <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
                   <Award className="w-5 h-5 shrink-0" />
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                     {isNewBoardMember ? 'เพิ่มกรรมการสถานศึกษาใหม่' : `แก้ไขข้อมูลกรรมการ: ${selectedBoardMember.fullName}`}
                   </h3>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     ตามกฎกระทรวงกำหนดจำนวนกรรมการ คุณสมบัติ และหลักเกณฑ์ พ.ศ. 2546
                   </div>
                 </div>
@@ -2402,8 +2414,8 @@ export default function AdminPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-slate-400 mb-1">
-                  ชื่อ - นามสกุล <span className="text-amber-400">*</span>
+                <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">
+                  ชื่อ - นามสกุล <span className="text-amber-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -2416,13 +2428,13 @@ export default function AdminPage() {
                       fullName: e.target.value,
                     })
                   }
-                  className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white font-semibold"
+                  className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">
-                  ตำแหน่งในคณะกรรมการสถานศึกษา <span className="text-amber-400">*</span>
+                <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">
+                  ตำแหน่งในคณะกรรมการสถานศึกษา <span className="text-amber-500">*</span>
                 </label>
                 <select
                   value={selectedBoardMember.position}
@@ -2434,7 +2446,7 @@ export default function AdminPage() {
                       positionTitle: found ? found.title : e.target.value,
                     });
                   }}
-                  className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                 >
                   {BOARD_POSITIONS.map((pos) => (
                     <option key={pos.value} value={pos.value}>
@@ -2446,7 +2458,7 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">อาชีพหลัก / ตำแหน่งหน้าที่</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">อาชีพหลัก / ตำแหน่งหน้าที่</label>
                   <input
                     type="text"
                     placeholder="เช่น ข้าราชการบำนาญ, ธุรกิจส่วนตัว"
@@ -2457,11 +2469,11 @@ export default function AdminPage() {
                         occupation: e.target.value,
                       })
                     }
-                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">สังกัด / องค์กร</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สังกัด / องค์กร</label>
                   <input
                     type="text"
                     placeholder="เช่น ชุมชนบ้านตะขบ, อบต.ตะขบ"
@@ -2472,14 +2484,14 @@ export default function AdminPage() {
                         organization: e.target.value,
                       })
                     }
-                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">เบอร์โทรศัพท์ (PDPA)</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เบอร์โทรศัพท์ (PDPA)</label>
                   <input
                     type="text"
                     placeholder="08x-xxx-xxxx"
@@ -2490,11 +2502,11 @@ export default function AdminPage() {
                         phone: e.target.value,
                       })
                     }
-                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">วาระที่ดำรงตำแหน่ง</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วาระที่ดำรงตำแหน่ง</label>
                   <select
                     value={selectedBoardMember.termNumber}
                     onChange={(e) =>
@@ -2503,14 +2515,14 @@ export default function AdminPage() {
                         termNumber: Number(e.target.value) || 1,
                       })
                     }
-                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
                   >
                     <option value={1}>วาระที่ 1 (ครั้งแรก 4 ปี)</option>
                     <option value={2}>วาระที่ 2 (ต่อเนื่องครั้งที่ 2)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">สถานะภาพ</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สถานะภาพ</label>
                   <select
                     value={selectedBoardMember.status}
                     onChange={(e) =>
@@ -2519,7 +2531,7 @@ export default function AdminPage() {
                         status: e.target.value,
                       })
                     }
-                    className="w-full bg-[#101822] border border-slate-700 rounded-xl p-2.5 text-white font-semibold"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-500"
                   >
                     <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
                     <option value="ครบวาระ">ครบวาระ</option>

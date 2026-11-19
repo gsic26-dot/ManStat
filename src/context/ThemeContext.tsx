@@ -45,6 +45,7 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
     root.classList.remove('dark');
   }
   root.setAttribute('data-theme', resolved);
+  root.style.colorScheme = resolved;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

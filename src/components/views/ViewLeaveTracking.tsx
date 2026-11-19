@@ -254,11 +254,11 @@ export function ViewLeaveTracking() {
             </div>
 
             {/* Regulatory Notice Banner */}
-            <div className="bg-[#131b26] p-4 rounded-xl border border-slate-800 flex items-start gap-3 text-xs text-slate-300">
-              <ShieldCheck className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
+            <div className="bg-sky-50 dark:bg-[#131b26] p-4 rounded-xl border border-sky-200 dark:border-slate-800 flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300">
+              <ShieldCheck className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-white">มาตรฐานความปลอดภัยและการตรวจสอบดิจิทัล</p>
-                <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="font-semibold text-slate-900 dark:text-white">มาตรฐานความปลอดภัยและการตรวจสอบดิจิทัล</p>
+                <p className="text-slate-600 dark:text-slate-400 mt-0.5">
                   ทุกขั้นตอนการอนุมัติถูกบันทึกรหัสตรวจสอบพร้อมเวลาแบบ Real-time ลงในระบบ ไม่สามารถแก้ไขย้อนหลังโดยพลการตามระเบียบสำนักนายกรัฐมนตรีฯ
                 </p>
               </div>

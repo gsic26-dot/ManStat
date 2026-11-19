@@ -4,6 +4,15 @@
 
 @layer base {
   :root {
+    color-scheme: light;
+    --bg-app: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f1f5f9;
+    --bg-input: #ffffff;
+    --border-default: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
@@ -26,6 +35,15 @@
   }
 
   .dark {
+    color-scheme: dark;
+    --bg-app: #0b1120;
+    --bg-surface: #111827;
+    --bg-subtle: #1e293b;
+    --bg-input: #0f172a;
+    --border-default: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+
     --background: 215 28% 8%;
     --foreground: 210 20% 92%;
     --card: 216 28% 12%;

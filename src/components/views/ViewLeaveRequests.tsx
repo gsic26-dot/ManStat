@@ -135,17 +135,6 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             ตรวจสอบ อนุมัติ และพิมพ์แบบฟอร์มใบลาราชการมาตรฐาน A4 พร้อมระบบตรวจสอบ QR Code
           </p>
         </div>
-
-        {onOpenSubmitModal && (
-          <button
-            type="button"
-            onClick={onOpenSubmitModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
-          >
-            <FileCheck className="w-4 h-4 shrink-0" />
-            <span>ยื่นคำร้องขอลาใหม่</span>
-          </button>
-        )}
       </div>
 
       {/* Filter and Search Bar (Standard 40px Height) */}
@@ -161,8 +150,8 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           />
         </div>
 
-        <div className="h-10 flex items-center gap-2 bg-[#111822] border border-slate-700/80 rounded-xl px-3 text-xs text-slate-200 focus-within:border-sky-500 transition-all">
-          <Filter className="w-4 h-4 text-sky-400 shrink-0" />
+        <div className="h-10 flex items-center gap-2 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">
+          <Filter className="w-4 h-4 text-slate-400 dark:text-sky-400 shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'pending' | 'approved' | 'rejected')}
@@ -394,37 +383,37 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               <button
                 type="button"
                 onClick={() => setSelectedRequest(null)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-300">
-              <div className="grid grid-cols-2 gap-2 bg-[#0e141c] p-3 rounded-lg border border-slate-800">
+            <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-[#0e141c] p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
                 <div>
                   <span className="text-slate-500">ผู้ขอลา:</span>
-                  <p className="font-semibold text-white mt-0.5">{selectedRequest.teacherName}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{selectedRequest.teacherName}</p>
                 </div>
                 <div>
                   <span className="text-slate-500">สังกัด / กลุ่มสาระ:</span>
-                  <p className="font-medium text-slate-200 mt-0.5">{selectedRequest.department}</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-200 mt-0.5">{selectedRequest.department}</p>
                 </div>
                 <div>
                   <span className="text-slate-500">ประเภทการลา:</span>
-                  <p className="font-medium text-sky-300 mt-0.5">
+                  <p className="font-medium text-sky-600 dark:text-sky-300 mt-0.5">
                     {selectedRequest.leaveTypeName} ({selectedRequest.totalDays} วัน)
                   </p>
                 </div>
                 <div>
                   <span className="text-slate-500">ผู้ปฏิบัติหน้าที่แทน:</span>
-                  <p className="font-medium text-slate-200 mt-0.5">{selectedRequest.substituteTeacherName}</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-200 mt-0.5">{selectedRequest.substituteTeacherName}</p>
                 </div>
               </div>
 
               <div>
                 <span className="text-slate-500 block mb-1">เหตุผลและความจำเป็น:</span>
-                <p className="bg-[#0e141c] p-3 rounded-lg border border-slate-800 text-slate-200">
+                <p className="bg-slate-50 dark:bg-[#0e141c] p-3 rounded-lg border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200">
                   {selectedRequest.reason}
                 </p>
               </div>
@@ -432,7 +421,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               {selectedRequest.supervisorRemark && (
                 <div>
                   <span className="text-slate-500 block mb-1">ความเห็นผู้บังคับบัญชาชั้นต้น:</span>
-                  <p className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg text-amber-200">
+                  <p className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg text-amber-800 dark:text-amber-200">
                     {selectedRequest.supervisorRemark}
                   </p>
                 </div>
@@ -441,7 +430,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               {selectedRequest.directorRemark && (
                 <div>
                   <span className="text-slate-500 block mb-1">คำสั่งผู้อำนวยการ:</span>
-                  <p className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg text-emerald-200">
+                  <p className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg text-emerald-800 dark:text-emerald-200">
                     {selectedRequest.directorRemark}
                   </p>
                 </div>
