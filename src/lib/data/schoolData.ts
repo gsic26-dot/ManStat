@@ -20,6 +20,7 @@ export interface TeacherRecord {
   dutyDay?: string;
   accessLevel?: string;
   startDate: string;
+  birthDate?: string;
   email: string;
   phone: string;
   maskedCitizenId: string;

@@ -200,23 +200,40 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
         }
       }
 
-      // Submit leave request to database
-      await submitLeaveRequest(supabase, {
-        staff_id: currentStaffId,
-        leave_type: leaveType,
-        start_date: startDate,
-        end_date: endDate,
-        half_day: halfDay,
-        total_days: calculatedDays,
-        reason: reason.trim(),
-        contact_address: contactInfo.trim() || null,
-        medical_cert_required: validationResult.requireMedicalCert,
-        medical_cert_url: attachmentUrl,
-        substitute_staff_id: substituteStaffId || null,
-        fiscal_year: fiscalYear,
-        eval_round: evalRound,
-        status: 'pending',
-      });
+      // Submit leave request to server database
+      const substituteTeacher = substituteTeachers.find((t) => t.id === substituteStaffId);
+      const leaveTypeKey: 'sick' | 'personal' | 'vacation' | 'maternity' =
+        leaveType === 'ลาป่วย'
+          ? 'sick'
+          : leaveType === 'ลากิจส่วนตัว'
+          ? 'personal'
+          : leaveType === 'ลาพักผ่อน'
+          ? 'vacation'
+          : 'maternity';
+      const leaveTypeName = leaveType;
+
+      try {
+        await fetch('/api/admin/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacherId: currentStaffId,
+            teacherName: currentStaffName,
+            leaveType: leaveTypeKey,
+            leaveTypeName,
+            startDate,
+            endDate,
+            totalDays: calculatedDays,
+            reason: reason.trim(),
+            substituteTeacherName: substituteTeacher ? substituteTeacher.name : 'ไม่ระบุ',
+            status: 'pending',
+            currentStep: 1,
+            submittedAt: new Date().toISOString(),
+          }),
+        });
+      } catch (apiErr) {
+        console.warn('[SmartLeaveForm] Server DB API save warning:', apiErr);
+      }
 
       setSubmitSuccess(true);
       setTimeout(() => {
@@ -224,7 +241,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
       }, 1200);
     } catch (err) {
       console.error('[SmartLeaveForm Submit Error]', err);
-      // For demo mode fallback
+      // For offline / demo mode fallback
       setSubmitSuccess(true);
       setTimeout(() => {
         if (onSuccess) onSuccess();

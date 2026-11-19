@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Clock,
@@ -31,13 +31,36 @@ export function ViewLeaveTracking() {
   const [searchDoc, setSearchDoc] = useState('');
   const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord | null>(requests[1] || requests[0] || null);
 
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/leave')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setRequests(res.data);
+          if (res.data.length > 0) {
+            setSelectedReq(res.data[0]);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleSelectReq = (req: LeaveRequestRecord) => {
     setSelectedReq(req);
   };
 
-  const handleDeleteCurrent = () => {
+  const handleDeleteCurrent = async () => {
     if (!selectedReq) return;
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${selectedReq.teacherName}?`)) {
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${selectedReq.teacherName} ออกจากฐานข้อมูล?`)) {
+      try {
+        await fetch(`/api/admin/leave?id=${selectedReq.id}`, {
+          method: 'DELETE',
+        });
+      } catch {}
       const remaining = requests.filter((r) => r.id !== selectedReq.id);
       setRequests(remaining);
       setSelectedReq(remaining.length > 0 ? remaining[0] : null);

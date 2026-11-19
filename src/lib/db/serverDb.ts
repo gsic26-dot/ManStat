@@ -19,9 +19,11 @@ import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
+  INITIAL_LEAVE_REQUESTS,
   TeacherRecord,
   BoardMemberRecord,
   SchoolInfoRecord,
+  LeaveRequestRecord,
 } from '@/lib/data/schoolData';
 
 export interface HolidayRecord {
@@ -57,6 +59,7 @@ export interface DatabaseState {
   teachers: TeacherRecord[];
   boardMembers: BoardMemberRecord[];
   holidays: HolidayRecord[];
+  leaveRequests: LeaveRequestRecord[];
   auditLogs: AuditLogRecord[];
   settings: SystemSettingsRecord;
 }
@@ -144,6 +147,9 @@ export function loadDatabase(): DatabaseState {
         holidays: Array.isArray(parsed.holidays) && parsed.holidays.length > 0
           ? parsed.holidays
           : INITIAL_HOLIDAYS,
+        leaveRequests: Array.isArray(parsed.leaveRequests) && parsed.leaveRequests.length > 0
+          ? parsed.leaveRequests
+          : INITIAL_LEAVE_REQUESTS,
         auditLogs: Array.isArray(parsed.auditLogs) && parsed.auditLogs.length > 0
           ? parsed.auditLogs
           : (Array.isArray(parsed.logs) && parsed.logs.length > 0 ? parsed.logs : INITIAL_AUDIT_LOGS),
@@ -163,6 +169,7 @@ export function loadDatabase(): DatabaseState {
     teachers: INITIAL_TEACHERS,
     boardMembers: INITIAL_BOARD_MEMBERS,
     holidays: INITIAL_HOLIDAYS,
+    leaveRequests: INITIAL_LEAVE_REQUESTS,
     auditLogs: INITIAL_AUDIT_LOGS,
     settings: INITIAL_SETTINGS,
   };

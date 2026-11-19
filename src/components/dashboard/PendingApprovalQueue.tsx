@@ -6,13 +6,15 @@
  * ============================================================================
  * - For HR Admins and School Directors (Role-based access).
  * - Action-First Executive Inbox: Decide within 2 seconds.
+ * - Live Server Database connection (/api/admin/leave)
+ * - 1-Click Approve / Reject with remark input.
+ * - Permanent Delete Action with Trash2 button & confirmation.
  * - Single-layer rows, crisp tabular-nums, zero decorative blur.
- * - 1-Click Approve / Reject with confirmation modal and remark input.
  * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Check,
@@ -22,10 +24,10 @@ import {
   ChevronRight,
   CheckCircle2,
   Loader2,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { updateLeaveStatus } from '@/lib/supabase/queries';
-import type { LeaveStatusEnum } from '@/types/database.types';
+import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export interface PendingItemDisplay {
   id: string;
@@ -44,64 +46,56 @@ export interface PendingItemDisplay {
 }
 
 interface PendingApprovalQueueProps {
-  requests?: PendingItemDisplay[];
+  requests?: LeaveRequestRecord[];
   currentUserId?: string;
   onActionComplete?: () => void;
   onViewAllHistory?: () => void;
 }
 
 export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
-  requests: initialRequests = [],
+  requests: parentRequests,
   currentUserId = 'director-001',
   onActionComplete,
   onViewAllHistory,
 }) => {
-  const [requests, setRequests] = useState<PendingItemDisplay[]>(
-    initialRequests.length > 0
-      ? initialRequests
-      : [
-          {
-            id: 'req-sample-01',
-            staffName: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
-            position: 'ครูชำนาญการพิเศษ',
-            employeeCode: 'TCH-005',
-            leaveType: 'ลาป่วย',
-            startDate: '18 พ.ย. 2569',
-            endDate: '19 พ.ย. 2569',
-            totalDays: 2,
-            halfDay: 'full',
-            reason: 'มีอาการไข้หวัดใหญ่และแพทย์สั่งให้พักรักษาตัว',
-            substituteTeacherName: 'นางณิชกานต์ พลอยฉิมพลี',
-            attachmentUrl: 'https://example.com/med-cert.pdf',
-            createdAt: '2026-11-16T08:30:00Z',
-          },
-          {
-            id: 'req-sample-02',
-            staffName: 'นางสาวสุนิสา สุทธิวงศ์',
-            position: 'ครู คศ. 1',
-            employeeCode: 'TCH-008',
-            leaveType: 'ลากิจส่วนตัว',
-            startDate: '20 พ.ย. 2569',
-            endDate: '20 พ.ย. 2569',
-            totalDays: 0.5,
-            halfDay: 'morning',
-            reason: 'ติดต่อธุรกรรมราชการ ณ สำนักงานที่ดินจังหวัดนครราชสีมา',
-            substituteTeacherName: 'นายกิตติพณ พรหมทอง',
-            attachmentUrl: null,
-            createdAt: '2026-11-16T09:15:00Z',
-          },
-        ]
-  );
+  const [items, setItems] = useState<LeaveRequestRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Modal states
   const [activeModal, setActiveModal] = useState<{
-    request: PendingItemDisplay;
-    action: 'approve' | 'reject';
+    request: LeaveRequestRecord;
+    action: 'approve' | 'reject' | 'delete';
   } | null>(null);
 
   const [remarks, setRemarks] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const handleOpenAction = (request: PendingItemDisplay, action: 'approve' | 'reject') => {
+  // Sync or fetch pending requests
+  const loadPendingRequests = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/leave?status=pending');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setItems(json.data);
+      }
+    } catch (err) {
+      console.error('[PendingApprovalQueue] Fetch error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (parentRequests) {
+      setItems(parentRequests.filter((r) => r.status === 'pending'));
+      setIsLoading(false);
+    } else {
+      loadPendingRequests();
+    }
+  }, [parentRequests]);
+
+  const handleOpenAction = (request: LeaveRequestRecord, action: 'approve' | 'reject' | 'delete') => {
     setActiveModal({ request, action });
     setRemarks('');
   };
@@ -116,25 +110,40 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
     if (!activeModal) return;
 
     setIsSubmitting(true);
-
-    const newStatus: LeaveStatusEnum = activeModal.action === 'approve' ? 'approved' : 'rejected';
+    const { request, action } = activeModal;
 
     try {
-      const supabase = createClient();
-      await updateLeaveStatus(
-        supabase,
-        activeModal.request.id,
-        newStatus,
-        currentUserId,
-        remarks.trim() || undefined
-      );
+      if (action === 'delete') {
+        const res = await fetch(`/api/admin/leave?id=${request.id}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json();
+        if (data.success) {
+          setItems((prev) => prev.filter((r) => r.id !== request.id));
+        }
+      } else {
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        const defaultRemark = action === 'approve' ? 'อนุมัติผ่านระบบ ManStat-Modern' : 'ไม่อนุมัติตามดุลยพินิจ';
+        const res = await fetch('/api/admin/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: request.id,
+            status: newStatus,
+            directorRemark: remarks.trim() || defaultRemark,
+            currentStep: 3,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setItems((prev) => prev.filter((r) => r.id !== request.id));
+        }
+      }
 
-      setRequests((prev) => prev.filter((r) => r.id !== activeModal.request.id));
       handleCloseModal();
       if (onActionComplete) onActionComplete();
     } catch (err) {
       console.error('[PendingApprovalQueue] Action error:', err);
-      setRequests((prev) => prev.filter((r) => r.id !== activeModal.request.id));
       handleCloseModal();
     } finally {
       setIsSubmitting(false);
@@ -150,7 +159,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
             คำขอรออนุมัติ
           </h2>
           <span className="px-2 py-0.5 text-xs font-mono font-semibold tabular-nums rounded-full bg-amber-500/15 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-500/30 dark:border-amber-500/20">
-            {requests.length} รายการ
+            {items.length} รายการ
           </span>
         </div>
 
@@ -166,8 +175,13 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
         )}
       </div>
 
-      {/* Empty State */}
-      {requests.length === 0 ? (
+      {/* Loading & Empty States */}
+      {isLoading ? (
+        <div className="text-center py-10 px-4">
+          <Loader2 className="w-6 h-6 text-sky-500 animate-spin mx-auto mb-2" />
+          <p className="text-xs text-slate-500 dark:text-slate-400">กำลังโหลดรายการคำขอลา...</p>
+        </div>
+      ) : items.length === 0 ? (
         <div className="text-center py-12 px-4">
           <CheckCircle2 className="w-8 h-8 text-emerald-500 dark:text-emerald-400 mx-auto mb-2 opacity-80" />
           <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">ไม่มีรายการคำขอลาค้างพิจารณา</p>
@@ -176,21 +190,21 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
       ) : (
         /* Single-Layer Row List */
         <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-          {requests.map((req) => (
+          {items.map((req) => (
             <div
               key={req.id}
               className="p-4 sm:px-5 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={req.staffName}>
-                    {req.staffName}
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={req.teacherName}>
+                    {req.teacherName}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={req.position}>
                     ({req.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')})
                   </span>
                   <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 text-[11px] font-medium rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
-                    {req.leaveType}
+                    {req.leaveTypeName}
                   </span>
                 </div>
 
@@ -207,22 +221,22 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                   </span>
                   <span className="px-1.5 py-0.2 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 font-mono font-semibold tabular-nums rounded text-[11px]">
                     {req.totalDays} วันทำการ
-                    {req.halfDay && req.halfDay !== 'full' && (
-                      <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-300 font-sans">
-                        ({req.halfDay === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'})
-                      </span>
-                    )}
                   </span>
+                  {req.substituteTeacherName && (
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[180px]">
+                      ผู้สอนแทน: {req.substituteTeacherName}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Action Buttons: Decision within 2 seconds */}
+              {/* Action Buttons */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <Link
                   href={`/leave/print/${req.id}`}
                   target="_blank"
                   title="พิมพ์แบบฟอร์ม A4"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 transition-colors duration-200"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 transition-colors duration-200"
                 >
                   <Printer className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
                   <span>พิมพ์ A4</span>
@@ -231,7 +245,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenAction(req, 'approve')}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white border border-transparent transition-colors duration-200 cursor-pointer shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white border border-transparent transition-colors duration-200 cursor-pointer shadow-sm"
                 >
                   <Check className="w-3.5 h-3.5 shrink-0" />
                   <span>อนุมัติ</span>
@@ -240,10 +254,19 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 <button
                   type="button"
                   onClick={() => handleOpenAction(req, 'reject')}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/20 transition-colors duration-200 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/20 transition-colors duration-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5 shrink-0" />
                   <span>ไม่อนุมัติ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenAction(req, 'delete')}
+                  title="ลบคำขอลาออกจากระบบ"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-transparent transition-colors duration-200 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </div>
@@ -251,72 +274,104 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
         </div>
       )}
 
-      {/* Confirmation Modal Dialog */}
+      {/* Action Dialog Modal */}
       {activeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg bg-white dark:bg-[#121822] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-6 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                {activeModal.action === 'approve' ? (
-                  <div className="p-1.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    <Check className="w-4 h-4 shrink-0" />
-                  </div>
-                ) : (
-                  <div className="p-1.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                    <X className="w-4 h-4 shrink-0" />
-                  </div>
+                {activeModal.action === 'approve' && (
+                  <Check className="w-5 h-5 text-emerald-500" />
                 )}
-                <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-                  ยืนยันการ{activeModal.action === 'approve' ? 'อนุมัติคำขอลา' : 'ไม่อนุมัติคำขอลา'}
-                </h4>
+                {activeModal.action === 'reject' && (
+                  <X className="w-5 h-5 text-rose-500" />
+                )}
+                {activeModal.action === 'delete' && (
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                )}
+                <h3 className="font-semibold text-base">
+                  {activeModal.action === 'approve' && 'ยืนยันการอนุมัติคำขอลา'}
+                  {activeModal.action === 'reject' && 'ยืนยันการไม่อนุมัติคำขอลา'}
+                  {activeModal.action === 'delete' && 'ยืนยันการลบคำขอลา'}
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50 transition-colors duration-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="bg-slate-50 dark:bg-[#0b1016] p-4 rounded-lg border border-slate-200/90 dark:border-slate-800/80 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">ผู้ขอลา:</span>
-                <span className="text-slate-900 dark:text-white font-medium">{activeModal.request.staffName} ({activeModal.request.position})</span>
+            {activeModal.action === 'delete' ? (
+              <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                <p>
+                  คุณแน่ใจหรือไม่ว่าต้องการลบคำขอลาเลขที่{' '}
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    {activeModal.request.docNo}
+                  </span>{' '}
+                  ของ{' '}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {activeModal.request.teacherName}
+                  </span>{' '}
+                  ออกจากฐานข้อมูลเซิร์ฟเวอร์อย่างถาวร?
+                </p>
+                <p className="text-rose-500 dark:text-rose-400 text-[11px]">
+                  การลบนี้จะถูกบันทึกใน PDPA Audit Logs และไม่สามารถกู้คืนได้
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">ประเภทการลา:</span>
-                <span className="text-sky-600 dark:text-sky-300 font-medium">{activeModal.request.leaveType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">ช่วงวันที่:</span>
-                <span className="text-slate-700 dark:text-slate-200 font-mono tabular-nums">{activeModal.request.startDate} – {activeModal.request.endDate}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">จำนวนวันลา:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold tabular-nums">{activeModal.request.totalDays} วันทำการ</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 space-y-1">
+                    <div>
+                      <span className="font-medium text-slate-500 dark:text-slate-400">ผู้ขอลา: </span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {activeModal.request.teacherName} ({activeModal.request.position})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-500 dark:text-slate-400">ประเภทการลา: </span>
+                      <span className="text-slate-900 dark:text-white">{activeModal.request.leaveTypeName}</span>
+                      <span className="ml-2 font-mono tabular-nums text-slate-500">
+                        ({activeModal.request.startDate} – {activeModal.request.endDate}) รวม {activeModal.request.totalDays} วันทำการ
+                      </span>
+                    </div>
+                    {activeModal.request.reason && (
+                      <div>
+                        <span className="font-medium text-slate-500 dark:text-slate-400">เหตุผล: </span>
+                        <span>{activeModal.request.reason}</span>
+                      </div>
+                    )}
+                  </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                {activeModal.action === 'approve' ? 'ข้อคิดเห็นเพิ่มเติม (ถ้ามี):' : 'เหตุผลที่ไม่อนุมัติ (ระบุเพื่อแจ้งผู้ขอลา):'}
-              </label>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                rows={3}
-                placeholder={activeModal.action === 'approve' ? 'ระบุข้อคิดเห็นหรือคำสั่งการ...' : 'ระบุเหตุผลตามระเบียบราชการ...'}
-                className="w-full bg-white dark:bg-[#0b1016] border border-slate-300 dark:border-slate-700/80 rounded-lg p-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
-              />
-            </div>
+                  <div>
+                    <label className="block font-medium mb-1 text-slate-700 dark:text-slate-300">
+                      ความเห็นหรือข้อสั่งการของผู้อำนวยการสถานศึกษา (ทางเลือก):
+                    </label>
+                    <textarea
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder={
+                        activeModal.action === 'approve'
+                          ? 'เช่น อนุมัติ มอบหมายครูสอนแทนปฏิบัติหน้าที่ให้เรียบร้อย'
+                          : 'ระบุเหตุผลในการไม่อนุมัติคำขอ...'
+                      }
+                      rows={3}
+                      className="w-full text-xs p-2.5 rounded-lg bg-white dark:bg-[#0b1016] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors disabled:opacity-50"
               >
                 ยกเลิก
               </button>
@@ -324,14 +379,21 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                 type="button"
                 onClick={handleConfirmAction}
                 disabled={isSubmitting}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50 ${
                   activeModal.action === 'approve'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-transparent shadow-sm'
-                    : 'bg-rose-600 hover:bg-rose-500 text-white border border-transparent shadow-sm'
+                    ? 'bg-emerald-600 hover:bg-emerald-500'
+                    : 'bg-rose-600 hover:bg-rose-500'
                 }`}
               >
-                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
-                <span>ยืนยันการ{activeModal.action === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}</span>
+                {isSubmitting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <span>
+                    {activeModal.action === 'approve' && 'ยืนยันการอนุมัติ'}
+                    {activeModal.action === 'reject' && 'ยืนยันการไม่อนุมัติ'}
+                    {activeModal.action === 'delete' && 'ยืนยันการลบ'}
+                  </span>
+                )}
               </button>
             </div>
           </div>

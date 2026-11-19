@@ -39,7 +39,7 @@ export function ViewRetroLeave() {
 
   const selectedTeacher = INITIAL_TEACHERS.find((t) => t.id === selectedTeacherId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!startDate || !reason || !retroReason) {
       alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
@@ -47,6 +47,32 @@ export function ViewRetroLeave() {
     }
 
     setIsSubmitted(true);
+
+    try {
+      await fetch('/api/admin/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: selectedTeacherId,
+          teacherName: selectedTeacher?.name || 'ไม่ระบุชื่อ',
+          position: selectedTeacher?.position || 'ครู',
+          department: selectedTeacher?.department || 'ทั่วไป',
+          leaveType,
+          leaveTypeName: leaveType === 'personal' ? 'ลากิจส่วนตัว (ย้อนหลัง)' : 'ลาป่วย (ย้อนหลัง)',
+          startDate,
+          endDate: endDate || startDate,
+          totalDays: parseFloat(totalDays) || 1,
+          reason: `[ลาย้อนหลัง: ${retroReason}] ${reason}`,
+          substituteTeacherName: substituteTeacher,
+          status: 'pending',
+          currentStep: 1,
+          submittedAt: new Date().toISOString(),
+        }),
+      });
+    } catch (err) {
+      console.warn('[ViewRetroLeave] Save error:', err);
+    }
+
     setTimeout(() => {
       setIsSubmitted(false);
       // Reset form
@@ -54,7 +80,7 @@ export function ViewRetroLeave() {
       setRetroReason('');
       setMedicalCertNo('');
       alert('บันทึกคำร้องขอลาย้อนหลังเข้าสู่ระบบเรียบร้อยแล้ว');
-    }, 1500);
+    }, 1000);
   };
 
   return (

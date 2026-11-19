@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -44,6 +44,21 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/leave')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setRequests(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
@@ -58,7 +73,19 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
+    try {
+      await fetch('/api/admin/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          status: 'approved',
+          currentStep: 3,
+          directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+        }),
+      });
+    } catch {}
     setRequests((prev) =>
       prev.map((r) =>
         r.id === id
@@ -85,16 +112,29 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
     }
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     const reason = prompt('กรุณาระบุเหตุผลการไม่อนุมัติ:');
     if (reason === null) return;
+    const remark = `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`;
+    try {
+      await fetch('/api/admin/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          status: 'rejected',
+          currentStep: 3,
+          directorRemark: remark,
+        }),
+      });
+    } catch {}
     setRequests((prev) =>
       prev.map((r) =>
         r.id === id
           ? {
               ...r,
               status: 'rejected',
-              directorRemark: `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`,
+              directorRemark: remark,
             }
           : r
       )
@@ -105,15 +145,20 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           ? {
               ...prev,
               status: 'rejected',
-              directorRemark: `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`,
+              directorRemark: remark,
             }
           : null
       );
     }
   };
 
-  const handleDelete = (id: string, docNo: string) => {
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${docNo} ออกจากระบบ?`)) {
+  const handleDelete = async (id: string, docNo: string) => {
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${docNo} ออกจากระบบฐานข้อมูล?`)) {
+      try {
+        await fetch(`/api/admin/leave?id=${id}`, {
+          method: 'DELETE',
+        });
+      } catch {}
       setRequests((prev) => prev.filter((r) => r.id !== id));
       if (selectedRequest?.id === id) {
         setSelectedRequest(null);

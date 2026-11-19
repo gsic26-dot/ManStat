@@ -16,11 +16,23 @@
  * ============================================================================
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
-import { INITIAL_SCHOOL_INFO, INITIAL_TEACHERS, SchoolInfoRecord, TeacherRecord } from '@/lib/data/schoolData';
+import {
+  INITIAL_SCHOOL_INFO,
+  INITIAL_TEACHERS,
+  INITIAL_LEAVE_REQUESTS,
+  SchoolInfoRecord,
+  TeacherRecord,
+  LeaveRequestRecord,
+} from '@/lib/data/schoolData';
+import {
+  calculateRetirementInfo,
+  getFiscalYearBE,
+  getEvalRound,
+} from '@/lib/regulations/fiscal-and-retirement';
 import {
   School,
   Calendar,
@@ -100,6 +112,18 @@ export default function DashboardPage() {
 
   const [staffList, setStaffList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+  const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+
+  const loadLeaveList = useCallback(() => {
+    fetch('/api/admin/leave')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setLeaveList(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -121,13 +145,54 @@ export default function DashboardPage() {
       })
       .catch(() => {});
 
+    loadLeaveList();
+
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadLeaveList]);
 
-  const currentDateThai = 'วันจันทร์ที่ 16 พฤศจิกายน 2569';
-  const fiscalYearBE = parseInt(schoolInfo.fiscalYear) || 2570;
+  // Dynamic real-time Thai Date & Regulations
+  const now = new Date();
+  const daysThai = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+  const monthsThai = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+  const currentDateThai = `${daysThai[now.getDay()]}ที่ ${now.getDate()} ${monthsThai[now.getMonth()]} ${now.getFullYear() + 543}`;
+  const fiscalYearBE = parseInt(schoolInfo.fiscalYear) || getFiscalYearBE(now);
+  const currentRound = getEvalRound(now);
+
+  // Live Metrics Calculations
+  const todayISO = now.toISOString().split('T')[0];
+
+  // 1. Staff on leave today (approved requests whose range covers today)
+  const staffOnLeaveToday = leaveList.filter((r) => {
+    if (r.status !== 'approved') return false;
+    return r.startDate <= todayISO && todayISO <= r.endDate;
+  });
+  const onLeaveCount = staffOnLeaveToday.length;
+  const onDutyCount = Math.max(0, staffList.length - onLeaveCount);
+  const onLeaveDetail =
+    staffOnLeaveToday.length > 0
+      ? staffOnLeaveToday.map((s) => `${s.teacherName} (${s.leaveTypeName})`).join(', ')
+      : 'ไม่มีบุคลากรลาในวันนี้';
+
+  // 2. Staff retiring in current fiscal year (Civil service retirement calculation)
+  const staffRetiringThisYear = staffList.filter((t) => {
+    if (!t.birthDate) return false;
+    try {
+      const ret = calculateRetirementInfo(t.birthDate, now);
+      return ret.retireFiscalYearBE === fiscalYearBE && !ret.isRetired;
+    } catch {
+      return false;
+    }
+  });
+  const retiringCount = staffRetiringThisYear.length;
+  const retiringDetail =
+    retiringCount > 0
+      ? staffRetiringThisYear.map((s) => s.name).join(', ')
+      : `ปีงบฯ ${fiscalYearBE} ไม่มีผู้เกษียณ`;
 
   const handleSelectView = (view: ActiveView) => {
     setActiveView(view);
@@ -705,7 +770,7 @@ export default function DashboardPage() {
                     <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300">{currentDateThai}</span>
                     <span className="text-slate-300 dark:text-slate-600">|</span>
                     <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium">
-                      ปีงบฯ {fiscalYearBE} (รอบที่ 1)
+                      ปีงบฯ {fiscalYearBE} (รอบที่ {currentRound})
                     </span>
                   </div>
 
@@ -725,9 +790,11 @@ export default function DashboardPage() {
                 <PersonnelSummaryCards
                   stats={{
                     totalStaff: staffList.length,
-                    onDutyCount: Math.max(0, staffList.length - 1),
-                    onLeaveCount: 1,
-                    expiringOrRetiringCount: 2,
+                    onDutyCount,
+                    onLeaveCount,
+                    expiringOrRetiringCount: retiringCount,
+                    onLeaveDetail,
+                    retiringDetail,
                   }}
                 />
               </section>
@@ -738,7 +805,9 @@ export default function DashboardPage() {
                 <div className="lg:col-span-8">
                   {currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin' ? (
                     <PendingApprovalQueue
+                      requests={leaveList}
                       currentUserId="director-001"
+                      onActionComplete={loadLeaveList}
                       onViewAllHistory={() => handleSelectView('tracking_requests')}
                     />
                   ) : (

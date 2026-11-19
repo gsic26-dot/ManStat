@@ -6,6 +6,7 @@
  * ============================================================================
  * - Sleek 4-column horizontal strip
  * - Single border-slate-800/80 container, crisp font-mono tabular-nums
+ * - Displays authentic real-time data with contextual subtitles
  * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
  */
@@ -17,6 +18,8 @@ export interface PersonnelSummaryStats {
   onDutyCount: number;
   onLeaveCount: number;
   expiringOrRetiringCount: number;
+  onLeaveDetail?: string;
+  retiringDetail?: string;
 }
 
 interface PersonnelSummaryCardsProps {
@@ -27,17 +30,41 @@ interface PersonnelSummaryCardsProps {
 export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
   stats = {
     totalStaff: 15,
-    onDutyCount: 14,
-    onLeaveCount: 1,
-    expiringOrRetiringCount: 2,
+    onDutyCount: 15,
+    onLeaveCount: 0,
+    expiringOrRetiringCount: 0,
   },
   isLoading = false,
 }) => {
   const items = [
-    { label: 'บุคลากรทั้งหมด', value: stats.totalStaff, unit: 'คน', dotColor: 'bg-sky-500' },
-    { label: 'ปฏิบัติหน้าที่วันนี้', value: stats.onDutyCount, unit: 'คน', dotColor: 'bg-emerald-500' },
-    { label: 'อยู่ระหว่างการลา', value: stats.onLeaveCount, unit: 'คน', dotColor: 'bg-amber-500' },
-    { label: 'เกษียณอายุราชการปีนี้', value: stats.expiringOrRetiringCount, unit: 'คน', dotColor: 'bg-rose-500' },
+    {
+      label: 'บุคลากรทั้งหมด',
+      value: stats.totalStaff,
+      unit: 'คน',
+      dotColor: 'bg-sky-500',
+      subtext: 'ข้าราชการครูและบุคลากร',
+    },
+    {
+      label: 'ปฏิบัติหน้าที่วันนี้',
+      value: stats.onDutyCount,
+      unit: 'คน',
+      dotColor: 'bg-emerald-500',
+      subtext: stats.onDutyCount === stats.totalStaff ? 'มาปฏิบัติหน้าที่ครบทุกคน' : 'พร้อมปฏิบัติหน้าที่ในสถานศึกษา',
+    },
+    {
+      label: 'อยู่ระหว่างการลา',
+      value: stats.onLeaveCount,
+      unit: 'คน',
+      dotColor: 'bg-amber-500',
+      subtext: stats.onLeaveDetail || (stats.onLeaveCount === 0 ? 'ไม่มีบุคลากรลาในวันนี้' : `${stats.onLeaveCount} คนได้รับอนุมัติลา`),
+    },
+    {
+      label: 'เกษียณอายุราชการปีนี้',
+      value: stats.expiringOrRetiringCount,
+      unit: 'คน',
+      dotColor: 'bg-rose-500',
+      subtext: stats.retiringDetail || (stats.expiringOrRetiringCount === 0 ? 'ปีงบฯ 2570 ไม่มีผู้เกษียณ' : `${stats.expiringOrRetiringCount} คนครบวาระ`),
+    },
   ];
 
   return (
@@ -53,15 +80,22 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
             </span>
             <span className={`w-2 h-2 rounded-full shrink-0 ${item.dotColor}`} />
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            {isLoading ? (
-              <div className="h-8 w-14 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-            ) : (
-              <span className="text-2xl font-mono font-bold tabular-nums text-slate-900 dark:text-white">
-                {item.value}
-              </span>
+          <div className="mt-2.5">
+            <div className="flex items-baseline gap-1.5">
+              {isLoading ? (
+                <div className="h-8 w-14 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
+              ) : (
+                <span className="text-2xl font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                  {item.value}
+                </span>
+              )}
+              <span className="text-xs text-slate-400 dark:text-slate-500">{item.unit}</span>
+            </div>
+            {item.subtext && (
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-1" title={item.subtext}>
+                {item.subtext}
+              </p>
             )}
-            <span className="text-xs text-slate-400 dark:text-slate-500">{item.unit}</span>
           </div>
         </div>
       ))}
