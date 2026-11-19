@@ -54,6 +54,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
       if (typeof window !== 'undefined') {
         // Clear persistent session cookie
         document.cookie = 'manstat_session_token=; max-age=0; path=/;';
+        document.cookie = 'manstat_auth_role=; max-age=0; path=/;';
         localStorage.removeItem('manstat_auth_role');
         localStorage.removeItem('manstat_auth_user');
       }

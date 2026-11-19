@@ -276,9 +276,6 @@ export const ViewOrgChart: React.FC = () => {
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 whitespace-nowrap">
                     ผู้บังคับบัญชาสูงสุด
                   </span>
-                  <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 whitespace-nowrap">
-                    คศ. 3
-                  </span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate" title={school.directorName}>
                   {school.directorName}
@@ -381,16 +378,8 @@ export const ViewOrgChart: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Division Head Sub-Card (Clean Single Role Badge) */}
+                  {/* Division Head Sub-Card */}
                   <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200">
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${div.accentBg} ${div.accentText} border ${div.accentBorder}`}>
-                        หัวหน้ากลุ่มงาน
-                      </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                        {div.headPosition}
-                      </span>
-                    </div>
                     <div className="font-bold text-xs text-slate-900 dark:text-white truncate" title={div.headName}>
                       {div.headName}
                     </div>

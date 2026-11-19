@@ -76,23 +76,33 @@ export async function middleware(request: NextRequest) {
 
   const isLoginPage = pathname === '/login';
 
-  // 5. Protected Routes: Redirect unauthenticated user to /login
-  if (!user && !isLoginPage) {
-    // Allow root / to render or redirect to /login
+  // 5. Check authentication (Supabase or ManStat persistent session token)
+  const sessionToken = request.cookies.get('manstat_session_token')?.value;
+  const authRoleCookie = request.cookies.get('manstat_auth_role')?.value;
+  const isSuperuserCookie = authRoleCookie === 'superuser' || Boolean(sessionToken);
+
+  const isAuthenticated = Boolean(user) || Boolean(sessionToken);
+
+  // Protected Routes: Redirect unauthenticated user to /login
+  if (!isAuthenticated && !isLoginPage) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // 6. If logged in and visiting /login, redirect to /
-  if (user && isLoginPage) {
+  if (isAuthenticated && isLoginPage) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
   // 7. Role-Based Access Control (RBAC) for /admin/*
   if (pathname.startsWith('/admin')) {
-    const userRole = (user?.user_metadata?.role as UserRole) || 'teacher';
-    const hasAdminAccess = userRole === 'hr_admin' || userRole === 'director';
+    const userRole = (user?.user_metadata?.role as UserRole) || authRoleCookie || (sessionToken ? 'superuser' : 'teacher');
+    const hasAdminAccess =
+      isSuperuserCookie ||
+      userRole === 'superuser' ||
+      userRole === 'hr_admin' ||
+      userRole === 'director';
 
     if (!hasAdminAccess) {
       const dashboardUrl = new URL('/', request.url);

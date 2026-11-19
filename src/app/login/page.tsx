@@ -47,10 +47,12 @@ export default function LoginPage() {
     if (remember) {
       const maxAge = 30 * 24 * 60 * 60; // 30 days
       document.cookie = `manstat_session_token=${token}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
+      document.cookie = `manstat_auth_role=superuser; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
       localStorage.setItem('manstat_remember_me', 'true');
     } else {
       // Session cookie without max-age (clears on browser session close)
       document.cookie = `manstat_session_token=${token}; path=/; SameSite=Lax${secureFlag}`;
+      document.cookie = `manstat_auth_role=superuser; path=/; SameSite=Lax${secureFlag}`;
       localStorage.setItem('manstat_remember_me', 'false');
     }
   };

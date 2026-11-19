@@ -27,8 +27,47 @@ import {
 } from 'lucide-react';
 import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 
+const BOARD_POSITIONS_MAP: Record<string, string> = {
+  CHAIR: 'ประธานกรรมการ',
+  PARENT_REP: 'ผู้แทนผู้ปกครอง',
+  TEACHER_REP: 'ผู้แทนครู',
+  COMMUNITY_REP: 'ผู้แทนองค์กรชุมชน',
+  LOCAL_ADMIN: 'ผู้แทนองค์กรปกครองส่วนท้องถิ่น',
+  ALUMNI_REP: 'ผู้แทนศิษย์เก่า',
+  RELIGION_REP: 'ผู้แทนพระภิกษุสงฆ์ / ศาสนา',
+  EXPERT: 'กรรมการผู้ทรงคุณวุฒิ',
+  DIRECTOR_SEC: 'กรรมการและเลขานุการ',
+};
+
+const normalizeMember = (b: any): BoardMemberRecord => {
+  const position = b.position || b.board_position || 'EXPERT';
+  const positionTitle =
+    b.positionTitle ||
+    BOARD_POSITIONS_MAP[position] ||
+    'กรรมการสถานศึกษา';
+  const fullName =
+    b.fullName ||
+    b.full_name ||
+    `${b.prefix || ''}${b.first_name || ''} ${b.last_name || ''}`.trim() ||
+    '-';
+
+  return {
+    id: b.id || b.member_id || `SBD-${Math.random()}`,
+    fullName,
+    position,
+    positionTitle,
+    occupation: b.occupation || '-',
+    organization: b.organization || '-',
+    phone: b.phone || '-',
+    status: b.status || 'ดำรงตำแหน่ง',
+    termNumber: b.termNumber ?? b.term_number ?? 1,
+  };
+};
+
 export const ViewSchoolBoard: React.FC = () => {
-  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
+  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(() =>
+    INITIAL_BOARD_MEMBERS.map(normalizeMember)
+  );
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -39,7 +78,10 @@ export const ViewSchoolBoard: React.FC = () => {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data) && isMounted) {
-          setBoardList(json.data);
+          const list = json.data.map(normalizeMember);
+          if (list.length > 0) {
+            setBoardList(list);
+          }
         }
       })
       .catch(() => {});

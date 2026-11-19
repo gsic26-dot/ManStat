@@ -247,16 +247,19 @@ export default function DashboardPage() {
             {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
                 title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
               >
                 <Settings className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
-                <span className="hidden sm:inline">ศูนย์ผู้ดูแลระบบ</span>
+                <span className="text-xs font-semibold">ศูนย์ผู้ดูแลระบบ</span>
               </Link>
             )}
 
             {/* Consolidated User Profile Dropdown */}
-            <UserProfileDropdown onOpenSettings={() => setIsSettingsModalOpen(true)} />
+            <UserProfileDropdown
+              onOpenSettings={() => setIsSettingsModalOpen(true)}
+              showAdminCenterLink={true}
+            />
           </div>
         </div>
       </header>
@@ -493,8 +496,23 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Footer Utility Link: แจ้งปรับปรุงระบบ */}
-            <div className="pt-2.5 mt-2.5 border-t border-slate-200/90 dark:border-slate-800/80">
+            {/* Footer Utility Link: แจ้งปรับปรุงระบบ & ศูนย์ผู้ดูแลระบบ */}
+            <div className="pt-2.5 mt-2.5 border-t border-slate-200/90 dark:border-slate-800/80 space-y-1">
+              {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
+                <Link
+                  href="/admin"
+                  className="w-full flex items-center justify-between py-1.5 px-3 text-xs rounded-md transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30"
+                  title="เข้าสู่ศูนย์ผู้ดูแลระบบ (Admin Center)"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-sky-500 dark:text-sky-400" />
+                    <span className="truncate font-medium">ศูนย์ผู้ดูแลระบบ</span>
+                  </div>
+                  <span className="text-[10px] bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-1.5 py-0.5 rounded font-semibold font-mono">
+                    ADMIN
+                  </span>
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => handleSelectView('feedback')}
@@ -731,7 +749,22 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Mobile Secondary Utility */}
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1">
+                  {(currentRole === 'superuser' || currentRole === 'director' || currentRole === 'hr_admin') && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="w-full text-left px-3 py-2 rounded-md flex items-center justify-between text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+                        <span className="font-medium">ศูนย์ผู้ดูแลระบบ</span>
+                      </div>
+                      <span className="text-[10px] bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-1.5 py-0.5 rounded font-semibold font-mono">
+                        ADMIN
+                      </span>
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleSelectView('feedback')}
