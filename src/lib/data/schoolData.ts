@@ -797,3 +797,177 @@ export const INITIAL_SCOUTS: ScoutRecord[] = [
     orderNumber: 'สพป.นม.3 ที่ 220/2564'
   }
 ];
+
+// ============================================================================
+// WORKLOAD & PA TYPES & INITIAL ITEMS
+// ============================================================================
+
+export type WorkloadCategory =
+  | 'งานสอนและการจัดการเรียนรู้'
+  | 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน'
+  | 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ'
+  | 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่';
+
+export interface WorkloadItem {
+  id: string;
+  teacherId: string;
+  category: WorkloadCategory;
+  title: string;
+  subGroupOrLevel?: string;
+  hoursPerWeek: number;
+  roleInTask: string;
+  orderOrRef?: string;
+  status: 'กำลังดำเนินการ' | 'เสร็จสิ้นแล้ว' | 'งานประจำต่อเนื่อง';
+  coEmp?: string;
+  courseCode?: string;
+  type?: 'MAIN' | 'TA';
+}
+
+export const INITIAL_WORKLOAD_ITEMS: WorkloadItem[] = [
+  {
+    id: 'WL-001',
+    teacherId: 'TCH-002',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'ภาษาไทยพื้นฐาน',
+    courseCode: 'ท15101',
+    type: 'MAIN',
+    subGroupOrLevel: 'ป.5/1',
+    hoursPerWeek: 5,
+    roleInTask: 'ผู้สอน',
+    orderOrRef: 'คำสั่งที่ 12/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-002',
+    teacherId: 'TCH-002',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'ภาษาไทยเพิ่มเติม',
+    courseCode: 'ท15201',
+    type: 'MAIN',
+    subGroupOrLevel: 'ป.5/2',
+    hoursPerWeek: 4,
+    roleInTask: 'ผู้สอน',
+    orderOrRef: 'คำสั่งที่ 12/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-003',
+    teacherId: 'TCH-002',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'ผู้ช่วยสอน (TA) ทักษะภาษาและการอ่าน',
+    type: 'TA',
+    subGroupOrLevel: 'ป.4/1',
+    hoursPerWeek: 3,
+    roleInTask: 'ผู้ช่วยสอน',
+    orderOrRef: 'คำสั่งที่ 15/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-004',
+    teacherId: 'TCH-002',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'กิจกรรมลูกเสือ - เนตรนารี',
+    type: 'MAIN',
+    subGroupOrLevel: 'ป.5',
+    hoursPerWeek: 2,
+    roleInTask: 'ผู้สอน',
+    orderOrRef: 'คำสั่งที่ 18/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-005',
+    teacherId: 'TCH-002',
+    category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+    title: 'งานบริหารวิชาการและเลขานุการฝ่าย',
+    subGroupOrLevel: 'ฝ่ายบริหารวิชาการ',
+    hoursPerWeek: 4,
+    roleInTask: 'หัวหน้าฝ่าย',
+    orderOrRef: 'คำสั่งที่ 05/2569',
+    status: 'งานประจำต่อเนื่อง',
+  },
+  {
+    id: 'WL-006',
+    teacherId: 'TCH-002',
+    category: 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ',
+    title: 'งานผู้รับผิดชอบโครงการตามแผนปฏิบัติการประจำปี',
+    subGroupOrLevel: 'โครงการพัฒนาการอ่านออกเขียนได้',
+    hoursPerWeek: 3,
+    roleInTask: 'ผู้รับผิดชอบหลัก',
+    orderOrRef: 'แผนปฏิบัติการ 2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-007',
+    teacherId: 'TCH-002',
+    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
+    title: 'งานครูประจำชั้น / ครูที่ปรึกษา',
+    subGroupOrLevel: 'ประจำชั้น ป.5/1',
+    hoursPerWeek: 3,
+    roleInTask: 'ครูประจำชั้น',
+    orderOrRef: 'คำสั่งที่ 07/2569',
+    status: 'งานประจำต่อเนื่อง',
+  },
+  {
+    id: 'WL-008',
+    teacherId: 'TCH-002',
+    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
+    title: 'งานเวรประจำวัน / เวรหน้าประตูโรงเรียน',
+    subGroupOrLevel: 'ตรวจเวรประจำวันอังคาร',
+    hoursPerWeek: 2,
+    roleInTask: 'ผู้ตรวจเวร',
+    orderOrRef: 'คำสั่งที่ 08/2569',
+    status: 'งานประจำต่อเนื่อง',
+  },
+  {
+    id: 'WL-009',
+    teacherId: 'TCH-003',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'คณิตศาสตร์พื้นฐาน',
+    courseCode: 'ค16101',
+    type: 'MAIN',
+    subGroupOrLevel: 'ป.6/1',
+    hoursPerWeek: 5,
+    roleInTask: 'ผู้สอน',
+    orderOrRef: 'คำสั่งที่ 12/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-010',
+    teacherId: 'TCH-003',
+    category: 'งานสอนและการจัดการเรียนรู้',
+    title: 'ผู้ช่วยสอน (TA) วิทยาการคำนวณ',
+    type: 'TA',
+    subGroupOrLevel: 'ม.1',
+    hoursPerWeek: 4,
+    roleInTask: 'ผู้ช่วยสอน',
+    orderOrRef: 'คำสั่งที่ 15/2569',
+    status: 'กำลังดำเนินการ',
+  },
+  {
+    id: 'WL-011',
+    teacherId: 'EXE-001',
+    category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+    title: 'งานบริหารสถานศึกษาและผู้อำนวยการสถานศึกษา',
+    subGroupOrLevel: 'งานบริหาร 4 ฝ่าย',
+    hoursPerWeek: 10,
+    roleInTask: 'หัวหน้าสถานศึกษา',
+    orderOrRef: 'พระราชบัญญัติระเบียบข้าราชการครูฯ',
+    status: 'งานประจำต่อเนื่อง',
+  }
+];
+
+// ============================================================================
+// SYSTEM FEEDBACK TYPES
+// ============================================================================
+
+export interface FeedbackItem {
+  id: string;
+  category: 'bug' | 'feature' | 'inquiry';
+  title: string;
+  description: string;
+  senderName: string;
+  status: 'pending' | 'in_progress' | 'resolved';
+  submittedAt: string;
+  response?: string;
+}
+

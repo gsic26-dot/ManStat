@@ -119,3 +119,91 @@ CREATE POLICY "service_role_all_system_settings" ON public.system_settings FOR A
 INSERT INTO public.system_settings (id, theme_mode, preferred_view, compact_mode, mask_citizen_id, fiscal_year, current_term, academic_year)
 VALUES ('default', 'auto', 'table', FALSE, TRUE, 2570, '2', '2569')
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- 7. ตาราง history_scout (ตรวจสอบและเพิ่มคอลัมน์ที่จำเป็น - ทะเบียนวุฒิลูกเสือ)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.history_scout (
+  record_id VARCHAR(100) PRIMARY KEY,
+  emp_id VARCHAR(50),
+  scout_qualification TEXT,
+  scout_type TEXT,
+  scout_position TEXT,
+  cert_number VARCHAR(100),
+  approved_year VARCHAR(50),
+  timestamp TEXT
+);
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS scout_qualification TEXT;
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS scout_type TEXT;
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS scout_position TEXT;
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS cert_number VARCHAR(100);
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS approved_year VARCHAR(50);
+ALTER TABLE public.history_scout ADD COLUMN IF NOT EXISTS timestamp TEXT;
+ALTER TABLE public.history_scout ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_all_history_scout" ON public.history_scout;
+CREATE POLICY "service_role_all_history_scout" ON public.history_scout FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- 8. ตาราง staff_workloads (ตรวจสอบและเพิ่มคอลัมน์ที่จำเป็น - ภาระงานและ PA)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.staff_workloads (
+  workload_id VARCHAR(100) PRIMARY KEY,
+  emp_id VARCHAR(50),
+  co_emp_ids TEXT,
+  category VARCHAR(100),
+  title TEXT,
+  sub_group_or_level TEXT,
+  hours_per_week NUMERIC(5,2),
+  role_in_task TEXT,
+  academic_term VARCHAR(50),
+  order_or_ref TEXT,
+  effective_period TEXT,
+  status VARCHAR(50) DEFAULT 'ปกติ',
+  assigned_by TEXT,
+  updated_by TEXT,
+  timestamp TEXT
+);
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS co_emp_ids TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS sub_group_or_level TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS hours_per_week NUMERIC(5,2);
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS role_in_task TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS academic_term VARCHAR(50);
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS order_or_ref TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS effective_period TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ปกติ';
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS assigned_by TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS updated_by TEXT;
+ALTER TABLE public.staff_workloads ADD COLUMN IF NOT EXISTS timestamp TEXT;
+ALTER TABLE public.staff_workloads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_all_staff_workloads" ON public.staff_workloads;
+CREATE POLICY "service_role_all_staff_workloads" ON public.staff_workloads FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- 9. ตาราง system_feedback (ตรวจสอบและเพิ่มคอลัมน์ที่จำเป็น - ข้อเสนอแนะระบบ)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.system_feedback (
+  feedback_id VARCHAR(100) PRIMARY KEY,
+  emp_id VARCHAR(50),
+  full_name TEXT,
+  category VARCHAR(100),
+  topic TEXT,
+  detail TEXT,
+  status VARCHAR(50) DEFAULT 'รอการตอบรับ',
+  admin_reply TEXT,
+  updated_by TEXT,
+  timestamp TEXT
+);
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS topic TEXT;
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS detail TEXT;
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'รอการตอบรับ';
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS updated_by TEXT;
+ALTER TABLE public.system_feedback ADD COLUMN IF NOT EXISTS timestamp TEXT;
+ALTER TABLE public.system_feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_all_system_feedback" ON public.system_feedback;
+CREATE POLICY "service_role_all_system_feedback" ON public.system_feedback FOR ALL TO service_role USING (true) WITH CHECK (true);
+

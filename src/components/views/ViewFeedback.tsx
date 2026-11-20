@@ -32,28 +32,7 @@ interface FeedbackItem {
 
 export function ViewFeedback() {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([
-    {
-      id: 'FB-001',
-      category: 'feature',
-      title: 'ขอเพิ่มระบบแจ้งเตือนผ่าน Line Notify หรือ SMS เมื่อคำร้องผ่านการอนุมัติ',
-      description: 'เพื่อให้ครูผู้ขอลารับทราบผลทันทีโดยไม่ต้องเข้าสู่ระบบบ่อยครั้ง',
-      senderName: 'นายธวัชชัย เหลืองโอฬาร',
-      status: 'resolved',
-      submittedAt: '2026-11-10T10:00:00',
-      response: 'ระบบรองรับการแจ้งเตือน Realtime ภายในแอปพลิเคชันแล้ว และอยู่ระหว่างทดสอบ Webhook ภายนอก',
-    },
-    {
-      id: 'FB-002',
-      category: 'bug',
-      title: 'ต้องการให้ฟอร์มพิมพ์ใบลา A4 แสดงเครื่องหมายถูกในช่องลาย้อนหลัง',
-      description: 'หากเป็นคำร้องที่บันทึกย้อนหลัง อยากให้พิมพ์กำกับให้ชัดเจน',
-      senderName: 'นางณิชกานต์ พลอยฉิมพลี',
-      status: 'resolved',
-      submittedAt: '2026-11-12T14:30:00',
-      response: 'ปรับปรุงฟอร์มพิมพ์ A4 เรียบร้อยแล้ว รองรับหมายเหตุและระเบียบ สพฐ. สมบูรณ์แบบ',
-    },
-  ]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
   const [category, setCategory] = useState<'bug' | 'feature' | 'inquiry'>('feature');
   const [title, setTitle] = useState('');
@@ -71,12 +50,22 @@ export function ViewFeedback() {
         }
       })
       .catch(() => {});
+
+    fetch('/api/feedback', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setFeedbacks(data.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description) {
       alert('กรุณากรอกหัวข้อและรายละเอียด');
@@ -84,22 +73,32 @@ export function ViewFeedback() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const newItem: FeedbackItem = {
-        id: `FB-${String(feedbacks.length + 1).padStart(3, '0')}`,
-        category,
-        title,
-        description,
-        senderName,
-        status: 'pending',
-        submittedAt: new Date().toISOString(),
-      };
-      setFeedbacks([newItem, ...feedbacks]);
-      setTitle('');
-      setDescription('');
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          title,
+          description,
+          senderName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setFeedbacks((prev) => [data.data, ...prev]);
+        setTitle('');
+        setDescription('');
+        alert('ส่งข้อเสนอแนะเรียบร้อยแล้ว ทีมผู้พัฒนาจะดำเนินการตรวจสอบโดยเร็ว');
+      } else {
+        alert(data.error || 'เกิดข้อผิดพลาดในการส่งข้อเสนอแนะ');
+      }
+    } catch (err: any) {
+      console.error('Error submitting feedback:', err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย');
+    } finally {
       setIsSubmitting(false);
-      alert('ส่งข้อเสนอแนะเรียบร้อยแล้ว ทีมผู้พัฒนาจะดำเนินการตรวจสอบโดยเร็ว');
-    }, 800);
+    }
   };
 
   return (
@@ -203,7 +202,12 @@ export function ViewFeedback() {
           </h3>
 
           <div className="space-y-3">
-            {feedbacks.map((item) => (
+            {feedbacks.length === 0 ? (
+              <div className="bg-white dark:bg-[#111822] p-8 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
+                ยังไม่มีรายการข้อเสนอแนะในระบบ สามารถกรอกแบบฟอร์มด้านซ้ายเพื่อส่งข้อเสนอแนะใหม่ได้ทันที
+              </div>
+            ) : (
+              feedbacks.map((item) => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
@@ -267,7 +271,8 @@ export function ViewFeedback() {
                   </span>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

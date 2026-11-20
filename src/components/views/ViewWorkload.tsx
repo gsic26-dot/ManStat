@@ -383,6 +383,16 @@ export const ViewWorkload: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    fetch('/api/admin/workload', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setWorkloads(data.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -458,7 +468,7 @@ export const ViewWorkload: React.FC = () => {
     }
   };
 
-  const handleSaveWorkload = (e: React.FormEvent) => {
+  const handleSaveWorkload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTeacherId || !formTitle.trim()) return;
 
@@ -479,11 +489,28 @@ export const ViewWorkload: React.FC = () => {
 
     setWorkloads((prev) => [...prev, newEntry]);
     setIsModalOpen(false);
+
+    try {
+      await fetch('/api/admin/workload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry),
+      });
+    } catch (err) {
+      console.error('Failed to save workload to DB:', err);
+    }
   };
 
-  const handleDeleteWorkload = (workloadId: string) => {
+  const handleDeleteWorkload = async (workloadId: string) => {
     if (confirm('คุณต้องการลบรายการภาระงานนี้หรือไม่?')) {
       setWorkloads((prev) => prev.filter((w) => w.id !== workloadId));
+      try {
+        await fetch(`/api/admin/workload?id=${encodeURIComponent(workloadId)}`, {
+          method: 'DELETE',
+        });
+      } catch (err) {
+        console.error('Failed to delete workload from DB:', err);
+      }
     }
   };
 

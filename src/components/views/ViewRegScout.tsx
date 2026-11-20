@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Award,
   Search,
@@ -25,11 +25,26 @@ import {
 import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
 
 export function ViewRegScout() {
-  const [scouts] = useState<ScoutRecord[]>(INITIAL_SCOUTS);
+  const [scouts, setScouts] = useState<ScoutRecord[]>(INITIAL_SCOUTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/scout', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setScouts(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));

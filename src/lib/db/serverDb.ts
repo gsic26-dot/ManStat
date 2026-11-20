@@ -27,10 +27,16 @@ import {
   INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
   INITIAL_LEAVE_REQUESTS,
+  INITIAL_SCOUTS,
+  INITIAL_WORKLOAD_ITEMS,
   type TeacherRecord,
   type BoardMemberRecord,
   type SchoolInfoRecord,
   type LeaveRequestRecord,
+  type ScoutRecord,
+  type WorkloadItem,
+  type WorkloadCategory,
+  type FeedbackItem,
 } from '@/lib/data/schoolData';
 import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
@@ -40,6 +46,10 @@ export type {
   BoardMemberRecord,
   SchoolInfoRecord,
   LeaveRequestRecord,
+  ScoutRecord,
+  WorkloadItem,
+  WorkloadCategory,
+  FeedbackItem,
 };
 
 // ============================================================================
@@ -82,6 +92,9 @@ export interface DatabaseState {
   leaveRequests: LeaveRequestRecord[];
   auditLogs: AuditLogRecord[];
   settings: SystemSettingsRecord;
+  scouts?: ScoutRecord[];
+  workloads?: WorkloadItem[];
+  feedbacks?: FeedbackItem[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -217,6 +230,15 @@ function parseDatabaseState(parsed: any): DatabaseState {
         ? parsed.logs
         : INITIAL_AUDIT_LOGS,
     settings: parsed.settings || INITIAL_SETTINGS,
+    scouts:
+      Array.isArray(parsed.scouts) && parsed.scouts.length > 0
+        ? parsed.scouts
+        : INITIAL_SCOUTS,
+    workloads:
+      Array.isArray(parsed.workloads) && parsed.workloads.length > 0
+        ? parsed.workloads
+        : INITIAL_WORKLOAD_ITEMS,
+    feedbacks: Array.isArray(parsed.feedbacks) ? parsed.feedbacks : [],
   };
 }
 
@@ -1388,3 +1410,359 @@ export async function dbSaveSettings(settings: Partial<SystemSettingsRecord>): P
   saveDatabase(db);
   return db.settings;
 }
+
+// ============================================================================
+// 8. SCOUT QUALIFICATIONS DATABASE ENGINE (history_scout & teachers)
+// ============================================================================
+
+export function scoutFromDb(row: any, teachers: TeacherRecord[] = []): ScoutRecord {
+  const teacher = teachers.find(
+    (t) => t.id === row.emp_id || (t.employeeCode && t.employeeCode === row.emp_id)
+  );
+
+  return {
+    id: row.record_id || row.id || `SCT-${Date.now()}`,
+    teacherId: row.emp_id || row.teacher_id || teacher?.id || 'TCH-001',
+    teacherName: teacher?.name || row.teacher_name || 'ไม่ระบุชื่อ',
+    position: teacher?.position || row.position || 'ครู',
+    qualification: row.scout_qualification || row.qualification || 'ลูกเสือ',
+    badgeLevel: row.scout_type || row.badge_level || 'ทั่วไป',
+    category: row.scout_position || row.category || 'ผู้บังคับบัญชาลูกเสือ',
+    issueDate: row.approved_year || row.issue_date || '',
+    certificateNo: row.cert_number || row.certificate_no || '',
+    issuedBy: row.issued_by || 'สำนักงานลูกเสือแห่งชาติ',
+    orderNumber: row.order_number || '',
+  };
+}
+
+export function scoutToDb(s: ScoutRecord) {
+  return {
+    record_id: s.id,
+    emp_id: s.teacherId,
+    scout_qualification: s.qualification,
+    scout_type: s.badgeLevel,
+    scout_position: s.category,
+    cert_number: s.certificateNo,
+    approved_year: s.issueDate,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function dbGetScouts(): Promise<ScoutRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const teachers = await dbGetTeachers();
+    const { data, error } = await supabase.from('history_scout').select('*');
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map((r: any) => scoutFromDb(r, teachers));
+    }
+    // Also include scout data from teachers if history_scout table is empty
+    const scoutsFromTeachers: ScoutRecord[] = teachers
+      .filter((t: any) => t.highestScout && t.highestScout !== 'ไม่มีวุฒิลูกเสือ' && t.highestScout !== '-')
+      .map((t: any, idx: number) => ({
+        id: `SCT-${t.id || idx + 1}`,
+        teacherId: t.id,
+        teacherName: t.name,
+        position: t.position,
+        qualification: t.highestScout,
+        badgeLevel: t.highestScout.includes('ท่อน') ? t.highestScout.split('(')[0].trim() : t.highestScout,
+        category: 'ผู้บังคับบัญชาลูกเสือ',
+        issueDate: '',
+        certificateNo: t.scoutCertNo || '',
+        issuedBy: 'สำนักงานลูกเสือแห่งชาติ',
+        orderNumber: '',
+      }));
+    if (scoutsFromTeachers.length > 0) {
+      return scoutsFromTeachers;
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return db.scouts || INITIAL_SCOUTS;
+}
+
+export async function dbUpsertScout(scout: ScoutRecord): Promise<ScoutRecord> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbRow = scoutToDb(scout);
+    const { data, error } = await supabase
+      .from('history_scout')
+      .upsert(dbRow, { onConflict: 'record_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbUpsertScout] Supabase upsert error:', error);
+      throw new Error(`ไม่สามารถบันทึกข้อมูลวุฒิลูกเสือลง Supabase ได้: ${error.message}`);
+    }
+
+    // Also sync back to teachers table (highest_scout & scout_cert_no)
+    if (scout.teacherId) {
+      await supabase
+        .from('teachers')
+        .update({
+          highest_scout: scout.qualification,
+          scout_cert_no: scout.certificateNo,
+        })
+        .or(`id.eq.${scout.teacherId},employee_code.eq.${scout.teacherId}`);
+    }
+
+    const teachers = await dbGetTeachers();
+    return scoutFromDb(data, teachers);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const currentScouts = db.scouts || INITIAL_SCOUTS;
+  const existingIdx = currentScouts.findIndex((s) => s.id === scout.id);
+  if (existingIdx >= 0) {
+    currentScouts[existingIdx] = scout;
+  } else {
+    currentScouts.push(scout);
+  }
+  db.scouts = currentScouts;
+  saveDatabase(db);
+  return scout;
+}
+
+export async function dbDeleteScout(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('history_scout').delete().eq('record_id', id);
+    if (error) {
+      console.error('[dbDeleteScout] Supabase delete error:', error);
+      throw new Error(`ไม่สามารถลบข้อมูลวุฒิลูกเสือจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const currentScouts = db.scouts || INITIAL_SCOUTS;
+  db.scouts = currentScouts.filter((s) => s.id !== id);
+  saveDatabase(db);
+  return true;
+}
+
+// ============================================================================
+// 9. WORKLOADS & PA DATABASE ENGINE (staff_workloads)
+// ============================================================================
+
+export function workloadFromDb(row: any): WorkloadItem {
+  return {
+    id: row.workload_id || row.id || `WL-${Date.now()}`,
+    teacherId: row.emp_id || row.teacher_id || 'TCH-001',
+    category: (row.category || 'งานสอนและการจัดการเรียนรู้') as WorkloadCategory,
+    title: row.title || '',
+    subGroupOrLevel: row.sub_group_or_level || '',
+    hoursPerWeek: Number(row.hours_per_week) || 0,
+    roleInTask: row.role_in_task || 'ผู้รับผิดชอบหลัก',
+    orderOrRef: row.order_or_ref || '',
+    status: (row.status || 'กำลังดำเนินการ') as any,
+    coEmp: row.co_emp_ids || '',
+    courseCode: row.academic_term || '',
+    type: (row.effective_period === 'TA' ? 'TA' : 'MAIN'),
+  };
+}
+
+export function workloadToDb(w: WorkloadItem) {
+  return {
+    workload_id: w.id,
+    emp_id: w.teacherId,
+    co_emp_ids: w.coEmp || '',
+    category: w.category,
+    title: w.title,
+    sub_group_or_level: w.subGroupOrLevel || '',
+    hours_per_week: w.hoursPerWeek,
+    role_in_task: w.roleInTask,
+    academic_term: w.courseCode || '',
+    order_or_ref: w.orderOrRef || '',
+    effective_period: w.type || 'MAIN',
+    status: w.status,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function dbGetWorkloads(): Promise<WorkloadItem[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from('staff_workloads').select('*');
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(workloadFromDb);
+    }
+    if (data && data.length === 0) {
+      return INITIAL_WORKLOAD_ITEMS;
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return db.workloads && db.workloads.length > 0 ? db.workloads : INITIAL_WORKLOAD_ITEMS;
+}
+
+export async function dbUpsertWorkload(workload: WorkloadItem): Promise<WorkloadItem> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbRow = workloadToDb(workload);
+    const { data, error } = await supabase
+      .from('staff_workloads')
+      .upsert(dbRow, { onConflict: 'workload_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbUpsertWorkload] Supabase upsert error:', error);
+      throw new Error(`ไม่สามารถบันทึกข้อมูลภาระงานลง Supabase ได้: ${error.message}`);
+    }
+    return workloadFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const currentWorkloads = db.workloads && db.workloads.length > 0 ? db.workloads : [...INITIAL_WORKLOAD_ITEMS];
+  const existingIdx = currentWorkloads.findIndex((w) => w.id === workload.id);
+  if (existingIdx >= 0) {
+    currentWorkloads[existingIdx] = workload;
+  } else {
+    currentWorkloads.push(workload);
+  }
+  db.workloads = currentWorkloads;
+  saveDatabase(db);
+  return workload;
+}
+
+export async function dbDeleteWorkload(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('staff_workloads').delete().eq('workload_id', id);
+    if (error) {
+      console.error('[dbDeleteWorkload] Supabase delete error:', error);
+      throw new Error(`ไม่สามารถลบข้อมูลภาระงานจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const currentWorkloads = db.workloads && db.workloads.length > 0 ? db.workloads : [...INITIAL_WORKLOAD_ITEMS];
+  db.workloads = currentWorkloads.filter((w) => w.id !== id);
+  saveDatabase(db);
+  return true;
+}
+
+// ============================================================================
+// 10. SYSTEM FEEDBACK DATABASE ENGINE (system_feedback)
+// ============================================================================
+
+export function feedbackFromDb(row: any): FeedbackItem {
+  return {
+    id: row.feedback_id || row.id || `FB-${Date.now()}`,
+    category: (row.category || 'feature') as any,
+    title: row.topic || row.title || '',
+    description: row.detail || row.description || '',
+    senderName: row.full_name || row.sender_name || 'ไม่ระบุชื่อ',
+    status: row.status === 'รอการตอบรับ' ? 'pending' : row.status === 'เสร็จสิ้น' ? 'resolved' : (row.status || 'pending'),
+    submittedAt: row.timestamp || new Date().toISOString(),
+    response: row.admin_reply || row.response || '',
+  };
+}
+
+export function feedbackToDb(f: FeedbackItem) {
+  const dbStatus = f.status === 'pending' ? 'รอการตอบรับ' : f.status === 'resolved' ? 'เสร็จสิ้น' : f.status;
+  return {
+    feedback_id: f.id,
+    emp_id: '',
+    full_name: f.senderName,
+    category: f.category,
+    topic: f.title,
+    detail: f.description,
+    status: dbStatus,
+    admin_reply: f.response || '',
+    timestamp: f.submittedAt || new Date().toISOString(),
+  };
+}
+
+export async function dbGetFeedbacks(): Promise<FeedbackItem[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('system_feedback')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return data.map(feedbackFromDb);
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return db.feedbacks || [];
+}
+
+export async function dbCreateFeedback(feedback: FeedbackItem): Promise<FeedbackItem> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbRow = feedbackToDb(feedback);
+    const { data, error } = await supabase
+      .from('system_feedback')
+      .insert(dbRow)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbCreateFeedback] Supabase insert error:', error);
+      throw new Error(`ไม่สามารถบันทึกข้อเสนอแนะลง Supabase ได้: ${error.message}`);
+    }
+    return feedbackFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = db.feedbacks || [];
+  list.unshift(feedback);
+  db.feedbacks = list;
+  saveDatabase(db);
+  return feedback;
+}
+
+export async function dbUpdateFeedback(feedback: FeedbackItem): Promise<FeedbackItem> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbRow = feedbackToDb(feedback);
+    const { data, error } = await supabase
+      .from('system_feedback')
+      .update(dbRow)
+      .eq('feedback_id', feedback.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbUpdateFeedback] Supabase update error:', error);
+      throw new Error(`ไม่สามารถอัปเดตข้อเสนอแนะใน Supabase ได้: ${error.message}`);
+    }
+    return feedbackFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = db.feedbacks || [];
+  const idx = list.findIndex((f) => f.id === feedback.id);
+  if (idx >= 0) {
+    list[idx] = feedback;
+  }
+  db.feedbacks = list;
+  saveDatabase(db);
+  return feedback;
+}
+
