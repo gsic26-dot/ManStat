@@ -17,7 +17,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Briefcase,
   CheckCircle2,
@@ -35,7 +35,7 @@ import {
   Clock,
   Layers,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
 
 export type WorkloadCategory =
@@ -367,10 +367,26 @@ const INITIAL_WORKLOAD_ITEMS: WorkloadItem[] = [
 ];
 
 export const ViewWorkload: React.FC = () => {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [tierFilter, setTierFilter] = useState<'ALL' | 'PASSED' | 'FAILED'>('ALL');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [workloads, setWorkloads] = useState<WorkloadItem[]>(INITIAL_WORKLOAD_ITEMS);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Modal State for Workload Assignment Form
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -393,7 +409,7 @@ export const ViewWorkload: React.FC = () => {
 
   // Open Modal (Global or for specific teacher/category)
   const handleOpenAssignModal = (teacherId?: string, category?: WorkloadCategory) => {
-    const targetTeacherId = teacherId || INITIAL_TEACHERS[0].id;
+    const targetTeacherId = teacherId || (teachersList[0]?.id || INITIAL_TEACHERS[0].id);
     const targetCat = category || 'งานสอนและการจัดการเรียนรู้';
 
     setFormTeacherId(targetTeacherId);
@@ -473,7 +489,7 @@ export const ViewWorkload: React.FC = () => {
 
   // Dynamic calculations across all 4 categories per teacher
   const workloadData = useMemo(() => {
-    return INITIAL_TEACHERS.map((teacher, idx) => {
+    return teachersList.map((teacher, idx) => {
       const isDirector = teacher.position.includes('ผู้อำนวยการ');
       const teacherWorkloads = workloads.filter((w) => w.teacherId === teacher.id);
 
@@ -530,7 +546,7 @@ export const ViewWorkload: React.FC = () => {
         m4Items,
       };
     });
-  }, [workloads]);
+  }, [workloads, teachersList]);
 
   const filtered = useMemo(() => {
     return workloadData.filter((w) => {
@@ -1047,7 +1063,7 @@ export const ViewWorkload: React.FC = () => {
                   onChange={(e) => setFormTeacherId(e.target.value)}
                   className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                 >
-                  {INITIAL_TEACHERS.map((t) => (
+                  {teachersList.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}) · {t.employeeCode}
                     </option>

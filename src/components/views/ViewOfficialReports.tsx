@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileSpreadsheet,
   Search,
@@ -21,23 +21,46 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 
 export function ViewOfficialReports() {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [roundFilter, setRoundFilter] = useState<'FULL' | 'ROUND_1' | 'ROUND_2'>('FULL');
   const [deptFilter, setDeptFilter] = useState('ALL');
 
-  const departments = Array.from(new Set(INITIAL_TEACHERS.map((t) => t.department)));
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const filteredTeachers = INITIAL_TEACHERS.filter((t) => {
-    const matchesSearch =
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDept = deptFilter === 'ALL' || t.department === deptFilter;
-    return matchesSearch && matchesDept;
-  });
+  const departments = useMemo(
+    () => Array.from(new Set(teachersList.map((t) => t.department))),
+    [teachersList]
+  );
+
+  const filteredTeachers = useMemo(
+    () =>
+      teachersList.filter((t) => {
+        const matchesSearch =
+          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.position.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDept = deptFilter === 'ALL' || t.department === deptFilter;
+        return matchesSearch && matchesDept;
+      }),
+    [teachersList, searchQuery, deptFilter]
+  );
 
   const roundTitles: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
     FULL: {

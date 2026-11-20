@@ -11,7 +11,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Award,
   AlertTriangle,
@@ -21,13 +21,29 @@ import {
   ExternalLink,
   ChevronRight,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
 
 export const ViewRegLicense: React.FC = () => {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [filterHealth, setFilterHealth] = useState<'ALL' | 'VALID' | 'EXPIRING_SOON' | 'EXPIRED'>('ALL');
   const [search, setSearch] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -48,7 +64,7 @@ export const ViewRegLicense: React.FC = () => {
       daysRemaining: number;
     }> = [];
 
-    INITIAL_TEACHERS.forEach((t) => {
+    teachersList.forEach((t) => {
       (t.licenses || []).forEach((lic) => {
         const evalResult = evaluateLicenseHealth(lic.expiryDate);
         list.push({
@@ -67,7 +83,7 @@ export const ViewRegLicense: React.FC = () => {
     });
 
     return list;
-  }, []);
+  }, [teachersList]);
 
   const stats = useMemo(() => {
     return {

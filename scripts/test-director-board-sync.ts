@@ -93,7 +93,7 @@ const terminatedBoardMember: BoardMemberRecord = {
 
 const stoppedDuration = formatServiceDuration(terminatedBoardMember.appointmentDate, terminatedBoardMember.endDate);
 assert(stoppedDuration === '1 ปี 11 เดือน', `Duration stopped at endDate: ${stoppedDuration}`);
-const thaiEndFormatted = formatOfficialThaiDate(terminatedBoardMember.endDate);
+const thaiEndFormatted = formatOfficialThaiDate(terminatedBoardMember.endDate!);
 assert(thaiEndFormatted.includes('กันยายน 2567'), `Thai end date formatted correctly: ${thaiEndFormatted}`);
 
 console.log('\nALL 3 TEST CASES PASSED SUCCESSFULLY!');

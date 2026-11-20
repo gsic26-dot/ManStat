@@ -11,21 +11,37 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Award, Calendar, Search, Medal, LayoutList, LayoutGrid, FileText, ChevronRight } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 
 export const ViewRegStanding: React.FC = () => {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
   const standingData = useMemo(() => {
-    return INITIAL_TEACHERS.map((t) => ({
+    return teachersList.map((t) => ({
       id: t.id,
       name: t.name,
       position: t.position,
@@ -34,7 +50,7 @@ export const ViewRegStanding: React.FC = () => {
       startDate: t.startDate,
       orders: t.standings,
     }));
-  }, []);
+  }, [teachersList]);
 
   const filtered = useMemo(() => {
     return standingData.filter(

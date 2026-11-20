@@ -10,14 +10,14 @@
  * ============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Send,
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 
 interface FeedbackItem {
   id: string;
@@ -31,6 +31,7 @@ interface FeedbackItem {
 }
 
 export function ViewFeedback() {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([
     {
       id: 'FB-001',
@@ -59,6 +60,21 @@ export function ViewFeedback() {
   const [description, setDescription] = useState('');
   const [senderName, setSenderName] = useState(INITIAL_TEACHERS[0].name);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +151,7 @@ export function ViewFeedback() {
                 onChange={(e) => setSenderName(e.target.value)}
                 className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                {INITIAL_TEACHERS.map((t) => (
+                {teachersList.map((t) => (
                   <option key={t.id} value={t.name} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                     {t.name}
                   </option>

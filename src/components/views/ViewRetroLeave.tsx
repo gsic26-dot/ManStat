@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   RotateCcw,
   Calendar,
@@ -33,7 +33,7 @@ import {
   Trash2,
   Info,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import {
   MASTER_LEAVE_TYPES,
   isZeroDayLeaveType,
@@ -51,6 +51,7 @@ interface TeachingWorkloadRow {
 }
 
 export function ViewRetroLeave() {
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [selectedTeacherId, setSelectedTeacherId] = useState(INITIAL_TEACHERS[0].id);
   const [leaveType, setLeaveType] = useState<LeaveType>('ลาป่วย');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -61,6 +62,21 @@ export function ViewRetroLeave() {
   const [retroReason, setRetroReason] = useState('');
   const [medicalCertNo, setMedicalCertNo] = useState('');
   const [substituteTeacher, setSubstituteTeacher] = useState(INITIAL_TEACHERS[1].name);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setTeachersList(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // School Exit & Official Mission specific states
   const [startTime, setStartTime] = useState('09:00');
@@ -76,7 +92,7 @@ export function ViewRetroLeave() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const selectedTeacher = INITIAL_TEACHERS.find((t) => t.id === selectedTeacherId);
+  const selectedTeacher = teachersList.find((t) => t.id === selectedTeacherId) || teachersList[0];
 
   // Type categorizations
   const isExit = isSchoolExitPermit(leaveType);
@@ -253,7 +269,7 @@ export function ViewRetroLeave() {
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
                 >
-                  {INITIAL_TEACHERS.map((t) => (
+                  {teachersList.map((t) => (
                     <option
                       key={t.id}
                       value={t.id}
@@ -765,7 +781,7 @@ export function ViewRetroLeave() {
                 onChange={(e) => setSubstituteTeacher(e.target.value)}
                 className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               >
-                {INITIAL_TEACHERS.map((t) => (
+                {teachersList.map((t) => (
                   <option key={t.id} value={t.name}>
                     {t.name} ({t.position})
                   </option>
