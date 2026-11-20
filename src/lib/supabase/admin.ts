@@ -2,12 +2,20 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let cachedAdminClient: SupabaseClient | null = null;
 
+function sanitizeUrl(rawUrl?: string): string {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+  url = url.replace(/\/rest\/v1\/?$/i, '');
+  url = url.replace(/\/+$/, '');
+  return url;
+}
+
 /**
  * Checks whether Supabase URL and Service Role Key are legitimately configured.
  * Returns false if keys are missing or contain placeholder dummy values.
  */
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = sanitizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceKey) return false;
@@ -27,7 +35,7 @@ export function isSupabaseConfigured(): boolean {
 export function getSupabaseAdmin(): SupabaseClient {
   if (cachedAdminClient) return cachedAdminClient;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const url = sanitizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
   if (!isSupabaseConfigured()) {
