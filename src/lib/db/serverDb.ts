@@ -2,15 +2,20 @@
  * ============================================================================
  * ManStat-Modern: Server Database Engine (serverDb.ts)
  * ============================================================================
- * Dual-Mode Database Store for ManStat-Modern:
- * 1. Supabase PostgreSQL (Full Relational - Production & Connected Dev)
- *    - 7 Relational Tables: school_info, teachers, board_members, holidays,
- *      leave_requests, audit_logs, system_settings
- *    - Direct query without memory caching to guarantee cross-instance sync
- *    - Bypasses RLS via SUPABASE_SERVICE_ROLE_KEY
+ * Compatible Dual-Mode Database Store:
+ * 1. Supabase PostgreSQL (Full Relational & Pre-existing 16 Tables Architecture)
+ *    - Connects directly to existing Supabase tables (teachers, board_members,
+ *      holidays, leave_logs, school_info, active_classes, audit_logs, system_settings)
+ *    - Uses exact primary keys:
+ *      * board_members -> member_id
+ *      * holidays      -> holiday_date
+ *      * leave_logs    -> leave_id (with leave_requests fallback)
+ *      * teachers      -> id (with employee_code sync)
+ *      * school_info   -> supports both vertical (key, val) & flat rows
+ *    - Zero-loss guarantee: NEVER overwrites or truncates existing Supabase data
+ *    - Direct query without stale caching
  * 2. Local JSON Storage (Offline Local Development Fallback ONLY)
  *    - data/manstat_db.json
- *    - Disallowed on Vercel without Supabase keys (throws clear configuration error)
  * ============================================================================
  */
 
@@ -27,6 +32,8 @@ import {
   type SchoolInfoRecord,
   type LeaveRequestRecord,
 } from '@/lib/data/schoolData';
+import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
+import { mapAccessLevelToRole } from '@/lib/auth/roles';
 
 export type {
   TeacherRecord,
@@ -34,8 +41,6 @@ export type {
   SchoolInfoRecord,
   LeaveRequestRecord,
 };
-import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
-import { mapAccessLevelToRole } from '@/lib/auth/roles';
 
 // ============================================================================
 // DATA INTERFACES
@@ -78,6 +83,18 @@ export interface DatabaseState {
   auditLogs: AuditLogRecord[];
   settings: SystemSettingsRecord;
 }
+
+export const BOARD_POSITIONS_MAP: Record<string, string> = {
+  CHAIR: 'ประธานกรรมการ',
+  PARENT_REP: 'ผู้แทนผู้ปกครอง',
+  TEACHER_REP: 'ผู้แทนครู',
+  COMMUNITY_REP: 'ผู้แทนองค์กรชุมชน',
+  LOCAL_ADMIN: 'ผู้แทนองค์กรปกครองส่วนท้องถิ่น',
+  ALUMNI_REP: 'ผู้แทนศิษย์เก่า',
+  RELIGION_REP: 'ผู้แทนพระภิกษุสงฆ์ / ศาสนา',
+  EXPERT: 'กรรมการผู้ทรงคุณวุฒิ',
+  DIRECTOR_SEC: 'กรรมการและเลขานุการ',
+};
 
 export const INITIAL_HOLIDAYS: HolidayRecord[] = [
   { id: 'h-01', date: '2026-10-13', name: 'วันนวมินทรมหาราช', type: 'วันหยุดราชการประจำปี' },
@@ -173,7 +190,7 @@ function parseDatabaseState(parsed: any): DatabaseState {
   return {
     schoolInfo: parsed.schoolInfo || INITIAL_SCHOOL_INFO,
     teachers:
-      Array.isArray(parsed.teachers) && parsed.teachers.length > 0 && parsed.teachers[0].employeeCode
+      Array.isArray(parsed.teachers) && parsed.teachers.length > 0
         ? parsed.teachers
         : INITIAL_TEACHERS,
     boardMembers:
@@ -183,7 +200,7 @@ function parseDatabaseState(parsed: any): DatabaseState {
     holidays:
       Array.isArray(parsed.holidays) && parsed.holidays.length > 0
         ? parsed.holidays.map((h: any, idx: number) => ({
-            id: h.id || `h-${idx + 1}`,
+            id: h.id || h.holiday_date || `h-${idx + 1}`,
             date: h.date || h.holiday_date || '',
             name: h.name || h.reason_type || 'วันหยุดราชการ',
             type: h.type || 'วันหยุดราชการประจำปี',
@@ -205,9 +222,12 @@ function parseDatabaseState(parsed: any): DatabaseState {
 
 export function loadDatabase(forceReload = false): DatabaseState {
   const writableFile = getWritableDbFile();
-  const activeFile = (writableFile === TMP_DB_FILE && fs.existsSync(TMP_DB_FILE))
-    ? TMP_DB_FILE
-    : (fs.existsSync(BUNDLED_DB_FILE) ? BUNDLED_DB_FILE : null);
+  const activeFile =
+    writableFile === TMP_DB_FILE && fs.existsSync(TMP_DB_FILE)
+      ? TMP_DB_FILE
+      : fs.existsSync(BUNDLED_DB_FILE)
+      ? BUNDLED_DB_FILE
+      : null;
 
   if (!forceReload && activeFile && memoryDb && lastLoadedFile === activeFile) {
     try {
@@ -314,10 +334,33 @@ export function saveDatabase(state: DatabaseState): void {
 }
 
 // ============================================================================
-// TWO-WAY ROW MAPPERS (camelCase <-> snake_case)
+// TWO-WAY ROW MAPPERS (camelCase <-> Supabase Schema)
 // ============================================================================
 
-// 1. school_info
+// 1. school_info (Vertical Key-Value ↔ SchoolInfoRecord)
+export const SCHOOL_INFO_KEYS_MAP: Record<string, keyof SchoolInfoRecord> = {
+  'ชื่อสถานศึกษา': 'schoolName',
+  'หน่วยงานต้นสังกัด': 'affiliation',
+  'รหัส 10 หลัก': 'schoolCode10',
+  'รหัส 8 หลัก': 'schoolCode8',
+  'ชื่อระบบแอปพลิเคชัน': 'appName',
+  'ชื่อผู้อำนวยการ': 'directorName',
+  'ตำแหน่งผู้อำนวยการ': 'directorPosition',
+  'เบอร์โทรศัพท์': 'contactPhone',
+  'อีเมล': 'email',
+  'ที่อยู่': 'address',
+  'ละติจูด (Lat)': 'lat',
+  'ลองจิจูด (Lng)': 'lng',
+  'Logo Base64': 'logoBase64',
+  'รักษาการคนที่ 1': 'actingDirector1',
+  'รักษาการคนที่ 2': 'actingDirector2',
+  'ปีการศึกษา': 'academicYear',
+  'ปีงบประมาณ': 'fiscalYear',
+  'ภาคเรียนปัจจุบัน': 'currentTerm',
+  'จำนวนนักเรียน': 'studentCount',
+  'วันที่อ้างอิงข้อมูลนักเรียน': 'studentDataDate',
+};
+
 export function schoolInfoToDb(info: Partial<SchoolInfoRecord>) {
   return {
     id: 'default',
@@ -346,32 +389,51 @@ export function schoolInfoToDb(info: Partial<SchoolInfoRecord>) {
 }
 
 export function schoolInfoFromDb(row: any): SchoolInfoRecord {
+  // If row is a vertical key-value array
+  if (Array.isArray(row)) {
+    const res: any = { ...INITIAL_SCHOOL_INFO };
+    for (const item of row) {
+      const mappedKey = SCHOOL_INFO_KEYS_MAP[item.key];
+      if (mappedKey) {
+        if (mappedKey === 'studentCount') {
+          res[mappedKey] = parseInt(item.val) || 0;
+        } else if (mappedKey === 'lat' || mappedKey === 'lng') {
+          res[mappedKey] = item.val ? parseFloat(item.val) : undefined;
+        } else {
+          res[mappedKey] = item.val || '';
+        }
+      }
+    }
+    return res;
+  }
+
+  // Flat row format
   return {
-    appName: row.app_name || 'ManStat-Modern',
-    schoolName: row.school_name || '',
+    appName: row.app_name || row.appName || 'ManStat-Modern',
+    schoolName: row.school_name || row.schoolName || '',
     affiliation: row.affiliation || '',
-    schoolCode10: row.school_code_10 || '',
-    schoolCode8: row.school_code_8 || '',
-    directorName: row.director_name || '',
-    directorPosition: row.director_position || 'ผู้อำนวยการโรงเรียน',
-    actingDirector1: row.acting_director_1 || '',
-    actingDirector2: row.acting_director_2 || '',
-    contactPhone: row.contact_phone || '',
+    schoolCode10: row.school_code_10 || row.schoolCode10 || '',
+    schoolCode8: row.school_code_8 || row.schoolCode8 || '',
+    directorName: row.director_name || row.directorName || '',
+    directorPosition: row.director_position || row.directorPosition || 'ผู้อำนวยการโรงเรียน',
+    actingDirector1: row.acting_director_1 || row.actingDirector1 || '',
+    actingDirector2: row.acting_director_2 || row.actingDirector2 || '',
+    contactPhone: row.contact_phone || row.contactPhone || '',
     email: row.email || '',
     address: row.address || '',
     lat: row.lat ? parseFloat(row.lat) : undefined,
     lng: row.lng ? parseFloat(row.lng) : undefined,
-    logoBase64: row.logo_base64 || '',
-    academicYear: row.academic_year || '2569',
-    currentTerm: row.current_term || '2',
-    fiscalYear: row.fiscal_year || '2570',
-    studentCount: Number(row.student_count) || 0,
-    studentDataDate: row.student_data_date || '',
+    logoBase64: row.logo_base64 || row.logoBase64 || '',
+    academicYear: row.academic_year || row.academicYear || '2569',
+    currentTerm: row.current_term || row.currentTerm || '2',
+    fiscalYear: row.fiscal_year || row.fiscalYear || '2570',
+    studentCount: Number(row.student_count ?? row.studentCount) || 0,
+    studentDataDate: row.student_data_date || row.studentDataDate || '',
     activeClasses: Array.isArray(row.active_classes) ? row.active_classes : [],
   };
 }
 
-// 2. teachers
+// 2. teachers (PK: id)
 export function teacherToDb(t: TeacherRecord) {
   const accessLevel =
     t.accessLevel === 'Superuser' || t.accessLevel === 'Admin' || t.accessLevel === 'User'
@@ -383,9 +445,11 @@ export function teacherToDb(t: TeacherRecord) {
     role = mapAccessLevelToRole(accessLevel);
   }
 
+  const id = t.id || t.employeeCode;
+
   return {
-    id: t.id || t.employeeCode,
-    employee_code: t.employeeCode || t.id || '',
+    id,
+    employee_code: t.employeeCode || id,
     name: t.name || '',
     prefix: t.prefix || '',
     first_name: t.firstName || '',
@@ -419,6 +483,13 @@ export function teacherToDb(t: TeacherRecord) {
 }
 
 export function teacherFromDb(row: any): TeacherRecord {
+  const accessLevel =
+    row.access_level === 'Superuser' || row.access_level === 'Admin' || row.access_level === 'User'
+      ? row.access_level
+      : 'User';
+
+  const role = row.role || mapAccessLevelToRole(accessLevel);
+
   return {
     id: row.id,
     employeeCode: row.employee_code || row.id,
@@ -426,14 +497,14 @@ export function teacherFromDb(row: any): TeacherRecord {
     prefix: row.prefix || '',
     firstName: row.first_name || '',
     lastName: row.last_name || '',
-    position: row.position || 'ครู',
+    position: row.position || (row.role && !['superuser', 'director', 'hr_admin', 'teacher'].includes(row.role) ? row.role : 'ครู'),
     academicStanding: row.academic_standing || '-',
     department: row.department || '',
     division: row.division || '',
     classLevel: row.class_level || '-',
     dutyDay: row.duty_day || '-',
-    accessLevel: row.access_level || 'User',
-    role: row.role || 'teacher',
+    accessLevel,
+    role,
     startDate: row.start_date || '',
     email: row.email || '',
     phone: row.phone || '',
@@ -454,71 +525,106 @@ export function teacherFromDb(row: any): TeacherRecord {
   };
 }
 
-// 3. board_members
+// 3. board_members (PK: member_id)
 export function boardMemberToDb(b: BoardMemberRecord) {
+  const memberId = b.id || (b as any).member_id || `SBD-${Date.now()}`;
   const validEndReasons = ['', 'ย้าย', 'ลาออก', 'เกษียณอายุราชการ'];
   const endReason = validEndReasons.includes(b.endReason || '') ? (b.endReason || '') : '';
+  const boardPosition = b.position || (b as any).board_position || 'EXPERT';
+  const positionTitle =
+    b.positionTitle ||
+    BOARD_POSITIONS_MAP[boardPosition] ||
+    'กรรมการสถานศึกษา';
+
+  const isExOfficio =
+    b.isExOfficio !== undefined
+      ? Boolean(b.isExOfficio)
+      : boardPosition === 'DIRECTOR_SEC';
 
   return {
-    id: b.id,
+    member_id: memberId,
     full_name: b.fullName || '',
-    position: b.position || 'EXPERT',
-    position_title: b.positionTitle || 'กรรมการผู้ทรงคุณวุฒิ',
+    prefix: (b as any).prefix || '',
+    first_name: (b as any).firstName || '',
+    last_name: (b as any).lastName || '',
+    board_position: boardPosition,
+    position_title: positionTitle,
     occupation: b.occupation || '-',
     organization: b.organization || '-',
     phone: b.phone || '-',
     status: b.status || 'ดำรงตำแหน่ง',
     term_number: Number(b.termNumber) || 1,
-    is_ex_officio: Boolean(b.isExOfficio),
-    appointment_date: b.appointmentDate || '',
+    is_ex_officio: isExOfficio,
+    appointment_date: b.appointmentDate || (b as any).start_date || '',
+    start_date: (b as any).start_date || b.appointmentDate || '',
     end_date: b.endDate || '',
     end_reason: endReason,
   };
 }
 
 export function boardMemberFromDb(row: any): BoardMemberRecord {
+  const position = row.board_position || row.position || 'EXPERT';
+  const positionTitle =
+    row.position_title ||
+    BOARD_POSITIONS_MAP[position] ||
+    'กรรมการสถานศึกษา';
+
+  const isExOfficio =
+    row.is_ex_officio !== undefined
+      ? Boolean(row.is_ex_officio)
+      : position === 'DIRECTOR_SEC' || (row.remark && row.remark.includes('โดยตำแหน่ง'));
+
   return {
-    id: row.id,
-    fullName: row.full_name,
-    position: row.position || 'EXPERT',
-    positionTitle: row.position_title || 'กรรมการผู้ทรงคุณวุฒิ',
+    id: row.member_id || row.id,
+    fullName: row.full_name || row.fullName || '-',
+    position,
+    positionTitle,
     occupation: row.occupation || '-',
     organization: row.organization || '-',
     phone: row.phone || '-',
     status: row.status || 'ดำรงตำแหน่ง',
-    termNumber: Number(row.term_number) || 1,
-    isExOfficio: Boolean(row.is_ex_officio),
-    appointmentDate: row.appointment_date || '',
+    termNumber: Number(row.term_number ?? row.termNumber ?? 1),
+    isExOfficio,
+    appointmentDate: row.appointment_date || row.start_date || '',
     endDate: row.end_date || '',
     endReason: row.end_reason || '',
   };
 }
 
-// 4. holidays
+// 4. holidays (PK: holiday_date)
 export function holidayToDb(h: HolidayRecord) {
+  const date = h.date || (h as any).holiday_date;
+  const name = h.name || (h as any).reason_type || 'วันหยุดราชการ';
   return {
-    id: h.id,
-    date: h.date,
-    name: h.name,
+    holiday_date: date,
+    reason_type: name,
+    name,
     type: h.type || 'วันหยุดราชการประจำปี',
+    id: h.id || date,
   };
 }
 
 export function holidayFromDb(row: any): HolidayRecord {
+  const date = row.holiday_date || row.date || '';
+  const name = row.reason_type || row.name || 'วันหยุดราชการ';
   return {
-    id: row.id,
-    date: row.date,
-    name: row.name,
+    id: row.id || date,
+    date,
+    name,
     type: row.type || 'วันหยุดราชการประจำปี',
   };
 }
 
-// 5. leave_requests
+// 5. leave_logs / leave_requests (PK: leave_id)
 export function leaveRequestToDb(r: LeaveRequestRecord) {
+  const leaveId = r.id || `LEV-${Date.now()}`;
   return {
-    id: r.id,
+    leave_id: leaveId,
+    id: leaveId,
     doc_no: r.docNo || '',
+    emp_id: r.teacherId,
     teacher_id: r.teacherId,
+    full_name: r.teacherName,
     teacher_name: r.teacherName,
     position: r.position || '',
     department: r.department || '',
@@ -527,11 +633,12 @@ export function leaveRequestToDb(r: LeaveRequestRecord) {
     start_date: r.startDate,
     end_date: r.endDate,
     total_days: Number(r.totalDays) || 0,
-    start_time: r.startTime || '',
-    end_time: r.endTime || '',
+    start_time: r.startTime || '-',
+    end_time: r.endTime || '-',
     total_hours: Number(r.totalHours) || 0,
     place: r.place || r.destination || '',
     reason: r.reason || '',
+    substitute_info: r.substituteTeacherName || 'ไม่มีคาบสอน',
     substitute_teacher_name: r.substituteTeacherName || '',
     workload_json: r.workloadJson || r.workloads || [],
     status: r.status || 'pending',
@@ -543,15 +650,19 @@ export function leaveRequestToDb(r: LeaveRequestRecord) {
 }
 
 export function leaveRequestFromDb(row: any): LeaveRequestRecord {
+  const id = row.leave_id || row.id;
+  const teacherId = row.emp_id || row.teacher_id || '';
+  const teacherName = row.full_name || row.teacher_name || '';
+
   return {
-    id: row.id,
+    id,
     docNo: row.doc_no || '',
-    teacherId: row.teacher_id,
-    teacherName: row.teacher_name,
+    teacherId,
+    teacherName,
     position: row.position || '',
     department: row.department || '',
     leaveType: row.leave_type,
-    leaveTypeName: row.leave_type_name,
+    leaveTypeName: row.leave_type_name || row.leave_type,
     startDate: row.start_date,
     endDate: row.end_date,
     totalDays: Number(row.total_days) || 0,
@@ -561,7 +672,7 @@ export function leaveRequestFromDb(row: any): LeaveRequestRecord {
     place: row.place || '',
     destination: row.place || '',
     reason: row.reason || '',
-    substituteTeacherName: row.substitute_teacher_name || '',
+    substituteTeacherName: row.substitute_teacher_name || row.substitute_info || '',
     workloadJson: Array.isArray(row.workload_json) ? row.workload_json : [],
     workloads: Array.isArray(row.workload_json) ? row.workload_json : [],
     status: row.status || 'pending',
@@ -631,7 +742,7 @@ export function systemSettingsFromDb(row: any): SystemSettingsRecord {
 }
 
 // ============================================================================
-// ONE-TIME SEEDING (ensureSupabaseSeeded)
+// ZERO-OVERWRITE SEEDING (ensureSupabaseSeeded)
 // ============================================================================
 
 let isSeededChecked = false;
@@ -643,57 +754,44 @@ export async function ensureSupabaseSeeded(): Promise<void> {
   try {
     const supabase = getSupabaseAdmin();
 
-    // Check count of teachers and school_info
-    const [teachersRes, schoolRes] = await Promise.all([
-      supabase.from('teachers').select('id', { count: 'exact', head: true }),
-      supabase.from('school_info').select('id', { count: 'exact', head: true }),
-    ]);
+    // Check existing count of teachers
+    const { count, error } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+    if (!error && count !== null && count > 0) {
+      // Existing data exists! NEVER overwrite existing Supabase data!
+      console.log(`[ensureSupabaseSeeded] Existing teachers found (${count} rows). Skipping seeding to preserve Supabase data.`);
+      isSeededChecked = true;
+      return;
+    }
 
-    const teacherCount = teachersRes.count ?? 0;
-    const schoolCount = schoolRes.count ?? 0;
-
-    // Seed only if both are empty (0 rows)
-    if (teacherCount === 0 && schoolCount === 0) {
-      console.log('[ensureSupabaseSeeded] Supabase database is empty. Seeding initial data from local JSON/defaults...');
+    // Only seed if teachers table is completely empty (0 rows)
+    if (count === 0) {
+      console.log('[ensureSupabaseSeeded] Supabase database has 0 teachers. Seeding initial data from local JSON...');
       const localData = loadDatabase();
 
-      // 1. school_info
-      await supabase.from('school_info').upsert(schoolInfoToDb(localData.schoolInfo));
-
-      // 2. teachers
+      // Seed teachers
       if (localData.teachers.length > 0) {
-        await supabase.from('teachers').upsert(localData.teachers.map(teacherToDb));
+        await supabase.from('teachers').upsert(localData.teachers.map(teacherToDb), { onConflict: 'id' });
       }
 
-      // 3. board_members
+      // Seed board_members
       if (localData.boardMembers.length > 0) {
-        await supabase.from('board_members').upsert(localData.boardMembers.map(boardMemberToDb));
+        await supabase.from('board_members').upsert(localData.boardMembers.map(boardMemberToDb), { onConflict: 'member_id' });
       }
 
-      // 4. holidays
+      // Seed holidays
       if (localData.holidays.length > 0) {
-        await supabase.from('holidays').upsert(localData.holidays.map(holidayToDb));
+        await supabase.from('holidays').upsert(localData.holidays.map(holidayToDb), { onConflict: 'holiday_date' });
       }
 
-      // 5. leave_requests
-      if (localData.leaveRequests.length > 0) {
-        await supabase.from('leave_requests').upsert(localData.leaveRequests.map(leaveRequestToDb));
-      }
+      // Seed system_settings
+      await supabase.from('system_settings').upsert(systemSettingsToDb(localData.settings), { onConflict: 'id' });
 
-      // 6. audit_logs
-      if (localData.auditLogs.length > 0) {
-        await supabase.from('audit_logs').upsert(localData.auditLogs.map(auditLogToDb));
-      }
-
-      // 7. system_settings
-      await supabase.from('system_settings').upsert(systemSettingsToDb(localData.settings));
-
-      console.log('[ensureSupabaseSeeded] Seeding completed successfully.');
+      console.log('[ensureSupabaseSeeded] Initial seeding completed successfully.');
     }
 
     isSeededChecked = true;
   } catch (seedErr: any) {
-    console.error('[ensureSupabaseSeeded] Error seeding initial Supabase data:', seedErr);
+    console.error('[ensureSupabaseSeeded] Error checking/seeding Supabase data:', seedErr);
   }
 }
 
@@ -716,13 +814,27 @@ export async function dbGetSchoolInfo(): Promise<SchoolInfoRecord> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.from('school_info').select('*').eq('id', 'default').maybeSingle();
+
+    // Check if school_info is vertical key-value or flat
+    const { data: rawRows, error } = await supabase.from('school_info').select('*');
     if (error) {
       console.error('[dbGetSchoolInfo] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลสถานศึกษาจาก Supabase ได้: ${error.message}`);
     }
-    if (data) {
-      return schoolInfoFromDb(data);
+
+    if (Array.isArray(rawRows) && rawRows.length > 0) {
+      // Check if vertical (has 'key' column)
+      if (rawRows[0].key !== undefined) {
+        const parsedInfo = schoolInfoFromDb(rawRows);
+        // Also fetch active_classes from active_classes table if available
+        const { data: classesData } = await supabase.from('active_classes').select('class_name').order('id', { ascending: true });
+        if (Array.isArray(classesData) && classesData.length > 0) {
+          parsedInfo.activeClasses = classesData.map((c: any) => c.class_name);
+        }
+        return parsedInfo;
+      }
+      // If flat row
+      return schoolInfoFromDb(rawRows[0]);
     }
   }
 
@@ -741,17 +853,65 @@ export async function dbSaveSchoolInfo(info: Partial<SchoolInfoRecord>): Promise
       activeClasses: Array.isArray(info.activeClasses) ? info.activeClasses : current.activeClasses,
     };
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('school_info')
-      .upsert(schoolInfoToDb(merged), { onConflict: 'id' })
-      .select()
-      .single();
 
-    if (error) {
-      console.error('[dbSaveSchoolInfo] Supabase upsert error:', error);
-      throw new Error(`ไม่สามารถบันทึกข้อมูลสถานศึกษาลง Supabase ได้: ${error.message}`);
+    // Check table format
+    const { data: testRows } = await supabase.from('school_info').select('*').limit(1);
+    const isVertical = Array.isArray(testRows) && testRows.length > 0 && testRows[0].key !== undefined;
+
+    if (isVertical) {
+      // Upsert vertical key-value rows
+      const verticalEntries: Array<{ key: string; val: string }> = [
+        { key: 'ชื่อสถานศึกษา', val: merged.schoolName },
+        { key: 'หน่วยงานต้นสังกัด', val: merged.affiliation },
+        { key: 'รหัส 10 หลัก', val: merged.schoolCode10 },
+        { key: 'รหัส 8 หลัก', val: merged.schoolCode8 },
+        { key: 'ชื่อระบบแอปพลิเคชัน', val: merged.appName || 'ManStat' },
+        { key: 'ชื่อผู้อำนวยการ', val: merged.directorName },
+        { key: 'ตำแหน่งผู้อำนวยการ', val: merged.directorPosition },
+        { key: 'เบอร์โทรศัพท์', val: merged.contactPhone },
+        { key: 'อีเมล', val: merged.email },
+        { key: 'ที่อยู่', val: merged.address },
+        { key: 'ละติจูด (Lat)', val: merged.lat != null ? String(merged.lat) : '' },
+        { key: 'ลองจิจูด (Lng)', val: merged.lng != null ? String(merged.lng) : '' },
+        { key: 'Logo Base64', val: merged.logoBase64 || '' },
+        { key: 'รักษาการคนที่ 1', val: merged.actingDirector1 },
+        { key: 'รักษาการคนที่ 2', val: merged.actingDirector2 },
+        { key: 'ปีการศึกษา', val: merged.academicYear },
+        { key: 'ปีงบประมาณ', val: merged.fiscalYear },
+        { key: 'ภาคเรียนปัจจุบัน', val: merged.currentTerm },
+        { key: 'จำนวนนักเรียน', val: String(merged.studentCount || 0) },
+        { key: 'วันที่อ้างอิงข้อมูลนักเรียน', val: merged.studentDataDate || '' },
+      ];
+
+      for (const entry of verticalEntries) {
+        const { error: upErr } = await supabase.from('school_info').upsert(entry, { onConflict: 'key' });
+        if (upErr) {
+          throw new Error(`ไม่สามารถบันทึกข้อมูล ${entry.key} ลง Supabase ได้: ${upErr.message}`);
+        }
+      }
+
+      // Sync active_classes table if updated
+      if (Array.isArray(info.activeClasses)) {
+        for (const cls of info.activeClasses) {
+          await supabase.from('active_classes').upsert({ class_name: cls }, { onConflict: 'class_name' });
+        }
+      }
+
+      return merged;
+    } else {
+      // Flat table format
+      const { data, error } = await supabase
+        .from('school_info')
+        .upsert(schoolInfoToDb(merged), { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[dbSaveSchoolInfo] Supabase upsert error:', error);
+        throw new Error(`ไม่สามารถบันทึกข้อมูลสถานศึกษาลง Supabase ได้: ${error.message}`);
+      }
+      return schoolInfoFromDb(data);
     }
-    return schoolInfoFromDb(data);
   }
 
   verifyVercelConfiguration();
@@ -766,13 +926,13 @@ export async function dbSaveSchoolInfo(info: Partial<SchoolInfoRecord>): Promise
 }
 
 // ----------------------------------------------------------------------------
-// 2. TEACHERS
+// 2. TEACHERS (PK: id)
 // ----------------------------------------------------------------------------
 export async function dbGetTeachers(): Promise<TeacherRecord[]> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.from('teachers').select('*').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('teachers').select('*').order('id', { ascending: true });
     if (error) {
       console.error('[dbGetTeachers] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลบุคลากรจาก Supabase ได้: ${error.message}`);
@@ -839,13 +999,13 @@ export async function dbDeleteTeacher(id: string): Promise<boolean> {
 }
 
 // ----------------------------------------------------------------------------
-// 3. BOARD MEMBERS
+// 3. BOARD MEMBERS (PK: member_id)
 // ----------------------------------------------------------------------------
 export async function dbGetBoardMembers(): Promise<BoardMemberRecord[]> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.from('board_members').select('*').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('board_members').select('*').order('term_number', { ascending: true });
     if (error) {
       console.error('[dbGetBoardMembers] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลคณะกรรมการสถานศึกษาจาก Supabase ได้: ${error.message}`);
@@ -865,7 +1025,7 @@ export async function dbUpsertBoardMember(member: BoardMemberRecord): Promise<Bo
     const row = boardMemberToDb(member);
     const { data, error } = await supabase
       .from('board_members')
-      .upsert(row, { onConflict: 'id' })
+      .upsert(row, { onConflict: 'member_id' })
       .select()
       .single();
 
@@ -879,7 +1039,10 @@ export async function dbUpsertBoardMember(member: BoardMemberRecord): Promise<Bo
   verifyVercelConfiguration();
   const db = loadDatabase();
   if (!db.boardMembers) db.boardMembers = [];
-  const existingIndex = db.boardMembers.findIndex((b) => b.id === member.id);
+  const memberId = member.id || (member as any).member_id;
+  const existingIndex = db.boardMembers.findIndex(
+    (b) => b.id === memberId || (b as any).member_id === memberId
+  );
   if (existingIndex >= 0) {
     db.boardMembers[existingIndex] = member;
   } else {
@@ -892,7 +1055,8 @@ export async function dbUpsertBoardMember(member: BoardMemberRecord): Promise<Bo
 export async function dbDeleteBoardMember(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from('board_members').delete().eq('id', id);
+    // Delete by member_id
+    const { error } = await supabase.from('board_members').delete().eq('member_id', id);
     if (error) {
       console.error('[dbDeleteBoardMember] Supabase delete error:', error);
       throw new Error(`ไม่สามารถลบคณะกรรมการสถานศึกษาจาก Supabase ได้: ${error.message}`);
@@ -902,19 +1066,19 @@ export async function dbDeleteBoardMember(id: string): Promise<boolean> {
 
   verifyVercelConfiguration();
   const db = loadDatabase();
-  db.boardMembers = (db.boardMembers || []).filter((b) => b.id !== id);
+  db.boardMembers = (db.boardMembers || []).filter((b) => b.id !== id && (b as any).member_id !== id);
   saveDatabase(db);
   return true;
 }
 
 // ----------------------------------------------------------------------------
-// 4. HOLIDAYS
+// 4. HOLIDAYS (PK: holiday_date)
 // ----------------------------------------------------------------------------
 export async function dbGetHolidays(): Promise<HolidayRecord[]> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.from('holidays').select('*').order('date', { ascending: true });
+    const { data, error } = await supabase.from('holidays').select('*').order('holiday_date', { ascending: true });
     if (error) {
       console.error('[dbGetHolidays] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลวันหยุดจาก Supabase ได้: ${error.message}`);
@@ -934,7 +1098,7 @@ export async function dbAddHoliday(holiday: HolidayRecord): Promise<HolidayRecor
     const row = holidayToDb(holiday);
     const { data, error } = await supabase
       .from('holidays')
-      .upsert(row, { onConflict: 'id' })
+      .upsert(row, { onConflict: 'holiday_date' })
       .select()
       .single();
 
@@ -956,7 +1120,8 @@ export async function dbAddHoliday(holiday: HolidayRecord): Promise<HolidayRecor
 export async function dbDeleteHoliday(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from('holidays').delete().eq('id', id);
+    // Delete by holiday_date or id
+    const { error } = await supabase.from('holidays').delete().eq('holiday_date', id);
     if (error) {
       console.error('[dbDeleteHoliday] Supabase delete error:', error);
       throw new Error(`ไม่สามารถลบวันหยุดจาก Supabase ได้: ${error.message}`);
@@ -966,23 +1131,36 @@ export async function dbDeleteHoliday(id: string): Promise<boolean> {
 
   verifyVercelConfiguration();
   const db = loadDatabase();
-  db.holidays = db.holidays.filter((h) => h.id !== id);
+  db.holidays = db.holidays.filter((h) => h.id !== id && h.date !== id);
   saveDatabase(db);
   return true;
 }
 
 // ----------------------------------------------------------------------------
-// 5. LEAVE REQUESTS
+// 5. LEAVE REQUESTS (leave_logs / leave_requests)
 // ----------------------------------------------------------------------------
 export async function dbGetLeaveRequests(status?: string): Promise<LeaveRequestRecord[]> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    let query = supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+
+    // Prioritize leave_logs table, fallback to leave_requests
+    let targetTable = 'leave_logs';
+    let query = supabase.from(targetTable).select('*').order('start_date', { ascending: false });
     if (status) {
       query = query.eq('status', status);
     }
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    if (error && error.message.includes('leave_logs')) {
+      targetTable = 'leave_requests';
+      let fbQuery = supabase.from(targetTable).select('*').order('created_at', { ascending: false });
+      if (status) fbQuery = fbQuery.eq('status', status);
+      const fbRes = await fbQuery;
+      data = fbRes.data;
+      error = fbRes.error;
+    }
+
     if (error) {
       console.error('[dbGetLeaveRequests] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลคำขอลาจาก Supabase ได้: ${error.message}`);
@@ -1004,11 +1182,23 @@ export async function dbUpsertLeaveRequest(req: LeaveRequestRecord): Promise<Lea
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
     const row = leaveRequestToDb(req);
-    const { data, error } = await supabase
-      .from('leave_requests')
-      .upsert(row, { onConflict: 'id' })
+
+    // Try leave_logs first
+    let { data, error } = await supabase
+      .from('leave_logs')
+      .upsert(row, { onConflict: 'leave_id' })
       .select()
       .single();
+
+    if (error && error.message.includes('leave_logs')) {
+      const fbRes = await supabase
+        .from('leave_requests')
+        .upsert(row, { onConflict: 'id' })
+        .select()
+        .single();
+      data = fbRes.data;
+      error = fbRes.error;
+    }
 
     if (error) {
       console.error('[dbUpsertLeaveRequest] Supabase upsert error:', error);
@@ -1033,7 +1223,11 @@ export async function dbUpsertLeaveRequest(req: LeaveRequestRecord): Promise<Lea
 export async function dbDeleteLeaveRequest(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from('leave_requests').delete().eq('id', id);
+    let { error } = await supabase.from('leave_logs').delete().eq('leave_id', id);
+    if (error && error.message.includes('leave_logs')) {
+      const fbRes = await supabase.from('leave_requests').delete().eq('id', id);
+      error = fbRes.error;
+    }
     if (error) {
       console.error('[dbDeleteLeaveRequest] Supabase delete error:', error);
       throw new Error(`ไม่สามารถลบคำขอลาจาก Supabase ได้: ${error.message}`);
@@ -1094,7 +1288,6 @@ export function recordAuditLog(
 
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
-    // Fire and record asynchronously to Supabase
     Promise.resolve(supabase.from('audit_logs').insert(auditLogToDb(newLog)))
       .then(({ error }) => {
         if (error) {
@@ -1106,7 +1299,6 @@ export function recordAuditLog(
       });
   }
 
-  // Always update local disk/memory fallback if not on Vercel
   if (!process.env.VERCEL) {
     try {
       const db = loadDatabase();
