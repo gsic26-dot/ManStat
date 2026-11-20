@@ -831,85 +831,120 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Navigation Tabs Bar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/90 dark:border-slate-800/80 pb-3">
-          <button
-            type="button"
-            onClick={() => setActiveTab('staff')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'staff'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <Users className="w-4 h-4 shrink-0" />
-            <span>จัดการบุคลากร ({teachers.length})</span>
-          </button>
+        {/* Navigation Tabs Bar - Modern Segmented Control */}
+        <div className="bg-white dark:bg-[#121822] p-2 sm:p-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg">
+            {/* 1. จัดการบุคลากร */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('staff')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'staff'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="จัดการข้อมูลบุคลากร"
+            >
+              <Users className={`w-4 h-4 shrink-0 ${activeTab === 'staff' ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}`} />
+              <span className="truncate">จัดการบุคลากร</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                activeTab === 'staff'
+                  ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/20'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {teachers.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('board')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'board'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <Award className="w-4 h-4 shrink-0" />
-            <span>คณะกรรมการสถานศึกษา ({boardMembers.length})</span>
-          </button>
+            {/* 2. คณะกรรมการสถานศึกษา */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('board')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'board'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="คณะกรรมการสถานศึกษา"
+            >
+              <Award className={`w-4 h-4 shrink-0 ${activeTab === 'board' ? 'text-purple-500 dark:text-purple-400' : 'text-slate-400'}`} />
+              <span className="truncate">คณะกรรมการสถานศึกษา</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                activeTab === 'board'
+                  ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {boardMembers.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('school')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'school'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <Building className="w-4 h-4 shrink-0" />
-            <span>ข้อมูลสถานศึกษา</span>
-          </button>
+            {/* 3. ข้อมูลสถานศึกษา */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('school')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'school'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="ข้อมูลสถานศึกษา"
+            >
+              <Building className={`w-4 h-4 shrink-0 ${activeTab === 'school' ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400'}`} />
+              <span className="truncate">ข้อมูลสถานศึกษา</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('fiscal')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'fiscal'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <Calendar className="w-4 h-4 shrink-0" />
-            <span>ปีงบประมาณและวันหยุด ({holidays.length})</span>
-          </button>
+            {/* 4. ปีงบประมาณและวันหยุด */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('fiscal')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'fiscal'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="ปีงบประมาณและวันหยุด"
+            >
+              <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'fiscal' ? 'text-amber-500 dark:text-amber-400' : 'text-slate-400'}`} />
+              <span className="truncate">ปีงบประมาณและวันหยุด</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                activeTab === 'fiscal'
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {holidays.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('audit')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'audit'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>ตรวจสอบ PDPA Audit Logs</span>
-          </button>
+            {/* 5. บันทึก PDPA */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('audit')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'audit'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="ตรวจสอบ PDPA Audit Logs"
+            >
+              <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab === 'audit' ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400'}`} />
+              <span className="truncate">บันทึก PDPA</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('preferences')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors duration-200 ${
-              activeTab === 'preferences'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            <Sliders className="w-4 h-4 shrink-0" />
-            <span>ตั้งค่าระบบ</span>
-          </button>
+            {/* 6. ตั้งค่าระบบ */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('preferences')}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeTab === 'preferences'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="ตั้งค่าระบบ"
+            >
+              <Sliders className={`w-4 h-4 shrink-0 ${activeTab === 'preferences' ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}`} />
+              <span className="truncate">ตั้งค่าระบบ</span>
+            </button>
+          </div>
         </div>
 
         {/* =================================================================== */}
