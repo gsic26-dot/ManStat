@@ -3,6 +3,9 @@ import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
 import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,7 +18,14 @@ export async function GET(request: Request) {
       list = list.filter((r) => r.status === status);
     }
 
-    return NextResponse.json({ success: true, data: list });
+    return NextResponse.json(
+      { success: true, data: list },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
