@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase } from '@/lib/db/serverDb';
+import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = loadDatabase();
+    const teachers = await dbGetTeachers();
 
     // 1. Master Superuser / Director master bypass credentials
     const isMasterSuperuser =
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (isMasterSuperuser) {
       // Find school director or use default EXE-001
-      matchedStaff = db.teachers.find(
+      matchedStaff = teachers.find(
         (t) => t.id === 'EXE-001' || t.employeeCode === 'EXE-001' || t.position.includes('ผู้อำนวยการ')
       ) || {
         id: 'EXE-001',
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       userRole = 'superuser';
     } else {
       // 2. Lookup staff in database by email, employeeCode, idCard (citizen ID), or phone
-      matchedStaff = db.teachers.find((t) => {
+      matchedStaff = teachers.find((t) => {
         const tEmail = (t.email || '').toLowerCase().trim();
         const tCode = (t.employeeCode || '').toLowerCase().trim();
         const tId = (t.id || '').toLowerCase().trim();

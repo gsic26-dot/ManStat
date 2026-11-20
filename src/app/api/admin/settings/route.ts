@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, saveDatabase, recordAuditLog, type SystemSettingsRecord } from '@/lib/db/serverDb';
+import {
+  dbGetSettings,
+  dbSaveSettings,
+  recordAuditLog,
+  type SystemSettingsRecord,
+} from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
@@ -7,9 +12,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const db = loadDatabase();
+    const settings = await dbGetSettings();
     return NextResponse.json(
-      { success: true, data: db.settings },
+      { success: true, data: settings },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -17,7 +22,11 @@ export async function GET() {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/settings GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลการตั้งค่าระบบ' },
+      { status: 500 }
+    );
   }
 }
 
@@ -34,13 +43,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const updatedSettings: Partial<SystemSettingsRecord> = body;
 
-    const db = loadDatabase();
-    db.settings = {
-      ...db.settings,
-      ...updatedSettings,
-    };
-
-    saveDatabase(db);
+    const saved = await dbSaveSettings(updatedSettings);
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -50,14 +53,14 @@ export async function POST(request: Request) {
       actorName,
       actorRole,
       'การตั้งค่าระบบ (System Preferences)',
-      `ปรับปรุงการตั้งค่าระบบ: Theme=${db.settings.themeMode}, View=${db.settings.preferredView}, MaskPDPA=${db.settings.maskCitizenId}`
+      `ปรับปรุงการตั้งค่าระบบ: Theme=${saved.themeMode}, View=${saved.preferredView}, MaskPDPA=${saved.maskCitizenId}, FiscalYear=${saved.fiscalYear}`
     );
 
     return NextResponse.json(
       {
         success: true,
         message: 'บันทึกการตั้งค่าระบบลงฐานข้อมูลเรียบร้อยแล้ว',
-        data: db.settings,
+        data: saved,
       },
       {
         headers: {
@@ -66,6 +69,10 @@ export async function POST(request: Request) {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/settings POST Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่าระบบ' },
+      { status: 500 }
+    );
   }
 }

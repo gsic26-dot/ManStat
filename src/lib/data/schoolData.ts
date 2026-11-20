@@ -65,6 +65,10 @@ export interface BoardMemberRecord {
   phone: string;
   status: string;
   termNumber: number;
+  isExOfficio?: boolean;
+  appointmentDate?: string;
+  endDate?: string;
+  endReason?: string;
 }
 
 export interface SchoolInfoRecord {
@@ -713,6 +717,8 @@ export interface LeaveRequestRecord {
   endTime?: string | null;
   totalHours?: number | null;
   destination?: string | null;
+  place?: string | null;
+  workloadJson?: any;
   officialOrderNo?: string | null;
   hasWorkload?: 'มี' | 'ไม่มี' | null;
   workloads?: Array<{ cls?: string; period?: string; task?: string; sub?: string }> | null;

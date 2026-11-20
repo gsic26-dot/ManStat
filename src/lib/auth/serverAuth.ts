@@ -8,7 +8,7 @@
  */
 
 import { cookies } from 'next/headers';
-import { loadDatabase } from '@/lib/db/serverDb';
+import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole, isAdminRole } from '@/lib/auth/roles';
 import type { UserRole } from '@/types/database.types';
 
@@ -44,11 +44,11 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
       return null;
     }
 
-    const db = loadDatabase();
+    const teachers = await dbGetTeachers();
 
     // 1. Lookup staff in database by userId as highest priority
     if (userId) {
-      const teacher = db.teachers.find(
+      const teacher = teachers.find(
         (t) => t.id === userId || t.employeeCode === userId
       );
 
@@ -69,7 +69,7 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
 
       // 2. Master Superuser Session check (fallback ONLY if userId is explicitly EXE-001)
       if (userId === 'EXE-001') {
-        const superuserStaff = db.teachers.find(
+        const superuserStaff = teachers.find(
           (t) => t.id === 'EXE-001' || t.employeeCode === 'EXE-001' || t.position.includes('ผู้อำนวยการ')
         );
         return {

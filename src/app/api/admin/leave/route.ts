@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import {
+  dbGetLeaveRequests,
+  dbUpsertLeaveRequest,
+  dbDeleteLeaveRequest,
+  recordAuditLog,
+} from '@/lib/db/serverDb';
 import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 
@@ -9,14 +14,9 @@ export const revalidate = 0;
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
+    const status = searchParams.get('status') || undefined;
 
-    const db = loadDatabase();
-    let list = db.leaveRequests || [];
-
-    if (status) {
-      list = list.filter((r) => r.status === status);
-    }
+    const list = await dbGetLeaveRequests(status);
 
     return NextResponse.json(
       { success: true, data: list },
@@ -27,32 +27,32 @@ export async function GET(request: Request) {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/leave GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลคำขอลา' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = loadDatabase();
-    if (!db.leaveRequests) {
-      db.leaveRequests = [];
-    }
-
     const { id } = body;
+
+    const currentRequests = await dbGetLeaveRequests();
     let savedRequest: LeaveRequestRecord;
     let actionType = 'CREATE_LEAVE_REQUEST';
 
-    const existingIndex = db.leaveRequests.findIndex((r) => r.id === id);
+    const existingIndex = currentRequests.findIndex((r) => r.id === id);
 
     if (existingIndex >= 0) {
       // Update existing request
-      const existing = db.leaveRequests[existingIndex];
+      const existing = currentRequests[existingIndex];
       savedRequest = {
         ...existing,
         ...body,
       };
-      db.leaveRequests[existingIndex] = savedRequest;
 
       if (body.status === 'approved' && existing.status !== 'approved') {
         actionType = 'APPROVE_LEAVE_REQUEST';
@@ -63,10 +63,11 @@ export async function POST(request: Request) {
       }
     } else {
       // Create new request
-      const newId = id || `LEV-${new Date().getFullYear() + 543}-${String(db.leaveRequests.length + 1).padStart(3, '0')}`;
+      const newId =
+        id || `LEV-${new Date().getFullYear() + 543}-${String(currentRequests.length + 1).padStart(3, '0')}`;
       savedRequest = {
         id: newId,
-        docNo: body.docNo || `ศธ 04052.12/${String(db.leaveRequests.length + 50).padStart(3, '0')}`,
+        docNo: body.docNo || `ศธ 04052.12/${String(currentRequests.length + 50).padStart(3, '0')}`,
         teacherId: body.teacherId || 'TCH-001',
         teacherName: body.teacherName || 'ไม่ระบุชื่อ',
         position: body.position || 'ครู',
@@ -76,39 +77,64 @@ export async function POST(request: Request) {
         startDate: body.startDate || new Date().toISOString().split('T')[0],
         endDate: body.endDate || new Date().toISOString().split('T')[0],
         totalDays: body.totalDays ?? 1,
+        startTime: body.startTime || '',
+        endTime: body.endTime || '',
+        totalHours: body.totalHours ?? 0,
+        place: body.place || body.destination || '',
         reason: body.reason || '',
         substituteTeacherName: body.substituteTeacherName || 'ไม่ระบุ',
+        workloadJson: body.workloadJson || body.workloads || [],
         status: body.status || 'pending',
         submittedAt: body.submittedAt || new Date().toISOString(),
         supervisorRemark: body.supervisorRemark || '',
         directorRemark: body.directorRemark || '',
         currentStep: body.currentStep ?? 1,
       };
-      db.leaveRequests.unshift(savedRequest);
     }
 
-    saveDatabase(db);
+    const saved = await dbUpsertLeaveRequest(savedRequest);
 
     const sessionUser = await getSessionUser();
-    const actorName = sessionUser ? `${sessionUser.name} (${sessionUser.position})` : 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการสถานศึกษา)';
+    const actorName = sessionUser
+      ? `${sessionUser.name} (${sessionUser.position})`
+      : 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการสถานศึกษา)';
     const actorRole = sessionUser?.role || 'superuser';
 
     recordAuditLog(
       actionType,
       actorName,
       actorRole,
-      `${savedRequest.teacherName} (เลขที่ ${savedRequest.docNo})`,
-      `${actionType === 'APPROVE_LEAVE_REQUEST' ? 'อนุมัติคำขอลา' : actionType === 'REJECT_LEAVE_REQUEST' ? 'ไม่อนุมัติคำขอลา' : 'บันทึกคำขอลา'}: ${savedRequest.leaveTypeName} (${savedRequest.startDate} ถึง ${savedRequest.endDate}) ${savedRequest.directorRemark ? `หมายเหตุ: ${savedRequest.directorRemark}` : ''}`
+      `${saved.teacherName} (เลขที่ ${saved.docNo})`,
+      `${actionType === 'APPROVE_LEAVE_REQUEST' ? 'อนุมัติคำขอลา' : actionType === 'REJECT_LEAVE_REQUEST' ? 'ไม่อนุมัติคำขอลา' : 'บันทึกคำขอลา'}: ${saved.leaveTypeName} (${saved.startDate} ถึง ${saved.endDate}) ${saved.directorRemark ? `หมายเหตุ: ${saved.directorRemark}` : ''}`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'บันทึกคำขอลาลงฐานข้อมูลเรียบร้อยแล้ว',
-      data: savedRequest,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'บันทึกคำขอลาลงฐานข้อมูลเรียบร้อยแล้ว',
+        data: saved,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/leave POST Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึกคำขอลา' },
+      { status: 500 }
+    );
   }
+}
+
+export async function PUT(request: Request) {
+  return POST(request);
+}
+
+export async function PATCH(request: Request) {
+  return POST(request);
 }
 
 export async function DELETE(request: Request) {
@@ -133,15 +159,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'กรุณาระบุ id ของคำขอลาที่ต้องการลบ' }, { status: 400 });
     }
 
-    const db = loadDatabase();
-    const target = (db.leaveRequests || []).find((r) => r.id === id);
+    const currentRequests = await dbGetLeaveRequests();
+    const target = currentRequests.find((r) => r.id === id);
 
     if (!target) {
       return NextResponse.json({ success: false, error: 'ไม่พบรายการคำขอลาที่ระบุ' }, { status: 404 });
     }
 
-    db.leaveRequests = (db.leaveRequests || []).filter((r) => r.id !== id);
-    saveDatabase(db);
+    await dbDeleteLeaveRequest(id);
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -154,12 +179,23 @@ export async function DELETE(request: Request) {
       `ลบคำร้องขอลา รหัส ${target.id} ออกจากระบบฐานข้อมูล`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'ลบคำร้องขอลาออกจากฐานข้อมูลเรียบร้อยแล้ว',
-      data: { id },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'ลบคำร้องขอลาออกจากฐานข้อมูลเรียบร้อยแล้ว',
+        data: { id },
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/leave DELETE Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการลบคำขอลา' },
+      { status: 500 }
+    );
   }
 }

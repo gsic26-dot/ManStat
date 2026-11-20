@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, saveDatabase, recordAuditLog, type HolidayRecord } from '@/lib/db/serverDb';
+import {
+  dbGetHolidays,
+  dbAddHoliday,
+  dbDeleteHoliday,
+  recordAuditLog,
+  type HolidayRecord,
+} from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
@@ -7,9 +13,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const db = loadDatabase();
+    const holidays = await dbGetHolidays();
     return NextResponse.json(
-      { success: true, data: db.holidays },
+      { success: true, data: holidays },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -17,7 +23,11 @@ export async function GET() {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/holidays GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลวันหยุดราชการ' },
+      { status: 500 }
+    );
   }
 }
 
@@ -41,7 +51,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = loadDatabase();
     const newHoliday: HolidayRecord = {
       id: `h-${Date.now()}`,
       date,
@@ -49,11 +58,8 @@ export async function POST(request: Request) {
       type,
     };
 
-    db.holidays.push(newHoliday);
-    // Sort by date ascending
-    db.holidays.sort((a, b) => a.date.localeCompare(b.date));
-
-    saveDatabase(db);
+    await dbAddHoliday(newHoliday);
+    const updatedHolidays = await dbGetHolidays();
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -66,13 +72,24 @@ export async function POST(request: Request) {
       `เพิ่มวันหยุดราชการ: ${name} (${date})`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'เพิ่มวันหยุดราชการเรียบร้อยแล้ว',
-      data: db.holidays,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'เพิ่มวันหยุดราชการเรียบร้อยแล้ว',
+        data: updatedHolidays,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/holidays POST Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการเพิ่มวันหยุดราชการ' },
+      { status: 500 }
+    );
   }
 }
 
@@ -93,15 +110,15 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing holiday id' }, { status: 400 });
     }
 
-    const db = loadDatabase();
-    const target = db.holidays.find((h) => h.id === id);
+    const currentHolidays = await dbGetHolidays();
+    const target = currentHolidays.find((h) => h.id === id);
 
     if (!target) {
       return NextResponse.json({ success: false, error: 'ไม่พบวันหยุดที่ต้องการลบ' }, { status: 404 });
     }
 
-    db.holidays = db.holidays.filter((h) => h.id !== id);
-    saveDatabase(db);
+    await dbDeleteHoliday(id);
+    const updatedHolidays = await dbGetHolidays();
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -114,12 +131,23 @@ export async function DELETE(request: Request) {
       `ลบวันหยุดราชการ: ${target.name} (${target.date})`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: `ลบวันหยุด ${target.name} เรียบร้อยแล้ว`,
-      data: db.holidays,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `ลบวันหยุด ${target.name} เรียบร้อยแล้ว`,
+        data: updatedHolidays,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/holidays DELETE Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการลบวันหยุดราชการ' },
+      { status: 500 }
+    );
   }
 }

@@ -13,7 +13,7 @@
 
 import { OfficialLeavePrintView, type LeavePrintData } from '@/components/print/OfficialLeavePrintView';
 import { createClient } from '@/lib/supabase/server';
-import { loadDatabase } from '@/lib/db/serverDb';
+import { dbGetLeaveRequests, dbGetSchoolInfo } from '@/lib/db/serverDb';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -25,9 +25,12 @@ export default async function LeavePrintPage({ params }: PageProps) {
   let printData: LeavePrintData | null = null;
 
   try {
-    // 1. Check local server JSON database first
-    const db = loadDatabase();
-    const localReq = (db.leaveRequests || []).find(
+    // 1. Check server database first
+    const [allLeaveRequests, schoolInfo] = await Promise.all([
+      dbGetLeaveRequests(),
+      dbGetSchoolInfo(),
+    ]);
+    const localReq = allLeaveRequests.find(
       (r: any) => r.id === id || r.docNo === id
     );
 
@@ -47,7 +50,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
         id: localReq.id,
         documentNo: localReq.docNo || `ศธ 04052.12/${localReq.id.slice(-3)}`,
         createdAt: localReq.submittedAt || new Date().toISOString(),
-        schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
+        schoolName: schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
         staffName: localReq.teacherName,
         prefix: prefix || 'นาย/นางสาว',
         firstName: firstName || localReq.teacherName,
@@ -55,7 +58,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
         position: localReq.position || 'ครู',
         academicStanding: 'ครูชำนาญการพิเศษ',
         department: localReq.department || 'งานบุคคล',
-        affiliation: 'โรงเรียนชุมชนบ้านตะขบ สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
+        affiliation: schoolInfo.affiliation || 'โรงเรียนชุมชนบ้านตะขบ สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
         leaveType: localReq.leaveTypeName || localReq.leaveType,
         reason: localReq.reason || '',
         startDate: localReq.startDate,
@@ -89,8 +92,8 @@ export default async function LeavePrintPage({ params }: PageProps) {
             : localReq.status === 'rejected'
             ? 'rejected'
             : 'pending',
-        approverName: 'นายธีรศักดิ์ มโนธรรม',
-        approverPosition: 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
+        approverName: schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม',
+        approverPosition: schoolInfo.directorPosition || 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
         approvedAt: localReq.status === 'approved' ? new Date().toISOString() : null,
         signatureUrl: null,
         rejectionReason: localReq.directorRemark || null,

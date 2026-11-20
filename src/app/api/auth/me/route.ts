@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { loadDatabase } from '@/lib/db/serverDb';
+import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 
 export const dynamic = 'force-dynamic';
@@ -25,16 +25,16 @@ export async function GET() {
       );
     }
 
-    const db = loadDatabase();
+    const teachers = await dbGetTeachers();
 
     // 1. Lookup user from database by userId as top priority
     let currentStaff = userId
-      ? db.teachers.find((t) => t.id === userId || t.employeeCode === userId)
+      ? teachers.find((t) => t.id === userId || t.employeeCode === userId)
       : null;
 
     // 2. Master Bypass fallback ONLY if userId === 'EXE-001' and not found in table
     if (!currentStaff && userId === 'EXE-001') {
-      const directorStaff = db.teachers.find((t) => t.position.includes('ผู้อำนวยการ'));
+      const directorStaff = teachers.find((t) => t.position.includes('ผู้อำนวยการ'));
       currentStaff = directorStaff || {
         id: 'EXE-001',
         employeeCode: 'EXE-001',

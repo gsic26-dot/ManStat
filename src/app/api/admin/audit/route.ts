@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import { dbGetAuditLogs, recordAuditLog } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
@@ -7,9 +7,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const db = loadDatabase();
+    const logs = await dbGetAuditLogs(200);
     return NextResponse.json(
-      { success: true, data: db.auditLogs },
+      { success: true, data: logs },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -17,7 +17,11 @@ export async function GET() {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/audit GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล Audit Logs' },
+      { status: 500 }
+    );
   }
 }
 
@@ -63,6 +67,10 @@ export async function POST(request: Request) {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/audit POST Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึก Audit Log' },
+      { status: 500 }
+    );
   }
 }

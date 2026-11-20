@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import {
+  dbGetBoardMembers,
+  dbUpsertBoardMember,
+  dbDeleteBoardMember,
+  recordAuditLog,
+} from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { BoardMemberRecord } from '@/lib/data/schoolData';
 
@@ -19,6 +24,7 @@ function normalizeMember(b: any): BoardMemberRecord {
   const position = b.position || b.board_position || 'EXPERT';
   const positionTitle =
     b.positionTitle ||
+    b.position_title ||
     BOARD_POSITIONS_MAP[position] ||
     'กรรมการสถานศึกษา';
   const fullName =
@@ -26,6 +32,15 @@ function normalizeMember(b: any): BoardMemberRecord {
     b.full_name ||
     `${b.prefix || ''}${b.first_name || ''} ${b.last_name || ''}`.trim() ||
     '-';
+
+  const isExOfficio =
+    b.isExOfficio !== undefined
+      ? Boolean(b.isExOfficio)
+      : b.is_ex_officio !== undefined
+      ? Boolean(b.is_ex_officio)
+      : position === 'DIRECTOR_SEC';
+
+  const endReason = b.endReason || b.end_reason || '';
 
   return {
     id: b.id || b.member_id || `SBD-${Math.random().toString(36).substring(2, 7)}`,
@@ -37,6 +52,10 @@ function normalizeMember(b: any): BoardMemberRecord {
     phone: b.phone || '-',
     status: b.status || 'ดำรงตำแหน่ง',
     termNumber: b.termNumber ?? b.term_number ?? 1,
+    isExOfficio,
+    appointmentDate: b.appointmentDate || b.appointment_date || '',
+    endDate: b.endDate || b.end_date || '',
+    endReason,
   };
 }
 
@@ -45,8 +64,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const db = loadDatabase();
-    const rawList = db.boardMembers || [];
+    const rawList = await dbGetBoardMembers();
     const normalized = rawList.map(normalizeMember);
     return NextResponse.json(
       { success: true, data: normalized },
@@ -57,7 +75,11 @@ export async function GET() {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/board GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลคณะกรรมการสถานศึกษา' },
+      { status: 500 }
+    );
   }
 }
 
@@ -81,24 +103,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = loadDatabase();
-    if (!db.boardMembers) db.boardMembers = [];
-
-    const existingIndex = db.boardMembers.findIndex(
-      (b: any) => (b.id && b.id === member.id) || (b.member_id && b.member_id === member.id)
+    const currentMembers = await dbGetBoardMembers();
+    const existingIndex = currentMembers.findIndex(
+      (b: any) => b.id === member.id || b.member_id === member.id
     );
     const isNew = existingIndex === -1;
 
-    if (isNew) {
-      db.boardMembers.push(member);
-    } else {
-      db.boardMembers[existingIndex] = {
-        ...db.boardMembers[existingIndex],
-        ...member,
-      };
-    }
-
-    saveDatabase(db);
+    const saved = await dbUpsertBoardMember(member);
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -108,16 +119,27 @@ export async function POST(request: Request) {
       actorName,
       actorRole,
       member.fullName,
-      `${isNew ? 'เพิ่ม' : 'แก้ไข'}กรรมการสถานศึกษา: ${member.fullName} (${member.positionTitle})`
+      `${isNew ? 'เพิ่ม' : 'แก้ไข'}กรรมการสถานศึกษา: ${member.fullName} (${member.positionTitle})${member.isExOfficio ? ' [โดยตำแหน่ง]' : ''}`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'บันทึกข้อมูลคณะกรรมการสถานศึกษาเรียบร้อยแล้ว',
-      data: isNew ? member : normalizeMember(db.boardMembers[existingIndex]),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'บันทึกข้อมูลคณะกรรมการสถานศึกษาเรียบร้อยแล้ว',
+        data: saved,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/board POST Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลคณะกรรมการสถานศึกษา' },
+      { status: 500 }
+    );
   }
 }
 
@@ -138,22 +160,17 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing member id' }, { status: 400 });
     }
 
-    const db = loadDatabase();
-    const target = (db.boardMembers || []).find(
-      (b: any) => b.id === id || b.member_id === id
-    );
+    const currentMembers = await dbGetBoardMembers();
+    const target = currentMembers.find((b: any) => b.id === id || b.member_id === id);
 
     if (!target) {
       return NextResponse.json({ success: false, error: 'ไม่พบกรรมการสถานศึกษา' }, { status: 404 });
     }
 
-    db.boardMembers = (db.boardMembers || []).filter(
-      (b: any) => b.id !== id && b.member_id !== id
-    );
-    saveDatabase(db);
+    await dbDeleteBoardMember(id);
 
-    const name = (target as any).fullName || (target as any).full_name || id;
-    const title = (target as any).positionTitle || (target as any).board_position || 'กรรมการสถานศึกษา';
+    const name = target.fullName || id;
+    const title = target.positionTitle || 'กรรมการสถานศึกษา';
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -166,11 +183,22 @@ export async function DELETE(request: Request) {
       `ลบกรรมการสถานศึกษา: ${name} (${title})`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: `ลบกรรมการสถานศึกษา ${name} เรียบร้อยแล้ว`,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `ลบกรรมการสถานศึกษา ${name} เรียบร้อยแล้ว`,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/board DELETE Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการลบข้อมูลคณะกรรมการสถานศึกษา' },
+      { status: 500 }
+    );
   }
 }

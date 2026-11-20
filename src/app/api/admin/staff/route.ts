@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadDatabase, saveDatabase, recordAuditLog } from '@/lib/db/serverDb';
+import { dbGetTeachers, dbUpsertTeacher, dbDeleteTeacher, recordAuditLog } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import type { TeacherRecord } from '@/lib/data/schoolData';
@@ -9,9 +9,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const db = loadDatabase();
+    const teachers = await dbGetTeachers();
     return NextResponse.json(
-      { success: true, data: db.teachers },
+      { success: true, data: teachers },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -19,7 +19,11 @@ export async function GET() {
       }
     );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/staff GET Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลบุคลากร' },
+      { status: 500 }
+    );
   }
 }
 
@@ -44,9 +48,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = loadDatabase();
+    const currentTeachers = await dbGetTeachers();
     // Match row by id primarily, match employeeCode only when non-empty
-    const existingIndex = db.teachers.findIndex((t) => {
+    const existingIndex = currentTeachers.findIndex((t) => {
       if (updatedStaff.id && t.id === updatedStaff.id) return true;
       if (
         updatedStaff.employeeCode &&
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
     const isNew = existingIndex === -1;
     let oldStaff: TeacherRecord | null = null;
     if (!isNew) {
-      oldStaff = db.teachers[existingIndex];
+      oldStaff = currentTeachers[existingIndex];
     }
 
     // Map and synchronize role with accessLevel
@@ -71,6 +75,7 @@ export async function POST(request: Request) {
     const staffToSave: TeacherRecord = {
       ...(oldStaff || {}),
       ...updatedStaff,
+      id: updatedStaff.id || updatedStaff.employeeCode || `TCH-${Date.now()}`,
       accessLevel: updatedStaff.accessLevel || 'User',
       role: mappedRole,
       standings: updatedStaff.standings || oldStaff?.standings || [],
@@ -78,14 +83,8 @@ export async function POST(request: Request) {
       educations: updatedStaff.educations || oldStaff?.educations || [],
     };
 
-    if (isNew) {
-      db.teachers.unshift(staffToSave);
-    } else {
-      db.teachers[existingIndex] = staffToSave;
-    }
-
-    // Save persistent database
-    saveDatabase(db);
+    // Save directly to Relational Supabase / Server DB (throws if error)
+    const saved = await dbUpsertTeacher(staffToSave);
 
     // Record Immutable PDPA Audit Log with actual authenticated admin identity
     const changes: string[] = [];
@@ -120,14 +119,24 @@ export async function POST(request: Request) {
       changes.join(', ')
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว',
-      data: staffToSave,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว',
+        data: saved,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('[API /api/admin/staff POST Error]', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลบุคลากร' },
+      { status: 500 }
+    );
   }
 }
 
@@ -149,15 +158,15 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing staff id' }, { status: 400 });
     }
 
-    const db = loadDatabase();
-    const target = db.teachers.find((t) => t.id === id);
+    const currentTeachers = await dbGetTeachers();
+    const target = currentTeachers.find((t) => t.id === id);
 
     if (!target) {
       return NextResponse.json({ success: false, error: 'ไม่พบบุคลากรที่ต้องการลบ' }, { status: 404 });
     }
 
-    db.teachers = db.teachers.filter((t) => t.id !== id);
-    saveDatabase(db);
+    // Delete directly from Relational Supabase / Server DB (throws if error)
+    await dbDeleteTeacher(id);
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -170,11 +179,22 @@ export async function DELETE(request: Request) {
       `ลบข้อมูลบุคลากร ${target.name} (${target.position}) ออกจากระบบ`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: `ลบข้อมูลบุคลากร ${target.name} เรียบร้อยแล้ว`,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `ลบข้อมูลบุคลากร ${target.name} เรียบร้อยแล้ว`,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('[API /api/admin/staff DELETE Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการลบข้อมูลบุคลากร' },
+      { status: 500 }
+    );
   }
 }
