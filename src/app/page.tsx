@@ -71,6 +71,7 @@ import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
 import { isZeroDayLeaveType } from '@/lib/regulations/leaveTypes';
 
 // View Components
+import { ViewPersonnelHub } from '@/components/views/ViewPersonnelHub';
 import { ViewStaffDirectory } from '@/components/views/ViewStaffDirectory';
 import { ViewRegLicense } from '@/components/views/ViewRegLicense';
 import { ViewRegStanding } from '@/components/views/ViewRegStanding';
@@ -1024,17 +1025,11 @@ export default function DashboardPage() {
           {/* View: Teacher Teaching Hours & PA Workload */}
           {activeView === 'workload' && <ViewWorkload />}
 
-          {/* View: Teacher Directory & Portfolios */}
-          {activeView === 'staff_directory' && <ViewStaffDirectory />}
-
-          {/* View: Academic Standings & Appointment Orders */}
-          {activeView === 'dir_standing' && <ViewRegStanding />}
-
-          {/* View: Scout Qualifications Registry */}
-          {activeView === 'dir_scout' && <ViewRegScout />}
-
-          {/* View: Khurusapha Professional Licenses */}
-          {activeView === 'dir_license' && <ViewRegLicense />}
+          {/* View: Category 3 Personnel Registries Hub */}
+          {activeView === 'staff_directory' && <ViewPersonnelHub initialTab="directory" />}
+          {activeView === 'dir_standing' && <ViewPersonnelHub initialTab="standing" />}
+          {activeView === 'dir_license' && <ViewPersonnelHub initialTab="license" />}
+          {activeView === 'dir_scout' && <ViewPersonnelHub initialTab="scout" />}
 
           {/* View: System Feedback */}
           {activeView === 'feedback' && <ViewFeedback />}

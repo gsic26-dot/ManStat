@@ -34,6 +34,20 @@ import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
 import { useUserSettings } from '@/context/UserSettingsContext';
 
+const getShortDeptName = (dept: string): string => {
+  if (dept === 'ALL') return 'ทั้งหมด';
+  return dept
+    .replace(/^กลุ่มสาระการเรียนรู้/, '')
+    .replace(/^กลุ่มสาระฯ\s*/, '')
+    .replace('วิทยาศาสตร์และเทคโนโลยี', 'วิทย์ฯ-เทคโนฯ')
+    .replace('สังคมศึกษา ศาสนา และวัฒนธรรม', 'สังคมศึกษาฯ')
+    .replace('สุขศึกษาและพลศึกษา', 'สุขศึกษาฯ')
+    .replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหาร/สนับสนุน')
+    .replace('การศึกษาปฐมวัย', 'ปฐมวัย')
+    .replace('ภาษาต่างประเทศ', 'ต่างประเทศ')
+    .trim();
+};
+
 export const ViewStaffDirectory: React.FC = () => {
   const { preferences, updatePreferences } = useUserSettings();
   const viewMode = preferences.preferred_view;
@@ -148,40 +162,70 @@ export const ViewStaffDirectory: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Filter Pills for Department */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-2 border-t border-slate-200/90 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0 mr-1">
-            กลุ่มสาระ/ฝ่าย:
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedDept('ALL')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors duration-200 shrink-0 ${
-              selectedDept === 'ALL'
-                ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
-            }`}
-          >
-            ทั้งหมด ({teachersList.length})
-          </button>
-          {departments.map((dept) => {
-            const count = teachersList.filter((t) => t.department === dept).length;
-            const isSelected = selectedDept === dept;
-            return (
+        {/* Quick Filter Segmented Pills for Department - Uniform Widths & Abbreviated */}
+        <div className="pt-2 border-t border-slate-200/90 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
+              กลุ่มสาระ / ฝ่าย:
+            </span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-xs">
+              {selectedDept === 'ALL' ? 'แสดงบุคลากรทั้งหมด' : selectedDept}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl gap-1">
+              {/* ปุ่มทั้งหมด - ขนาดกว้างคงที่เท่ากัน */}
               <button
-                key={dept}
                 type="button"
-                onClick={() => setSelectedDept(dept)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors duration-200 shrink-0 ${
-                  isSelected
-                    ? 'bg-sky-600 text-white border border-transparent shadow-sm'
-                    : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
+                onClick={() => setSelectedDept('ALL')}
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 w-28 shrink-0 ${
+                  selectedDept === 'ALL'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
+                title="ทั้งหมด"
               >
-                {dept} ({count})
+                <span className="truncate">ทั้งหมด</span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  selectedDept === 'ALL'
+                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                    : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                }`}>
+                  {teachersList.length}
+                </span>
               </button>
-            );
-          })}
+
+              {/* ปุ่มแต่ละกลุ่มสาระ - ปรับปุ่มให้เท่ากันทุกปุ่ม (w-32) พร้อมชื่อย่อและ truncate */}
+              {departments.map((dept) => {
+                const count = teachersList.filter((t) => t.department === dept).length;
+                const isSelected = selectedDept === dept;
+                const shortName = getShortDeptName(dept);
+                return (
+                  <button
+                    key={dept}
+                    type="button"
+                    onClick={() => setSelectedDept(dept)}
+                    className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 w-32 shrink-0 ${
+                      isSelected
+                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+                    }`}
+                    title={dept}
+                  >
+                    <span className="truncate">{shortName}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                      isSelected
+                        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                        : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
