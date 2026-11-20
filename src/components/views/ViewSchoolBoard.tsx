@@ -137,7 +137,7 @@ export const ViewSchoolBoard: React.FC = () => {
             <span>คณะกรรมการสถานศึกษาขั้นพื้นฐาน โรงเรียนชุมชนบ้านตะขบ</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            เรียงลำดับตามตำแหน่งตามกฎกระทรวง พ.ศ. 2546 (รวม {INITIAL_BOARD_MEMBERS.length} ท่าน)
+            เรียงลำดับตามตำแหน่งตามกฎกระทรวง พ.ศ. 2546 (รวม {boardList.length} ท่าน)
           </p>
         </div>
 

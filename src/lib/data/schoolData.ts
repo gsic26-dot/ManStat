@@ -88,6 +88,7 @@ export interface SchoolInfoRecord {
   currentTerm: string;
   studentCount: number;
   studentDataDate?: string;
+  activeClasses?: string[];
 }
 
 export const ACTIVE_CLASSES: string[] = [
@@ -117,7 +118,12 @@ export const INITIAL_SCHOOL_INFO: SchoolInfoRecord = {
   "fiscalYear": "2570",
   "currentTerm": "2",
   "studentCount": 94,
-  "studentDataDate": ""
+  "studentDataDate": "",
+  "activeClasses": [
+    "อนุบาล 2", "อนุบาล 3",
+    "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3",
+    "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"
+  ]
 };
 
 export const INITIAL_TEACHERS: TeacherRecord[] = [

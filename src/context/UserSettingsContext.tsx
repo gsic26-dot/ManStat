@@ -109,7 +109,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       // Fetch from Server DB API first
       try {
-        const res = await fetch('/api/admin/settings');
+        const res = await fetch('/api/admin/settings', { cache: 'no-store' });
         const json = await res.json();
         if (json.success && json.data && isMounted) {
           const s = json.data;
@@ -120,9 +120,12 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
               compact_mode: s.compactMode !== undefined ? s.compactMode : prev.compact_mode,
               mask_citizen_id: s.maskCitizenId !== undefined ? s.maskCitizenId : prev.mask_citizen_id,
             };
-            if (!hasExplicitLocalTheme && s.themeMode) {
+            if (s.themeMode) {
               next.theme_mode = s.themeMode;
               setThemeMode(s.themeMode);
+              try {
+                localStorage.setItem('manstat-theme-mode', s.themeMode);
+              } catch {}
             }
             return next;
           });
@@ -217,7 +220,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // D. Persist to Server DB API
       setSyncStatus('syncing');
       try {
-        await fetch('/api/admin/settings', {
+        const res = await fetch('/api/admin/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -227,8 +230,20 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             maskCitizenId: updated.mask_citizen_id,
           }),
         });
-        setSyncStatus('synced');
+        const json = await res.json().catch(() => null);
+        if (res.ok && json?.success) {
+          setSyncStatus('synced');
+          if (updated.theme_mode) {
+            try {
+              localStorage.setItem('manstat-theme-mode', updated.theme_mode);
+            } catch {}
+          }
+        } else {
+          setSyncStatus('local_only');
+          console.warn('[UserSettings] Server settings rejected or unauthorized:', json?.error);
+        }
       } catch (e) {
+        setSyncStatus('local_only');
         console.warn('[UserSettings] Failed saving to /api/admin/settings:', e);
       }
 

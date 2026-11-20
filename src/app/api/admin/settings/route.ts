@@ -2,10 +2,20 @@ import { NextResponse } from 'next/server';
 import { loadDatabase, saveDatabase, recordAuditLog, type SystemSettingsRecord } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const db = loadDatabase();
-    return NextResponse.json({ success: true, data: db.settings });
+    return NextResponse.json(
+      { success: true, data: db.settings },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -43,11 +53,18 @@ export async function POST(request: Request) {
       `ปรับปรุงการตั้งค่าระบบ: Theme=${db.settings.themeMode}, View=${db.settings.preferredView}, MaskPDPA=${db.settings.maskCitizenId}`
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'บันทึกการตั้งค่าระบบลงฐานข้อมูลเรียบร้อยแล้ว',
-      data: db.settings,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'บันทึกการตั้งค่าระบบลงฐานข้อมูลเรียบร้อยแล้ว',
+        data: db.settings,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

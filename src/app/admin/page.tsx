@@ -283,6 +283,9 @@ export default function AdminPage() {
             if (schoolRes.data.fiscalYear) {
               setFiscalYearBE(parseInt(schoolRes.data.fiscalYear) || 2570);
             }
+            if (Array.isArray(schoolRes.data.activeClasses)) {
+              setActiveClasses(schoolRes.data.activeClasses);
+            }
           }
           if (holRes?.success && Array.isArray(holRes.data)) {
             setHolidays(holRes.data);
@@ -309,11 +312,14 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/school', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schoolInfo),
+        body: JSON.stringify({ ...schoolInfo, activeClasses }),
       });
       const data = await res.json();
       if (data.success) {
         setSchoolInfo(data.data);
+        if (Array.isArray(data.data.activeClasses)) {
+          setActiveClasses(data.data.activeClasses);
+        }
         showToast('บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
       } else {
@@ -371,6 +377,29 @@ export default function AdminPage() {
       }
     } catch (err: any) {
       showToast(err.message || 'เกิดข้อผิดพลาดในการลบวันหยุด', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveFiscalYear = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/school', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...schoolInfo, fiscalYear: String(fiscalYearBE), activeClasses }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchoolInfo(data.data);
+        showToast(`บันทึกปีงบประมาณ ${fiscalYearBE} เรียบร้อยแล้ว`, 'success');
+        refreshAuditLogs();
+      } else {
+        showToast(data.error || 'บันทึกปีงบประมาณไม่สำเร็จ', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -688,6 +717,16 @@ export default function AdminPage() {
         showToast('บันทึกข้อมูลคณะกรรมการสถานศึกษาเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
         setIsBoardModalOpen(false);
+
+        // Immediate re-fetch from server to guarantee 100% database persistence
+        fetch('/api/admin/board', { cache: 'no-store' })
+          .then((r) => r.json())
+          .then((bRes) => {
+            if (bRes?.success && Array.isArray(bRes.data)) {
+              setBoardMembers(bRes.data);
+            }
+          })
+          .catch(() => {});
       } else {
         showToast(data.error || 'บันทึกไม่สำเร็จ', 'error');
       }
@@ -715,6 +754,16 @@ export default function AdminPage() {
           }
           showToast(`ลบกรรมการสถานศึกษา ${target.fullName} เรียบร้อยแล้ว`, 'success');
           refreshAuditLogs();
+
+          // Immediate re-fetch from server to guarantee 100% database persistence
+          fetch('/api/admin/board', { cache: 'no-store' })
+            .then((r) => r.json())
+            .then((bRes) => {
+              if (bRes?.success && Array.isArray(bRes.data)) {
+                setBoardMembers(bRes.data);
+              }
+            })
+            .catch(() => {});
         } else {
           showToast(data.error || 'ลบไม่สำเร็จ', 'error');
         }
@@ -1476,7 +1525,7 @@ export default function AdminPage() {
             {/* Fiscal Year Overview */}
             <div className="lg:col-span-1 space-y-4">
               <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
                   <span>รอบปีงบประมาณราชการ</span>
                 </h3>
@@ -1509,6 +1558,16 @@ export default function AdminPage() {
                       1 เมษายน {fiscalYearBE} - 30 กันยายน {fiscalYearBE}
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveFiscalYear}
+                    disabled={isSaving}
+                    className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs inline-flex items-center justify-center gap-2 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5 shrink-0" />
+                    <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึกปีงบประมาณ'}</span>
+                  </button>
                 </div>
               </div>
 
