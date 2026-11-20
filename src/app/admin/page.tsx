@@ -57,7 +57,6 @@ import {
   BoardMemberRecord,
   BOARD_STATUTORY_ORDER,
 } from '@/lib/data/schoolData';
-import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
 const BOARD_POSITIONS = [
@@ -810,16 +809,12 @@ export default function AdminPage() {
               <span>กลับสู่หน้าหลัก</span>
             </Link>
             <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-3">
-              <span className="font-bold text-base text-slate-900 dark:text-white">ศูนย์ผู้ดูแลระบบ (Admin Center)</span>
-              <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-bold rounded bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30">
-                Superuser / HR Admin
-              </span>
+              <span className="font-bold text-base text-slate-900 dark:text-white">ศูนย์ผู้ดูแลระบบ</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
             <ThemeSwitcher />
-            <ExcelExportButton fiscalYear={fiscalYearBE} />
             <UserProfileDropdown
               currentUser={currentUser}
               currentRole={currentRole}
