@@ -243,8 +243,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b1016] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-[#121822] border-b border-slate-200/90 dark:border-slate-800/80 print:hidden transition-colors duration-200">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#121822]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 print:hidden transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Mobile Menu Trigger */}
           <div className="flex items-center gap-3">
             <button
