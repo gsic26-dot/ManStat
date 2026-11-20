@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
+import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
@@ -1769,12 +1770,10 @@ export default function AdminPage() {
 
                 <div>
                   <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่</label>
-                  <input
-                    type="date"
+                  <ThaiDatePicker
                     value={newHolidayDate}
-                    onChange={(e) => setNewHolidayDate(e.target.value)}
+                    onChange={(dateStr) => setNewHolidayDate(dateStr)}
                     required
-                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                   />
                 </div>
 
@@ -1816,11 +1815,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-xs text-sky-400">
-                        {new Date(h.date).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
+                        {formatThaiDateDisplay(h.date)}
                       </span>
                       <button
                         type="button"
@@ -2323,13 +2318,11 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <label className="block text-slate-400 mb-1">วันที่บรรจุเข้ารับราชการ</label>
-                        <input
-                          type="date"
+                        <ThaiDatePicker
                           value={selectedStaff.startDate || ''}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, startDate: e.target.value })
+                          onChange={(dateStr) =>
+                            setSelectedStaff({ ...selectedStaff, startDate: dateStr })
                           }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -2522,20 +2515,16 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่ออกเอกสาร</label>
-                          <input
-                            type="date"
+                          <ThaiDatePicker
                             value={newLicIssue}
-                            onChange={(e) => setNewLicIssue(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                            onChange={(dateStr) => setNewLicIssue(dateStr)}
                           />
                         </div>
                         <div>
                           <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันหมดอายุ</label>
-                          <input
-                            type="date"
+                          <ThaiDatePicker
                             value={newLicExpiry}
-                            onChange={(e) => setNewLicExpiry(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                            onChange={(dateStr) => setNewLicExpiry(dateStr)}
                           />
                         </div>
                       </div>
@@ -2788,11 +2777,9 @@ export default function AdminPage() {
                         </div>
                         <div>
                           <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่มีผล</label>
-                          <input
-                            type="date"
+                          <ThaiDatePicker
                             value={newStdDate}
-                            onChange={(e) => setNewStdDate(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                            onChange={(dateStr) => setNewStdDate(dateStr)}
                           />
                         </div>
                         <div>
@@ -3186,16 +3173,14 @@ export default function AdminPage() {
                       <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                         วันที่มาดำรงตำแหน่ง ผอ.
                       </label>
-                      <input
-                        type="date"
+                      <ThaiDatePicker
                         value={selectedBoardMember.appointmentDate || ''}
-                        onChange={(e) =>
+                        onChange={(dateStr) =>
                           setSelectedBoardMember({
                             ...selectedBoardMember,
-                            appointmentDate: e.target.value,
+                            appointmentDate: dateStr,
                           })
                         }
-                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                       />
                       <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                         ใช้นับระยะเวลาปฏิบัติหน้าที่
@@ -3249,16 +3234,14 @@ export default function AdminPage() {
                         <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                           วันที่พ้นจากตำแหน่ง (สิ้นสุด)
                         </label>
-                        <input
-                          type="date"
+                        <ThaiDatePicker
                           value={selectedBoardMember.endDate || ''}
-                          onChange={(e) =>
+                          onChange={(dateStr) =>
                             setSelectedBoardMember({
                               ...selectedBoardMember,
-                              endDate: e.target.value,
+                              endDate: dateStr,
                             })
                           }
-                          className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                         />
                       </div>
                     </div>

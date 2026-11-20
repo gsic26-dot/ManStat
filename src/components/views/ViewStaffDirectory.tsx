@@ -33,6 +33,7 @@ import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
 import { useUserSettings } from '@/context/UserSettingsContext';
+import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 
 const getShortDeptName = (dept: string): string => {
   if (dept === 'ALL') return 'ทั้งหมด';
@@ -328,7 +329,7 @@ export const ViewStaffDirectory: React.FC = () => {
                             {tenure.years} ปี {tenure.months} เดือน
                           </span>
                           <span className="block text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                            บรรจุ {teacher.startDate}
+                            บรรจุ {formatThaiDateDisplay(teacher.startDate)}
                           </span>
                         </td>
                       </tr>
@@ -357,7 +358,7 @@ export const ViewStaffDirectory: React.FC = () => {
                                   รหัสบุคลากร: <span className="font-mono text-sky-600 dark:text-sky-400">{teacher.employeeCode}</span>
                                 </div>
                                 <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                                  วันบรรจุ: <span className="font-mono text-slate-700 dark:text-slate-300">{teacher.startDate}</span>
+                                  วันบรรจุ: <span className="font-mono text-slate-700 dark:text-slate-300">{formatThaiDateDisplay(teacher.startDate)}</span>
                                 </div>
                               </div>
 
@@ -524,7 +525,7 @@ export const ViewStaffDirectory: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">วันที่เริ่มรับราชการ:</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-200">{selectedTeacher.startDate}</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-200">{formatThaiDateDisplay(selectedTeacher.startDate)}</span>
                 </div>
               </div>
 

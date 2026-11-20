@@ -43,6 +43,7 @@ import {
   getLeaveTypeDefinition,
 } from '@/lib/regulations/leaveTypes';
 import type { LeaveType, HalfDayPeriod } from '@/types/database.types';
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
 export interface SubstituteTeacherOption {
   id: string;
@@ -467,14 +468,13 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     วันที่ขออนุญาต <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <ThaiDatePicker
                     value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setEndDate(e.target.value);
+                    onChange={(dateStr) => {
+                      setStartDate(dateStr);
+                      setEndDate(dateStr);
                     }}
-                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                    required
                   />
                 </div>
 
@@ -712,28 +712,26 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                       ตั้งแต่วันที่ <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <ThaiDatePicker
                       value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        if (new Date(e.target.value) > new Date(endDate)) {
-                          setEndDate(e.target.value);
+                      onChange={(dateStr) => {
+                        setStartDate(dateStr);
+                        if (endDate && new Date(dateStr) > new Date(endDate)) {
+                          setEndDate(dateStr);
                         }
                       }}
-                      className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                       ถึงวันที่ <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <ThaiDatePicker
                       value={endDate}
                       min={startDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                      onChange={(dateStr) => setEndDate(dateStr)}
+                      required
                     />
                   </div>
                 </div>
@@ -743,14 +741,13 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                       วันที่ไปราชการ <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <ThaiDatePicker
                       value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        setEndDate(e.target.value);
+                      onChange={(dateStr) => {
+                        setStartDate(dateStr);
+                        setEndDate(dateStr);
                       }}
-                      className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                      required
                     />
                   </div>
                   <div>
@@ -850,16 +847,15 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     ตั้งแต่วันที่ <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <ThaiDatePicker
                     value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      if (new Date(e.target.value) > new Date(endDate)) {
-                        setEndDate(e.target.value);
+                    onChange={(dateStr) => {
+                      setStartDate(dateStr);
+                      if (endDate && new Date(dateStr) > new Date(endDate)) {
+                        setEndDate(dateStr);
                       }
                     }}
-                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                    required
                   />
                 </div>
 
@@ -867,12 +863,11 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     ถึงวันที่ <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <ThaiDatePicker
                     value={endDate}
                     min={startDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 font-mono transition-all"
+                    onChange={(dateStr) => setEndDate(dateStr)}
+                    required
                   />
                 </div>
 

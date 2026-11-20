@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
+import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 
 export const ViewRegLicense: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -267,7 +268,7 @@ export const ViewRegLicense: React.FC = () => {
 
                       {/* Expiry Date */}
                       <td className="px-4 py-3.5 font-mono text-slate-700 dark:text-slate-200 text-xs sm:text-sm whitespace-nowrap">
-                        {item.expiryDate}
+                        {formatThaiDateDisplay(item.expiryDate)}
                       </td>
 
                       {/* Remaining Days */}
@@ -311,7 +312,7 @@ export const ViewRegLicense: React.FC = () => {
 
                             <div>
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันที่ออกเอกสารใบอนุญาต</div>
-                              <div className="font-mono text-slate-700 dark:text-slate-300">{item.issueDate}</div>
+                              <div className="font-mono text-slate-700 dark:text-slate-300">{formatThaiDateDisplay(item.issueDate)}</div>
                               <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">กลุ่มสาระ/ฝ่าย: {item.department}</div>
                             </div>
 

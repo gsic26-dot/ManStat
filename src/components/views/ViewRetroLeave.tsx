@@ -42,6 +42,7 @@ import {
   getLeaveTypeDefinition,
 } from '@/lib/regulations/leaveTypes';
 import type { LeaveType } from '@/types/database.types';
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
 interface TeachingWorkloadRow {
   cls: string;
@@ -327,14 +328,13 @@ export function ViewRetroLeave() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                       วันที่ขออนุญาต <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <ThaiDatePicker
                       value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        setEndDate(e.target.value);
+                      onChange={(dateStr) => {
+                        setStartDate(dateStr);
+                        setEndDate(dateStr);
                       }}
-                      className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono"
+                      required
                     />
                   </div>
                   <div>
@@ -547,23 +547,21 @@ export function ViewRetroLeave() {
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         ตั้งแต่วันที่ <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <ThaiDatePicker
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono"
+                        onChange={(dateStr) => setStartDate(dateStr)}
+                        required
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         ถึงวันที่ <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <ThaiDatePicker
                         value={endDate}
                         min={startDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono"
+                        onChange={(dateStr) => setEndDate(dateStr)}
+                        required
                       />
                     </div>
                   </div>
@@ -573,14 +571,13 @@ export function ViewRetroLeave() {
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         วันที่ไปราชการ <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <ThaiDatePicker
                         value={startDate}
-                        onChange={(e) => {
-                          setStartDate(e.target.value);
-                          setEndDate(e.target.value);
+                        onChange={(dateStr) => {
+                          setStartDate(dateStr);
+                          setEndDate(dateStr);
                         }}
-                        className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white font-mono"
+                        required
                       />
                     </div>
                     <div>
@@ -713,31 +710,23 @@ export function ViewRetroLeave() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                       ตั้งแต่วันที่ <span className="text-rose-500">*</span>
                     </label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-all font-mono"
-                      />
-                    </div>
+                    <ThaiDatePicker
+                      value={startDate}
+                      onChange={(dateStr) => setStartDate(dateStr)}
+                      required
+                    />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                       ถึงวันที่ <span className="text-rose-500">*</span>
                     </label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
-                      <input
-                        type="date"
-                        value={endDate}
-                        min={startDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-all font-mono"
-                      />
-                    </div>
+                    <ThaiDatePicker
+                      value={endDate}
+                      min={startDate}
+                      onChange={(dateStr) => setEndDate(dateStr)}
+                      required
+                    />
                   </div>
                 </div>
 

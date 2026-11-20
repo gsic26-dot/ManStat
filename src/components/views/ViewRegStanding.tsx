@@ -14,6 +14,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Award, Calendar, Search, Medal, LayoutList, LayoutGrid, FileText, ChevronRight } from 'lucide-react';
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 
 export const ViewRegStanding: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -218,7 +219,7 @@ export const ViewRegStanding: React.FC = () => {
                               <div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
                                 <div className="font-mono text-sky-600 dark:text-sky-400">
-                                  {latestOrder ? latestOrder.effectiveDate : '-'}
+                                  {latestOrder ? formatThaiDateDisplay(latestOrder.effectiveDate) : '-'}
                                 </div>
                               </div>
                             </div>
@@ -235,7 +236,7 @@ export const ViewRegStanding: React.FC = () => {
                                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
                                     >
                                       <FileText className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
-                                      <span>{ord.level}: {ord.orderNumber} ({ord.effectiveDate})</span>
+                                      <span>{ord.level}: {ord.orderNumber} ({formatThaiDateDisplay(ord.effectiveDate)})</span>
                                     </span>
                                   ))}
                                 </div>
@@ -273,13 +274,13 @@ export const ViewRegStanding: React.FC = () => {
                 <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{item.startDate}</strong></span>
+                    <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{formatThaiDateDisplay(item.startDate)}</strong></span>
                   </div>
                   {item.orders.length > 0 && (
                     <div className="mt-2 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-1.5 text-xs">
                       <span className="text-amber-700 dark:text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
                       <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {item.orders[0].orderNumber}</div>
-                      <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {item.orders[0].effectiveDate}</div>
+                      <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {formatThaiDateDisplay(item.orders[0].effectiveDate)}</div>
                     </div>
                   )}
                 </div>
