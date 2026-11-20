@@ -62,7 +62,7 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
             <FileText className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
             <span className="truncate">รายการคำร้องขอลา</span>
             {pendingCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
                 {pendingCount}
               </span>
             )}

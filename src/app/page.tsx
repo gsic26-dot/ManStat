@@ -198,7 +198,7 @@ export default function DashboardPage() {
     'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
     'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
   ];
-  const currentDateThai = `${daysThai[now.getDay()]}ที่ ${now.getDate()} ${monthsThai[now.getMonth()]} ${now.getFullYear() + 543}`;
+  const currentDateThai = `${daysThai[now.getDay()]}ที่\u00A0${now.getDate()}\u00A0${monthsThai[now.getMonth()]}\u00A0${now.getFullYear() + 543}`;
   const fiscalYearBE = parseInt(schoolInfo.fiscalYear) || getFiscalYearBE(now);
   const currentRound = getEvalRound(now);
 
@@ -842,9 +842,9 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
                   <div className="inline-flex items-center gap-2 bg-slate-100 dark:bg-[#121822] px-3.5 py-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800/80 whitespace-nowrap shrink-0 shadow-sm">
                     <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                    <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{currentDateThai}</span>
-                    <span className="text-slate-300 dark:text-slate-600 select-none">|</span>
-                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium whitespace-nowrap">
+                    <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300 inline-block whitespace-nowrap shrink-0">{currentDateThai}</span>
+                    <span className="text-slate-300 dark:text-slate-600 select-none shrink-0">|</span>
+                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium inline-block whitespace-nowrap shrink-0">
                       ปีงบฯ {fiscalYearBE} (รอบที่ {currentRound})
                     </span>
                   </div>
