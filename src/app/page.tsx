@@ -829,22 +829,22 @@ export default function DashboardPage() {
           {activeView === 'dashboard' && (
             <div className="space-y-6">
               {/* 1. Compact Executive Header Bar */}
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800/80">
+              <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800/80">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
                     ภาพรวมการบริหารงานบุคคล
                   </h1>
-                  <span className="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:border-slate-800/80 rounded-md">
+                  <span className="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:border-slate-800/80 rounded-md whitespace-nowrap">
                     โรงเรียนชุมชนบ้านตะขบ · สพป.นม. 3
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#121822] px-3 py-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800/80">
-                    <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                    <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300">{currentDateThai}</span>
-                    <span className="text-slate-300 dark:text-slate-600">|</span>
-                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium">
+                <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
+                  <div className="inline-flex items-center gap-2 bg-slate-100 dark:bg-[#121822] px-3.5 py-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800/80 whitespace-nowrap shrink-0 shadow-sm">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap">{currentDateThai}</span>
+                    <span className="text-slate-300 dark:text-slate-600 select-none">|</span>
+                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium whitespace-nowrap">
                       ปีงบฯ {fiscalYearBE} (รอบที่ {currentRound})
                     </span>
                   </div>
@@ -852,10 +852,10 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setIsLegalModalOpen(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
-                    <Scale className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                    <span>ระเบียบกฎหมาย</span>
+                    <Scale className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
+                    <span className="whitespace-nowrap">ระเบียบกฎหมาย</span>
                   </button>
                 </div>
               </header>
