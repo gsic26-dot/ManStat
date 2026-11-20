@@ -261,8 +261,8 @@ export default function DashboardPage() {
               onClick={() => handleSelectView('dashboard')}
               className="flex items-center gap-3 text-left focus:outline-none"
             >
-              <div className="p-2 rounded-lg bg-sky-600 text-white">
-                <School className="w-5 h-5 shrink-0" />
+              <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-sm ring-1 ring-sky-500/20">
+                <Users className="w-5 h-5 shrink-0" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -271,7 +271,7 @@ export default function DashboardPage() {
                     สพป.นม. 3
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{schoolInfo.schoolName} (Zero-GAS Cloud)</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{schoolInfo.schoolName}</p>
               </div>
             </button>
           </div>
@@ -281,15 +281,15 @@ export default function DashboardPage() {
             {/* Compact 3-Mode Theme Switcher (Popover) */}
             <ThemeSwitcher />
 
-            {/* Admin Management Link */}
+            {/* Admin Management Link - Gear Icon Only */}
             {isAdminRole(currentRole) && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
-                title="เข้าสู่ระบบจัดการผู้ดูแลระบบ (Admin Center)"
+                className="inline-flex items-center justify-center p-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 transition-colors duration-200 cursor-pointer shadow-sm"
+                title="ศูนย์ผู้ดูแลระบบ (Admin Center)"
+                aria-label="ศูนย์ผู้ดูแลระบบ"
               >
-                <Settings className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
-                <span className="text-xs font-semibold">ศูนย์ผู้ดูแลระบบ</span>
+                <Settings className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
               </Link>
             )}
 
