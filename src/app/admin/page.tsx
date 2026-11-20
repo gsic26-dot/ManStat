@@ -232,7 +232,7 @@ export default function AdminPage() {
   // Function to refresh audit logs
   const refreshAuditLogs = async () => {
     try {
-      const res = await fetch('/api/admin/audit');
+      const res = await fetch('/api/admin/audit', { cache: 'no-store' });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setAuditLogs(data.data);
@@ -249,15 +249,15 @@ export default function AdminPage() {
       setIsLoading(true);
       try {
         const [staffRes, boardRes, schoolRes, holRes, auditRes] = await Promise.all([
-          fetch('/api/admin/staff').then((r) => r.json()).catch(() => null),
-          fetch('/api/admin/board').then((r) => r.json()).catch(() => null),
-          fetch('/api/admin/school').then((r) => r.json()).catch(() => null),
-          fetch('/api/admin/holidays').then((r) => r.json()).catch(() => null),
-          fetch('/api/admin/audit').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/staff', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/board', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/school', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/holidays', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/audit', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
         ]);
 
         if (isMounted) {
-          fetch('/api/auth/me')
+          fetch('/api/auth/me', { cache: 'no-store' })
             .then((r) => r.json())
             .then((authRes) => {
               if (isMounted && authRes?.success && authRes.user) {
@@ -379,7 +379,12 @@ export default function AdminPage() {
   // Staff Handlers
   const handleOpenAddStaff = () => {
     setIsNewStaff(true);
-    const nextCode = `TCH-${String(teachers.length + 1).padStart(3, '0')}`;
+    const existingNums = teachers.map((t) => {
+      const match = (t.employeeCode || t.id || '').match(/TCH-(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums, 0) : 0;
+    const nextCode = `TCH-${String(maxNum + 1).padStart(3, '0')}`;
     setSelectedStaff({
       id: nextCode,
       employeeCode: nextCode,
@@ -438,8 +443,9 @@ export default function AdminPage() {
   const handleSaveStaff = async () => {
     if (!selectedStaff) return;
     const computedName =
-      selectedStaff.name.trim() ||
-      `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim();
+      (selectedStaff.firstName || selectedStaff.lastName)
+        ? `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim()
+        : selectedStaff.name.trim();
     if (!computedName) {
       showToast('กรุณาระบุชื่อ-นามสกุลบุคลากร', 'error');
       return;
@@ -485,7 +491,7 @@ export default function AdminPage() {
         setIsStaffModalOpen(false);
 
         // Immediate re-fetch from server to guarantee 100% database persistence
-        fetch('/api/admin/staff')
+        fetch('/api/admin/staff', { cache: 'no-store' })
           .then((r) => r.json())
           .then((sRes) => {
             if (sRes?.success && Array.isArray(sRes.data)) {
@@ -497,7 +503,7 @@ export default function AdminPage() {
 
         // Immediate Real-Time Session & RBAC Re-Sync
         try {
-          const authMeRes = await fetch('/api/auth/me').then((r) => r.json());
+          const authMeRes = await fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json());
           if (authMeRes?.success && authMeRes.user) {
             if (typeof window !== 'undefined') {
               localStorage.setItem('manstat_auth_role', authMeRes.user.role);
@@ -1895,9 +1901,14 @@ export default function AdminPage() {
                         <label className="block text-slate-400 mb-1">คำนำหน้า</label>
                         <select
                           value={selectedStaff.prefix || 'นาย'}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, prefix: e.target.value })
-                          }
+                          onChange={(e) => {
+                            const newPrefix = e.target.value;
+                            setSelectedStaff({
+                              ...selectedStaff,
+                              prefix: newPrefix,
+                              name: `${newPrefix}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim(),
+                            });
+                          }}
                           className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
                         >
                           <option value="นาย">นาย</option>

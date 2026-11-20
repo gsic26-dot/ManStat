@@ -150,8 +150,10 @@ function getWritableDbFile(): string {
   }
 }
 
-// In-memory cache for fast read
+// In-memory cache with file modification tracking to eliminate stale cache across Route Handlers
 let memoryDb: DatabaseState | null = null;
+let lastLoadedMtime = 0;
+let lastLoadedFile: string | null = null;
 
 function parseDatabaseState(parsed: any): DatabaseState {
   return {
@@ -182,10 +184,26 @@ function parseDatabaseState(parsed: any): DatabaseState {
   };
 }
 
-export function loadDatabase(): DatabaseState {
-  if (memoryDb) return memoryDb;
-
+export function loadDatabase(forceReload = false): DatabaseState {
   const writableFile = getWritableDbFile();
+
+  // Determine active database file to read from
+  // In serverless mode: prioritize /tmp if exists
+  const activeFile = (writableFile === TMP_DB_FILE && fs.existsSync(TMP_DB_FILE))
+    ? TMP_DB_FILE
+    : (fs.existsSync(BUNDLED_DB_FILE) ? BUNDLED_DB_FILE : null);
+
+  // If memoryDb exists and activeFile mtime hasn't changed, return memoryDb
+  if (!forceReload && activeFile && memoryDb && lastLoadedFile === activeFile) {
+    try {
+      const stat = fs.statSync(activeFile);
+      if (stat.mtimeMs === lastLoadedMtime && stat.mtimeMs > 0) {
+        return memoryDb;
+      }
+    } catch {
+      // If stat fails, fall through to re-read
+    }
+  }
 
   // Priority 1: In serverless mode, load from /tmp if modified previously in this warm instance
   if (writableFile === TMP_DB_FILE && fs.existsSync(TMP_DB_FILE)) {
@@ -194,6 +212,12 @@ export function loadDatabase(): DatabaseState {
       const parsed = JSON.parse(raw);
       const state = parseDatabaseState(parsed);
       memoryDb = state;
+      lastLoadedFile = TMP_DB_FILE;
+      try {
+        lastLoadedMtime = fs.statSync(TMP_DB_FILE).mtimeMs;
+      } catch {
+        lastLoadedMtime = Date.now();
+      }
       return state;
     } catch (err) {
       console.warn('[loadDatabase] Failed reading from /tmp DB, falling back to bundled data:', err);
@@ -207,6 +231,12 @@ export function loadDatabase(): DatabaseState {
       const parsed = JSON.parse(raw);
       const state = parseDatabaseState(parsed);
       memoryDb = state;
+      lastLoadedFile = BUNDLED_DB_FILE;
+      try {
+        lastLoadedMtime = fs.statSync(BUNDLED_DB_FILE).mtimeMs;
+      } catch {
+        lastLoadedMtime = Date.now();
+      }
 
       // Seed /tmp store on first load if running in serverless mode
       if (writableFile === TMP_DB_FILE && !fs.existsSync(TMP_DB_FILE)) {
@@ -240,8 +270,6 @@ export function loadDatabase(): DatabaseState {
 }
 
 export function saveDatabase(state: DatabaseState): void {
-  memoryDb = state;
-
   const targetFile = getWritableDbFile();
   const targetDir = path.dirname(targetFile);
 
@@ -252,6 +280,15 @@ export function saveDatabase(state: DatabaseState): void {
     const tempFile = `${targetFile}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf8');
     fs.renameSync(tempFile, targetFile);
+
+    // Update in-memory cache and timestamp
+    memoryDb = state;
+    lastLoadedFile = targetFile;
+    try {
+      lastLoadedMtime = fs.statSync(targetFile).mtimeMs;
+    } catch {
+      lastLoadedMtime = Date.now();
+    }
   } catch (err: any) {
     console.warn(`[saveDatabase] Primary write to ${targetFile} failed (${err.code || err.message}). Attempting fallback.`);
 
@@ -262,13 +299,24 @@ export function saveDatabase(state: DatabaseState): void {
         fs.writeFileSync(tmpTemp, JSON.stringify(state, null, 2), 'utf8');
         fs.renameSync(tmpTemp, TMP_DB_FILE);
         cachedWritableFile = TMP_DB_FILE;
+
+        memoryDb = state;
+        lastLoadedFile = TMP_DB_FILE;
+        try {
+          lastLoadedMtime = fs.statSync(TMP_DB_FILE).mtimeMs;
+        } catch {
+          lastLoadedMtime = Date.now();
+        }
         console.log('[saveDatabase] Successfully wrote to /tmp fallback');
         return;
       } catch (fallbackErr: any) {
         console.error('[saveDatabase] Fallback write to /tmp also failed:', fallbackErr.message);
+        throw new Error(`ไม่สามารถบันทึกฐานข้อมูลลงระบบไฟล์ได้: ${fallbackErr.message || fallbackErr}`);
       }
     }
-    // Note: memoryDb is already updated, preserving state in the active Node/Lambda process
+
+    // Never swallow error if writing completely failed! Throw so API responds with 500
+    throw new Error(`ไม่สามารถบันทึกฐานข้อมูลลงระบบไฟล์ได้: ${err.message || err}`);
   }
 }
 
@@ -301,6 +349,10 @@ export function recordAuditLog(
     db.auditLogs = db.auditLogs.slice(0, 200);
   }
 
-  saveDatabase(db);
+  try {
+    saveDatabase(db);
+  } catch (err: any) {
+    console.warn('[recordAuditLog] Failed to persist audit log to disk:', err.message);
+  }
   return newLog;
 }

@@ -74,7 +74,7 @@ export const ViewSchoolBoard: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/board')
+    fetch('/api/admin/board', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data) && isMounted) {

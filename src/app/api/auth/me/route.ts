@@ -3,6 +3,9 @@ import { cookies } from 'next/headers';
 import { loadDatabase } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -13,53 +16,60 @@ export async function GET() {
     if (!sessionToken) {
       return NextResponse.json(
         { success: false, error: 'กรุณาเข้าสู่ระบบ' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
       );
     }
 
     const db = loadDatabase();
 
-    // 1. Master Superuser handling
-    if (userId === 'EXE-001' || authRoleCookie === 'superuser') {
-      const directorStaff = db.teachers.find(
-        (t) => t.id === 'EXE-001' || t.employeeCode === 'EXE-001' || t.position.includes('ผู้อำนวยการ')
-      );
+    // 1. Lookup user from database by userId as top priority
+    let currentStaff = userId
+      ? db.teachers.find((t) => t.id === userId || t.employeeCode === userId)
+      : null;
 
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: directorStaff?.id || 'EXE-001',
-          employeeCode: directorStaff?.employeeCode || 'EXE-001',
-          name: directorStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
-          fullName: directorStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
-          position: directorStaff?.position || 'ผู้อำนวยการสถานศึกษา',
-          department: directorStaff?.department || 'บริหารสถานศึกษา',
-          accessLevel: directorStaff?.accessLevel || 'Superuser',
-          role: 'superuser',
-          email: directorStaff?.email || 'superuser',
-        },
-      });
+    // 2. Master Bypass fallback ONLY if userId === 'EXE-001' and not found in table
+    if (!currentStaff && userId === 'EXE-001') {
+      const directorStaff = db.teachers.find((t) => t.position.includes('ผู้อำนวยการ'));
+      currentStaff = directorStaff || {
+        id: 'EXE-001',
+        employeeCode: 'EXE-001',
+        name: 'นายธีรศักดิ์ มโนธรรม',
+        position: 'ผู้อำนวยการสถานศึกษา',
+        department: 'บริหารสถานศึกษา',
+        accessLevel: 'Superuser',
+        academicStanding: 'เชี่ยวชาญพิเศษ',
+        subjectGroup: 'บริหารสถานศึกษา',
+        status: 'ปฏิบัติหน้าที่',
+        role: 'superuser',
+      } as any;
     }
-
-    // 2. Lookup user from database by ID
-    let currentStaff = db.teachers.find(
-      (t) => t.id === userId || t.employeeCode === userId
-    );
 
     if (!currentStaff) {
       // Fallback safe default user
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: 'GUEST-001',
-          name: 'ครูและบุคลากร',
-          fullName: 'ครูและบุคลากร',
-          position: 'ข้าราชการครู',
-          department: 'กลุ่มสาระการเรียนรู้',
-          accessLevel: 'User',
-          role: 'teacher',
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            id: 'GUEST-001',
+            name: 'ครูและบุคลากร',
+            fullName: 'ครูและบุคลากร',
+            position: 'ข้าราชการครู',
+            department: 'กลุ่มสาระการเรียนรู้',
+            accessLevel: 'User',
+            role: 'teacher',
+          },
         },
-      });
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
     }
 
     // Real-time role evaluation from active database
@@ -77,10 +87,17 @@ export async function GET() {
       email: currentStaff.email,
     };
 
-    const response = NextResponse.json({
-      success: true,
-      user: userData,
-    });
+    const response = NextResponse.json(
+      {
+        success: true,
+        user: userData,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
 
     // If database accessLevel changed since cookie was set, re-sync cookie immediately!
     if (authRoleCookie !== currentRole) {
@@ -95,6 +112,14 @@ export async function GET() {
     return response;
   } catch (err: any) {
     console.error('[API /api/auth/me Error]', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   }
 }

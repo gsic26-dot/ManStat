@@ -4,10 +4,20 @@ import { verifyAdminSession } from '@/lib/auth/serverAuth';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import type { TeacherRecord } from '@/lib/data/schoolData';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const db = loadDatabase();
-    return NextResponse.json({ success: true, data: db.teachers });
+    return NextResponse.json(
+      { success: true, data: db.teachers },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -35,9 +45,20 @@ export async function POST(request: Request) {
     }
 
     const db = loadDatabase();
-    const existingIndex = db.teachers.findIndex(
-      (t) => t.id === updatedStaff.id || t.employeeCode === updatedStaff.employeeCode
-    );
+    // Match row by id primarily, match employeeCode only when non-empty
+    const existingIndex = db.teachers.findIndex((t) => {
+      if (updatedStaff.id && t.id === updatedStaff.id) return true;
+      if (
+        updatedStaff.employeeCode &&
+        updatedStaff.employeeCode.trim() !== '' &&
+        t.employeeCode &&
+        t.employeeCode.trim() !== '' &&
+        t.employeeCode === updatedStaff.employeeCode
+      ) {
+        return true;
+      }
+      return false;
+    });
 
     const isNew = existingIndex === -1;
     let oldStaff: TeacherRecord | null = null;

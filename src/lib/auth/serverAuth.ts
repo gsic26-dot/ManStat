@@ -44,28 +44,10 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
       return null;
     }
 
-    // Master Superuser Session check
-    if (userId === 'EXE-001' || roleCookie === 'superuser') {
-      const db = loadDatabase();
-      const superuserStaff = db.teachers.find(
-        (t) => t.id === 'EXE-001' || t.employeeCode === 'EXE-001' || t.position.includes('ผู้อำนวยการ')
-      );
-      return {
-        id: superuserStaff?.id || 'EXE-001',
-        employeeCode: superuserStaff?.employeeCode || 'EXE-001',
-        name: superuserStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
-        fullName: superuserStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
-        position: superuserStaff?.position || 'ผู้อำนวยการสถานศึกษา',
-        department: superuserStaff?.department || 'บริหารสถานศึกษา',
-        accessLevel: superuserStaff?.accessLevel || 'Superuser',
-        role: 'superuser',
-        email: superuserStaff?.email || 'superuser',
-      };
-    }
+    const db = loadDatabase();
 
-    // Lookup staff in database
+    // 1. Lookup staff in database by userId as highest priority
     if (userId) {
-      const db = loadDatabase();
       const teacher = db.teachers.find(
         (t) => t.id === userId || t.employeeCode === userId
       );
@@ -82,6 +64,24 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
           accessLevel: teacher.accessLevel || 'User',
           role: realRole,
           email: teacher.email,
+        };
+      }
+
+      // 2. Master Superuser Session check (fallback ONLY if userId is explicitly EXE-001)
+      if (userId === 'EXE-001') {
+        const superuserStaff = db.teachers.find(
+          (t) => t.id === 'EXE-001' || t.employeeCode === 'EXE-001' || t.position.includes('ผู้อำนวยการ')
+        );
+        return {
+          id: superuserStaff?.id || 'EXE-001',
+          employeeCode: superuserStaff?.employeeCode || 'EXE-001',
+          name: superuserStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
+          fullName: superuserStaff?.name || 'นายธีรศักดิ์ มโนธรรม',
+          position: superuserStaff?.position || 'ผู้อำนวยการสถานศึกษา',
+          department: superuserStaff?.department || 'บริหารสถานศึกษา',
+          accessLevel: superuserStaff?.accessLevel || 'Superuser',
+          role: 'superuser',
+          email: superuserStaff?.email || 'superuser',
         };
       }
     }

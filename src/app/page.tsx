@@ -131,7 +131,7 @@ export default function DashboardPage() {
     }
 
     // 2. Real-time verification from /api/auth/me
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.user) {
@@ -154,7 +154,7 @@ export default function DashboardPage() {
   const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
 
   const loadLeaveList = useCallback(() => {
-    fetch('/api/admin/leave')
+    fetch('/api/admin/leave', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/staff')
+    fetch('/api/admin/staff', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data) && isMounted) {
@@ -175,7 +175,7 @@ export default function DashboardPage() {
       })
       .catch(() => {});
 
-    fetch('/api/admin/school')
+    fetch('/api/admin/school', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data && isMounted) {

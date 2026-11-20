@@ -40,12 +40,22 @@ function normalizeMember(b: any): BoardMemberRecord {
   };
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const db = loadDatabase();
     const rawList = db.boardMembers || [];
     const normalized = rawList.map(normalizeMember);
-    return NextResponse.json({ success: true, data: normalized });
+    return NextResponse.json(
+      { success: true, data: normalized },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

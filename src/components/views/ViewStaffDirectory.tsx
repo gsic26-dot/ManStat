@@ -49,7 +49,7 @@ export const ViewStaffDirectory: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/staff')
+    fetch('/api/admin/staff', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data) && isMounted) {
@@ -162,10 +162,10 @@ export const ViewStaffDirectory: React.FC = () => {
                 : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white dark:border-slate-800/80'
             }`}
           >
-            ทั้งหมด ({INITIAL_TEACHERS.length})
+            ทั้งหมด ({teachersList.length})
           </button>
           {departments.map((dept) => {
-            const count = INITIAL_TEACHERS.filter((t) => t.department === dept).length;
+            const count = teachersList.filter((t) => t.department === dept).length;
             const isSelected = selectedDept === dept;
             return (
               <button
