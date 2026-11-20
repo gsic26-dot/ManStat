@@ -11,6 +11,7 @@ ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS prefix TEXT DEFAULT '';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT '';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT '';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS position TEXT DEFAULT 'ครู';
+ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS system_role TEXT DEFAULT 'teacher';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS academic_standing TEXT DEFAULT '-';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS masked_citizen_id TEXT DEFAULT '';
 ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS highest_scout TEXT DEFAULT 'ไม่มีวุฒิลูกเสือ';
@@ -26,6 +27,22 @@ ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS educations JSONB DEFAULT '[
 
 -- อัปเดต employee_code ให้ตรงกับ id สำหรับข้อมูลเดิมที่ว่างอยู่
 UPDATE public.teachers SET employee_code = id WHERE employee_code IS NULL OR employee_code = '';
+
+-- ซิงค์ system_role จาก access_level (แยกคอลัมน์สิทธิ์ระบบออกจากชื่อตำแหน่งอย่างเด็ดขาด)
+UPDATE public.teachers 
+SET system_role = CASE 
+  WHEN access_level ILIKE '%Superuser%' THEN 'superuser'
+  WHEN access_level ILIKE '%Admin%' THEN 'hr_admin'
+  ELSE 'teacher'
+END
+WHERE system_role IS NULL OR system_role = 'teacher';
+
+-- ซิงค์ position จาก role ภาษาไทยเดิม (ป้องกันตำแหน่งครูหายเมื่อระบบใหม่เข้าถึง)
+UPDATE public.teachers 
+SET position = role 
+WHERE (position IS NULL OR position = '' OR position = 'ครู') 
+  AND role IS NOT NULL 
+  AND role NOT IN ('superuser', 'director', 'hr_admin', 'teacher');
 
 -- 2. ตาราง board_members: เพิ่มคอลัมน์รองรับ ผอ. โดยตำแหน่ง และวาระการดำรงตำแหน่ง
 ALTER TABLE public.board_members ADD COLUMN IF NOT EXISTS is_ex_officio BOOLEAN DEFAULT FALSE;

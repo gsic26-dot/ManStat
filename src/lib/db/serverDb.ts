@@ -440,10 +440,16 @@ export function teacherToDb(t: TeacherRecord) {
       ? t.accessLevel
       : 'User';
 
-  let role = t.role || mapAccessLevelToRole(accessLevel);
-  if (!['superuser', 'director', 'hr_admin', 'teacher'].includes(role)) {
-    role = mapAccessLevelToRole(accessLevel);
-  }
+  const systemRole = mapAccessLevelToRole(accessLevel);
+
+  // Position preservation: if t.position is specified, use it.
+  // If not, check if t.role has a Thai position title (i.e. not a system role).
+  const positionTitle =
+    t.position && t.position.trim() !== '' && !['superuser', 'director', 'hr_admin', 'teacher'].includes(t.position)
+      ? t.position
+      : t.role && !['superuser', 'director', 'hr_admin', 'teacher'].includes(t.role)
+      ? t.role
+      : 'ครู';
 
   const id = t.id || t.employeeCode;
 
@@ -454,14 +460,15 @@ export function teacherToDb(t: TeacherRecord) {
     prefix: t.prefix || '',
     first_name: t.firstName || '',
     last_name: t.lastName || '',
-    position: t.position || 'ครู',
+    position: positionTitle,
     academic_standing: t.academicStanding || '-',
     department: t.department || '',
     division: t.division || '',
     class_level: t.classLevel || '-',
     duty_day: t.dutyDay || '-',
     access_level: accessLevel,
-    role: role,
+    role: positionTitle, // Preserve Thai position title in legacy role column! NEVER overwrite with system roles ('superuser'|'hr_admin'|'teacher')
+    system_role: systemRole,
     start_date: t.startDate || '',
     email: t.email || '',
     phone: t.phone || '',
@@ -488,7 +495,20 @@ export function teacherFromDb(row: any): TeacherRecord {
       ? row.access_level
       : 'User';
 
-  const role = row.role || mapAccessLevelToRole(accessLevel);
+  // System role is strictly derived from access_level or system_role column.
+  // NEVER blindly trust row.role because in existing Supabase tables, row.role stores Thai position titles!
+  const systemRole =
+    row.system_role && ['superuser', 'director', 'hr_admin', 'teacher'].includes(row.system_role)
+      ? row.system_role
+      : mapAccessLevelToRole(accessLevel);
+
+  // Position is derived from position column, falling back to legacy role column if it contains a Thai title.
+  const position =
+    row.position && row.position.trim() !== '' && !['superuser', 'director', 'hr_admin', 'teacher'].includes(row.position)
+      ? row.position
+      : row.role && !['superuser', 'director', 'hr_admin', 'teacher'].includes(row.role)
+      ? row.role
+      : (row.position || 'ครู');
 
   return {
     id: row.id,
@@ -497,14 +517,14 @@ export function teacherFromDb(row: any): TeacherRecord {
     prefix: row.prefix || '',
     firstName: row.first_name || '',
     lastName: row.last_name || '',
-    position: row.position || (row.role && !['superuser', 'director', 'hr_admin', 'teacher'].includes(row.role) ? row.role : 'ครู'),
+    position,
     academicStanding: row.academic_standing || '-',
     department: row.department || '',
     division: row.division || '',
     classLevel: row.class_level || '-',
     dutyDay: row.duty_day || '-',
     accessLevel,
-    role,
+    role: systemRole,
     startDate: row.start_date || '',
     email: row.email || '',
     phone: row.phone || '',

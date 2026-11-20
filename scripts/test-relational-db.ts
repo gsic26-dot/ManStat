@@ -122,10 +122,27 @@ async function runTestSuite() {
   const teacherDb = teacherToDb(sampleTeacher);
   assert('teacherToDb: primary key matches id', teacherDb.id === 'EXE-001');
   assert('teacherToDb: mapped access_level correctly', teacherDb.access_level === 'Superuser');
-  assert('teacherToDb: mapped role correctly', teacherDb.role === 'superuser');
+  assert('teacherToDb: mapped system_role correctly', teacherDb.system_role === 'superuser');
+  assert('teacherToDb: preserved Thai position in legacy role column', teacherDb.role === 'ผู้อำนวยการสถานศึกษา');
+  assert('teacherToDb: preserved position column', teacherDb.position === 'ผู้อำนวยการสถานศึกษา');
   const teacherReverted = teacherFromDb(teacherDb);
   assert('teacherFromDb: roundtrip restored accessLevel', teacherReverted.accessLevel === 'Superuser');
+  assert('teacherFromDb: roundtrip restored system role', teacherReverted.role === 'superuser');
+  assert('teacherFromDb: roundtrip restored position title', teacherReverted.position === 'ผู้อำนวยการสถานศึกษา');
   assert('teacherFromDb: roundtrip restored employeeCode', teacherReverted.employeeCode === 'EXE-001');
+
+  // Test legacy row compatibility (row where role is Thai title and position column is missing/empty)
+  const legacySupabaseRow = {
+    id: 'TCH-003',
+    employee_code: 'TCH-003',
+    name: 'นายธวัชชัย เหลืองโอฬาร',
+    role: 'ครูชำนาญการพิเศษ',
+    access_level: 'Admin',
+    position: null
+  };
+  const legacyMapped = teacherFromDb(legacySupabaseRow);
+  assert('legacyRow: correctly derived system role from access_level without being corrupted by Thai role', legacyMapped.role === 'hr_admin');
+  assert('legacyRow: correctly extracted Thai position from legacy role column', legacyMapped.position === 'ครูชำนาญการพิเศษ');
 
   // 1.3 board_members (PK: member_id, board_position)
   const sampleBoard: BoardMemberRecord = {
