@@ -15,6 +15,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Shield,
+  ShieldCheck,
   Phone,
   Building,
   CheckCircle2,
@@ -26,6 +27,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
+import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
+import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 
 const BOARD_POSITIONS_MAP: Record<string, string> = {
   CHAIR: 'ประธานกรรมการ',
@@ -263,10 +266,21 @@ export const ViewSchoolBoard: React.FC = () => {
                         {/* Term & Ex-officio Status */}
                         <td className="px-5 py-3.5 text-center whitespace-nowrap">
                           {isDirector ? (
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border border-sky-500/30">
-                              <Award className="w-3.5 h-3.5 shrink-0" />
-                              <span>โดยตำแหน่ง</span>
-                            </span>
+                            <div className="inline-flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border border-sky-500/30">
+                                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                                <span>โดยตำแหน่ง</span>
+                              </span>
+                              {member.endReason && member.endDate ? (
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                  สิ้นสุด {formatOfficialThaiDate(member.endDate)} ({member.endReason})
+                                </span>
+                              ) : member.appointmentDate && formatServiceDuration(member.appointmentDate) ? (
+                                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium font-mono">
+                                  ปฏิบัติหน้าที่มาแล้ว {formatServiceDuration(member.appointmentDate)}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -387,9 +401,21 @@ export const ViewSchoolBoard: React.FC = () => {
 
                 <div className="mt-4 pt-3 border-t border-slate-200/90 dark:border-slate-800 text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex justify-between items-center">
                   {isDirector ? (
-                    <span className="text-sky-600 dark:text-sky-300 font-semibold">
-                      โดยตำแหน่ง (ตั้งแต่ 10 ม.ค. 2555)
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border border-sky-500/30">
+                        <ShieldCheck className="w-3 h-3 shrink-0" />
+                        <span>โดยตำแหน่ง</span>
+                      </span>
+                      {member.endReason && member.endDate ? (
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          สิ้นสุด {formatOfficialThaiDate(member.endDate)} ({member.endReason})
+                        </span>
+                      ) : member.appointmentDate && formatServiceDuration(member.appointmentDate) ? (
+                        <span className="text-xs text-sky-600 dark:text-sky-400 font-mono">
+                          ({formatServiceDuration(member.appointmentDate)})
+                        </span>
+                      ) : null}
+                    </div>
                   ) : (
                     <span>วาระที่ {member.termNumber} ({member.status})</span>
                   )}

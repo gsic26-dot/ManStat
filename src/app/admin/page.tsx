@@ -43,7 +43,12 @@ import {
   Sliders,
   Loader2,
   AlertCircle,
+  Pencil,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
+import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
+import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
@@ -159,13 +164,13 @@ export default function AdminPage() {
   // Loading & Feedback State
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Authenticated User & RBAC State
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentRole, setCurrentRole] = useState<string>('superuser');
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
       setToast((current) => (current?.message === message ? null : current));
@@ -195,11 +200,13 @@ export default function AdminPage() {
   const [newStdLevel, setNewStdLevel] = useState('ครูชำนาญการ (คศ. 2)');
   const [newStdDate, setNewStdDate] = useState('');
   const [newStdOrder, setNewStdOrder] = useState('');
+  const [editingStandingIndex, setEditingStandingIndex] = useState<number | null>(null);
 
   const [newEduDegree, setNewEduDegree] = useState('ค.บ.');
   const [newEduMajor, setNewEduMajor] = useState('');
   const [newEduInst, setNewEduInst] = useState('');
   const [newEduYear, setNewEduYear] = useState('2565');
+  const [editingEducationIndex, setEditingEducationIndex] = useState<number | null>(null);
 
   // School Board State
   const [boardMembers, setBoardMembers] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
@@ -618,54 +625,179 @@ export default function AdminPage() {
     });
   };
 
-  const handleAddStandingToStaff = () => {
-    if (!selectedStaff || !newStdLevel) return;
-    const item = {
-      level: newStdLevel,
-      effectiveDate: newStdDate || new Date().toISOString().split('T')[0],
-      orderNumber: newStdOrder || '-',
-    };
-    setSelectedStaff({
-      ...selectedStaff,
-      standings: [...(selectedStaff.standings || []), item],
-    });
+  const handleEditStanding = (index: number) => {
+    if (!selectedStaff?.standings?.[index]) return;
+    const item = selectedStaff.standings[index];
+    setNewStdLevel(item.level || '');
+    setNewStdDate(item.effectiveDate || '');
+    setNewStdOrder(item.orderNumber || '');
+    setEditingStandingIndex(index);
+  };
+
+  const handleCancelEditStanding = () => {
+    setNewStdLevel('ครูชำนาญการ (คศ. 2)');
     setNewStdDate('');
     setNewStdOrder('');
+    setEditingStandingIndex(null);
+  };
+
+  const handleSaveStanding = () => {
+    if (!selectedStaff || !newStdLevel.trim()) {
+      showToast('กรุณาระบุตำแหน่ง/วิทยฐานะ', 'error');
+      return;
+    }
+    const item = {
+      level: newStdLevel.trim(),
+      effectiveDate: newStdDate || new Date().toISOString().split('T')[0],
+      orderNumber: newStdOrder.trim() || '-',
+    };
+
+    if (editingStandingIndex !== null) {
+      const updated = [...(selectedStaff.standings || [])];
+      updated[editingStandingIndex] = item;
+      setSelectedStaff({
+        ...selectedStaff,
+        standings: updated,
+      });
+      handleCancelEditStanding();
+      showToast('แก้ไขข้อมูลประวัติวิทยฐานะสำเร็จ', 'success');
+    } else {
+      setSelectedStaff({
+        ...selectedStaff,
+        standings: [...(selectedStaff.standings || []), item],
+      });
+      setNewStdDate('');
+      setNewStdOrder('');
+      showToast('เพิ่มรายการประวัติวิทยฐานะสำเร็จ', 'success');
+    }
   };
 
   const handleDeleteStandingFromStaff = (index: number) => {
     if (!selectedStaff) return;
+    if (editingStandingIndex === index) {
+      handleCancelEditStanding();
+    }
     setSelectedStaff({
       ...selectedStaff,
       standings: selectedStaff.standings.filter((_, idx) => idx !== index),
     });
+    showToast('ลบรายการเรียบร้อยแล้ว', 'info');
   };
 
-  const handleAddEducationToStaff = () => {
+  const handleEditEducation = (index: number) => {
+    if (!selectedStaff?.educations?.[index]) return;
+    const item = selectedStaff.educations[index];
+    setNewEduDegree(item.degree || 'ค.บ.');
+    setNewEduMajor(item.major || '');
+    setNewEduInst(item.institute || '');
+    setNewEduYear(item.gradYear || '2565');
+    setEditingEducationIndex(index);
+  };
+
+  const handleCancelEditEducation = () => {
+    setNewEduDegree('ค.บ.');
+    setNewEduMajor('');
+    setNewEduInst('');
+    setNewEduYear('2565');
+    setEditingEducationIndex(null);
+  };
+
+  const handleSaveEducation = () => {
     if (!selectedStaff || !newEduMajor.trim()) {
-      alert('กรุณาระบุวิชาเอก/สาขา');
+      showToast('กรุณาระบุวิชาเอก/สาขา', 'error');
       return;
     }
     const item = {
-      degree: newEduDegree,
+      degree: newEduDegree.trim() || 'ค.บ.',
       major: newEduMajor.trim(),
       institute: newEduInst.trim() || 'มหาวิทยาลัยราชภัฏนครราชสีมา',
-      gradYear: newEduYear || '2565',
+      gradYear: newEduYear.trim() || (new Date().getFullYear() + 543).toString(),
     };
-    setSelectedStaff({
-      ...selectedStaff,
-      educations: [...(selectedStaff.educations || []), item],
-    });
-    setNewEduMajor('');
-    setNewEduInst('');
+
+    if (editingEducationIndex !== null) {
+      const updated = [...(selectedStaff.educations || [])];
+      updated[editingEducationIndex] = item;
+      setSelectedStaff({
+        ...selectedStaff,
+        educations: updated,
+      });
+      handleCancelEditEducation();
+      showToast('แก้ไขข้อมูลวุฒิการศึกษาสำเร็จ', 'success');
+    } else {
+      setSelectedStaff({
+        ...selectedStaff,
+        educations: [...(selectedStaff.educations || []), item],
+      });
+      setNewEduMajor('');
+      setNewEduInst('');
+      showToast('เพิ่มวุฒิการศึกษาสำเร็จ', 'success');
+    }
   };
 
   const handleDeleteEducationFromStaff = (index: number) => {
     if (!selectedStaff) return;
+    if (editingEducationIndex === index) {
+      handleCancelEditEducation();
+    }
     setSelectedStaff({
       ...selectedStaff,
       educations: selectedStaff.educations.filter((_, idx) => idx !== index),
     });
+    showToast('ลบวุฒิการศึกษาเรียบร้อยแล้ว', 'info');
+  };
+
+  const handleSyncDirectorFromStaff = () => {
+    // 1. ค้นหาบุคลากรที่เป็นผู้อำนวยการจาก teachers
+    const directorTeacher = teachers.find(
+      (t) =>
+        (t.position && (t.position.includes('ผู้อำนวยการ') || t.position.includes('ผอ.'))) ||
+        (t.role && (t.role.includes('ผู้อำนวยการ') || t.role.includes('ผอ.'))) ||
+        t.id === 'EXE-001'
+    );
+
+    if (!directorTeacher) {
+      showToast('ไม่พบบุคลากรตำแหน่งผู้อำนวยการในระบบ', 'error');
+      return;
+    }
+
+    // 2. ค้นหาใน standings ของ ผอ. เฉพาะรายการที่ level มีคำว่า ผู้อำนวยการ หรือ ผอ. เรียงตาม effectiveDate ล่าสุด
+    const directorStandings = (directorTeacher.standings || [])
+      .filter((s) => s.level && (s.level.includes('ผู้อำนวยการ') || s.level.includes('ผอ.')))
+      .sort((a, b) => (b.effectiveDate || '').localeCompare(a.effectiveDate || ''));
+
+    const latestDirectorStanding = directorStandings[0];
+
+    // 3. System Guard: ห้ามดึง startDate (วันบรรจุรับราชการ/ครูผู้ช่วย) มาใส่ใน appointmentDate เด็ดขาด!
+    if (!latestDirectorStanding || !latestDirectorStanding.effectiveDate) {
+      showToast('ไม่พบวันที่แต่งตั้ง ผอ. ในประวัติ กรุณาเลือกวันที่ด้วยตนเอง', 'info');
+      setSelectedBoardMember((prev) =>
+        prev
+          ? {
+              ...prev,
+              fullName: directorTeacher.name,
+              organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
+              occupation: 'ผู้อำนวยการสถานศึกษา',
+              phone: directorTeacher.phone || prev.phone,
+            }
+          : null
+      );
+      return;
+    }
+
+    // เติมค่าจากรายการแต่งตั้ง ผอ. ล่าสุด
+    setSelectedBoardMember((prev) =>
+      prev
+        ? {
+            ...prev,
+            fullName: directorTeacher.name,
+            appointmentDate: latestDirectorStanding.effectiveDate,
+            organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
+            occupation: 'ผู้อำนวยการสถานศึกษา',
+            phone: directorTeacher.phone || prev.phone,
+          }
+        : null
+    );
+    showToast(`ซิงก์ข้อมูล ผอ. สำเร็จ (วันดำรงตำแหน่ง: ${latestDirectorStanding.effectiveDate})`, 'success');
   };
 
   // School Board Handlers
@@ -1274,9 +1406,21 @@ export default function AdminPage() {
                                     </div>
                                     <div className="text-slate-800 dark:text-slate-200 font-medium">
                                       {isDirector ? (
-                                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                                          โดยตำแหน่ง
-                                        </span>
+                                        <div className="flex flex-col gap-1 items-start">
+                                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border border-sky-500/30">
+                                            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                                            <span>โดยตำแหน่ง</span>
+                                          </span>
+                                          {b.endReason && b.endDate ? (
+                                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                              สิ้นสุด {formatOfficialThaiDate(b.endDate)} ({b.endReason})
+                                            </span>
+                                          ) : b.appointmentDate && formatServiceDuration(b.appointmentDate) ? (
+                                            <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium font-mono">
+                                              ปฏิบัติหน้าที่มาแล้ว {formatServiceDuration(b.appointmentDate)}
+                                            </span>
+                                          ) : null}
+                                        </div>
                                       ) : (
                                         <span>วาระที่ {b.termNumber} (วาระ 4 ปี)</span>
                                       )}
@@ -2572,7 +2716,11 @@ export default function AdminPage() {
                         selectedStaff.standings.map((std, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
+                            className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
+                              editingStandingIndex === idx
+                                ? 'border-sky-500 ring-1 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20'
+                                : 'border-slate-200/90 dark:border-slate-700'
+                            }`}
                           >
                             <div>
                               <div className="font-bold text-slate-900 dark:text-white text-xs">{std.level}</div>
@@ -2580,22 +2728,53 @@ export default function AdminPage() {
                                 วันที่มีผล: {std.effectiveDate} | คำสั่ง: {std.orderNumber}
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStandingFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                            >
-                              <Trash2 className="w-4 h-4 shrink-0" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditStanding(idx)}
+                                className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+                                title="แก้ไขรายการนี้"
+                              >
+                                <Pencil className="w-3.5 h-3.5 shrink-0" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStandingFromStaff(idx)}
+                                className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
+                                title="ลบรายการนี้"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
                     </div>
 
                     <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                        <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
+                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {editingStandingIndex !== null ? (
+                            <>
+                              <Pencil className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                              <span>แก้ไขประวัติการดำรงตำแหน่ง/วิทยฐานะ (รายการที่ {editingStandingIndex + 1})</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                              <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
+                            </>
+                          )}
+                        </div>
+                        {editingStandingIndex !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditStanding}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
+                          >
+                            ยกเลิกการแก้ไข
+                          </button>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="sm:col-span-1">
@@ -2627,14 +2806,33 @@ export default function AdminPage() {
                           />
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {editingStandingIndex !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditStanding}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
+                          >
+                            <X className="w-3.5 h-3.5 shrink-0" />
+                            <span>ยกเลิก</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={handleAddStandingToStaff}
+                          onClick={handleSaveStanding}
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
                         >
-                          <Plus className="w-3.5 h-3.5 shrink-0" />
-                          <span>เพิ่มรายการวิทยฐานะ</span>
+                          {editingStandingIndex !== null ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>บันทึกการแก้ไข</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5 shrink-0" />
+                              <span>เพิ่มรายการวิทยฐานะ</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -2661,7 +2859,11 @@ export default function AdminPage() {
                         selectedStaff.educations.map((edu, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
+                            className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
+                              editingEducationIndex === idx
+                                ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'
+                                : 'border-slate-200/90 dark:border-slate-700'
+                            }`}
                           >
                             <div>
                               <div className="font-bold text-slate-900 dark:text-white text-xs">
@@ -2671,22 +2873,53 @@ export default function AdminPage() {
                                 {edu.institute} (พ.ศ. {edu.gradYear})
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteEducationFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                            >
-                              <Trash2 className="w-4 h-4 shrink-0" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditEducation(idx)}
+                                className="p-1.5 rounded-md text-slate-400 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+                                title="แก้ไขวุฒินี้"
+                              >
+                                <Pencil className="w-3.5 h-3.5 shrink-0" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEducationFromStaff(idx)}
+                                className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
+                                title="ลบวุฒินี้"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
                     </div>
 
                     <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                        <span>เพิ่มวุฒิการศึกษา</span>
+                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {editingEducationIndex !== null ? (
+                            <>
+                              <Pencil className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                              <span>แก้ไขวุฒิการศึกษา (รายการที่ {editingEducationIndex + 1})</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                              <span>เพิ่มวุฒิการศึกษา</span>
+                            </>
+                          )}
+                        </div>
+                        {editingEducationIndex !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditEducation}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
+                          >
+                            ยกเลิกการแก้ไข
+                          </button>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <div>
@@ -2730,14 +2963,33 @@ export default function AdminPage() {
                           />
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {editingEducationIndex !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditEducation}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
+                          >
+                            <X className="w-3.5 h-3.5 shrink-0" />
+                            <span>ยกเลิก</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={handleAddEducationToStaff}
+                          onClick={handleSaveEducation}
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
                         >
-                          <Plus className="w-3.5 h-3.5 shrink-0" />
-                          <span>เพิ่มวุฒิการศึกษา</span>
+                          {editingEducationIndex !== null ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>บันทึกการแก้ไข</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5 shrink-0" />
+                              <span>เพิ่มวุฒิการศึกษา</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -2892,56 +3144,178 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เบอร์โทรศัพท์ (PDPA)</label>
-                  <input
-                    type="text"
-                    placeholder="08x-xxx-xxxx"
-                    value={selectedBoardMember.phone}
-                    onChange={(e) =>
-                      setSelectedBoardMember({
-                        ...selectedBoardMember,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
-                  />
+              {/* If DIRECTOR_SEC (ผอ. กรรมการและเลขานุการโดยตำแหน่ง) */}
+              {selectedBoardMember.position === 'DIRECTOR_SEC' ? (
+                <div className="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800/60 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-300">
+                      <ShieldCheck className="w-4 h-4 shrink-0" />
+                      <span>สถานะ: กรรมการและเลขานุการโดยตำแหน่ง (Ex-officio)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSyncDirectorFromStaff}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white transition-colors duration-200 shadow-sm cursor-pointer"
+                      title="ซิงก์ชื่อ ผอ. และวันที่แต่งตั้ง ผอ. ล่าสุดจากทะเบียนบุคลากร"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                      <span>ซิงก์จากทะเบียนบุคลากร</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        เบอร์โทรศัพท์ (PDPA)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="08x-xxx-xxxx"
+                        value={selectedBoardMember.phone}
+                        onChange={(e) =>
+                          setSelectedBoardMember({
+                            ...selectedBoardMember,
+                            phone: e.target.value,
+                          })
+                        }
+                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        วันที่มาดำรงตำแหน่ง ผอ.
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedBoardMember.appointmentDate || ''}
+                        onChange={(e) =>
+                          setSelectedBoardMember({
+                            ...selectedBoardMember,
+                            appointmentDate: e.target.value,
+                          })
+                        }
+                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                      />
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                        ใช้นับระยะเวลาปฏิบัติหน้าที่
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                        สถานะการดำรงตำแหน่ง
+                      </label>
+                      <select
+                        value={selectedBoardMember.status || 'ดำรงตำแหน่ง'}
+                        onChange={(e) =>
+                          setSelectedBoardMember({
+                            ...selectedBoardMember,
+                            status: e.target.value,
+                          })
+                        }
+                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
+                      >
+                        <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
+                        <option value="พ้นจากตำแหน่ง">พ้นจากตำแหน่ง</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* หากพ้นจากตำแหน่ง: เหตุผลและวันที่สิ้นสุด */}
+                  {selectedBoardMember.status === 'พ้นจากตำแหน่ง' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-sky-200 dark:border-sky-800/40">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                          เหตุผลที่พ้นจากตำแหน่ง
+                        </label>
+                        <select
+                          value={selectedBoardMember.endReason || ''}
+                          onChange={(e) =>
+                            setSelectedBoardMember({
+                              ...selectedBoardMember,
+                              endReason: e.target.value,
+                            })
+                          }
+                          className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        >
+                          <option value="">-- เลือกเหตุผล --</option>
+                          <option value="ย้าย">ย้าย</option>
+                          <option value="ลาออก">ลาออก</option>
+                          <option value="เกษียณอายุราชการ">เกษียณอายุราชการ</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                          วันที่พ้นจากตำแหน่ง (สิ้นสุด)
+                        </label>
+                        <input
+                          type="date"
+                          value={selectedBoardMember.endDate || ''}
+                          onChange={(e) =>
+                            setSelectedBoardMember({
+                              ...selectedBoardMember,
+                              endDate: e.target.value,
+                            })
+                          }
+                          className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วาระที่ดำรงตำแหน่ง</label>
-                  <select
-                    value={selectedBoardMember.termNumber}
-                    onChange={(e) =>
-                      setSelectedBoardMember({
-                        ...selectedBoardMember,
-                        termNumber: Number(e.target.value) || 1,
-                      })
-                    }
-                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
-                  >
-                    <option value={1}>วาระที่ 1 (ครั้งแรก 4 ปี)</option>
-                    <option value={2}>วาระที่ 2 (ต่อเนื่องครั้งที่ 2)</option>
-                  </select>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เบอร์โทรศัพท์ (PDPA)</label>
+                    <input
+                      type="text"
+                      placeholder="08x-xxx-xxxx"
+                      value={selectedBoardMember.phone}
+                      onChange={(e) =>
+                        setSelectedBoardMember({
+                          ...selectedBoardMember,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วาระที่ดำรงตำแหน่ง</label>
+                    <select
+                      value={selectedBoardMember.termNumber}
+                      onChange={(e) =>
+                        setSelectedBoardMember({
+                          ...selectedBoardMember,
+                          termNumber: Number(e.target.value) || 1,
+                        })
+                      }
+                      className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500"
+                    >
+                      <option value={1}>วาระที่ 1 (ครั้งแรก 4 ปี)</option>
+                      <option value={2}>วาระที่ 2 (ต่อเนื่องครั้งที่ 2)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สถานะภาพ</label>
+                    <select
+                      value={selectedBoardMember.status}
+                      onChange={(e) =>
+                        setSelectedBoardMember({
+                          ...selectedBoardMember,
+                          status: e.target.value,
+                        })
+                      }
+                      className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
+                      <option value="ครบวาระ">ครบวาระ</option>
+                      <option value="พ้นจากตำแหน่งก่อนครบวาระ">พ้นจากตำแหน่งก่อนครบวาระ</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สถานะภาพ</label>
-                  <select
-                    value={selectedBoardMember.status}
-                    onChange={(e) =>
-                      setSelectedBoardMember({
-                        ...selectedBoardMember,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
-                    <option value="ครบวาระ">ครบวาระ</option>
-                    <option value="พ้นจากตำแหน่งก่อนครบวาระ">พ้นจากตำแหน่งก่อนครบวาระ</option>
-                  </select>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
@@ -2995,8 +3369,10 @@ export default function AdminPage() {
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 bg-white dark:bg-[#121a24] text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">
           {toast.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          ) : (
+          ) : toast.type === 'error' ? (
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-sky-500 shrink-0" />
           )}
           <span>{toast.message}</span>
           <button

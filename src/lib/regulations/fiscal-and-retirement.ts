@@ -198,3 +198,45 @@ export function calculateTenure(
     formattedText: `${Math.max(0, y)} ปี ${Math.max(0, m)} เดือน ${Math.max(0, d)} วัน`
   };
 }
+
+/**
+ * คำนวณระยะเวลาปฏิบัติหน้าที่ (Service Duration)
+ * รูปแบบ: "X ปี Y เดือน" หรือ "Y เดือน" กรณีไม่ถึง 1 ปี
+ * หากระบุ endDateInput จะหยุดคำนวณที่วันสิ้นสุด
+ */
+export function formatServiceDuration(
+  appointmentDateInput?: string | null,
+  endDateInput?: string | null
+): string {
+  if (!appointmentDateInput || !appointmentDateInput.trim()) return '';
+  const start = new Date(appointmentDateInput);
+  if (isNaN(start.getTime())) return '';
+
+  const end = endDateInput && endDateInput.trim() ? new Date(endDateInput) : new Date();
+  if (isNaN(end.getTime()) || end < start) return '';
+
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const y = Math.max(0, years);
+  const m = Math.max(0, months);
+
+  if (y > 0 && m > 0) {
+    return `${y} ปี ${m} เดือน`;
+  } else if (y > 0) {
+    return `${y} ปี`;
+  } else if (m > 0) {
+    return `${m} เดือน`;
+  } else {
+    return 'ไม่ถึง 1 เดือน';
+  }
+}
