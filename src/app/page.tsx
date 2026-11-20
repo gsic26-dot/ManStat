@@ -213,6 +213,7 @@ export default function DashboardPage() {
   });
   const onLeaveCount = staffOnLeaveToday.length;
   const onDutyCount = Math.max(0, staffList.length - onLeaveCount);
+  const pendingLeaveCount = leaveList.filter((r) => r.status === 'pending').length;
   const onLeaveDetail =
     staffOnLeaveToday.length > 0
       ? staffOnLeaveToday.map((s) => `${s.teacherName} (${s.leaveTypeName})`).join(', ')
@@ -368,9 +369,11 @@ export default function DashboardPage() {
                       <FileText className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
                       <span className="truncate">ติดตามและประวัติการลา</span>
                     </div>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30 shrink-0">
-                      2
-                    </span>
+                    {pendingLeaveCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                        {pendingLeaveCount}
+                      </span>
+                    )}
                   </button>
 
                   <button
@@ -646,9 +649,11 @@ export default function DashboardPage() {
                         <FileText className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                         <span className="truncate">ติดตามและประวัติการลา</span>
                       </div>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0">
-                        2
-                      </span>
+                      {pendingLeaveCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0">
+                          {pendingLeaveCount}
+                        </span>
+                      )}
                     </button>
                     <button
                       type="button"
