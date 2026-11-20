@@ -151,7 +151,7 @@ export default function DashboardPage() {
 
   const [staffList, setStaffList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
-  const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+  const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>([]);
 
   const loadLeaveList = useCallback(() => {
     fetch('/api/admin/leave', { cache: 'no-store' })
@@ -982,7 +982,14 @@ export default function DashboardPage() {
 
           {/* View: Leave Application Form */}
           {activeView === 'leave' && (
-            <ViewLeaveSubmit onSuccess={() => handleSelectView('tracking_requests')} />
+            <ViewLeaveSubmit
+              currentUser={currentUser}
+              staffList={staffList}
+              onSuccess={() => {
+                loadLeaveList();
+                handleSelectView('tracking_requests');
+              }}
+            />
           )}
 
           {/* View: Combined Leave Requests & Workflow Tracker */}

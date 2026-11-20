@@ -15,15 +15,23 @@ import { SmartLeaveForm } from '@/components/leave/SmartLeaveForm';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
 
 interface ViewLeaveSubmitProps {
+  currentUser?: any;
+  staffList?: any[];
   onSuccess?: () => void;
 }
 
-export function ViewLeaveSubmit({ onSuccess }: ViewLeaveSubmitProps) {
-  const substituteTeachers = INITIAL_TEACHERS.map((t) => ({
-    id: t.id,
-    name: t.name,
-    position: t.position,
-  }));
+export function ViewLeaveSubmit({ currentUser, staffList, onSuccess }: ViewLeaveSubmitProps) {
+  const currentStaffId = currentUser?.employeeCode || currentUser?.id || (staffList && staffList[0]?.id) || 'TCH-003';
+  const currentStaffName = currentUser?.fullName || currentUser?.name || (staffList && staffList[0]?.name) || 'บุคลากรสถานศึกษา';
+
+  const listToUse = Array.isArray(staffList) && staffList.length > 0 ? staffList : INITIAL_TEACHERS;
+  const substituteTeachers = listToUse
+    .filter((t) => t.id !== currentStaffId)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      position: t.position,
+    }));
 
   return (
     <div className="space-y-6">
@@ -42,8 +50,8 @@ export function ViewLeaveSubmit({ onSuccess }: ViewLeaveSubmitProps) {
       {/* SmartLeaveForm Container */}
       <div className="bg-white dark:bg-[#111822] p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
         <SmartLeaveForm
-          currentStaffId="TCH-003"
-          currentStaffName="นายธวัชชัย เหลืองโอฬาร"
+          currentStaffId={currentStaffId}
+          currentStaffName={currentStaffName}
           substituteTeachers={substituteTeachers}
           onSuccess={onSuccess}
         />

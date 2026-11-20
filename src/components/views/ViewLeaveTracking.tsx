@@ -24,22 +24,24 @@ import {
   Printer,
   Trash2,
 } from 'lucide-react';
-import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
+import { LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export function ViewLeaveTracking() {
-  const [requests, setRequests] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+  const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
   const [searchDoc, setSearchDoc] = useState('');
-  const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord | null>(requests[1] || requests[0] || null);
+  const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/leave')
+    fetch('/api/admin/leave', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data) && isMounted) {
           setRequests(res.data);
           if (res.data.length > 0) {
             setSelectedReq(res.data[0]);
+          } else {
+            setSelectedReq(null);
           }
         }
       })
@@ -116,7 +118,20 @@ export function ViewLeaveTracking() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {requests.length === 0 ? (
+        <div className="bg-white dark:bg-[#111822] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center shadow-sm">
+          <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+            <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400">
+              <Clock className="w-8 h-8" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">ยังไม่มีประวัติคำร้องขอลาในระบบ</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              เมื่อครูหรือบุคลากรยื่นคำร้องขอลาเข้าระบบแล้ว ท่านจะสามารถติดตามลำดับขั้นตอนและประวัติการลงนามอนุมัติได้ที่นี่
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Requests List / Selector */}
         <div className="lg:col-span-1 space-y-3">
           <div className="relative">
@@ -289,6 +304,7 @@ export function ViewLeaveTracking() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

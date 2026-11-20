@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   TrendingUp,
   BarChart3,
@@ -22,48 +22,93 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { INITIAL_TEACHERS, TeacherRecord, LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export function ViewLeaveAnalytics() {
   const [fiscalYear, setFiscalYear] = useState('2570');
   const [selectedSemester, setSelectedSemester] = useState<'ALL' | 'H1' | 'H2'>('ALL');
+  const [teachers, setTeachers] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setTeachers(res.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/leave', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.data)) {
+          setLeaveRequests(res.data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Computed metrics from real teachers data
-  const totalTeachers = INITIAL_TEACHERS.length;
-  const zeroLeaveTeachers = INITIAL_TEACHERS.filter(
-    (t) => t.sickUsed === 0 && t.personalUsed === 0 && t.vacationUsed === 0
+  const totalTeachers = teachers.length;
+  const zeroLeaveTeachers = teachers.filter(
+    (t) => (t.sickUsed || 0) === 0 && (t.personalUsed || 0) === 0 && (t.vacationUsed || 0) === 0
   ).length;
-  const totalSickDays = INITIAL_TEACHERS.reduce((acc, t) => acc + t.sickUsed, 0);
-  const totalPersonalDays = INITIAL_TEACHERS.reduce((acc, t) => acc + t.personalUsed, 0);
-  const totalVacationDays = INITIAL_TEACHERS.reduce((acc, t) => acc + t.vacationUsed, 0);
+  const totalSickDays = teachers.reduce((acc, t) => acc + (Number(t.sickUsed) || 0), 0);
+  const totalPersonalDays = teachers.reduce((acc, t) => acc + (Number(t.personalUsed) || 0), 0);
+  const totalVacationDays = teachers.reduce((acc, t) => acc + (Number(t.vacationUsed) || 0), 0);
   const totalAllDays = totalSickDays + totalPersonalDays + totalVacationDays;
-  const avgLeavePerPerson = (totalAllDays / totalTeachers).toFixed(1);
+  const avgLeavePerPerson = totalTeachers > 0 ? (totalAllDays / totalTeachers).toFixed(1) : '0.0';
 
-  // Monthly trends (Fiscal year Oct - Sep)
-  const monthlyData = [
-    { month: 'ต.ค.', days: 3.5, percent: 35 },
-    { month: 'พ.ย.', days: 4.0, percent: 40 },
-    { month: 'ธ.ค.', days: 1.5, percent: 15 },
-    { month: 'ม.ค.', days: 2.0, percent: 20 },
-    { month: 'ก.พ.', days: 2.5, percent: 25 },
-    { month: 'มี.ค.', days: 5.0, percent: 50 },
-    { month: 'เม.ย.', days: 6.5, percent: 65 },
-    { month: 'พ.ค.', days: 2.0, percent: 20 },
-    { month: 'มิ.ย.', days: 3.0, percent: 30 },
-    { month: 'ก.ค.', days: 4.5, percent: 45 },
-    { month: 'ส.ค.', days: 3.0, percent: 30 },
-    { month: 'ก.ย.', days: 2.5, percent: 25 },
+  // Monthly trends calculated from real leave requests
+  const monthLabels = [
+    { key: '10', month: 'ต.ค.' },
+    { key: '11', month: 'พ.ย.' },
+    { key: '12', month: 'ธ.ค.' },
+    { key: '01', month: 'ม.ค.' },
+    { key: '02', month: 'ก.พ.' },
+    { key: '03', month: 'มี.ค.' },
+    { key: '04', month: 'เม.ย.' },
+    { key: '05', month: 'พ.ค.' },
+    { key: '06', month: 'มิ.ย.' },
+    { key: '07', month: 'ก.ค.' },
+    { key: '08', month: 'ส.ค.' },
+    { key: '09', month: 'ก.ย.' },
   ];
 
-  // Department distribution
-  const departments = [
-    { name: 'กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี', count: 3, days: 4.5 },
-    { name: 'กลุ่มสาระฯ ภาษาไทย', count: 2, days: 2.0 },
-    { name: 'กลุ่มสาระฯ คณิตศาสตร์', count: 2, days: 3.0 },
-    { name: 'กลุ่มสาระฯ ภาษาต่างประเทศ', count: 2, days: 1.5 },
-    { name: 'กลุ่มสาระฯ ศิลปะ / สังคมศึกษา', count: 3, days: 3.5 },
-    { name: 'สายงานบริหารและสนับสนุน', count: 3, days: 1.0 },
-  ];
+  const monthlyData = monthLabels.map(({ key, month }) => {
+    const matchingReqs = leaveRequests.filter((r) => {
+      if (!r.startDate) return false;
+      const m = r.startDate.split('-')[1];
+      return m === key;
+    });
+    const days = matchingReqs.reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+    const percent = Math.min(Math.round(days * 10), 100);
+    return { month, days, percent };
+  });
+
+  // Department distribution calculated from real teachers and requests
+  const deptMap: Record<string, { count: number; days: number }> = {};
+  teachers.forEach((t) => {
+    const dept = t.department || 'สายงานบริหารและสนับสนุน';
+    if (!deptMap[dept]) {
+      deptMap[dept] = { count: 0, days: 0 };
+    }
+    deptMap[dept].count += 1;
+    deptMap[dept].days += (Number(t.sickUsed) || 0) + (Number(t.personalUsed) || 0) + (Number(t.vacationUsed) || 0);
+  });
+
+  const departments = Object.entries(deptMap).map(([name, val]) => ({
+    name: name.startsWith('กลุ่มสาระ') || name.startsWith('สายงาน') ? name : `กลุ่มสาระฯ ${name}`,
+    count: val.count,
+    days: Number(val.days.toFixed(1)),
+  }));
 
   return (
     <div className="space-y-6">

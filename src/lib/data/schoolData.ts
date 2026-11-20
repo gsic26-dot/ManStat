@@ -727,66 +727,7 @@ export interface LeaveRequestRecord {
   currentStep: number;
 }
 
-export const INITIAL_LEAVE_REQUESTS: LeaveRequestRecord[] = [
-  {
-    id: 'LEV-2569-001',
-    docNo: 'ศธ 04052.12/045',
-    teacherId: 'TCH-003',
-    teacherName: 'นายธวัชชัย เหลืองโอฬาร',
-    position: 'ครูชำนาญการพิเศษ',
-    department: 'ศิลปะ',
-    leaveType: 'sick',
-    leaveTypeName: 'ลาป่วย',
-    startDate: '2026-11-10',
-    endDate: '2026-11-11',
-    totalDays: 2,
-    reason: 'มีไข้หวัด ปวดศีรษะและพบแพทย์เพื่อรับการรักษาตามคำสั่งแพทย์',
-    substituteTeacherName: 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์',
-    status: 'approved',
-    submittedAt: '2026-11-09T08:30:00',
-    supervisorRemark: 'เห็นควรอนุญาต มอบหมายครูสอนแทนเรียบร้อยแล้ว',
-    directorRemark: 'อนุมัติ',
-    currentStep: 3
-  },
-  {
-    id: 'LEV-2569-002',
-    docNo: 'ศธ 04052.12/051',
-    teacherId: 'TCH-005',
-    teacherName: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
-    position: 'ครูชำนาญการพิเศษ',
-    department: 'ภาษาต่างประเทศ',
-    leaveType: 'personal',
-    leaveTypeName: 'ลากิจส่วนตัว',
-    startDate: '2026-11-17',
-    endDate: '2026-11-17',
-    totalDays: 1,
-    reason: 'ติดต่อธุรกรรมทางราชการ ณ สำนักงานที่ดินจังหวัดนครราชสีมา',
-    substituteTeacherName: 'นางณิชกานต์ พลอยฉิมพลี',
-    status: 'pending',
-    submittedAt: '2026-11-15T09:15:00',
-    supervisorRemark: 'รับทราบคำร้อง อยู่ระหว่างรอเสนอผู้อำนวยการพิจารณา',
-    currentStep: 2
-  },
-  {
-    id: 'LEV-2569-003',
-    docNo: 'ศธ 04052.12/052',
-    teacherId: 'TCH-008',
-    teacherName: 'นางสาวสุนิสา สุทธิวงศ์',
-    position: 'ครู คศ. 1',
-    department: 'วิทยาศาสตร์และเทคโนโลยี',
-    leaveType: 'sick',
-    leaveTypeName: 'ลาป่วย',
-    startDate: '2026-11-20',
-    endDate: '2026-11-20',
-    totalDays: 1,
-    reason: 'มีอาการวิงเวียนศีรษะและเข้ารับการตรวจรักษาที่คลินิก',
-    substituteTeacherName: 'นายกิตติพณ พรหมทอง',
-    status: 'pending',
-    submittedAt: '2026-11-16T08:00:00',
-    supervisorRemark: 'ตรวจสอบภาระงานแล้ว ไม่กระทบตารางสอน',
-    currentStep: 1
-  }
-];
+export const INITIAL_LEAVE_REQUESTS: LeaveRequestRecord[] = [];
 
 export interface ScoutRecord {
   id: string;

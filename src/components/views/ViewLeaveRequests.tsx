@@ -30,14 +30,14 @@ import {
   ChevronRight,
   QrCode,
 } from 'lucide-react';
-import { INITIAL_LEAVE_REQUESTS, LeaveRequestRecord } from '@/lib/data/schoolData';
+import { LeaveRequestRecord } from '@/lib/data/schoolData';
 
 interface ViewLeaveRequestsProps {
   onOpenSubmitModal?: () => void;
 }
 
 export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps) {
-  const [requests, setRequests] = useState<LeaveRequestRecord[]>(INITIAL_LEAVE_REQUESTS);
+  const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'sick' | 'personal' | 'vacation'>('ALL');
