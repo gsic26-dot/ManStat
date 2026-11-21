@@ -199,7 +199,6 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
         document.cookie = 'manstat_user_id=; max-age=0; path=/;';
         localStorage.removeItem('manstat_auth_role');
         localStorage.removeItem('manstat_auth_user');
-        localStorage.removeItem('manstat_remember_me');
       }
 
       // 3. Supabase Auth signOut if applicable

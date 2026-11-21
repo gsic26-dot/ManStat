@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
+import { createSessionToken, getAuthCookieOptions } from '@/lib/auth/sessionCookie';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -99,8 +100,9 @@ export async function POST(request: Request) {
       userRole = mapAccessLevelToRole(matchedStaff.accessLevel);
     }
 
-    const sessionToken = `mst_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-    const maxAge = rememberMe ? 30 * 24 * 60 * 60 : undefined; // 30 days or session
+    const isRememberMe = Boolean(rememberMe);
+    const userId = matchedStaff.id || matchedStaff.employeeCode || '';
+    const sessionToken = createSessionToken(userId, userRole, isRememberMe);
 
     const userData = {
       id: matchedStaff.id,
@@ -118,20 +120,15 @@ export async function POST(request: Request) {
       success: true,
       message: 'เข้าสู่ระบบสำเร็จ',
       user: userData,
+      rememberMe: isRememberMe,
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      path: '/',
-      sameSite: 'lax' as const,
-      secure: isProduction,
-      ...(maxAge ? { maxAge } : {}),
-    };
+    const cookieOptions = getAuthCookieOptions(request.headers, request.url, isRememberMe);
 
     // Set secure authentication cookies with actual role and user ID
     response.cookies.set('manstat_session_token', sessionToken, cookieOptions);
     response.cookies.set('manstat_auth_role', userRole, cookieOptions);
-    response.cookies.set('manstat_user_id', matchedStaff.id || matchedStaff.employeeCode || '', cookieOptions);
+    response.cookies.set('manstat_user_id', userId, cookieOptions);
 
     return response;
   } catch (err: any) {

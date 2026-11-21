@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
+import { verifySessionToken } from '@/lib/auth/sessionCookie';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -10,7 +11,7 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('manstat_session_token')?.value;
-    const userId = cookieStore.get('manstat_user_id')?.value;
+    const cookieUserId = cookieStore.get('manstat_user_id')?.value;
     const authRoleCookie = cookieStore.get('manstat_auth_role')?.value;
 
     if (!sessionToken) {
@@ -25,6 +26,20 @@ export async function GET() {
       );
     }
 
+    const verification = verifySessionToken(sessionToken);
+    if (!verification.valid) {
+      return NextResponse.json(
+        { success: false, error: verification.error || 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' },
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
+    }
+
+    const userId = cookieUserId || verification.payload?.uid;
     const teachers = await dbGetTeachers();
 
     // 1. Lookup user from database by userId as top priority

@@ -10,6 +10,7 @@
 import { cookies } from 'next/headers';
 import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole, isAdminRole } from '@/lib/auth/roles';
+import { verifySessionToken } from '@/lib/auth/sessionCookie';
 import type { UserRole } from '@/types/database.types';
 
 export interface AuthenticatedUser {
@@ -37,13 +38,19 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('manstat_session_token')?.value;
-    const userId = cookieStore.get('manstat_user_id')?.value;
+    const cookieUserId = cookieStore.get('manstat_user_id')?.value;
     const roleCookie = cookieStore.get('manstat_auth_role')?.value;
 
     if (!sessionToken) {
       return null;
     }
 
+    const verification = verifySessionToken(sessionToken);
+    if (!verification.valid) {
+      return null;
+    }
+
+    const userId = cookieUserId || verification.payload?.uid;
     const teachers = await dbGetTeachers();
 
     // 1. Lookup staff in database by userId as highest priority

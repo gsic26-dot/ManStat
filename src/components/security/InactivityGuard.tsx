@@ -54,6 +54,11 @@ export const InactivityGuard: React.FC<InactivityGuardProps> = ({
 
   const handleSignOut = useCallback(async () => {
     try {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('manstat_auth_role');
+        localStorage.removeItem('manstat_auth_user');
+      }
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch (err) {

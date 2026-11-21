@@ -11,6 +11,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database, UserRole } from '@/types/database.types';
 import { isAdminRole } from '@/lib/auth/roles';
+import { verifySessionToken } from '@/lib/auth/sessionCookie';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -78,7 +79,8 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get('manstat_session_token')?.value;
   const authRoleCookie = request.cookies.get('manstat_auth_role')?.value as UserRole | undefined;
 
-  const isAuthenticated = Boolean(user) || Boolean(sessionToken);
+  const sessionVerification = verifySessionToken(sessionToken);
+  const isAuthenticated = Boolean(user) || sessionVerification.valid;
 
   // Protected Routes: Redirect unauthenticated user to /login
   if (!isAuthenticated && !isLoginPage) {
@@ -97,6 +99,7 @@ export async function middleware(request: NextRequest) {
     // Resolve user role with safe default 'teacher' (NEVER fallback to superuser)
     const userRole: UserRole =
       (user?.user_metadata?.role as UserRole) ||
+      (sessionVerification.payload?.role as UserRole) ||
       authRoleCookie ||
       'teacher';
 

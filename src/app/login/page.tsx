@@ -26,43 +26,21 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Initialize Remember Me state from previous choice
+  // Initialize Remember Me state & prefill remembered username from previous login
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedRemember = localStorage.getItem('manstat_remember_me');
-      if (savedRemember !== null) {
-        setRememberMe(savedRemember === 'true');
+      const rememberedUsername = localStorage.getItem('manstat_remembered_username');
+      if (savedRemember === 'true') {
+        setRememberMe(true);
+        if (rememberedUsername) {
+          setEmail(rememberedUsername);
+        }
+      } else if (savedRemember === 'false') {
+        setRememberMe(false);
       }
     }
   }, []);
-
-  /**
-   * Sets or clears persistent session token cookie with real role
-   */
-  const applySessionToken = (remember: boolean, role: string = 'teacher', tokenValue?: string, userId?: string) => {
-    if (typeof window === 'undefined') return;
-    const token = tokenValue || `mst_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-    const isHttps = window.location.protocol === 'https:';
-    const secureFlag = isHttps ? '; Secure' : '';
-
-    if (remember) {
-      const maxAge = 30 * 24 * 60 * 60; // 30 days
-      document.cookie = `manstat_session_token=${token}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
-      document.cookie = `manstat_auth_role=${role}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
-      if (userId) {
-        document.cookie = `manstat_user_id=${userId}; max-age=${maxAge}; path=/; SameSite=Lax${secureFlag}`;
-      }
-      localStorage.setItem('manstat_remember_me', 'true');
-    } else {
-      // Session cookie without max-age (clears on browser session close)
-      document.cookie = `manstat_session_token=${token}; path=/; SameSite=Lax${secureFlag}`;
-      document.cookie = `manstat_auth_role=${role}; path=/; SameSite=Lax${secureFlag}`;
-      if (userId) {
-        document.cookie = `manstat_user_id=${userId}; path=/; SameSite=Lax${secureFlag}`;
-      }
-      localStorage.setItem('manstat_remember_me', 'false');
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +48,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 1. Authenticate via centralized Server Auth API (checks manstat_db.json & assigns real RBAC role)
+      // 1. Authenticate via centralized Server Auth API (sets HttpOnly cookies with 30-day maxAge if rememberMe)
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,13 +65,18 @@ export default function LoginPage() {
         const user = data.user;
         const role = user.role || 'teacher';
 
-        // Apply local storage and cookies
+        // Apply local storage (PDPA safe: only stores role, user metadata, and username if rememberMe)
         if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem('manstat_remember_me', 'true');
+            localStorage.setItem('manstat_remembered_username', email.trim());
+          } else {
+            localStorage.setItem('manstat_remember_me', 'false');
+            localStorage.removeItem('manstat_remembered_username');
+          }
           localStorage.setItem('manstat_auth_role', role);
           localStorage.setItem('manstat_auth_user', JSON.stringify(user));
         }
-
-        applySessionToken(rememberMe, role, undefined, user.id);
 
         // Optional: Also sign in with Supabase Auth in background if credentials exist
         try {
@@ -211,8 +194,10 @@ export default function LoginPage() {
 
             {/* Remember Me Checkbox */}
             <div className="flex items-center justify-between pt-1">
-              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+              <label htmlFor="rememberMe" className="inline-flex items-center gap-2 cursor-pointer select-none">
                 <input
+                  id="rememberMe"
+                  name="rememberMe"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
