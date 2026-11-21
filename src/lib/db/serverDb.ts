@@ -44,6 +44,7 @@ import {
 } from '@/lib/data/schoolData';
 import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
+import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
 
 export type {
   TeacherRecord,
@@ -438,10 +439,10 @@ export function schoolInfoToDb(info: Partial<SchoolInfoRecord>) {
     affiliation: info.affiliation ?? '',
     school_code_10: info.schoolCode10 ?? '',
     school_code_8: info.schoolCode8 ?? '',
-    director_name: info.directorName ?? '',
+    director_name: formatStaffName(info.directorName ?? ''),
     director_position: info.directorPosition ?? 'ผู้อำนวยการโรงเรียน',
-    acting_director_1: info.actingDirector1 ?? '',
-    acting_director_2: info.actingDirector2 ?? '',
+    acting_director_1: formatStaffName(info.actingDirector1 ?? ''),
+    acting_director_2: formatStaffName(info.actingDirector2 ?? ''),
     contact_phone: info.contactPhone ?? '',
     email: info.email ?? '',
     address: info.address ?? '',
@@ -468,6 +469,8 @@ export function schoolInfoFromDb(row: any): SchoolInfoRecord {
           res[mappedKey] = parseInt(item.val) || 0;
         } else if (mappedKey === 'lat' || mappedKey === 'lng') {
           res[mappedKey] = item.val ? parseFloat(item.val) : undefined;
+        } else if (mappedKey === 'directorName' || mappedKey === 'actingDirector1' || mappedKey === 'actingDirector2') {
+          res[mappedKey] = formatStaffName(item.val || '');
         } else {
           res[mappedKey] = item.val || '';
         }
@@ -483,10 +486,10 @@ export function schoolInfoFromDb(row: any): SchoolInfoRecord {
     affiliation: row.affiliation || '',
     schoolCode10: row.school_code_10 || row.schoolCode10 || '',
     schoolCode8: row.school_code_8 || row.schoolCode8 || '',
-    directorName: row.director_name || row.directorName || '',
+    directorName: formatStaffName(row.director_name || row.directorName || ''),
     directorPosition: row.director_position || row.directorPosition || 'ผู้อำนวยการโรงเรียน',
-    actingDirector1: row.acting_director_1 || row.actingDirector1 || '',
-    actingDirector2: row.acting_director_2 || row.actingDirector2 || '',
+    actingDirector1: formatStaffName(row.acting_director_1 || row.actingDirector1 || ''),
+    actingDirector2: formatStaffName(row.acting_director_2 || row.actingDirector2 || ''),
     contactPhone: row.contact_phone || row.contactPhone || '',
     email: row.email || '',
     address: row.address || '',
@@ -521,14 +524,24 @@ export function teacherToDb(t: TeacherRecord) {
       : 'ครู';
 
   const id = t.id || t.employeeCode;
+  const formattedName = formatStaffName(t);
+  let prefix = t.prefix || '';
+  let firstName = t.firstName || '';
+  let lastName = t.lastName || '';
+  if (!prefix || !firstName) {
+    const parsed = parseThaiName(formattedName, prefix);
+    if (!prefix) prefix = parsed.prefix;
+    if (!firstName) firstName = parsed.firstName;
+    if (!lastName) lastName = parsed.lastName;
+  }
 
   return {
     id,
     employee_code: t.employeeCode || id,
-    name: t.name || '',
-    prefix: t.prefix || '',
-    first_name: t.firstName || '',
-    last_name: t.lastName || '',
+    name: formattedName,
+    prefix,
+    first_name: firstName,
+    last_name: lastName,
     position: positionTitle,
     academic_standing: t.academicStanding || '-',
     department: t.department || '',
@@ -579,13 +592,33 @@ export function teacherFromDb(row: any): TeacherRecord {
       ? row.role
       : (row.position || 'ครู');
 
+  const formattedName = formatStaffName({
+    id: row.id,
+    employeeCode: row.employee_code,
+    name: row.name || '',
+    prefix: row.prefix,
+    firstName: row.first_name,
+    lastName: row.last_name,
+  });
+
+  let prefix = row.prefix || '';
+  let firstName = row.first_name || '';
+  let lastName = row.last_name || '';
+
+  if (!prefix || !firstName) {
+    const parsed = parseThaiName(formattedName, prefix);
+    if (!prefix) prefix = parsed.prefix;
+    if (!firstName) firstName = parsed.firstName;
+    if (!lastName) lastName = parsed.lastName;
+  }
+
   return {
     id: row.id,
     employeeCode: row.employee_code || row.id,
-    name: row.name,
-    prefix: row.prefix || '',
-    firstName: row.first_name || '',
-    lastName: row.last_name || '',
+    name: formattedName,
+    prefix,
+    firstName,
+    lastName,
     position,
     academicStanding: row.academic_standing || '-',
     department: row.department || '',
@@ -632,7 +665,7 @@ export function boardMemberToDb(b: BoardMemberRecord) {
 
   return {
     member_id: memberId,
-    full_name: b.fullName || '',
+    full_name: formatStaffName(b.fullName || ''),
     prefix: (b as any).prefix || '',
     first_name: (b as any).firstName || '',
     last_name: (b as any).lastName || '',
@@ -665,7 +698,7 @@ export function boardMemberFromDb(row: any): BoardMemberRecord {
 
   return {
     id: row.member_id || row.id,
-    fullName: row.full_name || row.fullName || '-',
+    fullName: formatStaffName(row.full_name || row.fullName || '-'),
     position,
     positionTitle,
     occupation: row.occupation || '-',
@@ -714,7 +747,7 @@ export function leaveRequestToDb(r: LeaveRequestRecord) {
     emp_id: r.teacherId,
     teacher_id: r.teacherId,
     full_name: r.teacherName,
-    teacher_name: r.teacherName,
+    teacher_name: formatStaffName(r.teacherName),
     position: r.position || '',
     department: r.department || '',
     leave_type: r.leaveType,
@@ -727,8 +760,8 @@ export function leaveRequestToDb(r: LeaveRequestRecord) {
     total_hours: Number(r.totalHours) || 0,
     place: r.place || r.destination || '',
     reason: r.reason || '',
-    substitute_info: r.substituteTeacherName || 'ไม่มีคาบสอน',
-    substitute_teacher_name: r.substituteTeacherName || '',
+    substitute_info: r.substituteTeacherName ? formatStaffName(r.substituteTeacherName) : 'ไม่มีคาบสอน',
+    substitute_teacher_name: r.substituteTeacherName ? formatStaffName(r.substituteTeacherName) : '',
     workload_json: r.workloadJson || r.workloads || [],
     status: r.status || 'pending',
     current_step: String(r.currentStep ?? '1'),
@@ -741,7 +774,7 @@ export function leaveRequestToDb(r: LeaveRequestRecord) {
 export function leaveRequestFromDb(row: any): LeaveRequestRecord {
   const id = row.leave_id || row.id;
   const teacherId = row.emp_id || row.teacher_id || '';
-  const teacherName = row.full_name || row.teacher_name || '';
+  const teacherName = formatStaffName(row.full_name || row.teacher_name || '');
 
   return {
     id,
@@ -761,7 +794,7 @@ export function leaveRequestFromDb(row: any): LeaveRequestRecord {
     place: row.place || '',
     destination: row.place || '',
     reason: row.reason || '',
-    substituteTeacherName: row.substitute_teacher_name || row.substitute_info || '',
+    substituteTeacherName: formatStaffName(row.substitute_teacher_name || row.substitute_info || ''),
     workloadJson: Array.isArray(row.workload_json) ? row.workload_json : [],
     workloads: Array.isArray(row.workload_json) ? row.workload_json : [],
     status: row.status || 'pending',

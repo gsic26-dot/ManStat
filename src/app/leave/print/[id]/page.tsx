@@ -14,6 +14,7 @@
 import { OfficialLeavePrintView, type LeavePrintData } from '@/components/print/OfficialLeavePrintView';
 import { createClient } from '@/lib/supabase/server';
 import { dbGetLeaveRequests, dbGetSchoolInfo } from '@/lib/db/serverDb';
+import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -35,26 +36,18 @@ export default async function LeavePrintPage({ params }: PageProps) {
     );
 
     if (localReq) {
-      const parts = (localReq.teacherName || '').split(' ');
-      const prefix = parts[0]?.startsWith('นางสาว')
-        ? 'นางสาว'
-        : parts[0]?.startsWith('นาง')
-        ? 'นาง'
-        : parts[0]?.startsWith('นาย')
-        ? 'นาย'
-        : '';
-      const fullNameClean = prefix ? localReq.teacherName.replace(prefix, '').trim() : localReq.teacherName;
-      const [firstName, ...lastNames] = fullNameClean.split(' ');
+      const formattedStaffName = formatStaffName(localReq.teacherName);
+      const parsedStaff = parseThaiName(formattedStaffName);
 
       printData = {
         id: localReq.id,
         documentNo: localReq.docNo || `ศธ 04052.12/${localReq.id.slice(-3)}`,
         createdAt: localReq.submittedAt || new Date().toISOString(),
         schoolName: schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
-        staffName: localReq.teacherName,
-        prefix: prefix || 'นาย/นางสาว',
-        firstName: firstName || localReq.teacherName,
-        lastName: lastNames.join(' ') || '',
+        staffName: formattedStaffName,
+        prefix: parsedStaff.prefix || 'นาย',
+        firstName: parsedStaff.firstName || formattedStaffName,
+        lastName: parsedStaff.lastName || '',
         position: localReq.position || 'ครู',
         academicStanding: 'ครูชำนาญการพิเศษ',
         department: localReq.department || 'งานบุคคล',
@@ -65,7 +58,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
         endDate: localReq.endDate,
         totalDays: localReq.totalDays ?? 1,
         contactAddress: localReq.contactInfo || 'โรงเรียนชุมชนบ้านตะขบ อ.ปักธงชัย จ.นครราชสีมา',
-        substituteTeacher: localReq.substituteTeacherName || 'ไม่ระบุ',
+        substituteTeacher: formatStaffName(localReq.substituteTeacherName || 'ไม่ระบุ'),
         startTime: localReq.startTime || null,
         endTime: localReq.endTime || null,
         totalHours: localReq.totalHours || null,
@@ -92,7 +85,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
             : localReq.status === 'rejected'
             ? 'rejected'
             : 'pending',
-        approverName: schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม',
+        approverName: formatStaffName(schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม'),
         approverPosition: schoolInfo.directorPosition || 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
         approvedAt: localReq.status === 'approved' ? new Date().toISOString() : null,
         signatureUrl: null,
@@ -133,7 +126,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
             .single();
 
           if (approver) {
-            approverName = `${approver.prefix}${approver.first_name} ${approver.last_name}`;
+            approverName = formatStaffName({ prefix: approver.prefix, firstName: approver.first_name, lastName: approver.last_name });
             approverPosition = approver.position_name;
             signatureUrl = approver.signature_url;
           }
@@ -144,7 +137,7 @@ export default async function LeavePrintPage({ params }: PageProps) {
           documentNo: request.document_no || `DOC-${request.fiscal_year}-${request.id.slice(0, 6).toUpperCase()}`,
           createdAt: request.created_at,
           schoolName: school?.school_name || 'โรงเรียนชุมชนบ้านตะขบ',
-          staffName: staff ? `${staff.prefix}${staff.first_name} ${staff.last_name}` : 'นายข้าราชการ ตัวอย่าง',
+          staffName: staff ? formatStaffName({ prefix: staff.prefix, firstName: staff.first_name, lastName: staff.last_name }) : 'นายข้าราชการ ตัวอย่าง',
           prefix: staff?.prefix || 'นาย',
           firstName: staff?.first_name || 'ข้าราชการ',
           lastName: staff?.last_name || 'ตัวอย่าง',

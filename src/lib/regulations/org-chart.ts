@@ -12,6 +12,7 @@
 
 import type { TeacherRecord } from '@/lib/data/schoolData';
 import { formatAcademicStandingSubtext, getStaffBranch } from './staff-sorting';
+import { formatStaffName } from './staff-formatting';
 
 export type DivisionKey = 'academic' | 'budget' | 'personnel' | 'general';
 
@@ -79,7 +80,7 @@ export function findDivisionHead(
 
   if (matched) {
     return {
-      name: matched.name,
+      name: formatStaffName(matched),
       position: matched.position,
       positionFormatted: formatStaffPositionAndStanding(matched),
       teacher: matched,
@@ -113,13 +114,13 @@ export function getDirectorInfo(
     const pos = director.position.replace('ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ', 'ผู้อำนวยการสถานศึกษา')
       .replace('ผู้อำนวยการโรงเรียน', 'ผู้อำนวยการสถานศึกษา');
     return {
-      name: director.name,
+      name: formatStaffName(director),
       positionFormatted: sub ? `${pos} · ${sub}` : pos,
     };
   }
 
   return {
-    name: fallbackName,
+    name: formatStaffName(fallbackName),
     positionFormatted: fallbackPosition,
   };
 }

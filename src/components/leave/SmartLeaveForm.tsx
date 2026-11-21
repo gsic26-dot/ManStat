@@ -44,6 +44,7 @@ import {
 } from '@/lib/regulations/leaveTypes';
 import type { LeaveType, HalfDayPeriod } from '@/types/database.types';
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export interface SubstituteTeacherOption {
   id: string;
@@ -331,7 +332,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           teacherId: currentStaffId,
-          teacherName: currentStaffName,
+          teacherName: formatStaffName(currentStaffName),
           leaveType: leaveTypeKey,
           leaveTypeName: leaveType,
           startDate: effectiveStartDate,
@@ -345,7 +346,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
           hasWorkload: (isExit || isMission) ? hasWorkload : null,
           workloads: (isExit || isMission) && hasWorkload === 'มี' ? workloads : [],
           reason: reason.trim(),
-          substituteTeacherName: substituteTeacher ? substituteTeacher.name : 'ไม่ระบุ',
+          substituteTeacherName: substituteTeacher ? formatStaffName(substituteTeacher.name) : 'ไม่ระบุ',
           contactInfo: contactInfo.trim() || null,
           attachmentUrl,
           status: 'pending',
@@ -970,7 +971,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     </option>
                     {substituteTeachers.map((sub) => (
                       <option key={sub.id} value={sub.id} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                        {sub.name} ({sub.position})
+                        {formatStaffName(sub.name)} ({sub.position})
                       </option>
                     ))}
                   </select>

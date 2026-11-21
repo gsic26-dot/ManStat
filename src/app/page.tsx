@@ -35,6 +35,7 @@ import {
   getFiscalYearBE,
   getEvalRound,
 } from '@/lib/regulations/fiscal-and-retirement';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
   Calendar,
@@ -253,7 +254,7 @@ export default function DashboardPage() {
   const retiringCount = staffRetiringThisYear.length;
   const retiringDetail =
     retiringCount > 0
-      ? staffRetiringThisYear.map((s) => s.name).join(', ')
+      ? staffRetiringThisYear.map((s) => formatStaffName(s)).join(', ')
       : `ปีงบฯ ${fiscalYearBE} ไม่มีผู้เกษียณ`;
 
   // 3. User resolution and regulatory calculations

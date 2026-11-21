@@ -28,6 +28,7 @@ import {
   groupAndSortLicenseRegistry,
   matchesHealthFilter,
 } from '@/lib/regulations/license-grouping';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export const ViewRegLicense: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -272,8 +273,8 @@ export const ViewRegLicense: React.FC = () => {
 
                               {/* License Holder */}
                               <td className="px-4 py-3.5">
-                                <div className="font-semibold text-slate-900 dark:text-white text-sm" title={person.name}>
-                                  {person.name}
+                                <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(person.name)}>
+                                  {formatStaffName(person.name)}
                                 </div>
                                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5" title={person.position}>
                                   {posDisplay}

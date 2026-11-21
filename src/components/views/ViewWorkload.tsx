@@ -39,6 +39,7 @@ import {
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export type WorkloadCategory =
   | 'งานสอนและการจัดการเรียนรู้'
@@ -564,7 +565,7 @@ export const ViewWorkload: React.FC = () => {
       return {
         id: teacher.id,
         branch,
-        name: teacher.name,
+        name: formatStaffName(teacher),
         position: teacher.position,
         department: teacher.department,
         division: teacher.division,
@@ -701,8 +702,8 @@ export const ViewWorkload: React.FC = () => {
 
                       {/* Name & Position */}
                       <td className="px-4 py-3.5">
-                        <div className="font-semibold text-slate-900 dark:text-white text-sm" title={w.name}>
-                          {w.name}
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(w.name)}>
+                          {formatStaffName(w.name)}
                         </div>
                         <div className="text-xs text-slate-400 mt-0.5" title={`${posDisplay} · ${deptDisplay}`}>
                           {posDisplay} · {deptDisplay}
@@ -757,7 +758,7 @@ export const ViewWorkload: React.FC = () => {
                             <div>
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
                                 <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">
-                                  สรุปภาระงาน 4 ด้านตามเกณฑ์ PA ว9/2564 &amp; ว21/2564 ของ {w.name}
+                                  สรุปภาระงาน 4 ด้านตามเกณฑ์ PA ว9/2564 &amp; ว21/2564 ของ {formatStaffName(w.name)}
                                 </div>
                                 <button
                                   type="button"
@@ -1104,7 +1105,7 @@ export const ViewWorkload: React.FC = () => {
                 >
                   {teachersList.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name} ({t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}) · {t.employeeCode}
+                      {formatStaffName(t)} ({t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}) · {t.employeeCode}
                     </option>
                   ))}
                 </select>

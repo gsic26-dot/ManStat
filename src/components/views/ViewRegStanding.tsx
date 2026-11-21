@@ -26,6 +26,7 @@ import {
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-sorting';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export const ViewRegStanding: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -170,8 +171,8 @@ export const ViewRegStanding: React.FC = () => {
 
                                 {/* Full Name */}
                                 <td className="px-4 py-3.5">
-                                  <div className="font-semibold text-slate-900 dark:text-white text-sm" title={teacher.name}>
-                                    {teacher.name}
+                                  <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(teacher)}>
+                                    {formatStaffName(teacher)}
                                   </div>
                                   <div className="text-xs text-slate-400 font-mono mt-0.5">
                                     {teacher.employeeCode}
@@ -303,7 +304,7 @@ export const ViewRegStanding: React.FC = () => {
                     <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   </div>
 
-                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{teacher.name}</div>
+                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{formatStaffName(teacher)}</div>
                   <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{teacher.department}</div>
 
                   <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">

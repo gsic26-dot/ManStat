@@ -29,6 +29,7 @@ import {
 import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 const BOARD_POSITIONS_MAP: Record<string, string> = {
   CHAIR: 'ประธานกรรมการ',
@@ -48,11 +49,12 @@ const normalizeMember = (b: any): BoardMemberRecord => {
     b.positionTitle ||
     BOARD_POSITIONS_MAP[position] ||
     'กรรมการสถานศึกษา';
-  const fullName =
+  const rawFullName =
     b.fullName ||
     b.full_name ||
     `${b.prefix || ''}${b.first_name || ''} ${b.last_name || ''}`.trim() ||
     '-';
+  const fullName = formatStaffName(rawFullName);
 
   return {
     id: b.id || b.member_id || `SBD-${Math.random()}`,
@@ -187,8 +189,8 @@ export const ViewSchoolBoard: React.FC = () => {
 
                         {/* Full Name */}
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={member.fullName}>
-                            {member.fullName}
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(member.fullName)}>
+                            {formatStaffName(member.fullName)}
                           </div>
                           {isDirector && (
                             <div className="text-xs text-slate-400 font-normal mt-0.5" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
@@ -339,7 +341,7 @@ export const ViewSchoolBoard: React.FC = () => {
                   </div>
 
                   <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">
-                    {member.fullName}
+                    {formatStaffName(member.fullName)}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                     {member.organization}

@@ -17,6 +17,7 @@ import {
   groupAndSortTeachers,
   type StaffBranchCategory,
 } from '@/lib/regulations/staff-sorting';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export type PersonLicenseHealth = 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' | 'MISSING';
 
@@ -133,7 +134,7 @@ export function buildPersonLicenseRecord(
     return {
       id: teacher.id,
       employeeCode: teacher.employeeCode || '',
-      name: teacher.name,
+      name: formatStaffName(teacher),
       position: teacher.position,
       department: teacher.department,
       branch,
@@ -179,7 +180,7 @@ export function buildPersonLicenseRecord(
   return {
     id: teacher.id,
     employeeCode: teacher.employeeCode || '',
-    name: teacher.name,
+    name: formatStaffName(teacher),
     position: teacher.position,
     department: teacher.department,
     branch,

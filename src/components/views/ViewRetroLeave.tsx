@@ -34,6 +34,7 @@ import {
   Info,
 } from 'lucide-react';
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import {
   MASTER_LEAVE_TYPES,
   isZeroDayLeaveType,
@@ -62,7 +63,7 @@ export function ViewRetroLeave() {
   const [reason, setReason] = useState('');
   const [retroReason, setRetroReason] = useState('');
   const [medicalCertNo, setMedicalCertNo] = useState('');
-  const [substituteTeacher, setSubstituteTeacher] = useState(INITIAL_TEACHERS[1].name);
+  const [substituteTeacher, setSubstituteTeacher] = useState(formatStaffName(INITIAL_TEACHERS[1]));
 
   useEffect(() => {
     let isMounted = true;
@@ -187,7 +188,7 @@ export function ViewRetroLeave() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           teacherId: selectedTeacherId,
-          teacherName: selectedTeacher?.name || 'ไม่ระบุชื่อ',
+          teacherName: formatStaffName(selectedTeacher?.name || 'ไม่ระบุชื่อ'),
           position: selectedTeacher?.position || 'ครู',
           department: selectedTeacher?.department || 'ทั่วไป',
           leaveType: isExit ? 'school_exit' : isMission ? 'official_mission' : leaveType,
@@ -203,7 +204,7 @@ export function ViewRetroLeave() {
           hasWorkload: (isExit || isMission) ? hasWorkload : null,
           workloads: (isExit || isMission) && hasWorkload === 'มี' ? workloads : [],
           reason: isZeroDays ? reason.trim() : `[ลาย้อนหลัง: ${retroReason}] ${reason.trim()}`,
-          substituteTeacherName: substituteTeacher,
+          substituteTeacherName: formatStaffName(substituteTeacher),
           status: 'pending',
           currentStep: 1,
           submittedAt: new Date().toISOString(),
@@ -276,7 +277,7 @@ export function ViewRetroLeave() {
                       value={t.id}
                       className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100"
                     >
-                      {t.name} — {t.position} ({t.department})
+                      {formatStaffName(t)} — {t.position} ({t.department})
                     </option>
                   ))}
                 </select>
@@ -771,8 +772,8 @@ export function ViewRetroLeave() {
                 className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               >
                 {teachersList.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name} ({t.position})
+                  <option key={t.id} value={formatStaffName(t)}>
+                    {formatStaffName(t)} ({t.position})
                   </option>
                 ))}
               </select>
@@ -825,9 +826,9 @@ export function ViewRetroLeave() {
                 <div className="p-3 bg-slate-50 dark:bg-[#151d28] rounded-xl border border-slate-200/90 dark:border-slate-800">
                   <div
                     className="font-bold text-slate-900 dark:text-white text-sm truncate"
-                    title={selectedTeacher.name}
+                    title={formatStaffName(selectedTeacher)}
                   >
-                    {selectedTeacher.name}
+                    {formatStaffName(selectedTeacher)}
                   </div>
                   <div
                     className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 truncate"

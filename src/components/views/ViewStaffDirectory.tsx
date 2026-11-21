@@ -39,6 +39,7 @@ import {
   formatAcademicStandingSubtext,
   getStaffBranch,
 } from '@/lib/regulations/staff-sorting';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 const getShortDeptName = (dept: string): string => {
   if (dept === 'ALL') return 'ทั้งหมด';
@@ -289,8 +290,8 @@ export const ViewStaffDirectory: React.FC = () => {
 
                                 {/* Staff Name */}
                                 <td className={`px-4 ${cellPy}`}>
-                                  <div className="font-bold text-slate-900 dark:text-white text-sm" title={teacher.name}>
-                                    {teacher.name}
+                                  <div className="font-bold text-slate-900 dark:text-white text-sm" title={formatStaffName(teacher)}>
+                                    {formatStaffName(teacher)}
                                   </div>
                                   <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5" title={`รหัส: ${teacher.employeeCode}`}>
                                     รหัส: {teacher.employeeCode}
@@ -431,8 +432,8 @@ export const ViewStaffDirectory: React.FC = () => {
                       {teacher.firstName ? teacher.firstName[0] : 'ค'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-base font-bold text-slate-900 dark:text-white truncate" title={teacher.name}>
-                        {teacher.name}
+                      <div className="text-base font-bold text-slate-900 dark:text-white truncate" title={formatStaffName(teacher)}>
+                        {formatStaffName(teacher)}
                       </div>
                       <div className="text-sm text-sky-600 dark:text-sky-300 truncate font-medium" title={teacher.position}>
                         {teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}
@@ -499,7 +500,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 <GraduationCap className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  แฟ้มประวัติ: {selectedTeacher.name}
+                  แฟ้มประวัติ: {formatStaffName(selectedTeacher)}
                 </h3>
               </div>
               <button

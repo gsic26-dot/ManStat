@@ -24,6 +24,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export function ViewRegScout() {
   const [scouts, setScouts] = useState<ScoutRecord[]>(INITIAL_SCOUTS);
@@ -190,8 +191,8 @@ export function ViewRegScout() {
 
                         {/* Name & Position */}
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={s.teacherName}>
-                            {s.teacherName}
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(s.teacherName)}>
+                            {formatStaffName(s.teacherName)}
                           </div>
                           <div className="text-xs text-slate-400 mt-0.5" title={s.position}>
                             {posDisplay}
@@ -326,7 +327,7 @@ export function ViewRegScout() {
                     <Compass className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   </div>
 
-                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{s.teacherName}</div>
+                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{formatStaffName(s.teacherName)}</div>
                   <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{s.position}</div>
 
                   <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mb-3 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">

@@ -13,6 +13,7 @@ import type { TeacherRecord, LeaveRequestRecord } from '@/lib/data/schoolData';
 import type { HolidayRecord } from '@/lib/db/serverDb';
 import { isAdminRole } from '@/lib/auth/roles';
 import { getFiscalYearBE, getEvalRound } from './fiscal-and-retirement';
+import { formatStaffName, parseThaiName } from './staff-formatting';
 
 export interface DashboardUserIdentity {
   id: string;
@@ -90,12 +91,17 @@ export function resolveDashboardUser(
 
   const id = matched?.id || currentUser?.id || 'GUEST-001';
   const employeeCode = matched?.employeeCode || currentUser?.employeeCode || id;
-  const prefix = matched?.prefix || '';
-  const firstName = matched?.firstName || '';
-  const lastName = matched?.lastName || '';
-  const name =
-    matched?.name ||
-    (prefix && firstName ? `${prefix}${firstName} ${lastName}`.trim() : currentUser?.name || 'ผู้ใช้งาน');
+  const formattedName = formatStaffName(matched || currentUser || { name: currentUser?.name || 'ผู้ใช้งาน' });
+  let prefix = matched?.prefix || '';
+  let firstName = matched?.firstName || '';
+  let lastName = matched?.lastName || '';
+  if (!prefix || !firstName) {
+    const parsed = parseThaiName(formattedName, prefix);
+    if (!prefix) prefix = parsed.prefix;
+    if (!firstName) firstName = parsed.firstName;
+    if (!lastName) lastName = parsed.lastName;
+  }
+  const name = formattedName;
   const position = matched?.position || currentUser?.position || 'บุคลากร';
   const role = currentUser?.role || matched?.role || 'teacher';
   const accessLevel = matched?.accessLevel || currentUser?.accessLevel || 'User';
@@ -258,7 +264,11 @@ export function isLeaveRequestOfUser(
   if (user.employeeCode && request.teacherId === user.employeeCode) {
     return true;
   }
-  if (user.name && request.teacherName === user.name) {
+  if (
+    user.name &&
+    (request.teacherName === user.name ||
+      formatStaffName(request.teacherName) === formatStaffName(user.name))
+  ) {
     return true;
   }
   return false;

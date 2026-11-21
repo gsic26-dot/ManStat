@@ -13,6 +13,7 @@
 import { FilePlus } from 'lucide-react';
 import { SmartLeaveForm } from '@/components/leave/SmartLeaveForm';
 import { INITIAL_TEACHERS } from '@/lib/data/schoolData';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 interface ViewLeaveSubmitProps {
   currentUser?: any;
@@ -22,14 +23,14 @@ interface ViewLeaveSubmitProps {
 
 export function ViewLeaveSubmit({ currentUser, staffList, onSuccess }: ViewLeaveSubmitProps) {
   const currentStaffId = currentUser?.employeeCode || currentUser?.id || (staffList && staffList[0]?.id) || 'TCH-003';
-  const currentStaffName = currentUser?.fullName || currentUser?.name || (staffList && staffList[0]?.name) || 'บุคลากรสถานศึกษา';
+  const currentStaffName = formatStaffName(currentUser?.fullName || currentUser?.name || (staffList && staffList[0]?.name) || 'บุคลากรสถานศึกษา');
 
   const listToUse = Array.isArray(staffList) && staffList.length > 0 ? staffList : INITIAL_TEACHERS;
   const substituteTeachers = listToUse
     .filter((t) => t.id !== currentStaffId)
     .map((t) => ({
       id: t.id,
-      name: t.name,
+      name: formatStaffName(t),
       position: t.position,
     }));
 

@@ -31,6 +31,7 @@ import {
   QrCode,
 } from 'lucide-react';
 import { LeaveRequestRecord } from '@/lib/data/schoolData';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 interface ViewLeaveRequestsProps {
   onOpenSubmitModal?: () => void;
@@ -277,7 +278,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                           </button>
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={req.teacherName}>{req.teacherName}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={formatStaffName(req.teacherName)}>{formatStaffName(req.teacherName)}</div>
                           <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={req.position}>{posDisplay}</div>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
@@ -366,7 +367,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
 
                               <div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1">ครูผู้ปฏิบัติหน้าที่แทน</div>
-                                <div className="text-slate-800 dark:text-slate-200 font-medium">{req.substituteTeacherName || 'ไม่มีการระบุ'}</div>
+                                <div className="text-slate-800 dark:text-slate-200 font-medium">{formatStaffName(req.substituteTeacherName || 'ไม่มีการระบุ')}</div>
                                 <div className="text-slate-400 text-[11px] mt-0.5">กลุ่มสาระ: {req.department}</div>
                               </div>
 
@@ -438,7 +439,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-[#0e141c] p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
                 <div>
                   <span className="text-slate-500">ผู้ขอลา:</span>
-                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{selectedRequest.teacherName}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{formatStaffName(selectedRequest.teacherName)}</p>
                 </div>
                 <div>
                   <span className="text-slate-500">สังกัด / กลุ่มสาระ:</span>
@@ -452,7 +453,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 </div>
                 <div>
                   <span className="text-slate-500">ผู้ปฏิบัติหน้าที่แทน:</span>
-                  <p className="font-medium text-slate-700 dark:text-slate-200 mt-0.5">{selectedRequest.substituteTeacherName}</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-200 mt-0.5">{formatStaffName(selectedRequest.substituteTeacherName)}</p>
                 </div>
               </div>
 

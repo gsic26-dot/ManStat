@@ -62,6 +62,7 @@ import {
   groupAndSortTeachers,
   formatAcademicStandingSubtext,
 } from '@/lib/regulations/staff-sorting';
+import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
 import {
   translateAuditAction,
   cleanAuditTargetName,
@@ -509,8 +510,23 @@ export default function AdminPage() {
 
   const handleOpenEditStaff = (t: TeacherRecord) => {
     setIsNewStaff(false);
+    const formatted = formatStaffName(t);
+    let prefix = t.prefix || '';
+    let firstName = t.firstName || '';
+    let lastName = t.lastName || '';
+    if (!prefix || !firstName) {
+      const parsed = parseThaiName(formatted, prefix);
+      if (!prefix) prefix = parsed.prefix;
+      if (!firstName) firstName = parsed.firstName;
+      if (!lastName) lastName = parsed.lastName;
+    }
+
     setSelectedStaff({
       ...t,
+      name: formatted,
+      prefix: prefix || 'นาย',
+      firstName,
+      lastName,
       accessLevel: t.accessLevel || (t.role === 'superuser' ? 'Superuser' : t.role === 'hr_admin' ? 'Admin' : 'User'),
       licenses: t.licenses || [],
       standings: t.standings || [],
@@ -528,18 +544,19 @@ export default function AdminPage() {
 
   const handleSaveStaff = async () => {
     if (!selectedStaff) return;
-    const computedName =
-      (selectedStaff.firstName || selectedStaff.lastName)
-        ? `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim()
-        : selectedStaff.name.trim();
+    const computedName = formatStaffName(selectedStaff);
     if (!computedName) {
       showToast('กรุณาระบุชื่อ-นามสกุลบุคลากร', 'error');
       return;
     }
+    const parsed = parseThaiName(computedName, selectedStaff.prefix);
 
     const updatedStaff: TeacherRecord = {
       ...selectedStaff,
       name: computedName,
+      prefix: selectedStaff.prefix || parsed.prefix,
+      firstName: selectedStaff.firstName || parsed.firstName,
+      lastName: selectedStaff.lastName || parsed.lastName,
       maskedCitizenId: selectedStaff.idCard
         ? `${selectedStaff.idCard.slice(0, 1)}-${selectedStaff.idCard.slice(1, 5)}-*****-**-${selectedStaff.idCard.slice(-1)}`
         : selectedStaff.maskedCitizenId,
@@ -618,7 +635,7 @@ export default function AdminPage() {
   const handleDeleteStaff = async (staffId: string) => {
     const target = teachers.find((t) => t.id === staffId);
     if (!target) return;
-    if (confirm(`คุณต้องการลบข้อมูลบุคลากร "${target.name}" ใช่หรือไม่?`)) {
+    if (confirm(`คุณต้องการลบข้อมูลบุคลากร "${formatStaffName(target)}" ใช่หรือไม่?`)) {
       setIsSaving(true);
       try {
         const res = await fetch(`/api/admin/staff?id=${encodeURIComponent(staffId)}`, {
@@ -634,7 +651,7 @@ export default function AdminPage() {
           if (selectedStaff?.id === staffId) {
             setIsStaffModalOpen(false);
           }
-          showToast(`ลบข้อมูลบุคลากร ${target.name} เรียบร้อยแล้ว`, 'success');
+          showToast(`ลบข้อมูลบุคลากร ${formatStaffName(target)} เรียบร้อยแล้ว`, 'success');
           refreshAuditLogs();
         } else {
           showToast(data.error || 'ลบไม่สำเร็จ', 'error');
@@ -825,7 +842,7 @@ export default function AdminPage() {
         prev
           ? {
               ...prev,
-              fullName: directorTeacher.name,
+              fullName: formatStaffName(directorTeacher),
               organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
               occupation: 'ผู้อำนวยการสถานศึกษา',
               phone: directorTeacher.phone || prev.phone,
@@ -840,7 +857,7 @@ export default function AdminPage() {
       prev
         ? {
             ...prev,
-            fullName: directorTeacher.name,
+            fullName: formatStaffName(directorTeacher),
             appointmentDate: latestDirectorStanding.effectiveDate,
             organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
             occupation: 'ผู้อำนวยการสถานศึกษา',
@@ -1227,8 +1244,8 @@ export default function AdminPage() {
                                       {seq}
                                     </td>
                                     <td className="px-4 py-3.5">
-                                      <div className="font-semibold text-slate-900 dark:text-white text-sm" title={t.name}>
-                                        {t.name}
+                                      <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(t)}>
+                                        {formatStaffName(t)}
                                       </div>
                                       <div className="text-xs text-slate-400 font-mono mt-0.5">
                                         {t.employeeCode}{t.positionNo ? ` · เลขที่ ${t.positionNo}` : ''}
@@ -2290,7 +2307,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                    {isNewStaff ? 'เพิ่มข้อมูลบุคลากรใหม่' : `ตั้งค่าและแก้ไขบุคลากร: ${selectedStaff.name || 'ไม่ระบุชื่อ'}`}
+                    {isNewStaff ? 'เพิ่มข้อมูลบุคลากรใหม่' : `ตั้งค่าและแก้ไขบุคลากร: ${formatStaffName(selectedStaff) || 'ไม่ระบุชื่อ'}`}
                   </h3>
                   <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
                     รหัสประจำตัว: {selectedStaff.employeeCode} {selectedStaff.positionNo ? `| เลขที่ตำแหน่ง: ${selectedStaff.positionNo}` : ''}
@@ -2440,7 +2457,13 @@ export default function AdminPage() {
                             setSelectedStaff({
                               ...selectedStaff,
                               prefix: newPrefix,
-                              name: `${newPrefix}${selectedStaff.firstName || ''} ${selectedStaff.lastName || ''}`.trim(),
+                              name: formatStaffName({
+                                id: selectedStaff.id,
+                                employeeCode: selectedStaff.employeeCode,
+                                prefix: newPrefix,
+                                firstName: selectedStaff.firstName,
+                                lastName: selectedStaff.lastName,
+                              }),
                             });
                           }}
                           className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
@@ -2462,7 +2485,13 @@ export default function AdminPage() {
                             setSelectedStaff({
                               ...selectedStaff,
                               firstName: e.target.value,
-                              name: `${selectedStaff.prefix || ''}${e.target.value} ${selectedStaff.lastName || ''}`.trim(),
+                              name: formatStaffName({
+                                id: selectedStaff.id,
+                                employeeCode: selectedStaff.employeeCode,
+                                prefix: selectedStaff.prefix,
+                                firstName: e.target.value,
+                                lastName: selectedStaff.lastName,
+                              }),
                             })
                           }
                           className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
@@ -2478,7 +2507,13 @@ export default function AdminPage() {
                             setSelectedStaff({
                               ...selectedStaff,
                               lastName: e.target.value,
-                              name: `${selectedStaff.prefix || ''}${selectedStaff.firstName || ''} ${e.target.value}`.trim(),
+                              name: formatStaffName({
+                                id: selectedStaff.id,
+                                employeeCode: selectedStaff.employeeCode,
+                                prefix: selectedStaff.prefix,
+                                firstName: selectedStaff.firstName,
+                                lastName: e.target.value,
+                              }),
                             })
                           }
                           className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"

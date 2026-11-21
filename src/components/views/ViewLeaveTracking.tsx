@@ -25,6 +25,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { LeaveRequestRecord } from '@/lib/data/schoolData';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export function ViewLeaveTracking() {
   const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
@@ -57,7 +58,7 @@ export function ViewLeaveTracking() {
 
   const handleDeleteCurrent = async () => {
     if (!selectedReq) return;
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${selectedReq.teacherName} ออกจากฐานข้อมูล?`)) {
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${formatStaffName(selectedReq.teacherName)} ออกจากฐานข้อมูล?`)) {
       try {
         await fetch(`/api/admin/leave?id=${selectedReq.id}`, {
           method: 'DELETE',
@@ -75,7 +76,7 @@ export function ViewLeaveTracking() {
       title: 'ยื่นคำร้องขอลาเข้าระบบ',
       desc: 'ครูผู้ขอยื่นคำร้องและระบุผู้ปฏิบัติหน้าที่สอนแทน',
       time: selectedReq ? selectedReq.submittedAt : '',
-      actor: selectedReq ? selectedReq.teacherName : '-',
+      actor: selectedReq ? formatStaffName(selectedReq.teacherName) : '-',
       done: true,
     },
     {
@@ -183,7 +184,7 @@ export function ViewLeaveTracking() {
                       </span>
                     </div>
 
-                    <div className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{r.teacherName}</div>
+                    <div className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{formatStaffName(r.teacherName)}</div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
                       {r.leaveTypeName} ({r.totalDays} วัน) •{' '}
                       {new Date(r.startDate).toLocaleDateString('th-TH', {
@@ -210,7 +211,7 @@ export function ViewLeaveTracking() {
                       {selectedReq.leaveTypeName}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1 truncate max-w-[280px]" title={selectedReq.teacherName}>{selectedReq.teacherName}</h3>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1 truncate max-w-[280px]" title={formatStaffName(selectedReq.teacherName)}>{formatStaffName(selectedReq.teacherName)}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[320px]" title={`${selectedReq.position} • ${selectedReq.department}`}>
                     {selectedReq.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')} • {selectedReq.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
                   </p>

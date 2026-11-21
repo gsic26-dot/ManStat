@@ -47,6 +47,7 @@ import {
   getDirectorInfo,
   type DivisionKey,
 } from '@/lib/regulations/org-chart';
+import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 interface DivisionCardConfig {
   id: DivisionKey;
@@ -302,8 +303,8 @@ export const ViewOrgChart: React.FC = () => {
                   <div className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
                     ผู้บังคับบัญชาสูงสุด
                   </div>
-                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={directorInfo.name}>
-                    {directorInfo.name}
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={formatStaffName(directorInfo.name)}>
+                    {formatStaffName(directorInfo.name)}
                   </h3>
                   <div className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate" title={directorInfo.positionFormatted}>
                     {directorInfo.positionFormatted}
@@ -423,8 +424,8 @@ export const ViewOrgChart: React.FC = () => {
 
                   {/* Division Head Sub-Card (Equal min-h to prevent awkward word wrapping) */}
                   <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 min-h-[76px] flex flex-col justify-center transition-colors duration-200">
-                    <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug break-words" title={div.headName}>
-                      {div.headName}
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug break-words" title={formatStaffName(div.headName)}>
+                      {formatStaffName(div.headName)}
                     </div>
                     <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate" title={div.headPositionFormatted}>
                       {div.headPositionFormatted}
@@ -508,7 +509,7 @@ export const ViewOrgChart: React.FC = () => {
                     {activeModalDivision.title}
                   </h3>
                   <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                    หัวหน้ากลุ่มงาน: <span className="font-semibold text-slate-800 dark:text-slate-200">{activeModalDivision.headName}</span> ({activeModalDivision.headPositionFormatted})
+                    หัวหน้ากลุ่มงาน: <span className="font-semibold text-slate-800 dark:text-slate-200">{formatStaffName(activeModalDivision.headName)}</span> ({activeModalDivision.headPositionFormatted})
                   </div>
                 </div>
               </div>
