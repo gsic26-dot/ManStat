@@ -153,7 +153,26 @@ export function ViewRegScout() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {filteredScouts.map((s, index) => {
+                {filteredScouts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                        <Compass className="w-8 h-8 mb-2 opacity-40 shrink-0" />
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                          {searchQuery || levelFilter !== 'ALL'
+                            ? 'ไม่พบข้อมูลวุฒิทางลูกเสือที่ตรงกับเงื่อนไข'
+                            : 'ยังไม่มีข้อมูลวุฒิทางลูกเสือ'}
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                          {searchQuery || levelFilter !== 'ALL'
+                            ? 'ลองเปลี่ยนคำค้นหาหรือตัวเลือกระดับวุฒิ'
+                            : 'สามารถบันทึกข้อมูลวุฒิทางลูกเสือได้ที่เมนู จัดการบุคลากร ในระบบผู้ดูแลระบบ'}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredScouts.map((s, index) => {
                   const posDisplay = s.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   const isExpanded = expandedId === s.id;
                   return (
@@ -267,47 +286,66 @@ export function ViewRegScout() {
                       )}
                     </React.Fragment>
                   );
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>
         </div>
       ) : (
         /* Responsive Grid / Cards View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredScouts.map((s) => (
-            <div
-              key={s.id}
-              className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-amber-500/40 shadow-sm dark:shadow-none transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                    <Award className="w-3.5 h-3.5 shrink-0" />
-                    <span>{s.badgeLevel}</span>
-                  </span>
-                  <Compass className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
-                </div>
-
-                <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{s.teacherName}</div>
-                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{s.position}</div>
-
-                <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mb-3 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  {s.qualification}
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200/90 dark:border-slate-800">
-                  <div>
-                    เลขที่วุฒิบัตร: <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold">{s.certificateNo}</span>
+        filteredScouts.length === 0 ? (
+          <div className="p-12 text-center bg-white dark:bg-[#121822] rounded-2xl border border-slate-200/90 dark:border-slate-800">
+            <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+              <Compass className="w-8 h-8 mb-2 opacity-40 shrink-0" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {searchQuery || levelFilter !== 'ALL'
+                  ? 'ไม่พบข้อมูลวุฒิทางลูกเสือที่ตรงกับเงื่อนไข'
+                  : 'ยังไม่มีข้อมูลวุฒิทางลูกเสือ'}
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                {searchQuery || levelFilter !== 'ALL'
+                  ? 'ลองเปลี่ยนคำค้นหาหรือตัวเลือกระดับวุฒิ'
+                  : 'สามารถบันทึกข้อมูลวุฒิทางลูกเสือได้ที่เมนู จัดการบุคลากร ในระบบผู้ดูแลระบบ'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredScouts.map((s) => (
+              <div
+                key={s.id}
+                className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-amber-500/40 shadow-sm dark:shadow-none transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <Award className="w-3.5 h-3.5 shrink-0" />
+                      <span>{s.badgeLevel}</span>
+                    </span>
+                    <Compass className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   </div>
-                  <div>
-                    วันที่ได้รับ: <span className="font-mono text-slate-700 dark:text-slate-300">{s.issueDate}</span>
+
+                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{s.teacherName}</div>
+                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{s.position}</div>
+
+                  <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mb-3 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                    {s.qualification}
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200/90 dark:border-slate-800">
+                    <div>
+                      เลขที่วุฒิบัตร: <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold">{s.certificateNo}</span>
+                    </div>
+                    <div>
+                      วันที่ได้รับ: <span className="font-mono text-slate-700 dark:text-slate-300">{s.issueDate}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

@@ -33,6 +33,22 @@ describe('School Organization Chart & Division Heads Data Binding', () => {
     assert.equal(head.positionFormatted, 'ครูชำนาญการพิเศษ · คศ. 3');
   });
 
+  it('CRITICAL: never assigns support staff (e.g. STF-002 janitor) as division head even if ordered first', () => {
+    // Simulate DB returning STF-002 (janitor, "เจ้าหน้าที่ฝ่ายบริหารทั่วไป") before TCH-003
+    const reversedStaff = [...INITIAL_TEACHERS].reverse();
+    const generalHead = findDivisionHead(reversedStaff, 'general');
+    assert.notEqual(generalHead.name, 'นายกำพล กักหมื่นไวย');
+    assert.equal(generalHead.name, 'นายธวัชชัย เหลืองโอฬาร');
+    assert.equal(generalHead.positionFormatted, 'ครูชำนาญการพิเศษ · คศ. 3');
+
+    // Ensure all 4 heads are from teaching staff
+    for (const div of ['academic', 'budget', 'personnel', 'general'] as const) {
+      const head = findDivisionHead(reversedStaff, div);
+      assert.ok(head.teacher, `Head for ${div} should be found`);
+      assert.ok(!head.teacher.id.startsWith('STF'), `Head for ${div} must not be support staff (STF)`);
+    }
+  });
+
   it('correctly formats staff position and standing cleanly without parentheses', () => {
     const teacher1 = INITIAL_TEACHERS.find((t) => t.id === 'TCH-003')!;
     assert.equal(formatStaffPositionAndStanding(teacher1), 'ครูชำนาญการพิเศษ · คศ. 3');

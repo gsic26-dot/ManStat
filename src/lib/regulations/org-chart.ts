@@ -11,7 +11,7 @@
  */
 
 import type { TeacherRecord } from '@/lib/data/schoolData';
-import { formatAcademicStandingSubtext } from './staff-sorting';
+import { formatAcademicStandingSubtext, getStaffBranch } from './staff-sorting';
 
 export type DivisionKey = 'academic' | 'budget' | 'personnel' | 'general';
 
@@ -34,37 +34,46 @@ export function formatStaffPositionAndStanding(teacher: TeacherRecord): string {
 }
 
 /**
- * Resolves the division head dynamically from the current teacher records
+ * Resolves the division head dynamically from the current teacher records.
+ * CRITICAL RULE: Division heads can ONLY be civil service teaching staff (สายการสอน).
+ * Support staff (บุคลากรทางการศึกษา/ลูกจ้างประจำ เช่น นักการภารโรง, ธุรการ) must NEVER be assigned as division heads.
  */
 export function findDivisionHead(
   teachers: TeacherRecord[],
   divisionKey: DivisionKey
 ): HeadInfo {
+  // Strictly filter to teaching branch only (สายการสอน)
+  const teachingStaff = teachers.filter((t) => getStaffBranch(t) === 'teaching');
+
   let matched: TeacherRecord | undefined;
 
   switch (divisionKey) {
     case 'academic':
       matched =
-        teachers.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารวิชาการ') || t.division?.includes('บริหารวิชาการ')) ||
-        teachers.find((t) => t.id === 'TCH-004');
+        teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารวิชาการ') || t.division?.includes('หัวหน้างานวิชาการ')) ||
+        teachingStaff.find((t) => t.division?.includes('บริหารวิชาการ') && !t.division?.includes('เจ้าหน้าที่')) ||
+        teachingStaff.find((t) => t.id === 'TCH-004');
       break;
 
     case 'budget':
       matched =
-        teachers.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงบประมาณ') || t.division?.includes('บริหารงบประมาณ')) ||
-        teachers.find((t) => t.id === 'TCH-008');
+        teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงบประมาณ') || t.division?.includes('หัวหน้างานงบประมาณ')) ||
+        teachingStaff.find((t) => t.division?.includes('บริหารงบประมาณ') && !t.division?.includes('เจ้าหน้าที่')) ||
+        teachingStaff.find((t) => t.id === 'TCH-008');
       break;
 
     case 'personnel':
       matched =
-        teachers.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงานบุคคล') || t.division?.includes('บริหารงานบุคคล')) ||
-        teachers.find((t) => t.id === 'TCH-007');
+        teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงานบุคคล') || t.division?.includes('หัวหน้างานบุคคล')) ||
+        teachingStaff.find((t) => t.division?.includes('บริหารงานบุคคล') && !t.division?.includes('เจ้าหน้าที่')) ||
+        teachingStaff.find((t) => t.id === 'TCH-007');
       break;
 
     case 'general':
       matched =
-        teachers.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารทั่วไป') || t.division?.includes('บริหารทั่วไป')) ||
-        teachers.find((t) => t.id === 'TCH-003');
+        teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารทั่วไป') || t.division?.includes('หัวหน้างานบริหารทั่วไป')) ||
+        teachingStaff.find((t) => t.division?.includes('บริหารทั่วไป') && !t.division?.includes('เจ้าหน้าที่')) ||
+        teachingStaff.find((t) => t.id === 'TCH-003');
       break;
   }
 

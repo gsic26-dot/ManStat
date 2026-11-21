@@ -23,18 +23,25 @@ import { ViewRegScout } from './ViewRegScout';
 
 export type PersonnelTab = 'directory' | 'standing' | 'license' | 'scout';
 
-interface ViewPersonnelHubProps {
+export interface ViewPersonnelHubProps {
   initialTab?: PersonnelTab;
+  onTabChange?: (tab: PersonnelTab) => void;
 }
 
 export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
   initialTab = 'directory',
+  onTabChange,
 }) => {
   const [activeTab, setActiveTab] = useState<PersonnelTab>(initialTab);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  const handleSelectTab = (tab: PersonnelTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   return (
     <div className="space-y-5">
@@ -44,7 +51,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
           {/* 1. ทะเบียนประวัติฯ */}
           <button
             type="button"
-            onClick={() => setActiveTab('directory')}
+            onClick={() => handleSelectTab('directory')}
             className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'directory'
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
@@ -59,7 +66,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
           {/* 2. ทะเบียนวิทยฐานะ */}
           <button
             type="button"
-            onClick={() => setActiveTab('standing')}
+            onClick={() => handleSelectTab('standing')}
             className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'standing'
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
@@ -74,7 +81,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
           {/* 3. ทะเบียนใบอนุญาตฯ */}
           <button
             type="button"
-            onClick={() => setActiveTab('license')}
+            onClick={() => handleSelectTab('license')}
             className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'license'
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
@@ -89,7 +96,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
           {/* 4. ทะเบียนวุฒิลูกเสือ */}
           <button
             type="button"
-            onClick={() => setActiveTab('scout')}
+            onClick={() => handleSelectTab('scout')}
             className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'scout'
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'

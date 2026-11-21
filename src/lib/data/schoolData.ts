@@ -825,60 +825,7 @@ export interface ScoutRecord {
   orderNumber: string;
 }
 
-export const INITIAL_SCOUTS: ScoutRecord[] = [
-  {
-    id: 'SCT-001',
-    teacherId: 'EXE-001',
-    teacherName: 'นายธีรศักดิ์ มโนธรรม',
-    position: 'ผู้อำนวยการสถานศึกษา',
-    qualification: 'Wood Badge 3 ท่อน (W.B.)',
-    badgeLevel: '3 ท่อน',
-    category: 'ผู้บังคับบัญชาลูกเสือ',
-    issueDate: '2018-05-14',
-    certificateNo: 'ลส. 345/2561',
-    issuedBy: 'สำนักงานลูกเสือแห่งชาติ',
-    orderNumber: 'สพป.นม.3 ที่ 182/2561'
-  },
-  {
-    id: 'SCT-002',
-    teacherId: 'TCH-003',
-    teacherName: 'นายธวัชชัย เหลืองโอฬาร',
-    position: 'ครูชำนาญการพิเศษ',
-    qualification: 'Wood Badge 2 ท่อน (W.B.) ประเภทลูกเสือสามัญ',
-    badgeLevel: '2 ท่อน',
-    category: 'ลูกเสือสามัญ',
-    issueDate: '2019-11-20',
-    certificateNo: 'ลส. 892/2562',
-    issuedBy: 'สโมสรลูกเสือจังหวัดนครราชสีมา',
-    orderNumber: 'สพป.นม.3 ที่ 412/2562'
-  },
-  {
-    id: 'SCT-003',
-    teacherId: 'TCH-004',
-    teacherName: 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์',
-    position: 'ครูชำนาญการพิเศษ',
-    qualification: 'A.T.C. (Advanced Unit Leader Training Course)',
-    badgeLevel: 'A.T.C.',
-    category: 'ลูกเสือสามัญรุ่นใหญ่',
-    issueDate: '2022-03-18',
-    certificateNo: 'นม. 112/2565',
-    issuedBy: 'ค่ายลูกเสืออ่างห้วยยาง นครราชสีมา',
-    orderNumber: 'สพป.นม.3 ที่ 89/2565'
-  },
-  {
-    id: 'SCT-004',
-    teacherId: 'TCH-006',
-    teacherName: 'นางณิชกานต์ พลอยฉิมพลี',
-    position: 'ครูชำนาญการพิเศษ',
-    qualification: 'Wood Badge 2 ท่อน (W.B.) ประเภทลูกเสือสำรอง',
-    badgeLevel: '2 ท่อน',
-    category: 'ลูกเสือสำรอง',
-    issueDate: '2021-09-05',
-    certificateNo: 'ลส. 540/2564',
-    issuedBy: 'สำนักงานลูกเสือแห่งชาติ',
-    orderNumber: 'สพป.นม.3 ที่ 220/2564'
-  }
-];
+export const INITIAL_SCOUTS: ScoutRecord[] = [];
 
 // ============================================================================
 // WORKLOAD & PA TYPES & INITIAL ITEMS

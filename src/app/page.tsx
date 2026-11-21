@@ -81,7 +81,7 @@ import {
 } from '@/lib/regulations/dashboard-helpers';
 
 // View Components
-import { ViewPersonnelHub } from '@/components/views/ViewPersonnelHub';
+import { ViewPersonnelHub, type PersonnelTab } from '@/components/views/ViewPersonnelHub';
 import { ViewStaffDirectory } from '@/components/views/ViewStaffDirectory';
 import { ViewRegLicense } from '@/components/views/ViewRegLicense';
 import { ViewRegStanding } from '@/components/views/ViewRegStanding';
@@ -283,6 +283,19 @@ export default function DashboardPage() {
     setActiveView(view);
     setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePersonnelTabChange = (tab: PersonnelTab) => {
+    const tabToViewMap: Record<PersonnelTab, ActiveView> = {
+      directory: 'staff_directory',
+      standing: 'dir_standing',
+      license: 'dir_license',
+      scout: 'dir_scout',
+    };
+    const targetView = tabToViewMap[tab];
+    if (targetView && activeView !== targetView) {
+      setActiveView(targetView);
+    }
   };
 
   return (
@@ -1084,10 +1097,18 @@ export default function DashboardPage() {
           {activeView === 'workload' && <ViewWorkload />}
 
           {/* View: Category 3 Personnel Registries Hub */}
-          {activeView === 'staff_directory' && <ViewPersonnelHub initialTab="directory" />}
-          {activeView === 'dir_standing' && <ViewPersonnelHub initialTab="standing" />}
-          {activeView === 'dir_license' && <ViewPersonnelHub initialTab="license" />}
-          {activeView === 'dir_scout' && <ViewPersonnelHub initialTab="scout" />}
+          {activeView === 'staff_directory' && (
+            <ViewPersonnelHub initialTab="directory" onTabChange={handlePersonnelTabChange} />
+          )}
+          {activeView === 'dir_standing' && (
+            <ViewPersonnelHub initialTab="standing" onTabChange={handlePersonnelTabChange} />
+          )}
+          {activeView === 'dir_license' && (
+            <ViewPersonnelHub initialTab="license" onTabChange={handlePersonnelTabChange} />
+          )}
+          {activeView === 'dir_scout' && (
+            <ViewPersonnelHub initialTab="scout" onTabChange={handlePersonnelTabChange} />
+          )}
 
           {/* View: System Feedback */}
           {activeView === 'feedback' && <ViewFeedback />}

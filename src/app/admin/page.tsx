@@ -2733,7 +2733,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                         <Award className="w-4 h-4 shrink-0" />
-                        <span>ทะเบียนใบอนุญาตประกอบวิชาชีพ (คุรุสภา)</span>
+                        <span>ทะเบียนใบอนุญาตประกอบวิชาชีพ</span>
                       </div>
                       <span className="text-[11px] text-slate-400">
                         มีทั้งหมด {(selectedStaff.licenses || []).length} ฉบับ
@@ -2847,7 +2847,7 @@ export default function AdminPage() {
                   <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
                       <Compass className="w-4 h-4 shrink-0" />
-                      <span>วุฒิทางลูกเสือ (Scout Qualifications)</span>
+                      <span>วุฒิทางลูกเสือ</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>

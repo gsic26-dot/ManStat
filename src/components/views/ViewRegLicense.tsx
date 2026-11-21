@@ -115,7 +115,7 @@ export const ViewRegLicense: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Award className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
-            <span>ทะเบียนใบอนุญาตประกอบวิชาชีพครูและผู้บริหาร (คุรุสภา)</span>
+            <span>ทะเบียนใบอนุญาตประกอบวิชาชีพครูและผู้บริหาร</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             ระบบเฝ้าระวังวันหมดอายุล่วงหน้า 90 วัน ตามข้อบังคับคุรุสภาว่าด้วยใบอนุญาตประกอบวิชาชีพ
@@ -129,7 +129,7 @@ export const ViewRegLicense: React.FC = () => {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
         >
           <ExternalLink className="w-4 h-4 shrink-0 text-sky-500 dark:text-sky-400" />
-          <span>ระบบ KSP e-Service (คุรุสภา)</span>
+          <span>ระบบ KSP e-Service</span>
         </a>
       </div>
 
@@ -171,7 +171,7 @@ export const ViewRegLicense: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-500 dark:text-slate-400">ใกล้หมดอายุ (ใน 90 วัน)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">ใกล้หมดอายุ 90 วัน</span>
             <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
           </div>
           <span className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">{stats.expiringSoon}</span>
@@ -219,7 +219,22 @@ export const ViewRegLicense: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-              {filtered.map((item, idx) => {
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                      <Award className="w-8 h-8 mb-2 opacity-40 shrink-0" />
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        {search ? 'ไม่พบข้อมูลใบอนุญาตที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลใบอนุญาตประกอบวิชาชีพ'}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                        {search ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ' : 'สามารถบันทึกข้อมูลใบอนุญาตได้ที่เมนู จัดการบุคลากร ในระบบผู้ดูแลระบบ'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item, idx) => {
                 const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                 const rowKey = `${item.number}-${idx}`;
                 const isExpanded = expandedId === rowKey;
@@ -348,7 +363,8 @@ export const ViewRegLicense: React.FC = () => {
                     )}
                   </React.Fragment>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>

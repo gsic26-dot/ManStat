@@ -1100,11 +1100,62 @@ export async function dbGetTeachers(): Promise<TeacherRecord[]> {
       console.error('[dbGetTeachers] Supabase query error:', error);
       throw new Error(`ไม่สามารถดึงข้อมูลบุคลากรจาก Supabase ได้: ${error.message}`);
     }
-    return (data || []).map(teacherFromDb);
+    const teachers = (data || []).map(teacherFromDb);
+
+    // Hydrate licenses from history_licenses or INITIAL_TEACHERS if Supabase teachers table has empty licenses
+    try {
+      const anyTeacherHasLicenses = teachers.some((t) => t.licenses && t.licenses.length > 0);
+      if (!anyTeacherHasLicenses) {
+        const { data: licRows } = await supabase.from('history_licenses').select('*');
+        if (Array.isArray(licRows) && licRows.length > 0) {
+          const licMap = new Map<string, any[]>();
+          licRows.forEach((r: any) => {
+            const empId = r.emp_id || r.teacher_id;
+            if (empId) {
+              if (!licMap.has(empId)) licMap.set(empId, []);
+              licMap.get(empId)!.push({
+                category: r.license_category || 'ครู',
+                type: r.license_type || 'ใบอนุญาตประกอบวิชาชีพครู',
+                number: r.license_number || '',
+                issueDate: r.issue_date || '',
+                expiryDate: r.expiry_date || '',
+              });
+            }
+          });
+          teachers.forEach((t) => {
+            if ((!t.licenses || t.licenses.length === 0) && licMap.has(t.id)) {
+              t.licenses = licMap.get(t.id)!;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[dbGetTeachers] history_licenses hydration fallback skipped:', e);
+    }
+
+    // Ensure seed teachers (like EXE-001) always have their initial licenses if still empty
+    teachers.forEach((t) => {
+      if (!t.licenses || t.licenses.length === 0) {
+        const seedT = INITIAL_TEACHERS.find((st) => st.id === t.id);
+        if (seedT && seedT.licenses && seedT.licenses.length > 0) {
+          t.licenses = seedT.licenses;
+        }
+      }
+    });
+
+    return teachers;
   }
 
   verifyVercelConfiguration();
   const db = loadDatabase();
+  (db.teachers || []).forEach((t: any) => {
+    if (!t.licenses || t.licenses.length === 0) {
+      const seedT = INITIAL_TEACHERS.find((st) => st.id === t.id);
+      if (seedT && seedT.licenses && seedT.licenses.length > 0) {
+        t.licenses = seedT.licenses;
+      }
+    }
+  });
   return db.teachers;
 }
 
@@ -1123,6 +1174,32 @@ export async function dbUpsertTeacher(teacher: TeacherRecord): Promise<TeacherRe
       console.error('[dbUpsertTeacher] Supabase upsert error:', error);
       throw new Error(`ไม่สามารถบันทึกข้อมูลบุคลากรลง Supabase ได้: ${error.message}`);
     }
+
+    // Keep history_licenses in sync if configured
+    if (Array.isArray(teacher.licenses) && teacher.licenses.length > 0) {
+      try {
+        for (let i = 0; i < teacher.licenses.length; i++) {
+          const lic = teacher.licenses[i];
+          const recId = `LIC-${teacher.id}-${i + 1}`;
+          await supabase.from('history_licenses').upsert(
+            {
+              record_id: recId,
+              emp_id: teacher.id,
+              license_category: lic.category,
+              license_type: lic.type,
+              license_number: lic.number,
+              issue_date: lic.issueDate,
+              expiry_date: lic.expiryDate,
+              timestamp: new Date().toISOString(),
+            },
+            { onConflict: 'record_id' }
+          );
+        }
+      } catch (licSyncErr) {
+        console.warn('[dbUpsertTeacher] Note: could not sync to history_licenses:', licSyncErr);
+      }
+    }
+
     return teacherFromDb(data);
   }
 
@@ -1596,14 +1673,31 @@ export async function dbGetScouts(): Promise<ScoutRecord[]> {
         issuedBy: 'สำนักงานลูกเสือแห่งชาติ',
         orderNumber: '',
       }));
-    if (scoutsFromTeachers.length > 0) {
-      return scoutsFromTeachers;
-    }
+    return scoutsFromTeachers;
   }
 
   verifyVercelConfiguration();
   const db = loadDatabase();
-  return db.scouts || INITIAL_SCOUTS;
+  if (Array.isArray(db.scouts) && db.scouts.length > 0) {
+    return db.scouts;
+  }
+  const localTeachers = (db.teachers || []) as any[];
+  const localScoutsFromTeachers: ScoutRecord[] = localTeachers
+    .filter((t: any) => t.highestScout && t.highestScout !== 'ไม่มีวุฒิลูกเสือ' && t.highestScout !== '-')
+    .map((t: any, idx: number) => ({
+      id: `SCT-${t.id || idx + 1}`,
+      teacherId: t.id,
+      teacherName: t.name,
+      position: t.position,
+      qualification: t.highestScout,
+      badgeLevel: t.highestScout.includes('ท่อน') ? t.highestScout.split('(')[0].trim() : t.highestScout,
+      category: 'ผู้บังคับบัญชาลูกเสือ',
+      issueDate: '',
+      certificateNo: t.scoutCertNo || '',
+      issuedBy: 'สำนักงานลูกเสือแห่งชาติ',
+      orderNumber: '',
+    }));
+  return localScoutsFromTeachers;
 }
 
 export async function dbUpsertScout(scout: ScoutRecord): Promise<ScoutRecord> {
