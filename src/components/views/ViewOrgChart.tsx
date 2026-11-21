@@ -7,26 +7,21 @@
  * Standard: Thai OBEC (สพฐ.) School Administrative Structure
  * Pattern: Authentic Hierarchical Tree Diagram (ผังสายการบังคับบัญชา 4 กลุ่มงาน)
  *
- * Hierarchy Anatomy:
- * - Level 1: ผู้อำนวยการสถานศึกษา (Executive Top Node)
- *   * Lateral Advisory Branch: คณะกรรมการสถานศึกษาขั้นพื้นฐาน (9 ท่าน)
- * - Tree Connectors: Crisp CSS Stem & Horizontal Branching Lines
- * - Level 2: 4 Core Administrative Divisions (โรงเรียนชุมชนบ้านตะขบ):
- *   1. กลุ่มบริหารงานวิชาการ (17 ภารกิจ) — Sky
- *   2. กลุ่มบริหารงานงบประมาณ (22 ภารกิจ) — Emerald
- *   3. กลุ่มบริหารงานบุคคล (18 ภารกิจ) — Amber
- *   4. กลุ่มบริหารงานทั่วไป (21 ภารกิจ) — Indigo
+ * Real Data Binding:
+ * - ผู้อำนวยการสถานศึกษา (Executive Top Node) ผูกข้อมูลจริงจากฐานข้อมูลบุคลากร/สถานศึกษา
+ * - คณะกรรมการสถานศึกษาขั้นพื้นฐาน ผูกข้อมูลประธานและจำนวนกรรมการจริง
+ * - 4 กลุ่มบริหารงาน: วิชาการ, งบประมาณ, บุคคล, ทั่วไป ผูกข้อมูลหัวหน้ากลุ่มงานจริง
  *
- * UI Cleanup & Single-Line Standards:
- * - Removed redundant headcount pills and teacher member lists to keep focus on governance.
- * - Single role badge for division heads, ensuring zero text truncation.
- * - Progressive disclosure (Accordion) for full mission lists with clean internal scrolling.
- * - Strict Zero-Emoji compliance, Pure Lucide SVG Icons, 8px standard gap.
- * - Dual-Theme Support: Clean Civil-Service Paper / Minimalist Obsidian Slate.
+ * Symmetry & Layout:
+ * - Director node positioned exactly in the center of the hierarchy tree
+ * - School Board connected laterally as an advisory/governance body via dashed line
+ * - Vertical stem drops down from the center of Director node to horizontal branching crossbar
+ * - 4 Division cards fixed height with top 3 core duties; full duties open in a clean Modal
+ * - Zero Emojis, pure Lucide SVG icons, strict 8px standard gap.
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   School,
   BookOpen,
@@ -34,20 +29,29 @@ import {
   Users,
   Shield,
   Layers,
-  ChevronDown,
-  ChevronUp,
   Award,
   UserCheck,
-  CheckCircle2,
+  ChevronRight,
+  X,
 } from 'lucide-react';
-import { INITIAL_BOARD_MEMBERS, INITIAL_SCHOOL_INFO, BoardMemberRecord, SchoolInfoRecord } from '@/lib/data/schoolData';
+import {
+  INITIAL_BOARD_MEMBERS,
+  INITIAL_SCHOOL_INFO,
+  INITIAL_TEACHERS,
+  BoardMemberRecord,
+  SchoolInfoRecord,
+  TeacherRecord,
+} from '@/lib/data/schoolData';
+import {
+  findDivisionHead,
+  getDirectorInfo,
+  type DivisionKey,
+} from '@/lib/regulations/org-chart';
 
-interface DivisionData {
-  id: string;
+interface DivisionCardConfig {
+  id: DivisionKey;
+  shortName: string;
   title: string;
-  headName: string;
-  headPosition: string;
-  headStanding: string;
   icon: React.ElementType;
   accentBg: string;
   accentBorder: string;
@@ -56,14 +60,161 @@ interface DivisionData {
   duties: string[];
 }
 
+const STATIC_DIVISIONS: DivisionCardConfig[] = [
+  {
+    id: 'academic',
+    shortName: 'วิชาการ',
+    title: 'กลุ่มบริหารงานวิชาการ',
+    icon: BookOpen,
+    accentBg: 'bg-sky-50 dark:bg-sky-500/10',
+    accentBorder: 'border-sky-500/30',
+    accentText: 'text-sky-600 dark:text-sky-400',
+    bulletColor: 'bg-sky-500',
+    duties: [
+      'การพัฒนาหรือการดำเนินการเกี่ยวกับการให้ความเห็นการพัฒนาสาระหลักสูตรท้องถิ่น',
+      'การวางแผนงานด้านวิชาการ',
+      'การจัดการเรียนการสอนในสถานศึกษา',
+      'การพัฒนาหลักสูตรของสถานศึกษา',
+      'การพัฒนากระบวนการเรียนรู้',
+      'การวัดผล ประเมินผล และดำเนินการเทียบโอนผลการเรียน',
+      'การวิจัยเพื่อพัฒนาคุณภาพการศึกษาในสถานศึกษา',
+      'การพัฒนาและส่งเสริมให้มีแหล่งเรียนรู้',
+      'การนิเทศการศึกษา',
+      'การแนะแนว',
+      'การพัฒนาระบบประกันคุณภาพภายในและมาตรฐานการศึกษา',
+      'การส่งเสริมชุมชนให้มีความเข้มแข็งทางวิชาการ',
+      'การประสานความร่วมมือในการพัฒนาวิชาการกับสถานศึกษาและองค์กรอื่น',
+      'การส่งเสริมและสนับสนุนงานวิชาการแก่บุคคล ครอบครัว องค์กร หน่วยงาน สถานประกอบการ และสถาบันอื่นที่จัดการศึกษา',
+      'การจัดทำระเบียบและแนวปฏิบัติเกี่ยวกับงานด้านวิชาการของสถานศึกษา',
+      'การคัดเลือกหนังสือ แบบเรียน เพื่อใช้ในสถานศึกษา',
+      'การพัฒนาและใช้สื่อเทคโนโลยีเพื่อการศึกษา',
+    ],
+  },
+  {
+    id: 'budget',
+    shortName: 'งบประมาณ',
+    title: 'กลุ่มบริหารงานงบประมาณ',
+    icon: DollarSign,
+    accentBg: 'bg-emerald-50 dark:bg-emerald-500/10',
+    accentBorder: 'border-emerald-500/30',
+    accentText: 'text-emerald-600 dark:text-emerald-400',
+    bulletColor: 'bg-emerald-500',
+    duties: [
+      'การจัดทำแผนงบประมาณ',
+      'การจัดทำแผนปฏิบัติการใช้จ่ายเงินตามที่ได้รับจัดสรร',
+      'การอนุมัติการใช้จ่ายงบประมาณที่ได้รับจัดสรร',
+      'การขอโอนและการขอเปลี่ยนแปลงงบประมาณ',
+      'การรายงานผลการเบิกจ่ายงบประมาณ',
+      'การตรวจสอบติดตามและรายงานการใช้งบประมาณ',
+      'การตรวจสอบติดตามและรายงานการใช้ผลผลิตจากงบประมาณ',
+      'การระดมทรัพยากรและการลงทุนเพื่อการศึกษา',
+      'การปฏิบัติงานอื่นใดตามที่ได้รับมอบหมายเกี่ยวกับกองทุนเพื่อการศึกษา',
+      'การบริหารจัดการทรัพยากรเพื่อการศึกษา',
+      'การวางแผนพัสดุ',
+      'การกำหนดรูปแบบรายการ หรือคุณลักษณะเฉพาะของครุภัณฑ์หรือสิ่งก่อสร้าง',
+      'การพัฒนาระบบข้อมูลและสารสนเทศเพื่อการจัดทำและจัดหาพัสดุ',
+      'การจัดหาพัสดุ',
+      'การควบคุมดูแล บำรุงรักษา และจำหน่ายพัสดุ',
+      'การจัดหาผลประโยชน์จากทรัพย์สิน',
+      'การเบิกเงินจากคลัง',
+      'การรับเงิน การเก็บรักษาเงิน และการจ่ายเงิน',
+      'การนำเงินส่งคลัง',
+      'การจัดทำบัญชีการเงิน',
+      'การจัดทำรายงานทางการเงินและงบการเงิน',
+      'การจัดทำหรือจัดหาแบบพิมพ์บัญชี ทะเบียน และรายงาน',
+    ],
+  },
+  {
+    id: 'personnel',
+    shortName: 'บุคคล',
+    title: 'กลุ่มบริหารงานบุคคล',
+    icon: Users,
+    accentBg: 'bg-amber-50 dark:bg-amber-500/10',
+    accentBorder: 'border-amber-500/30',
+    accentText: 'text-amber-600 dark:text-amber-400',
+    bulletColor: 'bg-amber-500',
+    duties: [
+      'การวางแผนอัตรากำลัง',
+      'การจัดสรรอัตรากำลังข้าราชการครูและบุคลากรทางการศึกษา',
+      'การสรรหาและบรรจุแต่งตั้ง',
+      'การเปลี่ยนตำแหน่งให้สูงขึ้น การย้าย ข้าราชการครูและบุคลากรทางการศึกษา',
+      'การดำเนินการเกี่ยวกับการเลื่อนขั้นเงินเดือน',
+      'การลาทุกประเภท',
+      'การประเมินผลการปฏิบัติงาน',
+      'การดำเนินการทางวินัยและการลงโทษ',
+      'การสั่งพักราชการและการสั่งให้ออกจากราชการไว้ก่อน',
+      'การรายงานการดำเนินการทางวินัยและการลงโทษ การอุทธรณ์และการร้องทุกข์ การออกจากราชการ',
+      'การจัดระบบและการจัดทำทะเบียนประวัติ',
+      'การจัดทำบัญชีรายชื่อและให้ความเห็นเกี่ยวกับการเสนอขอพระราชทานเครื่องราชอิสริยาภรณ์',
+      'การส่งเสริมการประเมินวิทยฐานะข้าราชการครูและบุคลากรทางการศึกษา',
+      'การส่งเสริมและยกย่องเชิดชูเกียรติ',
+      'การส่งเสริมมาตรฐานวิชาชีพและจรรยาบรรณวิชาชีพ',
+      'การส่งเสริมวินัย คุณธรรม และจริยธรรมสำหรับข้าราชการครูและบุคลากรทางการศึกษา',
+      'การริเริ่มส่งเสริมการขอรับใบอนุญาต',
+      'การพัฒนาข้าราชการครูและบุคลากรทางการศึกษา ทางการเงินและงบการเงิน',
+    ],
+  },
+  {
+    id: 'general',
+    shortName: 'ทั่วไป',
+    title: 'กลุ่มบริหารงานทั่วไป',
+    icon: Shield,
+    accentBg: 'bg-indigo-50 dark:bg-indigo-500/10',
+    accentBorder: 'border-indigo-500/30',
+    accentText: 'text-indigo-600 dark:text-indigo-400',
+    bulletColor: 'bg-indigo-500',
+    duties: [
+      'การพัฒนาระบบและเครือข่ายข้อมูลสารสนเทศ',
+      'การประสานงานและพัฒนาเครือข่ายการศึกษา',
+      'การวางแผนการบริหารงานการศึกษา',
+      'งานวิจัยเพื่อพัฒนานโยบายและแผน',
+      'การจัดระบบการบริหารและพัฒนาองค์กร',
+      'การพัฒนามาตรฐานการปฏิบัติงาน',
+      'งานเทคโนโลยีเพื่อการศึกษา',
+      'การดำเนินงานธุรการ',
+      'การดูแลอาคารสถานที่และสภาพแวดล้อม',
+      'การจัดทำสำมะโนผู้เรียน',
+      'การรับนักเรียน',
+      'การเสนอความเห็นเกี่ยวกับเรื่องการจัดตั้ง ยุบรวม หรือเลิกสถานศึกษา',
+      'การประสานการจัดการศึกษาในระบบ นอกระบบ และตามอัธยาศัย',
+      'การระดมทรัพยากรเพื่อการศึกษา',
+      'การทัศนศึกษา',
+      'งานกิจการนักเรียน',
+      'การประชาสัมพันธ์งานการศึกษา',
+      'การส่งเสริม สนับสนุน และประสานการจัดการศึกษาของบุคคล ชุมชน องค์กร หน่วยงาน และสถาบันสังคมอื่น',
+      'งานประสานราชการกับส่วนภูมิภาคและส่วนท้องถิ่น',
+      'การจัดระบบการควบคุมภายในหน่วยงาน',
+      'แนวทางการจัดกิจกรรมเพื่อปรับเปลี่ยนพฤติกรรมในการลงโทษนักเรียน',
+    ],
+  },
+];
+
+export interface ActiveDivisionModalData extends DivisionCardConfig {
+  headName: string;
+  headPositionFormatted: string;
+}
+
 export const ViewOrgChart: React.FC = () => {
-  const [expandedDivision, setExpandedDivision] = useState<string | null>(null);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
   const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+  const [activeModalDivision, setActiveModalDivision] = useState<ActiveDivisionModalData | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/board')
+
+    // Load real staff data
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setTeachersList(res.data);
+        }
+      })
+      .catch(() => {});
+
+    // Load real school board data
+    fetch('/api/admin/board', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data) && isMounted) {
@@ -72,7 +223,8 @@ export const ViewOrgChart: React.FC = () => {
       })
       .catch(() => {});
 
-    fetch('/api/admin/school')
+    // Load school metadata
+    fetch('/api/admin/school', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data && isMounted) {
@@ -86,157 +238,34 @@ export const ViewOrgChart: React.FC = () => {
     };
   }, []);
 
-  const toggleDivision = (id: string) => {
-    setExpandedDivision((prev) => (prev === id ? null : id));
-  };
+  // 1. Resolve Director info from real staff database
+  const directorInfo = useMemo(() => {
+    return getDirectorInfo(teachersList, school.directorName, school.directorPosition);
+  }, [teachersList, school.directorName, school.directorPosition]);
 
-  // ดึงชื่อประธานกรรมการสถานศึกษาจริงจากฐานข้อมูล
-  const boardChair =
-    boardList.find((b) => b.position === 'CHAIR')?.fullName ||
-    'นางเสาวนีย์ ศิริวรรณโยธา';
+  // 2. Resolve Board Chair & Total Members
+  const boardChair = useMemo(() => {
+    return boardList.find((b) => b.position === 'CHAIR')?.fullName || 'นางเสาวนีย์ ศิริวรรณโยธา';
+  }, [boardList]);
+
   const totalBoardMembers = boardList.length || 9;
 
-  const divisions: DivisionData[] = [
-    {
-      id: 'academic',
-      title: 'กลุ่มบริหารงานวิชาการ',
-      headName: 'นายพันธ์ธนัต ภวฤทธิ์นาคินทร์',
-      headPosition: 'ครู (คศ. 3)',
-      headStanding: 'ชำนาญการพิเศษ',
-      icon: BookOpen,
-      accentBg: 'bg-sky-50 dark:bg-sky-500/10',
-      accentBorder: 'border-sky-500/30',
-      accentText: 'text-sky-600 dark:text-sky-400',
-      bulletColor: 'bg-sky-500',
-      duties: [
-        'การพัฒนาหรือการดำเนินการเกี่ยวกับการให้ความเห็นการพัฒนาสาระหลักสูตรท้องถิ่น',
-        'การวางแผนงานด้านวิชาการ',
-        'การจัดการเรียนการสอนในสถานศึกษา',
-        'การพัฒนาหลักสูตรของสถานศึกษา',
-        'การพัฒนากระบวนการเรียนรู้',
-        'การวัดผล ประเมินผล และดำเนินการเทียบโอนผลการเรียน',
-        'การวิจัยเพื่อพัฒนาคุณภาพการศึกษาในสถานศึกษา',
-        'การพัฒนาและส่งเสริมให้มีแหล่งเรียนรู้',
-        'การนิเทศการศึกษา',
-        'การแนะแนว',
-        'การพัฒนาระบบประกันคุณภาพภายในและมาตรฐานการศึกษา',
-        'การส่งเสริมชุมชนให้มีความเข้มแข็งทางวิชาการ',
-        'การประสานความร่วมมือในการพัฒนาวิชาการกับสถานศึกษาและองค์กรอื่น',
-        'การส่งเสริมและสนับสนุนงานวิชาการแก่บุคคล ครอบครัว องค์กร หน่วยงาน สถานประกอบการ และสถาบันอื่นที่จัดการศึกษา',
-        'การจัดทำระเบียบและแนวปฏิบัติเกี่ยวกับงานด้านวิชาการของสถานศึกษา',
-        'การคัดเลือกหนังสือ แบบเรียน เพื่อใช้ในสถานศึกษา',
-        'การพัฒนาและใช้สื่อเทคโนโลยีเพื่อการศึกษา',
-      ],
-    },
-    {
-      id: 'budget',
-      title: 'กลุ่มบริหารงานงบประมาณ',
-      headName: 'นางสาวสุนิสา สุทธิวงศ์',
-      headPosition: 'ครู (คศ. 3)',
-      headStanding: 'ชำนาญการพิเศษ',
-      icon: DollarSign,
-      accentBg: 'bg-emerald-50 dark:bg-emerald-500/10',
-      accentBorder: 'border-emerald-500/30',
-      accentText: 'text-emerald-600 dark:text-emerald-400',
-      bulletColor: 'bg-emerald-500',
-      duties: [
-        'การจัดทำแผนงบประมาณ',
-        'การจัดทำแผนปฏิบัติการใช้จ่ายเงินตามที่ได้รับจัดสรร',
-        'การอนุมัติการใช้จ่ายงบประมาณที่ได้รับจัดสรร',
-        'การขอโอนและการขอเปลี่ยนแปลงงบประมาณ',
-        'การรายงานผลการเบิกจ่ายงบประมาณ',
-        'การตรวจสอบติดตามและรายงานการใช้งบประมาณ',
-        'การตรวจสอบติดตามและรายงานการใช้ผลผลิตจากงบประมาณ',
-        'การระดมทรัพยากรและการลงทุนเพื่อการศึกษา',
-        'การปฏิบัติงานอื่นใดตามที่ได้รับมอบหมายเกี่ยวกับกองทุนเพื่อการศึกษา',
-        'การบริหารจัดการทรัพยากรเพื่อการศึกษา',
-        'การวางแผนพัสดุ',
-        'การกำหนดรูปแบบรายการ หรือคุณลักษณะเฉพาะของครุภัณฑ์หรือสิ่งก่อสร้าง',
-        'การพัฒนาระบบข้อมูลและสารสนเทศเพื่อการจัดทำและจัดหาพัสดุ',
-        'การจัดหาพัสดุ',
-        'การควบคุมดูแล บำรุงรักษา และจำหน่ายพัสดุ',
-        'การจัดหาผลประโยชน์จากทรัพย์สิน',
-        'การเบิกเงินจากคลัง',
-        'การรับเงิน การเก็บรักษาเงิน และการจ่ายเงิน',
-        'การนำเงินส่งคลัง',
-        'การจัดทำบัญชีการเงิน',
-        'การจัดทำรายงานทางการเงินและงบการเงิน',
-        'การจัดทำหรือจัดหาแบบพิมพ์บัญชี ทะเบียน และรายงาน',
-      ],
-    },
-    {
-      id: 'personnel',
-      title: 'กลุ่มบริหารงานบุคคล',
-      headName: 'นางสาวทัชชกร ช่วยจังหรีด',
-      headPosition: 'ครู (คศ. 3)',
-      headStanding: 'ชำนาญการพิเศษ',
-      icon: Users,
-      accentBg: 'bg-amber-50 dark:bg-amber-500/10',
-      accentBorder: 'border-amber-500/30',
-      accentText: 'text-amber-600 dark:text-amber-400',
-      bulletColor: 'bg-amber-500',
-      duties: [
-        'การวางแผนอัตรากำลัง',
-        'การจัดสรรอัตรากำลังข้าราชการครูและบุคลากรทางการศึกษา',
-        'การสรรหาและบรรจุแต่งตั้ง',
-        'การเปลี่ยนตำแหน่งให้สูงขึ้น การย้าย ข้าราชการครูและบุคลากรทางการศึกษา',
-        'การดำเนินการเกี่ยวกับการเลื่อนขั้นเงินเดือน',
-        'การลาทุกประเภท',
-        'การประเมินผลการปฏิบัติงาน',
-        'การดำเนินการทางวินัยและการลงโทษ',
-        'การสั่งพักราชการและการสั่งให้ออกจากราชการไว้ก่อน',
-        'การรายงานการดำเนินการทางวินัยและการลงโทษ การอุทธรณ์และการร้องทุกข์ การออกจากราชการ',
-        'การจัดระบบและการจัดทำทะเบียนประวัติ',
-        'การจัดทำบัญชีรายชื่อและให้ความเห็นเกี่ยวกับการเสนอขอพระราชทานเครื่องราชอิสริยาภรณ์',
-        'การส่งเสริมการประเมินวิทยฐานะข้าราชการครูและบุคลากรทางการศึกษา',
-        'การส่งเสริมและยกย่องเชิดชูเกียรติ',
-        'การส่งเสริมมาตรฐานวิชาชีพและจรรยาบรรณวิชาชีพ',
-        'การส่งเสริมวินัย คุณธรรม และจริยธรรมสำหรับข้าราชการครูและบุคลากรทางการศึกษา',
-        'การริเริ่มส่งเสริมการขอรับใบอนุญาต',
-        'การพัฒนาข้าราชการครูและบุคลากรทางการศึกษา ทางการเงินและงบการเงิน',
-      ],
-    },
-    {
-      id: 'general',
-      title: 'กลุ่มบริหารงานทั่วไป',
-      headName: 'นายธวัชชัย เหลืองโอฬาร',
-      headPosition: 'ครู (คศ. 2)',
-      headStanding: 'ชำนาญการ',
-      icon: Shield,
-      accentBg: 'bg-indigo-50 dark:bg-indigo-500/10',
-      accentBorder: 'border-indigo-500/30',
-      accentText: 'text-indigo-600 dark:text-indigo-400',
-      bulletColor: 'bg-indigo-500',
-      duties: [
-        'การพัฒนาระบบและเครือข่ายข้อมูลสารสนเทศ',
-        'การประสานงานและพัฒนาเครือข่ายการศึกษา',
-        'การวางแผนการบริหารงานการศึกษา',
-        'งานวิจัยเพื่อพัฒนานโยบายและแผน',
-        'การจัดระบบการบริหารและพัฒนาองค์กร',
-        'การพัฒนามาตรฐานการปฏิบัติงาน',
-        'งานเทคโนโลยีเพื่อการศึกษา',
-        'การดำเนินงานธุรการ',
-        'การดูแลอาคารสถานที่และสภาพแวดล้อม',
-        'การจัดทำสำมะโนผู้เรียน',
-        'การรับนักเรียน',
-        'การเสนอความเห็นเกี่ยวกับเรื่องการจัดตั้ง ยุบรวม หรือเลิกสถานศึกษา',
-        'การประสานการจัดการศึกษาในระบบ นอกระบบ และตามอัธยาศัย',
-        'การระดมทรัพยากรเพื่อการศึกษา',
-        'การทัศนศึกษา',
-        'งานกิจการนักเรียน',
-        'การประชาสัมพันธ์งานการศึกษา',
-        'การส่งเสริม สนับสนุน และประสานการจัดการศึกษาของบุคคล ชุมชน องค์กร หน่วยงาน และสถาบันสังคมอื่น',
-        'งานประสานราชการกับส่วนภูมิภาคและส่วนท้องถิ่น',
-        'การจัดระบบการควบคุมภายในหน่วยงาน',
-        'แนวทางการจัดกิจกรรมเพื่อปรับเปลี่ยนพฤติกรรมในการลงโทษนักเรียน',
-      ],
-    },
-  ];
+  // 3. Bind real division heads dynamically to 4 divisions
+  const divisions = useMemo(() => {
+    return STATIC_DIVISIONS.map((div) => {
+      const head = findDivisionHead(teachersList, div.id);
+      return {
+        ...div,
+        headName: head.name,
+        headPositionFormatted: head.positionFormatted,
+      };
+    });
+  }, [teachersList]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 1. Header Strip */}
-      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-colors duration-200">
+      {/* 1. Header Strip (Minimal & Clean, no duplicate pill) */}
+      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
         <div>
           <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
             <Layers className="w-4 h-4 shrink-0" />
@@ -249,12 +278,6 @@ export const ViewOrgChart: React.FC = () => {
             โครงสร้างการบริหาร 4 กลุ่มงาน ตามพระราชบัญญัติระเบียบบริหารราชการกระทรวงศึกษาธิการ และระเบียบ สพฐ.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-[#121822] text-slate-700 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800/80">
-            โครงสร้างบริหาร 4 กลุ่มงาน
-          </span>
-        </div>
       </div>
 
       {/* 2. Visual Hierarchy Tree Diagram */}
@@ -263,63 +286,80 @@ export const ViewOrgChart: React.FC = () => {
         {/* ================================================================= */}
         {/* LEVEL 1: TOP EXECUTIVE NODE & LATERAL ADVISORY NODE               */}
         {/* ================================================================= */}
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 relative z-10">
+        <div className="relative max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 z-10">
           
-          {/* Main Executive Node (Director) */}
-          <div className="w-full md:w-[380px] bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border-2 border-sky-500/70 shadow-lg relative text-left transition-colors duration-200">
+          {/* Left invisible spacer matching right board container width, guaranteeing Director is mathematically in the absolute center */}
+          <div className="hidden md:block w-72 lg:w-80 shrink-0 pointer-events-none" aria-hidden="true" />
+
+          {/* Main Executive Node (Director - Dead Center) */}
+          <div className="w-full max-w-sm md:w-[360px] lg:w-[380px] bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border-2 border-sky-500/70 shadow-lg relative text-left transition-colors duration-200 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shrink-0">
                 <School className="w-6 h-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 whitespace-nowrap">
-                    ผู้บังคับบัญชาสูงสุด
-                  </span>
+                <div className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                  ผู้บังคับบัญชาสูงสุด
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate" title={school.directorName}>
-                  {school.directorName}
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={directorInfo.name}>
+                  {directorInfo.name}
                 </h3>
-                <div className="text-xs text-sky-600 dark:text-sky-400 font-medium truncate" title={school.directorPosition || 'ผู้อำนวยการสถานศึกษา'}>
-                  {school.directorPosition || 'ผู้อำนวยการสถานศึกษา'}
+                <div className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate" title={directorInfo.positionFormatted}>
+                  {directorInfo.positionFormatted}
                 </div>
               </div>
             </div>
             
             <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="truncate" title={school.schoolName}>{school.schoolName}</span>
-              <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นม. 3</span>
+              <span>การบริหารงานสถานศึกษาขั้นพื้นฐาน</span>
+              <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นครราชสีมา เขต 3</span>
             </div>
           </div>
 
-          {/* Lateral Connector Link (Desktop Horizontal / Mobile Vertical) */}
-          <div className="hidden md:flex items-center text-slate-400 dark:text-slate-600">
-            <div className="w-8 border-t-2 border-dashed border-slate-300 dark:border-slate-700" />
+          {/* Lateral Connector Link & School Board Node (Desktop/Tablet) */}
+          <div className="hidden md:flex items-center w-72 lg:w-80 shrink-0">
+            <div className="w-6 lg:w-8 border-t-2 border-dashed border-amber-500/50 shrink-0" />
+            <div className="flex-1 bg-slate-50 dark:bg-[#101723] p-3.5 sm:p-4 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left transition-colors duration-200">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    องค์กรกำกับดูแล
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate" title="คณะกรรมการสถานศึกษาขั้นพื้นฐาน">
+                    คณะกรรมการสถานศึกษาขั้นพื้นฐาน
+                  </h4>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate" title={`ประธาน: ${boardChair}`}>
+                    ประธาน: {boardChair}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                <span>ให้ความเห็นชอบแผนและงบประมาณ</span>
+                <span className="text-amber-600 dark:text-amber-400 font-medium">รวม {totalBoardMembers} ท่าน</span>
+              </div>
+            </div>
           </div>
 
-          {/* Lateral Advisory Node: School Board (คณะกรรมการสถานศึกษาขั้นพื้นฐาน) */}
-          <div className="w-full md:w-[320px] bg-slate-50 dark:bg-[#101723] p-4 rounded-xl border border-dashed border-amber-500/40 shadow-sm relative text-left transition-colors duration-200">
+          {/* Mobile School Board Node */}
+          <div className="md:hidden w-full max-w-sm bg-slate-50 dark:bg-[#101723] p-3.5 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
                 <Award className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                    องค์กรกำกับดูแล
-                  </span>
+                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  องค์กรกำกับดูแล
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={`คณะกรรมการสถานศึกษาขั้นพื้นฐาน (${totalBoardMembers} ท่าน)`}>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
                   คณะกรรมการสถานศึกษาขั้นพื้นฐาน
                 </h4>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate" title={`ประธาน: ${boardChair} (รวม ${totalBoardMembers} ท่าน)`}>
-                  ประธาน: {boardChair}
+                <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                  ประธาน: {boardChair} · รวม {totalBoardMembers} ท่าน
                 </div>
               </div>
-            </div>
-            <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-              <span>ให้ความเห็นชอบแผนและงบประมาณ</span>
-              <span className="text-amber-600 dark:text-amber-400 font-medium">รวม {totalBoardMembers} ท่าน</span>
             </div>
           </div>
 
@@ -328,8 +368,8 @@ export const ViewOrgChart: React.FC = () => {
         {/* ================================================================= */}
         {/* CENTRAL STEM & HORIZONTAL TREE CONNECTOR LINES                     */}
         {/* ================================================================= */}
-        <div className="hidden xl:block relative my-3">
-          {/* Vertical stem from Director */}
+        <div className="hidden xl:block relative my-4">
+          {/* Vertical stem from Director (mx-auto matches the mathematically centered Director box) */}
           <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-700 mx-auto" />
           
           {/* Branching crossbar spanning across the 4 division columns */}
@@ -337,11 +377,11 @@ export const ViewOrgChart: React.FC = () => {
           <div className="relative max-w-7xl mx-auto h-4">
             <div className="absolute left-[12.5%] right-[12.5%] top-0 border-t-2 border-slate-300 dark:border-slate-700" />
             
-            {/* 4 Drop stems */}
-            <div className="absolute left-[12.5%] top-0 w-0.5 h-4 bg-slate-300 dark:border-slate-700 -translate-x-1/2" />
-            <div className="absolute left-[37.5%] top-0 w-0.5 h-4 bg-slate-300 dark:border-slate-700 -translate-x-1/2" />
-            <div className="absolute left-[62.5%] top-0 w-0.5 h-4 bg-slate-300 dark:border-slate-700 -translate-x-1/2" />
-            <div className="absolute left-[87.5%] top-0 w-0.5 h-4 bg-slate-300 dark:border-slate-700 -translate-x-1/2" />
+            {/* 4 Drop stems into each card */}
+            <div className="absolute left-[12.5%] top-0 w-0.5 h-4 bg-slate-300 dark:bg-slate-700 -translate-x-1/2" />
+            <div className="absolute left-[37.5%] top-0 w-0.5 h-4 bg-slate-300 dark:bg-slate-700 -translate-x-1/2" />
+            <div className="absolute left-[62.5%] top-0 w-0.5 h-4 bg-slate-300 dark:bg-slate-700 -translate-x-1/2" />
+            <div className="absolute left-[87.5%] top-0 w-0.5 h-4 bg-slate-300 dark:bg-slate-700 -translate-x-1/2" />
           </div>
         </div>
 
@@ -351,10 +391,9 @@ export const ViewOrgChart: React.FC = () => {
         {/* ================================================================= */}
         {/* LEVEL 2: 4 CORE ADMINISTRATIVE DIVISIONS (4 กลุ่มบริหารงาน)        */}
         {/* ================================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 max-w-7xl mx-auto items-start relative z-10">
           {divisions.map((div) => {
             const Icon = div.icon;
-            const isExpanded = expandedDivision === div.id;
 
             return (
               <div
@@ -362,43 +401,43 @@ export const ViewOrgChart: React.FC = () => {
                 className="bg-white dark:bg-[#121822] rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
               >
                 {/* Node Top Section */}
-                <div className="p-4 sm:p-5">
-                  {/* Division Header (Clean title with zero truncation) */}
-                  <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-                    <div className={`p-2 rounded-xl ${div.accentBg} ${div.accentText} shrink-0`}>
-                      <Icon className="w-5 h-5 shrink-0" />
+                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    {/* Division Header (2 Lines uniform to prevent word-break issues) */}
+                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                      <div className={`p-2.5 rounded-xl ${div.accentBg} ${div.accentText} shrink-0`}>
+                        <Icon className="w-5 h-5 shrink-0" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          กลุ่มบริหารงาน
+                        </div>
+                        <div className="text-base font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                          {div.shortName}
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight" title={div.title}>
-                        {div.title}
-                      </h4>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
-                        ขอบข่ายภารกิจ {div.duties.length} งาน
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Division Head Sub-Card */}
-                  <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200">
-                    <div className="font-bold text-xs text-slate-900 dark:text-white truncate" title={div.headName}>
-                      {div.headName}
+                    {/* Division Head Sub-Card (No name truncation on Desktop) */}
+                    <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-tight break-words" title={div.headName}>
+                        {div.headName}
+                      </div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
+                        {div.headPositionFormatted}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                      วิทยฐานะ: {div.headStanding}
-                    </div>
-                  </div>
 
-                  {/* Core Scopes Preview (Collapsed State) */}
-                  {!isExpanded && (
+                    {/* Core Scopes Preview (Fixed 3 items for perfectly equal height) */}
                     <div className="mt-3.5 space-y-1.5">
-                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">
-                        ภารกิจหลัก:
-                      </span>
-                      <div className="space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                        ขอบข่ายภารกิจ · {div.duties.length} งาน
+                      </div>
+                      <div className="space-y-1.5">
                         {div.duties.slice(0, 3).map((duty, idx) => (
                           <div
                             key={idx}
-                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-1.5 transition-colors duration-150"
+                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
                             title={duty}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
@@ -407,45 +446,18 @@ export const ViewOrgChart: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Expanded Section: Full Duties List with Internal Scrollbar */}
-                  {isExpanded && (
-                    <div className="mt-3.5 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 space-y-2 animate-in fade-in duration-150">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                        <span>ขอบข่ายภารกิจทั้งหมด ({div.duties.length} รายการ):</span>
-                      </div>
-                      
-                      <div className="max-h-72 overflow-y-auto pr-1 space-y-1.5">
-                        {div.duties.map((duty, dIdx) => (
-                          <div
-                            key={dIdx}
-                            className="p-2 rounded-lg bg-slate-50 dark:bg-[#101723] border border-slate-200/60 dark:border-slate-800/60 text-[11px] text-slate-700 dark:text-slate-300 flex items-start gap-2"
-                          >
-                            <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 font-semibold shrink-0 mt-0.5 min-w-[18px]">
-                              {dIdx + 1}.
-                            </span>
-                            <span className="leading-snug">{duty}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Node Footer Accordion Toggle Button */}
+                {/* Node Footer Button: Opens Full Duties Modal without stretching other cards */}
                 <div className="p-3 bg-slate-50/80 dark:bg-[#0f1520] border-t border-slate-100 dark:border-slate-800/80 transition-colors duration-200">
                   <button
                     type="button"
-                    onClick={() => toggleDivision(div.id)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50 transition-colors duration-200 cursor-pointer"
+                    onClick={() => setActiveModalDivision(div)}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors duration-200 cursor-pointer"
                   >
-                    <span>{isExpanded ? 'ย่อรายละเอียด' : 'ดูขอบข่ายภารกิจทั้งหมด'}</span>
-                    {isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5 shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5 shrink-0" />
-                    )}
+                    <span>ดูขอบข่ายภารกิจทั้งหมด</span>
+                    <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                   </button>
                 </div>
               </div>
@@ -467,6 +479,84 @@ export const ViewOrgChart: React.FC = () => {
           มาตรฐานการบริหารจัดการสถานศึกษาขั้นพื้นฐาน สพฐ.
         </span>
       </div>
+
+      {/* ================================================================= */}
+      {/* 4. MODAL: Full Scope of Duties (Clean, non-stretching viewer)      */}
+      {/* ================================================================= */}
+      {activeModalDivision && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setActiveModalDivision(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col text-slate-900 dark:text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl ${activeModalDivision.accentBg} ${activeModalDivision.accentText} shrink-0`}>
+                  {React.createElement(activeModalDivision.icon, { className: 'w-6 h-6 shrink-0' })}
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    กลุ่มบริหารงาน
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {activeModalDivision.title}
+                  </h3>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                    หัวหน้ากลุ่มงาน: <span className="font-semibold text-slate-800 dark:text-slate-200">{activeModalDivision.headName}</span> ({activeModalDivision.headPositionFormatted})
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveModalDivision(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="ปิดหน้าต่าง"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Subtitle / Count */}
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+              <span>ขอบข่ายภารกิจตามระเบียบ สพฐ.</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                ขอบข่ายภารกิจ · {activeModalDivision.duties.length} งาน
+              </span>
+            </div>
+
+            {/* Modal Body: Scrollable Duties List */}
+            <div className="overflow-y-auto pr-1 space-y-2 flex-1 max-h-[55vh]">
+              {activeModalDivision.duties.map((duty, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-800 dark:text-slate-200 flex items-start gap-2.5 leading-relaxed"
+                >
+                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 font-semibold shrink-0 mt-0.5 min-w-[22px]">
+                    {idx + 1}.
+                  </span>
+                  <span className="flex-1">{duty}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-200/90 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveModalDivision(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
