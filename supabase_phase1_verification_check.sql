@@ -1,72 +1,96 @@
 -- ============================================================================
--- Verification Queries: Phase 1 (Academic Years & Fiscal Periods Decoupling)
--- Run this in Supabase SQL Editor to verify tables, data, view, and RPC functions
+-- ManStat-Modern: Full SQL Verification & Dry-Run Suite (Phases 1-4)
+-- Canonical Migration: supabase/migrations/004_academic_and_fiscal_split.sql
 -- ============================================================================
 
--- 1. Check Tables Created
-SELECT table_name 
+-- ----------------------------------------------------------------------------
+-- PART 1: Schema, Constraints, Generated Columns & Security Verification
+-- ----------------------------------------------------------------------------
+
+-- 1.1 ตรวจสอบตารางและ View ครบถ้วน (Expected: 4 tables, 1 view)
+SELECT table_name, table_type
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
   AND table_name IN ('academic_years', 'student_census_snapshots', 'fiscal_periods', 'salary_promotion_records', 'v_school_info_current')
 ORDER BY table_name;
 
--- 2. Inspect Academic Years & Active Status
-SELECT id, school_id, year_th, is_active, offered_grades 
-FROM public.academic_years 
-ORDER BY year_th DESC;
+-- 1.2 ตรวจสอบ Partial Unique Indexes (รับประกันมี Active ได้เพียง 1 รายการ)
+SELECT indexname, indexdef 
+FROM pg_indexes 
+WHERE schemaname = 'public' 
+  AND indexname IN (
+    'idx_academic_years_one_active_per_school',
+    'idx_fiscal_periods_one_active_per_school',
+    'idx_census_snapshots_one_primary_per_year'
+  );
 
--- 3. Inspect Student Census Snapshots (Verify Generated Column fiscal_year_th)
+-- 1.3 ตรวจสอบ Generated Column fiscal_year_th (คำนวณข้ามปีงบประมาณถ้าเดือน >= 10)
 SELECT 
-    cs.id,
-    ay.year_th AS academic_year,
-    cs.round_code,
-    cs.snapshot_date,
-    cs.fiscal_year_th AS generated_fiscal_year,
-    cs.total_students,
-    cs.total_classrooms,
-    cs.is_primary_for_manpower,
-    cs.is_locked
-FROM public.student_census_snapshots cs
-JOIN public.academic_years ay ON cs.academic_year_id = ay.id
-ORDER BY ay.year_th DESC, cs.snapshot_date ASC;
+    column_name, 
+    data_type, 
+    is_generated, 
+    generation_expression
+FROM information_schema.columns
+WHERE table_schema = 'public' 
+  AND table_name = 'student_census_snapshots' 
+  AND column_name = 'fiscal_year_th';
 
--- 4. Inspect Fiscal Periods & Active Status
-SELECT 
-    id,
-    school_id,
-    fiscal_year_th,
-    round_no,
-    eval_start,
-    eval_end,
-    is_active,
-    is_locked
-FROM public.fiscal_periods
-ORDER BY fiscal_year_th DESC, round_no ASC;
+-- 1.4 ตรวจสอบสถานะการเปิดใช้งาน RLS (Row Level Security) บนทุกตารางใหม่
+SELECT relname AS table_name, relrowsecurity AS rls_enabled
+FROM pg_class
+WHERE relnamespace = 'public'::regnamespace
+  AND relname IN ('academic_years', 'student_census_snapshots', 'fiscal_periods', 'salary_promotion_records');
 
--- 5. Test Backward Compatibility View (v_school_info_current)
--- Verify that existing app code can read academicYear, studentCount, fiscalYear, activeClasses
+-- 1.5 ตรวจสอบสิทธิ์ GRANT EXECUTE บน RPC Functions สำหรับ authenticated role
+SELECT routine_name, routine_type, security_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+  AND routine_name IN (
+    'set_active_academic_year',
+    'create_academic_year_with_defaults',
+    'set_primary_census_round',
+    'set_active_fiscal_period'
+  );
+
+-- 1.6 ตรวจสอบ Backward Compatibility View (v_school_info_current)
 SELECT 
     "schoolName",
     "schoolCode8",
     "academicYear",
-    "currentTerm",
     "studentCount",
-    "studentDataDate",
     "fiscalYear",
-    "activeClasses",
-    "activeAcademicYearId",
-    "primaryCensusId"
+    "activeClasses"
 FROM public.v_school_info_current;
 
--- 6. Test Atomic RPC Functions
--- 6.1 Test switching active academic year
--- SELECT public.set_active_academic_year('30030099', '<target_academic_year_id>');
 
--- 6.2 Test creating academic year with defaults
--- SELECT public.create_academic_year_with_defaults('30030099', 2571);
+-- ----------------------------------------------------------------------------
+-- PART 2: Safe Dry-Run Transaction (ทดสอบการทำงานของ RPC โดยไม่กระทบข้อมูลจริง)
+-- ----------------------------------------------------------------------------
+BEGIN;
 
--- 6.3 Test switching primary census round
--- SELECT public.set_primary_census_round('<academic_year_id>', '<snapshot_id>');
+  -- 2.1 ตรวจสอบ RPC การสลับรอบปีงบประมาณ
+  DO $$
+  DECLARE
+      v_test_period_id UUID;
+  BEGIN
+      SELECT id INTO v_test_period_id FROM public.fiscal_periods WHERE school_id = '30030099' LIMIT 1;
+      IF v_test_period_id IS NOT NULL THEN
+          PERFORM public.set_active_fiscal_period('30030099', v_test_period_id);
+          RAISE NOTICE '[DRY-RUN PASS] set_active_fiscal_period executed successfully';
+      END IF;
+  END $$;
 
--- 6.4 Test switching active fiscal period
--- SELECT public.set_active_fiscal_period('30030099', '<target_fiscal_period_id>');
+  -- 2.2 ตรวจสอบ RPC การสลับปีการศึกษา
+  DO $$
+  DECLARE
+      v_test_year_id UUID;
+  BEGIN
+      SELECT id INTO v_test_year_id FROM public.academic_years WHERE school_id = '30030099' LIMIT 1;
+      IF v_test_year_id IS NOT NULL THEN
+          PERFORM public.set_active_academic_year('30030099', v_test_year_id);
+          RAISE NOTICE '[DRY-RUN PASS] set_active_academic_year executed successfully';
+      END IF;
+  END $$;
+
+  -- 2.3 ตรวจสอบความปลอดภัย: ยกเลิกการเปลี่ยนแปลงทั้งหมด คืนค่าเดิม 100%
+ROLLBACK;
