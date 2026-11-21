@@ -445,7 +445,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(junSnapshot?.isLocked)}
                 value={junForm.kindergartenStudents ?? ''}
                 onChange={(e) =>
@@ -478,7 +478,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(junSnapshot?.isLocked)}
                 value={junForm.primaryStudents ?? ''}
                 onChange={(e) =>
@@ -511,7 +511,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(junSnapshot?.isLocked)}
                 value={junForm.secondaryStudents ?? ''}
                 onChange={(e) =>
@@ -632,7 +632,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(novSnapshot?.isLocked)}
                 value={novForm.kindergartenStudents ?? ''}
                 onChange={(e) =>
@@ -665,7 +665,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(novSnapshot?.isLocked)}
                 value={novForm.primaryStudents ?? ''}
                 onChange={(e) =>
@@ -698,7 +698,7 @@ export function SchoolAcademicManager({
               <input
                 type="number"
                 min="0"
-                placeholder="นักเรียน (คน)"
+                placeholder="จำนวนนักเรียน"
                 disabled={Boolean(novSnapshot?.isLocked)}
                 value={novForm.secondaryStudents ?? ''}
                 onChange={(e) =>

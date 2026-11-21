@@ -847,14 +847,14 @@ export async function ensureSupabaseSeeded(): Promise<void> {
     const { count, error } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
     if (!error && count !== null && count > 0) {
       // Existing data exists! NEVER overwrite existing Supabase data!
-      console.log(`[ensureSupabaseSeeded] Existing teachers found (${count} rows). Skipping seeding to preserve Supabase data.`);
+      console.warn(`[ensureSupabaseSeeded] Existing teachers found (${count} rows). Skipping seeding to preserve Supabase data.`);
       isSeededChecked = true;
       return;
     }
 
     // Only seed if teachers table is completely empty (0 rows)
     if (count === 0) {
-      console.log('[ensureSupabaseSeeded] Supabase database has 0 teachers. Seeding initial data from local JSON...');
+      console.warn('[ensureSupabaseSeeded] Supabase database has 0 teachers. Seeding initial data from local JSON...');
       const localData = loadDatabase();
 
       // Seed teachers
@@ -875,7 +875,7 @@ export async function ensureSupabaseSeeded(): Promise<void> {
       // Seed system_settings
       await supabase.from('system_settings').upsert(systemSettingsToDb(localData.settings), { onConflict: 'id' });
 
-      console.log('[ensureSupabaseSeeded] Initial seeding completed successfully.');
+      console.warn('[ensureSupabaseSeeded] Initial seeding completed successfully.');
     }
 
     isSeededChecked = true;

@@ -339,7 +339,7 @@ export function FiscalPeriodManager({
     const snap = censusSnapshots.find((s) => s.id === selectedPeriod.refCensusSnapshotId);
     if (!snap) return '10 มิ.ย. 2569';
     const roundName = snap.roundCode === 'JUN_10' ? '10 มิ.ย.' : '10 พ.ย.';
-    return `${roundName} (นักเรียน ${snap.totalStudents} คน)`;
+    return `${roundName} · นักเรียน ${snap.totalStudents} คน`;
   }, [selectedPeriod, censusSnapshots]);
 
   if (loading && fiscalPeriods.length === 0) {
@@ -362,27 +362,31 @@ export function FiscalPeriodManager({
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
               รอบปีงบประมาณ
             </span>
-            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60">
-              {fiscalPeriods.map((period) => {
-                const isSelected = period.id === selectedPeriod?.id;
-                const roundText = period.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.';
-                return (
-                  <button
-                    key={period.id}
-                    type="button"
-                    onClick={() => setSelectedPeriodId(period.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      isSelected
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    ปีงบฯ {period.fiscalYearTh} · {roundText}
-                    {period.isActive ? ' ★' : ''}
-                  </button>
-                );
-              })}
-            </div>
+            {fiscalPeriods.length === 0 ? (
+              <span className="text-xs text-slate-400 py-1 px-2">ยังไม่มีข้อมูลรอบปีงบประมาณ</span>
+            ) : (
+              <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60">
+                {fiscalPeriods.map((period) => {
+                  const isSelected = period.id === selectedPeriod?.id;
+                  const roundText = period.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.';
+                  return (
+                    <button
+                      key={period.id}
+                      type="button"
+                      onClick={() => setSelectedPeriodId(period.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        isSelected
+                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      ปีงบฯ {period.fiscalYearTh} · {roundText}
+                      {period.isActive ? ' ★' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {selectedPeriod && !selectedPeriod.isActive && (
               <button
@@ -400,7 +404,7 @@ export function FiscalPeriodManager({
               <button
                 type="button"
                 onClick={handleTogglePeriodLock}
-                title={selectedPeriod.isLocked ? 'ปลดล็อกรอบ' : 'ล็อกรอบ (ประกาศคำสั่งแล้ว)'}
+                title={selectedPeriod.isLocked ? 'ปลดล็อกรอบ' : 'ล็อกรอบ'}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   selectedPeriod.isLocked
                     ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
@@ -456,7 +460,7 @@ export function FiscalPeriodManager({
                 <option value="">- เลือกข้อมูลนักเรียนอ้างอิง -</option>
                 {censusSnapshots.map((snap) => (
                   <option key={snap.id} value={snap.id}>
-                    {snap.roundCode === 'JUN_10' ? '10 มิ.ย.' : '10 พ.ย.'} (นักเรียน {snap.totalStudents} คน)
+                    {snap.roundCode === 'JUN_10' ? '10 มิ.ย.' : '10 พ.ย.'} · นักเรียน {snap.totalStudents} คน
                   </option>
                 ))}
               </select>
@@ -556,7 +560,7 @@ export function FiscalPeriodManager({
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               ต้องการตั้งรอบปีงบประมาณ{' '}
               <strong className="text-slate-900 dark:text-white">
-                {confirmModalPeriod.fiscalYearTh} ({confirmModalPeriod.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.'})
+                ปีงบฯ {confirmModalPeriod.fiscalYearTh} · {confirmModalPeriod.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.'}
               </strong>{' '}
               เป็นรอบปัจจุบันหรือไม่?
             </p>
