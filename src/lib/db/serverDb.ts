@@ -37,6 +37,10 @@ import {
   type WorkloadItem,
   type WorkloadCategory,
   type FeedbackItem,
+  type AcademicYearRecord,
+  type StudentCensusSnapshotRecord,
+  type FiscalPeriodRecord,
+  type SalaryPromotionRecord,
 } from '@/lib/data/schoolData';
 import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
@@ -50,6 +54,10 @@ export type {
   WorkloadItem,
   WorkloadCategory,
   FeedbackItem,
+  AcademicYearRecord,
+  StudentCensusSnapshotRecord,
+  FiscalPeriodRecord,
+  SalaryPromotionRecord,
 };
 
 // ============================================================================
@@ -95,6 +103,10 @@ export interface DatabaseState {
   scouts?: ScoutRecord[];
   workloads?: WorkloadItem[];
   feedbacks?: FeedbackItem[];
+  academicYears?: AcademicYearRecord[];
+  studentCensusSnapshots?: StudentCensusSnapshotRecord[];
+  fiscalPeriods?: FiscalPeriodRecord[];
+  salaryPromotionRecords?: SalaryPromotionRecord[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -892,7 +904,50 @@ export async function dbGetSchoolInfo(): Promise<SchoolInfoRecord> {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
 
-    // Check if school_info is vertical key-value or flat
+    // 1. Check backward-compatible view: v_school_info_current
+    try {
+      const { data: viewData, error: viewError } = await supabase
+        .from('v_school_info_current')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!viewError && viewData) {
+        return {
+          ...INITIAL_SCHOOL_INFO,
+          schoolName: viewData.schoolName ?? INITIAL_SCHOOL_INFO.schoolName,
+          affiliation: viewData.affiliation ?? INITIAL_SCHOOL_INFO.affiliation,
+          schoolCode10: viewData.schoolCode10 ?? INITIAL_SCHOOL_INFO.schoolCode10,
+          schoolCode8: viewData.schoolCode8 ?? INITIAL_SCHOOL_INFO.schoolCode8,
+          appName: viewData.appName ?? INITIAL_SCHOOL_INFO.appName,
+          directorName: viewData.directorName ?? INITIAL_SCHOOL_INFO.directorName,
+          directorPosition: viewData.directorPosition ?? INITIAL_SCHOOL_INFO.directorPosition,
+          contactPhone: viewData.contactPhone ?? INITIAL_SCHOOL_INFO.contactPhone,
+          email: viewData.email ?? INITIAL_SCHOOL_INFO.email,
+          address: viewData.address ?? INITIAL_SCHOOL_INFO.address,
+          lat: viewData.lat != null ? Number(viewData.lat) : INITIAL_SCHOOL_INFO.lat,
+          lng: viewData.lng != null ? Number(viewData.lng) : INITIAL_SCHOOL_INFO.lng,
+          logoBase64: viewData.logoBase64 ?? INITIAL_SCHOOL_INFO.logoBase64,
+          actingDirector1: viewData.actingDirector1 ?? INITIAL_SCHOOL_INFO.actingDirector1,
+          actingDirector2: viewData.actingDirector2 ?? INITIAL_SCHOOL_INFO.actingDirector2,
+          academicYear: viewData.academicYear ?? INITIAL_SCHOOL_INFO.academicYear,
+          fiscalYear: viewData.fiscalYear ?? INITIAL_SCHOOL_INFO.fiscalYear,
+          currentTerm: viewData.currentTerm ?? INITIAL_SCHOOL_INFO.currentTerm,
+          studentCount: viewData.studentCount != null ? Number(viewData.studentCount) : INITIAL_SCHOOL_INFO.studentCount,
+          studentDataDate: viewData.studentDataDate ?? INITIAL_SCHOOL_INFO.studentDataDate,
+          activeClasses: Array.isArray(viewData.activeClasses) ? viewData.activeClasses : INITIAL_SCHOOL_INFO.activeClasses,
+          activeAcademicYearId: viewData.activeAcademicYearId,
+          primaryCensusId: viewData.primaryCensusId,
+          censusRoundCode: viewData.censusRoundCode,
+          activeFiscalPeriodId: viewData.activeFiscalPeriodId,
+          fiscalRoundNo: viewData.fiscalRoundNo,
+        };
+      }
+    } catch {
+      // Fallback to legacy school_info table query
+    }
+
+    // 2. Fallback: Check if school_info is vertical key-value or flat
     const { data: rawRows, error } = await supabase.from('school_info').select('*');
     if (error) {
       console.error('[dbGetSchoolInfo] Supabase query error:', error);
@@ -1799,5 +1854,381 @@ export async function dbUpdateFeedback(feedback: FeedbackItem): Promise<Feedback
   db.feedbacks = list;
   saveDatabase(db);
   return feedback;
+}
+
+// ============================================================================
+// 10. ACADEMIC YEARS & FISCAL PERIODS (PHASE 1 DATABASE ENGINE)
+// ============================================================================
+
+export async function dbGetAcademicYears(schoolId: string = '30030099'): Promise<AcademicYearRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('academic_years')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('year_th', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return data.map((r: any) => ({
+        id: r.id,
+        schoolId: r.school_id,
+        yearTh: r.year_th,
+        offeredGrades: Array.isArray(r.offered_grades) ? r.offered_grades : [],
+        isActive: Boolean(r.is_active),
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return db.academicYears || [
+    {
+      id: 'ay-2569',
+      schoolId,
+      yearTh: 2569,
+      offeredGrades: [
+        'อนุบาล 2', 'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1', 'ประถมศึกษาปีที่ 2', 'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4', 'ประถมศึกษาปีที่ 5', 'ประถมศึกษาปีที่ 6',
+      ],
+      isActive: true,
+    },
+    {
+      id: 'ay-2570',
+      schoolId,
+      yearTh: 2570,
+      offeredGrades: [
+        'อนุบาล 2', 'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1', 'ประถมศึกษาปีที่ 2', 'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4', 'ประถมศึกษาปีที่ 5', 'ประถมศึกษาปีที่ 6',
+      ],
+      isActive: false,
+    },
+  ];
+}
+
+export async function dbGetStudentCensusSnapshots(academicYearId?: string): Promise<StudentCensusSnapshotRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    let query = supabase.from('student_census_snapshots').select('*');
+    if (academicYearId) {
+      query = query.eq('academic_year_id', academicYearId);
+    }
+    const { data, error } = await query.order('snapshot_date', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+      return data.map((r: any) => ({
+        id: r.id,
+        academicYearId: r.academic_year_id,
+        roundCode: r.round_code,
+        snapshotDate: r.snapshot_date,
+        fiscalYearTh: r.fiscal_year_th,
+        kindergartenStudents: r.kindergarten_students ?? 0,
+        kindergartenClassrooms: r.kindergarten_classrooms ?? 0,
+        primaryStudents: r.primary_students ?? 0,
+        primaryClassrooms: r.primary_classrooms ?? 0,
+        secondaryStudents: r.secondary_students ?? 0,
+        secondaryClassrooms: r.secondary_classrooms ?? 0,
+        totalStudents: r.total_students ?? 0,
+        totalClassrooms: r.total_classrooms ?? 0,
+        isPrimaryForManpower: Boolean(r.is_primary_for_manpower),
+        isLocked: Boolean(r.is_locked),
+        notes: r.notes || '',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const allSnapshots = db.studentCensusSnapshots || [
+    {
+      id: 'census-2569-jun',
+      academicYearId: 'ay-2569',
+      roundCode: 'JUN_10',
+      snapshotDate: '2026-06-10',
+      fiscalYearTh: 2569,
+      kindergartenStudents: 19,
+      kindergartenClassrooms: 2,
+      primaryStudents: 75,
+      primaryClassrooms: 6,
+      secondaryStudents: 0,
+      secondaryClassrooms: 0,
+      totalStudents: 94,
+      totalClassrooms: 8,
+      isPrimaryForManpower: true,
+      isLocked: false,
+    },
+    {
+      id: 'census-2569-nov',
+      academicYearId: 'ay-2569',
+      roundCode: 'NOV_10',
+      snapshotDate: '2026-11-10',
+      fiscalYearTh: 2570,
+      kindergartenStudents: 19,
+      kindergartenClassrooms: 2,
+      primaryStudents: 75,
+      primaryClassrooms: 6,
+      secondaryStudents: 0,
+      secondaryClassrooms: 0,
+      totalStudents: 94,
+      totalClassrooms: 8,
+      isPrimaryForManpower: false,
+      isLocked: false,
+    },
+  ];
+
+  if (academicYearId) {
+    return allSnapshots.filter((s) => s.academicYearId === academicYearId);
+  }
+  return allSnapshots;
+}
+
+export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise<FiscalPeriodRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('fiscal_periods')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('fiscal_year_th', { ascending: false })
+      .order('round_no', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+      return data.map((r: any) => ({
+        id: r.id,
+        schoolId: r.school_id,
+        fiscalYearTh: r.fiscal_year_th,
+        roundNo: r.round_no,
+        evalStart: r.eval_start,
+        evalEnd: r.eval_end,
+        refCensusSnapshotId: r.ref_census_snapshot_id,
+        isActive: Boolean(r.is_active),
+        isLocked: Boolean(r.is_locked),
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return db.fiscalPeriods || [
+    {
+      id: 'fp-2570-r1',
+      schoolId,
+      fiscalYearTh: 2570,
+      roundNo: 1,
+      evalStart: '2026-10-01',
+      evalEnd: '2027-03-31',
+      refCensusSnapshotId: 'census-2569-jun',
+      isActive: true,
+      isLocked: false,
+    },
+    {
+      id: 'fp-2570-r2',
+      schoolId,
+      fiscalYearTh: 2570,
+      roundNo: 2,
+      evalStart: '2027-04-01',
+      evalEnd: '2027-09-30',
+      refCensusSnapshotId: 'census-2569-jun',
+      isActive: false,
+      isLocked: false,
+    },
+  ];
+}
+
+export async function dbSetActiveAcademicYear(
+  academicYearId: string,
+  schoolId: string = '30030099'
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.rpc('set_active_academic_year', {
+      p_school_id: schoolId,
+      p_academic_year_id: academicYearId,
+    });
+    if (error) {
+      console.error('[dbSetActiveAcademicYear] RPC error:', error);
+      throw new Error(`ไม่สามารถเปลี่ยนปีการศึกษาที่ใช้งานได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.academicYears) {
+    db.academicYears.forEach((y) => {
+      y.isActive = y.id === academicYearId;
+    });
+    saveDatabase(db);
+  }
+  return true;
+}
+
+export async function dbCreateAcademicYearWithDefaults(
+  yearTh: number,
+  schoolId: string = '30030099'
+): Promise<string> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.rpc('create_academic_year_with_defaults', {
+      p_school_id: schoolId,
+      p_year_th: yearTh,
+    });
+    if (error) {
+      console.error('[dbCreateAcademicYearWithDefaults] RPC error:', error);
+      throw new Error(`ไม่สามารถเพิ่มปีการศึกษาใหม่ได้: ${error.message}`);
+    }
+    return data as string;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const newId = `ay-${yearTh}`;
+  if (!db.academicYears) db.academicYears = [];
+  db.academicYears.push({
+    id: newId,
+    schoolId,
+    yearTh,
+    offeredGrades: [
+      'อนุบาล 2', 'อนุบาล 3',
+      'ประถมศึกษาปีที่ 1', 'ประถมศึกษาปีที่ 2', 'ประถมศึกษาปีที่ 3',
+      'ประถมศึกษาปีที่ 4', 'ประถมศึกษาปีที่ 5', 'ประถมศึกษาปีที่ 6',
+    ],
+    isActive: false,
+  });
+  saveDatabase(db);
+  return newId;
+}
+
+export async function dbSetPrimaryCensusRound(
+  academicYearId: string,
+  snapshotId: string
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.rpc('set_primary_census_round', {
+      p_academic_year_id: academicYearId,
+      p_snapshot_id: snapshotId,
+    });
+    if (error) {
+      console.error('[dbSetPrimaryCensusRound] RPC error:', error);
+      throw new Error(`ไม่สามารถตั้งรอบนักเรียนหลักได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.studentCensusSnapshots) {
+    db.studentCensusSnapshots
+      .filter((s) => s.academicYearId === academicYearId)
+      .forEach((s) => {
+        s.isPrimaryForManpower = s.id === snapshotId;
+      });
+    saveDatabase(db);
+  }
+  return true;
+}
+
+export async function dbSetActiveFiscalPeriod(
+  fiscalPeriodId: string,
+  schoolId: string = '30030099'
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.rpc('set_active_fiscal_period', {
+      p_school_id: schoolId,
+      p_fiscal_period_id: fiscalPeriodId,
+    });
+    if (error) {
+      console.error('[dbSetActiveFiscalPeriod] RPC error:', error);
+      throw new Error(`ไม่สามารถเปลี่ยนรอบปีงบประมาณที่ใช้งานได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.fiscalPeriods) {
+    db.fiscalPeriods.forEach((f) => {
+      f.isActive = f.id === fiscalPeriodId;
+    });
+    saveDatabase(db);
+  }
+  return true;
+}
+
+export async function dbSaveCensusSnapshot(
+  snapshot: Partial<StudentCensusSnapshotRecord> & { id: string }
+): Promise<Partial<StudentCensusSnapshotRecord>> {
+  const totalStudents =
+    (snapshot.kindergartenStudents ?? 0) +
+    (snapshot.primaryStudents ?? 0) +
+    (snapshot.secondaryStudents ?? 0);
+  const totalClassrooms =
+    (snapshot.kindergartenClassrooms ?? 0) +
+    (snapshot.primaryClassrooms ?? 0) +
+    (snapshot.secondaryClassrooms ?? 0);
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbUpdate: any = {
+      kindergarten_students: snapshot.kindergartenStudents,
+      kindergarten_classrooms: snapshot.kindergartenClassrooms,
+      primary_students: snapshot.primaryStudents,
+      primary_classrooms: snapshot.primaryClassrooms,
+      secondary_students: snapshot.secondaryStudents,
+      secondary_classrooms: snapshot.secondaryClassrooms,
+      total_students: totalStudents,
+      total_classrooms: totalClassrooms,
+      is_locked: snapshot.isLocked,
+      notes: snapshot.notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('student_census_snapshots')
+      .update(dbUpdate)
+      .eq('id', snapshot.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbSaveCensusSnapshot] Supabase update error:', error);
+      throw new Error(`ไม่สามารถบันทึกข้อมูลรอบนักเรียนได้: ${error.message}`);
+    }
+    return data;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.studentCensusSnapshots) {
+    const idx = db.studentCensusSnapshots.findIndex((s) => s.id === snapshot.id);
+    if (idx >= 0) {
+      db.studentCensusSnapshots[idx] = {
+        ...db.studentCensusSnapshots[idx],
+        ...snapshot,
+        totalStudents,
+        totalClassrooms,
+      } as StudentCensusSnapshotRecord;
+      saveDatabase(db);
+    }
+  }
+  return snapshot;
 }
 

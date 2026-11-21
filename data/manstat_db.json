@@ -1326,5 +1326,90 @@
       "status": "งานประจำต่อเนื่อง"
     }
   ],
-  "feedbacks": []
+  "feedbacks": [],
+  "academicYears": [
+    {
+      "id": "ay-2569",
+      "schoolId": "30030099",
+      "yearTh": 2569,
+      "offeredGrades": [
+        "อนุบาล 2", "อนุบาล 3",
+        "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3",
+        "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "ay-2570",
+      "schoolId": "30030099",
+      "yearTh": 2570,
+      "offeredGrades": [
+        "อนุบาล 2", "อนุบาล 3",
+        "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3",
+        "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"
+      ],
+      "isActive": false
+    }
+  ],
+  "studentCensusSnapshots": [
+    {
+      "id": "census-2569-jun",
+      "academicYearId": "ay-2569",
+      "roundCode": "JUN_10",
+      "snapshotDate": "2026-06-10",
+      "fiscalYearTh": 2569,
+      "kindergartenStudents": 19,
+      "kindergartenClassrooms": 2,
+      "primaryStudents": 75,
+      "primaryClassrooms": 6,
+      "secondaryStudents": 0,
+      "secondaryClassrooms": 0,
+      "totalStudents": 94,
+      "totalClassrooms": 8,
+      "isPrimaryForManpower": true,
+      "isLocked": false
+    },
+    {
+      "id": "census-2569-nov",
+      "academicYearId": "ay-2569",
+      "roundCode": "NOV_10",
+      "snapshotDate": "2026-11-10",
+      "fiscalYearTh": 2570,
+      "kindergartenStudents": 19,
+      "kindergartenClassrooms": 2,
+      "primaryStudents": 75,
+      "primaryClassrooms": 6,
+      "secondaryStudents": 0,
+      "secondaryClassrooms": 0,
+      "totalStudents": 94,
+      "totalClassrooms": 8,
+      "isPrimaryForManpower": false,
+      "isLocked": false
+    }
+  ],
+  "fiscalPeriods": [
+    {
+      "id": "fp-2570-r1",
+      "schoolId": "30030099",
+      "fiscalYearTh": 2570,
+      "roundNo": 1,
+      "evalStart": "2026-10-01",
+      "evalEnd": "2027-03-31",
+      "refCensusSnapshotId": "census-2569-jun",
+      "isActive": true,
+      "isLocked": false
+    },
+    {
+      "id": "fp-2570-r2",
+      "schoolId": "30030099",
+      "fiscalYearTh": 2570,
+      "roundNo": 2,
+      "evalStart": "2027-04-01",
+      "evalEnd": "2027-09-30",
+      "refCensusSnapshotId": "census-2569-jun",
+      "isActive": false,
+      "isLocked": false
+    }
+  ],
+  "salaryPromotionRecords": []
 }

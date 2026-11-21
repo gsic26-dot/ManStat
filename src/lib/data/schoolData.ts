@@ -93,6 +93,73 @@ export interface SchoolInfoRecord {
   studentCount: number;
   studentDataDate?: string;
   activeClasses?: string[];
+  activeAcademicYearId?: string;
+  primaryCensusId?: string;
+  censusRoundCode?: string;
+  activeFiscalPeriodId?: string;
+  fiscalRoundNo?: number;
+}
+
+export interface AcademicYearRecord {
+  id: string;
+  schoolId: string;
+  yearTh: number;
+  offeredGrades: string[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentCensusSnapshotRecord {
+  id: string;
+  academicYearId: string;
+  roundCode: 'JUN_10' | 'NOV_10';
+  snapshotDate: string;
+  fiscalYearTh: number;
+  kindergartenStudents: number;
+  kindergartenClassrooms: number;
+  primaryStudents: number;
+  primaryClassrooms: number;
+  secondaryStudents: number;
+  secondaryClassrooms: number;
+  totalStudents: number;
+  totalClassrooms: number;
+  isPrimaryForManpower: boolean;
+  isLocked: boolean;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FiscalPeriodRecord {
+  id: string;
+  schoolId: string;
+  fiscalYearTh: number;
+  roundNo: 1 | 2;
+  evalStart: string;
+  evalEnd: string;
+  refCensusSnapshotId?: string | null;
+  isActive: boolean;
+  isLocked: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SalaryPromotionRecord {
+  id: string;
+  fiscalPeriodId: string;
+  staffId: string;
+  positionSnapshot: string;
+  standingSnapshot: string;
+  salaryBefore: number;
+  calculationBase: number;
+  promotionPercent: number;
+  salaryAfter: number;
+  orderNo?: string;
+  orderDate?: string | null;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const ACTIVE_CLASSES: string[] = [
