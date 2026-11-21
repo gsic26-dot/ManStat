@@ -1042,6 +1042,30 @@ export async function dbSaveSchoolInfo(info: Partial<SchoolInfoRecord>): Promise
         console.error('[dbSaveSchoolInfo] Supabase upsert error:', error);
         throw new Error(`ไม่สามารถบันทึกข้อมูลสถานศึกษาลง Supabase ได้: ${error.message}`);
       }
+
+      // Synchronize offered_grades to active academic year in Supabase
+      if (Array.isArray(merged.activeClasses)) {
+        try {
+          const { data: activeYear } = await supabase
+            .from('academic_years')
+            .select('id')
+            .eq('school_id', merged.schoolCode8 || '30030099')
+            .eq('is_active', true)
+            .single();
+          if (activeYear?.id) {
+            await supabase
+              .from('academic_years')
+              .update({
+                offered_grades: merged.activeClasses,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', activeYear.id);
+          }
+        } catch (syncErr) {
+          console.warn('[dbSaveSchoolInfo] Failed to sync offered_grades to active academic year:', syncErr);
+        }
+      }
+
       return schoolInfoFromDb(data);
     }
   }
@@ -1053,6 +1077,13 @@ export async function dbSaveSchoolInfo(info: Partial<SchoolInfoRecord>): Promise
     ...info,
     activeClasses: Array.isArray(info.activeClasses) ? info.activeClasses : db.schoolInfo.activeClasses,
   };
+  // Synchronize offeredGrades to active academic year in local DB
+  if (Array.isArray(info.activeClasses) && db.academicYears) {
+    const activeYear = db.academicYears.find((y) => y.isActive);
+    if (activeYear) {
+      activeYear.offeredGrades = info.activeClasses;
+    }
+  }
   saveDatabase(db);
   return db.schoolInfo;
 }
@@ -2110,6 +2141,93 @@ export async function dbCreateAcademicYearWithDefaults(
   });
   saveDatabase(db);
   return newId;
+}
+
+export async function dbUpdateAcademicYearOfferedGrades(
+  yearId: string,
+  offeredGrades: string[]
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from('academic_years')
+      .update({
+        offered_grades: offeredGrades,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', yearId);
+
+    if (error) {
+      console.error('[dbUpdateAcademicYearOfferedGrades] Supabase error:', error);
+      throw new Error(`ไม่สามารถบันทึกระดับชั้นที่เปิดสอนได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.academicYears) {
+    const target = db.academicYears.find((y) => y.id === yearId);
+    if (target) {
+      target.offeredGrades = offeredGrades;
+      saveDatabase(db);
+    }
+  }
+  return true;
+}
+
+export async function dbDeleteAcademicYear(
+  yearId: string,
+  schoolId: string = '30030099'
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    // Check if active
+    const { data: target, error: checkError } = await supabase
+      .from('academic_years')
+      .select('is_active')
+      .eq('id', yearId)
+      .single();
+
+    if (checkError) {
+      console.error('[dbDeleteAcademicYear] Check error:', checkError);
+      throw new Error(`ไม่พบปีการศึกษาที่ระบุ: ${checkError.message}`);
+    }
+
+    if (target?.is_active) {
+      throw new Error('ไม่สามารถลบปีการศึกษาที่กำลังใช้งานอยู่ได้');
+    }
+
+    // Delete related census snapshots first
+    await supabase.from('student_census_snapshots').delete().eq('academic_year_id', yearId);
+
+    // Delete academic year
+    const { error } = await supabase.from('academic_years').delete().eq('id', yearId);
+    if (error) {
+      console.error('[dbDeleteAcademicYear] Supabase error:', error);
+      throw new Error(`ไม่สามารถลบปีการศึกษาได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.academicYears) {
+    const target = db.academicYears.find((y) => y.id === yearId);
+    if (target?.isActive) {
+      throw new Error('ไม่สามารถลบปีการศึกษาที่กำลังใช้งานอยู่ได้');
+    }
+    db.academicYears = db.academicYears.filter((y) => y.id !== yearId);
+  }
+  if (db.studentCensusSnapshots) {
+    db.studentCensusSnapshots = db.studentCensusSnapshots.filter(
+      (s) => s.academicYearId !== yearId
+    );
+  }
+  saveDatabase(db);
+  return true;
 }
 
 export async function dbSetPrimaryCensusRound(

@@ -38,6 +38,8 @@ export interface UseAcademicCensusReturn {
   refresh: () => Promise<void>;
   setActiveYear: (yearId: string) => Promise<boolean>;
   createYear: (yearTh: number) => Promise<string>;
+  deleteYear: (yearId: string, password: string) => Promise<boolean>;
+  updateOfferedGrades: (yearId: string, offeredGrades: string[]) => Promise<boolean>;
   updateSnapshot: (
     snapshot: Partial<StudentCensusSnapshotRecord> & { id: string }
   ) => Promise<boolean>;
@@ -179,6 +181,69 @@ export function useAcademicCensus(schoolId: string = '30030099'): UseAcademicCen
     [schoolId, fetchData]
   );
 
+  // Action: Delete Academic Year (Requires master password '123456')
+  const deleteYear = useCallback(
+    async (yearId: string, password: string): Promise<boolean> => {
+      try {
+        setError(null);
+        const res = await fetch('/api/admin/academic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'DELETE_YEAR',
+            payload: { yearId, password, schoolId },
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'ไม่สามารถลบปีการศึกษาได้');
+        }
+        await fetchData();
+        // Switch to active year
+        const active = academicYears.find((y) => y.isActive && y.id !== yearId);
+        if (active) {
+          setSelectedYearId(active.id);
+        }
+        return true;
+      } catch (err: any) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    [schoolId, academicYears, fetchData]
+  );
+
+  // Action: Update Offered Grades for Academic Year
+  const updateOfferedGrades = useCallback(
+    async (yearId: string, offeredGrades: string[]): Promise<boolean> => {
+      try {
+        setError(null);
+        // Optimistically update local academicYears state
+        setAcademicYears((prev) =>
+          prev.map((y) => (y.id === yearId ? { ...y, offeredGrades } : y))
+        );
+
+        const res = await fetch('/api/admin/academic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'UPDATE_OFFERED_GRADES',
+            payload: { yearId, offeredGrades, schoolId },
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'ไม่สามารถบันทึกระดับชั้นที่เปิดสอนได้');
+        }
+        return true;
+      } catch (err: any) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    [schoolId]
+  );
+
   // Action: Update Census Snapshot (Subject to Lock Guard)
   const updateSnapshot = useCallback(
     async (
@@ -310,6 +375,8 @@ export function useAcademicCensus(schoolId: string = '30030099'): UseAcademicCen
     refresh: fetchData,
     setActiveYear,
     createYear,
+    deleteYear,
+    updateOfferedGrades,
     updateSnapshot,
     setPrimaryRound,
     toggleLock,

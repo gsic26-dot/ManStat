@@ -5,6 +5,8 @@ import {
   countGradesPerTier,
   calculateLiveCensusDiff,
   getAutoPrimaryRoundByCalendar,
+  getAutoSemesterByCalendar,
+  syncTierClassrooms,
 } from '../SchoolAcademicManager';
 
 describe('SchoolAcademicManager: Grade Ordering, Classroom Sync & Live Diff', () => {
@@ -170,6 +172,53 @@ describe('SchoolAcademicManager: Grade Ordering, Classroom Sync & Live Diff', ()
       // Tested from current date 21 Nov 2026 against future year 2570 (CE 2027)
       const currentDate = new Date(2026, 10, 21);
       assert.equal(getAutoPrimaryRoundByCalendar(2570, currentDate), 'JUN_10');
+    });
+  });
+
+  describe('getAutoSemesterByCalendar (Official OBEC / สพฐ. Academic Semester)', () => {
+    it('returns Semester 1 for dates between 16 May and 31 October', () => {
+      // Exact start boundary: 16 May
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 4, 16)), 1); // Month 4 = May
+      // Mid semester: 10 June
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 5, 10)), 1);
+      // Late semester: 15 August
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 7, 15)), 1);
+      // Exact end boundary: 31 October
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 9, 31)), 1); // Month 9 = October
+    });
+
+    it('returns Semester 2 for dates between 1 November and 15 May', () => {
+      // Exact start boundary: 1 November
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 10, 1)), 2); // Month 10 = November
+      // Mid semester: 21 November
+      assert.equal(getAutoSemesterByCalendar(new Date(2026, 10, 21)), 2);
+      // New year: 15 January
+      assert.equal(getAutoSemesterByCalendar(new Date(2027, 0, 15)), 2);
+      // Exact end boundary: 15 May
+      assert.equal(getAutoSemesterByCalendar(new Date(2027, 4, 15)), 2); // Month 4 = May
+    });
+  });
+
+  describe('syncTierClassrooms (Smart Classroom Sync Logic)', () => {
+    it('returns 0 when tier has 0 active grades', () => {
+      // Unchecking all grades in a tier drops room count to 0
+      assert.equal(syncTierClassrooms(6, 0), 0);
+      assert.equal(syncTierClassrooms(0, 0), 0);
+    });
+
+    it('expands rooms to match active grade count when current rooms is lower', () => {
+      // 0 rooms initially, user selects 3 grades -> at least 3 rooms
+      assert.equal(syncTierClassrooms(0, 3), 3);
+      // 2 rooms initially, user selects 6 grades -> at least 6 rooms
+      assert.equal(syncTierClassrooms(2, 6), 6);
+    });
+
+    it('preserves manual classroom additions if user clicked + to exceed grade count', () => {
+      // User has 6 primary grades (ป.1 - ป.6) but has 2 rooms per grade = 12 rooms
+      // Toggling another tier or re-evaluating tier with 6 grades preserves the 12 rooms
+      assert.equal(syncTierClassrooms(12, 6), 12);
+      // 8 rooms for 6 grades remains 8
+      assert.equal(syncTierClassrooms(8, 6), 8);
     });
   });
 });

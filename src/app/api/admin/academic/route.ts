@@ -5,6 +5,8 @@ import {
   dbGetFiscalPeriods,
   dbSetActiveAcademicYear,
   dbCreateAcademicYearWithDefaults,
+  dbUpdateAcademicYearOfferedGrades,
+  dbDeleteAcademicYear,
   dbSetPrimaryCensusRound,
   dbSetActiveFiscalPeriod,
   dbSaveCensusSnapshot,
@@ -107,6 +109,38 @@ export async function POST(request: Request) {
           `สร้างปีการศึกษาใหม่ พ.ศ. ${yearTh} พร้อมสร้างรอบนับนักเรียน 10 มิ.ย. และ 10 พ.ย. เริ่มต้น`
         );
         return NextResponse.json({ success: true, data: { id: newId }, message: `สร้างปีการศึกษา ${yearTh} สำเร็จ` });
+      }
+
+      case 'DELETE_YEAR': {
+        const { yearId, password, schoolId = '30030099' } = payload;
+        if (password !== '123456') {
+          return NextResponse.json(
+            { success: false, error: 'รหัสผ่านยืนยันไม่ถูกต้อง (กรุณากรอก 123456)' },
+            { status: 403 }
+          );
+        }
+        await dbDeleteAcademicYear(yearId, schoolId);
+        recordAuditLog(
+          'DELETE_ACADEMIC_YEAR',
+          actorName,
+          actorRole,
+          schoolId,
+          `ลบปีการศึกษา ID: ${yearId}`
+        );
+        return NextResponse.json({ success: true, message: 'ลบปีการศึกษาเรียบร้อยแล้ว' });
+      }
+
+      case 'UPDATE_OFFERED_GRADES': {
+        const { yearId, offeredGrades, schoolId = '30030099' } = payload;
+        await dbUpdateAcademicYearOfferedGrades(yearId, offeredGrades);
+        recordAuditLog(
+          'UPDATE_OFFERED_GRADES',
+          actorName,
+          actorRole,
+          schoolId,
+          `ปรับปรุงระดับชั้นที่เปิดสอนปีการศึกษา ID: ${yearId} (${offeredGrades.length} ระดับชั้น)`
+        );
+        return NextResponse.json({ success: true, message: 'บันทึกระดับชั้นที่เปิดสอนสำเร็จ' });
       }
 
       case 'UPDATE_SNAPSHOT': {

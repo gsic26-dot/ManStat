@@ -411,6 +411,58 @@ export async function createAcademicYearWithDefaults(
   return data as string;
 }
 
+export async function updateAcademicYearOfferedGrades(
+  supabase: TypedSupabaseClient,
+  yearId: string,
+  offeredGrades: string[]
+): Promise<boolean> {
+  const { error } = await (supabase as any)
+    .from('academic_years')
+    .update({
+      offered_grades: offeredGrades,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', yearId);
+
+  if (error) {
+    console.error('[updateAcademicYearOfferedGrades Error]', error.message);
+    throw new Error(`Failed to update offered grades: ${error.message}`);
+  }
+  return true;
+}
+
+export async function deleteAcademicYear(
+  supabase: TypedSupabaseClient,
+  yearId: string
+): Promise<boolean> {
+  // Check active
+  const { data: target, error: checkError } = await (supabase as any)
+    .from('academic_years')
+    .select('is_active')
+    .eq('id', yearId)
+    .single();
+
+  if (checkError) {
+    console.error('[deleteAcademicYear Check Error]', checkError.message);
+    throw new Error(`Failed to check academic year status: ${checkError.message}`);
+  }
+
+  if (target?.is_active) {
+    throw new Error('Cannot delete currently active academic year');
+  }
+
+  // Delete associated snapshots first
+  await (supabase as any).from('student_census_snapshots').delete().eq('academic_year_id', yearId);
+
+  // Delete academic year
+  const { error } = await (supabase as any).from('academic_years').delete().eq('id', yearId);
+  if (error) {
+    console.error('[deleteAcademicYear Error]', error.message);
+    throw new Error(`Failed to delete academic year: ${error.message}`);
+  }
+  return true;
+}
+
 // ----------------------------------------------------------------------------
 // 9.2 Student Census Snapshots (With Strict Lock Guard)
 // ----------------------------------------------------------------------------

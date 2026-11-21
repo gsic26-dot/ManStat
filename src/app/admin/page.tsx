@@ -1617,16 +1617,6 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ภาคเรียนที่</label>
-                  <input
-                    type="text"
-                    value={schoolInfo.currentTerm}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, currentTerm: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
                 <div className="md:col-span-2">
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ที่ตั้งสถานศึกษา</label>
                   <input
@@ -1643,6 +1633,8 @@ export default function AdminPage() {
                 <SchoolAcademicManager
                   schoolId={schoolInfo.schoolCode8 || '30030099'}
                   currentActiveClasses={activeClasses}
+                  currentTerm={schoolInfo.currentTerm}
+                  onSemesterChange={(term) => setSchoolInfo((prev) => ({ ...prev, currentTerm: term }))}
                   onSyncSchoolInfo={({ academicYear, studentCount, activeClasses: syncedClasses }) => {
                     setSchoolInfo((prev) => ({
                       ...prev,
