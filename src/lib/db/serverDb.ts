@@ -1427,7 +1427,9 @@ export async function dbGetAuditLogs(limit = 200): Promise<AuditLogRecord[]> {
 
   verifyVercelConfiguration();
   const db = loadDatabase();
-  return (db.auditLogs || []).slice(0, limit);
+  const logs = [...(db.auditLogs || [])];
+  logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return logs.slice(0, limit);
 }
 
 export function recordAuditLog(

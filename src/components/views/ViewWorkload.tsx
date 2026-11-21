@@ -29,6 +29,7 @@ import {
   Shield,
   PlusCircle,
   ChevronRight,
+  ChevronDown,
   Trash2,
   X,
   Plus,
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
+import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 
 export type WorkloadCategory =
   | 'งานสอนและการจัดการเรียนรู้'
@@ -515,9 +517,14 @@ export const ViewWorkload: React.FC = () => {
   };
 
   // Dynamic calculations across all 4 categories per teacher
+  const sortedTeachers = useMemo(() => {
+    return sortTeachersByBranch(teachersList);
+  }, [teachersList]);
+
   const workloadData = useMemo(() => {
-    return teachersList.map((teacher, idx) => {
+    return sortedTeachers.map((teacher, idx) => {
       const isDirector = teacher.position.includes('ผู้อำนวยการ');
+      const branch = getStaffBranch(teacher);
       const teacherWorkloads = workloads.filter((w) => w.teacherId === teacher.id);
 
       const m1Items = teacherWorkloads.filter((w) => w.category === 'งานสอนและการจัดการเรียนรู้');
@@ -531,10 +538,12 @@ export const ViewWorkload: React.FC = () => {
           ? m1Items.reduce((sum, w) => sum + w.hoursPerWeek, 0)
           : isDirector
           ? 6
+          : branch === 'support'
+          ? 0
           : 14 + (idx % 3);
 
       const supportHours =
-        m2Items.length > 0 ? m2Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : 4;
+        m2Items.length > 0 ? m2Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : branch === 'support' ? 20 : 4;
 
       const schoolDevHours =
         m3Items.length > 0 ? m3Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : 3;
@@ -554,6 +563,7 @@ export const ViewWorkload: React.FC = () => {
 
       return {
         id: teacher.id,
+        branch,
         name: teacher.name,
         position: teacher.position,
         department: teacher.department,
@@ -573,7 +583,7 @@ export const ViewWorkload: React.FC = () => {
         m4Items,
       };
     });
-  }, [workloads, teachersList]);
+  }, [workloads, sortedTeachers]);
 
   const filtered = useMemo(() => {
     return workloadData.filter((w) => {
@@ -599,12 +609,9 @@ export const ViewWorkload: React.FC = () => {
       {/* Header & Controls */}
       <div className="bg-white dark:bg-[#121822] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
         <div>
-          <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold uppercase tracking-wider">
-            <Briefcase className="w-4 h-4 shrink-0" />
-            <span>Personnel Workload &amp; Performance Agreement (PA)</span>
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1">
-            ภาระงานบุคลากรและข้อตกลงในการพัฒนางาน (PA 4 หมวด)
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
+            <span>ตารางสอนและภาระงาน</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             เกณฑ์ ว9/2564 &amp; ว21/2564: ชั่วโมงการจัดการเรียนรู้ไม่ต่ำกว่า 12 ชม./สัปดาห์ (ผู้บริหาร 6 ชม.) และรวมภาระงาน 4 หมวดไม่ต่ำกว่า 20 ชม./สัปดาห์
@@ -656,24 +663,26 @@ export const ViewWorkload: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
               <tr>
-                <th scope="col" className="w-10 px-3 py-3.5 text-center">
-                  <span className="sr-only">ขยายรายละเอียด</span>
-                </th>
-                <th scope="col" className="px-4 py-3.5 min-w-[220px]">ครูผู้สอน / บุคลากร</th>
-                <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">
+                <th scope="col" className="w-14 px-3 py-3.5 text-center font-mono">ลำดับ</th>
+                <th scope="col" className="w-[32%] px-4 py-3.5">ครูผู้สอน / บุคลากร</th>
+                <th scope="col" className="w-[18%] px-4 py-3.5 text-center">
                   ชั่วโมงสอน &amp; TA<br />
                   <span className="text-[10px] lowercase text-slate-500 font-normal">&gt;= 12 ชม./สัปดาห์</span>
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">
+                <th scope="col" className="w-[18%] px-4 py-3.5 text-center">
                   รวมภาระงาน 4 ด้าน<br />
                   <span className="text-[10px] lowercase text-slate-500 font-normal">&gt;= 20 ชม./สัปดาห์</span>
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center min-w-[140px]">ผลประเมิน PA</th>
+                <th scope="col" className="w-[20%] px-4 py-3.5 text-center">ผลประเมิน PA</th>
+                <th scope="col" className="w-12 px-3 py-3.5 text-right">
+                  <span className="sr-only">ขยายรายละเอียด</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-              {filtered.map((w) => {
+              {filtered.map((w, index) => {
                 const isExpanded = expandedTeacherId === w.id;
+                const isSupport = w.branch === 'support';
                 const posDisplay = w.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                 const deptDisplay = w.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
 
@@ -682,64 +691,67 @@ export const ViewWorkload: React.FC = () => {
                     <tr
                       onClick={() => toggleExpand(w.id)}
                       className={`hover:bg-slate-50 dark:hover:bg-[#1a2636]/60 transition-colors cursor-pointer ${
-                        isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''
-                      }`}
+                        isSupport ? 'border-l-4 border-l-amber-500/60' : ''
+                      } ${isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''}`}
                     >
-                      {/* Expand Toggle */}
-                      <td className="px-3 py-3.5 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpand(w.id);
-                          }}
-                          className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                          aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
-                        >
-                          <ChevronRight
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                              isExpanded ? 'rotate-90 text-sky-400' : ''
-                            }`}
-                          />
-                        </button>
+                      {/* Sequence */}
+                      <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                        {index + 1}
                       </td>
 
+                      {/* Name & Position */}
                       <td className="px-4 py-3.5">
-                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span className="truncate max-w-[200px]" title={w.name}>{w.name}</span>
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm" title={w.name}>
+                          {w.name}
                         </div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-[220px]" title={`${posDisplay} (${deptDisplay})`}>
-                          {posDisplay} ({deptDisplay})
+                        <div className="text-xs text-slate-400 mt-0.5" title={`${posDisplay} · ${deptDisplay}`}>
+                          {posDisplay} · {deptDisplay}
                         </div>
                       </td>
 
+                      {/* Teaching Hours */}
                       <td className="px-4 py-3.5 text-center font-mono font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                         {w.teachingHours} ชม.
                       </td>
 
+                      {/* Total Hours */}
                       <td className="px-4 py-3.5 text-center font-mono font-bold text-sky-600 dark:text-sky-300 whitespace-nowrap">
                         {w.totalHours} ชม.
                       </td>
 
+                      {/* PA Status */}
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         {w.evalResult.isAllPassed ? (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 min-w-[110px]">
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                            <span>ผ่านเกณฑ์ PA</span>
-                          </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                              ผ่านเกณฑ์ PA
+                            </span>
+                          </div>
                         ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 min-w-[110px]">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                            <span>ไม่ครบเกณฑ์</span>
-                          </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                            <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                              ไม่ครบเกณฑ์
+                            </span>
+                          </div>
                         )}
+                      </td>
+
+                      {/* Expand Arrow */}
+                      <td className="w-12 px-3 py-3.5 text-right">
+                        <ChevronDown
+                          className={`w-4 h-4 ml-auto text-slate-400 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-sky-400' : ''
+                          }`}
+                        />
                       </td>
                     </tr>
 
                     {/* Expanded Detail Panel (4 Comprehensive Workload Categories) */}
                     {isExpanded && (
                       <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                        <td colSpan={5} className="p-4 sm:p-6">
+                        <td colSpan={6} className="p-4 sm:p-6">
                           <div className="space-y-6">
                             {/* 1. Summary Bar across 4 Aspects */}
                             <div>

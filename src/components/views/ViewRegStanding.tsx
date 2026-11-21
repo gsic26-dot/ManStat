@@ -7,14 +7,26 @@
  * - Academic Standing Tiers: ครูผู้ช่วย, ครู คศ.1, ครูชำนาญการ, ครูชำนาญการพิเศษ, ครูเชี่ยวชาญ
  * - Dual Views: Spacious Table View (Default) & Responsive Cards
  * - Promotion Orders and Effective Dates
+ * - 3-Branch Hierarchy: สายบริหาร -> สายการสอน -> สายสนับสนุน
  * - Zero emojis, pure Lucide SVG icons with strict 8px gap.
  * ============================================================================
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Award, Calendar, Search, Medal, LayoutList, LayoutGrid, FileText, ChevronRight } from 'lucide-react';
+import {
+  Award,
+  Calendar,
+  Search,
+  Medal,
+  LayoutList,
+  LayoutGrid,
+  FileText,
+  ChevronRight,
+  ChevronDown,
+} from 'lucide-react';
 import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
+import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-sorting';
 
 export const ViewRegStanding: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
@@ -41,26 +53,20 @@ export const ViewRegStanding: React.FC = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const standingData = useMemo(() => {
-    return teachersList.map((t) => ({
-      id: t.id,
-      name: t.name,
-      position: t.position,
-      department: t.department,
-      standing: t.academicStanding !== '-' ? t.academicStanding : t.position,
-      startDate: t.startDate,
-      orders: t.standings,
-    }));
-  }, [teachersList]);
+  const filteredTeachers = useMemo(() => {
+    return teachersList.filter((t) => {
+      const q = searchTerm.toLowerCase();
+      const matchName = t.name.toLowerCase().includes(q);
+      const matchStanding = (t.academicStanding || '').toLowerCase().includes(q);
+      const matchPosition = t.position.toLowerCase().includes(q);
+      const matchDept = t.department.toLowerCase().includes(q);
+      return matchName || matchStanding || matchPosition || matchDept;
+    });
+  }, [teachersList, searchTerm]);
 
-  const filtered = useMemo(() => {
-    return standingData.filter(
-      (s) =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.standing.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.department.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [standingData, searchTerm]);
+  const groupedTeachers = useMemo(() => {
+    return groupAndSortTeachers(filteredTeachers);
+  }, [filteredTeachers]);
 
   return (
     <div className="space-y-6">
@@ -69,7 +75,7 @@ export const ViewRegStanding: React.FC = () => {
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
-            <span>ทะเบียนวิทยฐานะข้าราชการครูและบุคลากรทางการศึกษา</span>
+            <span>ทะเบียนวิทยฐานะ</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             ข้อมูลวิทยฐานะและคำสั่งแต่งตั้งตาม พ.ร.บ. ระเบียบข้าราชการครูและบุคลากรทางการศึกษา พ.ศ. 2547
@@ -120,134 +126,167 @@ export const ViewRegStanding: React.FC = () => {
       {/* Main View: Table View */}
       {viewMode === 'table' ? (
         <div className="bg-white dark:bg-[#111823] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm dark:shadow-xl overflow-hidden transition-colors duration-200">
-          <div className="w-full">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm text-slate-700 dark:text-slate-200">
               <thead className="bg-slate-100/80 dark:bg-[#16202d] text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                 <tr>
-                  <th scope="col" className="w-10 px-3 py-3.5 text-center"></th>
-                  <th scope="col" className="px-3 py-3.5 text-center w-12 font-mono shrink-0">ลำดับ</th>
-                  <th scope="col" className="px-4 py-3.5">ชื่อ - สกุล</th>
-                  <th scope="col" className="px-4 py-3.5">ตำแหน่ง</th>
-                  <th scope="col" className="px-4 py-3.5 text-center min-w-[130px]">วิทยฐานะปัจจุบัน</th>
+                  <th scope="col" className="w-14 px-3 py-3.5 text-center">ลำดับ</th>
+                  <th scope="col" className="w-[32%] px-4 py-3.5">ชื่อ - สกุล</th>
+                  <th scope="col" className="w-[28%] px-4 py-3.5">ตำแหน่ง</th>
+                  <th scope="col" className="w-[26%] px-4 py-3.5 text-center">วิทยฐานะปัจจุบัน</th>
+                  <th scope="col" className="w-12 px-3 py-3.5 text-right">
+                    <span className="sr-only">ขยายรายละเอียด</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {filtered.map((item, index) => {
-                  const latestOrder = item.orders[0];
-                  const posDisplay = item.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
-                  const deptDisplay = item.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
-                  const isExpanded = expandedId === item.id;
-
-                  return (
-                    <React.Fragment key={item.id}>
-                      <tr
-                        onClick={() => toggleExpand(item.id)}
-                        className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''
-                        }`}
-                      >
-                        {/* Expand Button */}
-                        <td className="w-10 px-3 py-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpand(item.id);
-                            }}
-                            className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50 transition-colors duration-200"
-                            title={isExpanded ? 'ย่อรายละเอียด' : 'ดูรายละเอียดเพิ่มเติม'}
-                          >
-                            <ChevronRight
-                              className={`w-4 h-4 transition-transform duration-200 ${
-                                isExpanded ? 'rotate-90 text-sky-500 dark:text-sky-400' : ''
-                              }`}
-                            />
-                          </button>
-                        </td>
-
-                        {/* Sequence */}
-                        <td className="px-3 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
-                          {index + 1}
-                        </td>
-
-                        {/* Full Name */}
-                        <td className="px-4 py-3.5">
-                          <div className="font-bold text-slate-900 dark:text-white text-base truncate max-w-[200px]" title={item.name}>
-                            {item.name}
-                          </div>
-                        </td>
-
-                        {/* Position */}
-                        <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                          <div className="truncate max-w-[200px]" title={item.position}>{posDisplay}</div>
-                        </td>
-
-                        {/* Standing Badge (Strictly zero-wrap) */}
-                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                          <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
-                            title={item.standing}
-                          >
-                            <Medal className="w-3.5 h-3.5 shrink-0" />
-                            <span>{item.standing}</span>
-                          </span>
-                        </td>
-                      </tr>
-
-                      {/* Expanded Detail Panel */}
-                      {isExpanded && (
-                        <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                          <td colSpan={5} className="px-6 py-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                              <div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">กลุ่มสาระการเรียนรู้ / ฝ่าย</div>
-                                <div className="text-slate-800 dark:text-slate-200 font-medium">{deptDisplay}</div>
-                              </div>
-
-                              <div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันบรรจุรับราชการ</div>
-                                <div className="font-mono text-slate-700 dark:text-slate-300">{item.startDate}</div>
-                              </div>
-
-                              <div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">เลขที่คำสั่งแต่งตั้งล่าสุด</div>
-                                <div className="font-mono text-amber-600 dark:text-amber-300 font-medium">
-                                  {latestOrder ? latestOrder.orderNumber : 'ไม่มีข้อมูลคำสั่ง'}
-                                </div>
-                              </div>
-
-                              <div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
-                                <div className="font-mono text-sky-600 dark:text-sky-400">
-                                  {latestOrder ? formatThaiDateDisplay(latestOrder.effectiveDate) : '-'}
-                                </div>
-                              </div>
+                {(() => {
+                  let runningSeq = 0;
+                  return groupedTeachers.map((group) => {
+                    const isSupportGroup = group.category === 'support';
+                    return (
+                      <React.Fragment key={group.category}>
+                        {/* Group Header */}
+                        <tr className="bg-slate-50/75 dark:bg-[#15202e] border-y border-slate-200/80 dark:border-slate-800">
+                          <td colSpan={5} className="px-4 py-2 font-semibold text-xs text-slate-700 dark:text-slate-300">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isSupportGroup ? 'bg-amber-400' : 'bg-sky-400'
+                                }`}
+                              />
+                              <span>{group.title}</span>
                             </div>
-
-                            {item.orders.length > 1 && (
-                              <div className="mt-3 pt-3 border-t border-slate-200/90 dark:border-slate-800/60 text-xs">
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
-                                  ประวัติคำสั่งแต่งตั้งทั้งหมด ({item.orders.length} รายการ):
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {item.orders.map((ord, oIdx) => (
-                                    <span
-                                      key={oIdx}
-                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
-                                    >
-                                      <FileText className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
-                                      <span>{ord.level}: {ord.orderNumber} ({formatThaiDateDisplay(ord.effectiveDate)})</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+
+                        {group.members.map((teacher) => {
+                          runningSeq++;
+                          const seq = runningSeq;
+                          const isSupport = getStaffBranch(teacher) === 'support';
+                          const hasStanding =
+                            !isSupport &&
+                            teacher.academicStanding &&
+                            teacher.academicStanding !== '-' &&
+                            teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
+                          const standingDisplay = hasStanding ? teacher.academicStanding : '-';
+                          const latestOrder = teacher.standings && teacher.standings[0];
+                          const posDisplay = teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                          const deptDisplay = teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                          const isExpanded = expandedId === teacher.id;
+
+                          return (
+                            <React.Fragment key={teacher.id}>
+                              <tr
+                                onClick={() => toggleExpand(teacher.id)}
+                                className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                                  isSupport ? 'border-l-4 border-l-amber-500/60' : ''
+                                } ${isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''}`}
+                              >
+                                {/* Sequence */}
+                                <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                                  {seq}
+                                </td>
+
+                                {/* Full Name */}
+                                <td className="px-4 py-3.5">
+                                  <div className="font-semibold text-slate-900 dark:text-white text-sm" title={teacher.name}>
+                                    {teacher.name}
+                                  </div>
+                                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                    {teacher.employeeCode}
+                                  </div>
+                                </td>
+
+                                {/* Position */}
+                                <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                                  <div title={teacher.position}>{posDisplay}</div>
+                                </td>
+
+                                {/* Standing (Clean text + subtle rank dot) */}
+                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                  {hasStanding ? (
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                                      <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                                        {standingDisplay}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Expand Arrow */}
+                                <td className="w-12 px-3 py-3.5 text-right">
+                                  <ChevronDown
+                                    className={`w-4 h-4 ml-auto text-slate-400 transition-transform duration-200 ${
+                                      isExpanded ? 'rotate-180 text-amber-500 dark:text-amber-400' : ''
+                                    }`}
+                                  />
+                                </td>
+                              </tr>
+
+                              {/* Expanded Detail Panel */}
+                              {isExpanded && (
+                                <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
+                                  <td colSpan={5} className="pl-14 pr-6 py-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                      <div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">กลุ่มสาระการเรียนรู้ / ฝ่าย</div>
+                                        <div className="text-slate-800 dark:text-slate-200 font-medium">{deptDisplay}</div>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันบรรจุรับราชการ</div>
+                                        <div className="font-mono text-slate-700 dark:text-slate-300">{formatThaiDateDisplay(teacher.startDate)}</div>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">เลขที่คำสั่งแต่งตั้งล่าสุด</div>
+                                        <div className="font-mono text-amber-600 dark:text-amber-400 font-medium">
+                                          {latestOrder ? latestOrder.orderNumber : '-'}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">วันที่มีผลตามคำสั่ง</div>
+                                        <div className="font-mono text-sky-600 dark:text-sky-400">
+                                          {latestOrder ? formatThaiDateDisplay(latestOrder.effectiveDate) : '-'}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {teacher.standings && teacher.standings.length > 1 && (
+                                      <div className="mt-3 pt-3 border-t border-slate-200/90 dark:border-slate-800/60 text-xs">
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                                          ประวัติคำสั่งแต่งตั้งทั้งหมด ({teacher.standings.length} รายการ):
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {teacher.standings.map((ord, oIdx) => (
+                                            <span
+                                              key={oIdx}
+                                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
+                                            >
+                                              <FileText className="w-3 h-3 text-amber-500 dark:text-amber-400 shrink-0" />
+                                              <span>{ord.level}: {ord.orderNumber} ({formatThaiDateDisplay(ord.effectiveDate)})</span>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -255,38 +294,55 @@ export const ViewRegStanding: React.FC = () => {
       ) : (
         /* Grid of Standings */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white dark:bg-[#111823]/90 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                    {item.standing}
-                  </span>
-                  <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
-                </div>
+          {filteredTeachers.map((teacher) => {
+            const isSupport = getStaffBranch(teacher) === 'support';
+            const hasStanding =
+              !isSupport &&
+              teacher.academicStanding &&
+              teacher.academicStanding !== '-' &&
+              teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
+            const standingDisplay = hasStanding ? teacher.academicStanding : '-';
 
-                <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{item.name}</div>
-                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{item.department}</div>
-
-                <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{formatThaiDateDisplay(item.startDate)}</strong></span>
+            return (
+              <div
+                key={teacher.id}
+                className="bg-white dark:bg-[#111823]/90 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    {hasStanding ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        <Medal className="w-3.5 h-3.5 shrink-0" />
+                        <span>{standingDisplay}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        ไม่มีวิทยฐานะ
+                      </span>
+                    )}
+                    <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   </div>
-                  {item.orders.length > 0 && (
-                    <div className="mt-2 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-1.5 text-xs">
-                      <span className="text-amber-700 dark:text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
-                      <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {item.orders[0].orderNumber}</div>
-                      <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {formatThaiDateDisplay(item.orders[0].effectiveDate)}</div>
+
+                  <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{teacher.name}</div>
+                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{teacher.department}</div>
+
+                  <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{formatThaiDateDisplay(teacher.startDate)}</strong></span>
                     </div>
-                  )}
+                    {teacher.standings && teacher.standings.length > 0 && (
+                      <div className="mt-2 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-1.5 text-xs">
+                        <span className="text-amber-700 dark:text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
+                        <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {teacher.standings[0].orderNumber}</div>
+                        <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {formatThaiDateDisplay(teacher.standings[0].effectiveDate)}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

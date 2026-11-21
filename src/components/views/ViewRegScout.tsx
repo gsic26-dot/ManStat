@@ -20,6 +20,7 @@ import {
   LayoutList,
   LayoutGrid,
   ChevronRight,
+  ChevronDown,
   Compass,
 } from 'lucide-react';
 import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
@@ -66,13 +67,12 @@ export function ViewRegScout() {
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
         <div>
-          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
-            <Award className="w-4 h-4 shrink-0" />
-            <span>Scout Leader Qualifications Registry</span>
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1">ทะเบียนวุฒิทางลูกเสือ</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Award className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+            <span>ทะเบียนวุฒิทางลูกเสือ</span>
+          </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ (รวม {scouts.length} รายการ)
+            ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ
           </p>
         </div>
 
@@ -125,7 +125,7 @@ export function ViewRegScout() {
             onChange={(e) => setLevelFilter(e.target.value)}
             className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-white">ระดับวุฒิทั้งหมด (All Levels)</option>
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-white">ระดับวุฒิทั้งหมด</option>
             {levels.map((lvl) => (
               <option key={lvl} value={lvl} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-white">
                 {lvl}
@@ -142,13 +142,14 @@ export function ViewRegScout() {
             <table className="w-full text-left text-sm text-slate-700 dark:text-slate-200">
               <thead className="bg-slate-100/80 dark:bg-[#16202d] text-xs uppercase text-slate-500 dark:text-slate-400 tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                 <tr>
-                  <th scope="col" className="w-10 px-3 py-3.5 text-center">
+                  <th scope="col" className="w-14 px-3 py-3.5 text-center">ลำดับ</th>
+                  <th scope="col" className="w-[26%] px-4 py-3.5">ผู้ถือวุฒิลูกเสือ</th>
+                  <th scope="col" className="w-[28%] px-4 py-3.5">หลักสูตร / วุฒิการฝึกอบรม</th>
+                  <th scope="col" className="w-[20%] px-4 py-3.5 text-center">ระดับวุฒิ / เครื่องหมาย</th>
+                  <th scope="col" className="w-[18%] px-4 py-3.5 text-center font-mono">เลขที่วุฒิบัตร</th>
+                  <th scope="col" className="w-12 px-3 py-3.5 text-right">
                     <span className="sr-only">ขยายรายละเอียด</span>
                   </th>
-                  <th scope="col" className="px-4 py-3.5 text-center w-14 min-w-[56px] shrink-0">ลำดับ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[200px]">ผู้ถือวุฒิลูกเสือ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[140px]">ระดับวุฒิ</th>
-                  <th scope="col" className="px-5 py-3.5 min-w-[240px]">หลักสูตร / วุฒิการฝึกอบรม</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
@@ -163,93 +164,101 @@ export function ViewRegScout() {
                           isExpanded ? 'bg-slate-50/90 dark:bg-[#182536]/40' : ''
                         }`}
                       >
-                        <td className="px-3 py-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpand(s.id);
-                            }}
-                            className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors"
-                            aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
-                          >
-                            <ChevronRight
-                              className={`w-4 h-4 transition-transform duration-200 ${
-                                isExpanded ? 'rotate-90 text-amber-500 dark:text-amber-400' : ''
-                              }`}
-                            />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3.5 text-center font-mono font-bold text-slate-400 whitespace-nowrap">
+                        {/* Sequence */}
+                        <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
                           {index + 1}
                         </td>
-                        <td className="px-5 py-3.5">
-                          <div className="font-bold text-slate-900 dark:text-white text-sm truncate max-w-[200px]" title={s.teacherName}>{s.teacherName}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={s.position}>{posDisplay}</div>
+
+                        {/* Name & Position */}
+                        <td className="px-4 py-3.5">
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={s.teacherName}>
+                            {s.teacherName}
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5" title={s.position}>
+                            {posDisplay}
+                          </div>
                         </td>
-                        <td className="px-5 py-3.5 whitespace-nowrap">
-                          <span
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
-                            title={s.badgeLevel}
-                          >
-                            <Award className="w-3.5 h-3.5 shrink-0" />
-                            {s.badgeLevel}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
-                          <div className="truncate max-w-[320px]" title={s.qualification}>
+
+                        {/* Qualification Title */}
+                        <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
+                          <div title={s.qualification}>
                             {s.qualification}
                           </div>
+                        </td>
+
+                        {/* Badge Level with Subtle Dot */}
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                            <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                              {s.badgeLevel}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Certificate No */}
+                        <td className="px-4 py-3.5 text-center font-mono text-xs text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                          {s.certificateNo}
+                        </td>
+
+                        {/* Expand Arrow */}
+                        <td className="w-12 px-3 py-3.5 text-right">
+                          <ChevronDown
+                            className={`w-4 h-4 ml-auto text-slate-400 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180 text-amber-500 dark:text-amber-400' : ''
+                            }`}
+                          />
                         </td>
                       </tr>
 
                       {/* Detail Accordion Row */}
                       {isExpanded && (
                         <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                          <td colSpan={5} className="px-6 py-4">
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                                <div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                    หลักสูตรและวุฒิเต็ม
-                                  </div>
-                                  <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
-                                    {s.qualification}
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">ประเภท: {s.category}</div>
+                          <td colSpan={6} className="pl-14 pr-6 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                              <div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  หลักสูตรและวุฒิเต็ม
                                 </div>
-                                <div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                    เลขที่วุฒิบัตร / ทะเบียน
-                                  </div>
-                                  <div className="font-mono text-sky-600 dark:text-sky-400 font-medium text-sm">
-                                    {s.certificateNo}
-                                  </div>
-                                  {s.orderNumber && (
-                                    <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                      อ้างอิง: {s.orderNumber}
-                                    </div>
-                                  )}
+                                <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                  {s.qualification}
                                 </div>
-                                <div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                    วันที่ได้รับวุฒิบัตร
-                                  </div>
-                                  <div className="text-slate-800 dark:text-slate-200 font-mono">
-                                    {new Date(s.issueDate).toLocaleDateString('th-TH', {
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric',
-                                    })}
-                                  </div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">ประเภท: {s.category}</div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  เลขที่วุฒิบัตร / ทะเบียน
                                 </div>
-                                <div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                    หน่วยงานที่ออกวุฒิบัตร
+                                <div className="font-mono text-sky-600 dark:text-sky-400 font-medium text-sm">
+                                  {s.certificateNo}
+                                </div>
+                                {s.orderNumber && (
+                                  <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    อ้างอิง: {s.orderNumber}
                                   </div>
-                                  <div className="text-slate-700 dark:text-slate-300 font-medium">
-                                    {s.issuedBy}
-                                  </div>
+                                )}
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  วันที่ได้รับวุฒิบัตร
+                                </div>
+                                <div className="text-slate-800 dark:text-slate-200 font-mono">
+                                  {new Date(s.issueDate).toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                  })}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                  หน่วยงานที่ออกวุฒิบัตร
+                                </div>
+                                <div className="text-slate-700 dark:text-slate-300 font-medium">
+                                  {s.issuedBy || 'สำนักงานลูกเสือแห่งชาติ'}
                                 </div>
                               </div>
                             </div>
@@ -264,58 +273,37 @@ export function ViewRegScout() {
           </div>
         </div>
       ) : (
-        /* Scouts Grid Cards */
+        /* Responsive Grid / Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredScouts.map((s) => (
             <div
               key={s.id}
-              className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-amber-500/40 shadow-sm dark:shadow-none transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="px-3 py-1 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                    {s.badgeLevel}
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    <Award className="w-3.5 h-3.5 shrink-0" />
+                    <span>{s.badgeLevel}</span>
                   </span>
-                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{s.category}</span>
+                  <Compass className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                 </div>
 
-                <h3 className="font-bold text-slate-900 dark:text-white text-base group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                  {s.teacherName}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">{s.position}</p>
+                <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{s.teacherName}</div>
+                <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{s.position}</div>
 
-                <div className="mt-4 p-3.5 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2 text-xs sm:text-sm">
+                <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mb-3 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  {s.qualification}
+                </div>
+
+                <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200/90 dark:border-slate-800">
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400 block text-xs uppercase font-semibold">
-                      หลักสูตรและวุฒิการฝึกอบรม
-                    </span>
-                    <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{s.qualification}</p>
+                    เลขที่วุฒิบัตร: <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold">{s.certificateNo}</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400 block">เลขที่วุฒิบัตร</span>
-                      <span className="font-mono text-sky-600 dark:text-sky-400 font-medium">{s.certificateNo}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400 block">วันที่ได้รับ</span>
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {new Date(s.issueDate).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
+                  <div>
+                    วันที่ได้รับ: <span className="font-mono text-slate-700 dark:text-slate-300">{s.issueDate}</span>
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-200/90 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span className="truncate max-w-[200px]" title={s.issuedBy}>
-                  {s.issuedBy}
-                </span>
-                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">{s.orderNumber}</span>
               </div>
             </div>
           ))}

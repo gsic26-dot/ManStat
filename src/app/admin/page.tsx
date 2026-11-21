@@ -62,6 +62,13 @@ import {
   formatAcademicStandingSubtext,
 } from '@/lib/regulations/staff-sorting';
 import {
+  translateAuditAction,
+  cleanAuditTargetName,
+  cleanAuditActor,
+  filterAndSortAuditLogs,
+  type AuditCategory,
+} from '@/lib/regulations/audit-translation';
+import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
@@ -237,6 +244,20 @@ export default function AdminPage() {
 
   // Real Immutable Audit Logs from Database
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditCategory, setAuditCategory] = useState<AuditCategory | 'all'>('all');
+  const [auditCurrentPage, setAuditCurrentPage] = useState(1);
+  const AUDIT_PAGE_SIZE = 25;
+
+  const filteredAndSortedAuditLogs = useMemo(() => {
+    return filterAndSortAuditLogs(auditLogs, auditSearch, auditCategory);
+  }, [auditLogs, auditSearch, auditCategory]);
+
+  const totalAuditPages = Math.max(1, Math.ceil(filteredAndSortedAuditLogs.length / AUDIT_PAGE_SIZE));
+  const paginatedAuditLogs = useMemo(() => {
+    const start = (auditCurrentPage - 1) * AUDIT_PAGE_SIZE;
+    return filteredAndSortedAuditLogs.slice(start, start + AUDIT_PAGE_SIZE);
+  }, [filteredAndSortedAuditLogs, auditCurrentPage]);
 
   // Function to refresh audit logs
   const refreshAuditLogs = async () => {
@@ -1979,131 +2000,271 @@ export default function AdminPage() {
         {/* =================================================================== */}
         {activeTab === 'audit' && (
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/90 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span>บันทึกประวัติการเข้าถึงข้อมูลอ่อนไหว (PDPA Audit Logs)</span>
+                  <span>บันทึกประวัติระบบและข้อมูลอ่อนไหว</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  ระบบบันทึก Log แบบไม่สามารถแก้ไขได้ (Append-only) ทุกครั้งที่มีการเปิดเผยเลขประจำตัวประชาชน 13 หลัก
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  ประวัติการเข้าถึงข้อมูลอ่อนไหวและการเปลี่ยนแปลงข้อมูลสำคัญในระบบ
                 </p>
               </div>
-              <span className="text-xs text-slate-400 font-mono">
-                ทั้งหมด {auditLogs.length} รายการล่าสุด
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
+                  ทั้งหมด {filteredAndSortedAuditLogs.length} รายการ
+                </span>
+                <button
+                  type="button"
+                  onClick={refreshAuditLogs}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="รีเฟรชประวัติ"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left text-xs text-slate-300">
+            {/* Search & Category Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="ค้นหากิจกรรม, ผู้ดำเนินการ, ข้อมูล..."
+                  value={auditSearch}
+                  onChange={(e) => {
+                    setAuditSearch(e.target.value);
+                    setAuditCurrentPage(1);
+                  }}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex bg-slate-100 dark:bg-[#101822] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800 text-xs w-full sm:w-auto overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuditCategory('all');
+                      setAuditCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                      auditCategory === 'all'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ทั้งหมด
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuditCategory('delete');
+                      setAuditCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                      auditCategory === 'delete'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ลบข้อมูล
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuditCategory('sensitive');
+                      setAuditCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                      auditCategory === 'sensitive'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ข้อมูลอ่อนไหว PDPA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuditCategory('update');
+                      setAuditCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                      auditCategory === 'update'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    แก้ไขระบบและข้อมูล
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Symmetrical Table */}
+            <div className="overflow-x-auto w-full rounded-xl border border-slate-200/90 dark:border-slate-800">
+              <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                   <tr>
-                    <th scope="col" className="w-10 px-3 py-3 text-center">
+                    <th scope="col" className="w-14 px-3 py-3 text-center">ลำดับ</th>
+                    <th scope="col" className="w-44 px-4 py-3 font-mono">วันและเวลา</th>
+                    <th scope="col" className="w-[22%] px-4 py-3">ประเภทกิจกรรม</th>
+                    <th scope="col" className="w-[24%] px-4 py-3">ผู้ดำเนินการ</th>
+                    <th scope="col" className="flex-1 px-4 py-3">เป้าหมายข้อมูล</th>
+                    <th scope="col" className="w-12 px-3 py-3 text-right">
                       <span className="sr-only">ขยายรายละเอียด</span>
                     </th>
-                    <th scope="col" className="px-4 py-3 min-w-[170px]">วันและเวลา</th>
-                    <th scope="col" className="px-4 py-3 min-w-[160px]">ประเภทกิจกรรม</th>
-                    <th scope="col" className="px-4 py-3 min-w-[190px]">ผู้ดำเนินการ</th>
-                    <th scope="col" className="px-4 py-3 min-w-[170px]">เป้าหมายข้อมูล</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                  {auditLogs.length === 0 ? (
+                  {paginatedAuditLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-slate-400 dark:text-slate-500 font-medium">
-                        ยังไม่มีประวัติการบันทึก Audit Logs ในระบบ
+                      <td colSpan={6} className="text-center py-12 text-slate-400 dark:text-slate-500 font-medium">
+                        ไม่พบประวัติการบันทึก Audit Logs ในระบบ
                       </td>
                     </tr>
                   ) : (
-                    auditLogs.map((log) => {
-                    const isExpanded = expandedLogId === log.id;
-                    return (
-                      <React.Fragment key={log.id}>
-                        <tr
-                          onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                          className={`hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors cursor-pointer ${
-                            isExpanded ? 'bg-slate-100/70 dark:bg-[#1a2636]/40' : ''
-                          }`}
-                        >
-                          <td className="px-3 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedLogId(isExpanded ? null : log.id);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                              aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
-                            >
-                              <ChevronRight
-                                className={`w-4 h-4 transition-transform duration-200 ${
-                                  isExpanded ? 'rotate-90 text-amber-400' : ''
-                                }`}
-                              />
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-slate-400 whitespace-nowrap">
-                            {new Date(log.timestamp).toLocaleString('th-TH')}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                              {log.action}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-slate-200">
-                            <div className="truncate max-w-[200px]" title={`${log.actorName} (${log.actorRole})`}>
-                              {log.actorName} ({log.actorRole})
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-300">
-                            <div className="text-slate-800 dark:text-slate-200 truncate max-w-[180px]" title={log.targetName}>
-                              {log.targetName}
-                            </div>
-                          </td>
-                        </tr>
+                    paginatedAuditLogs.map((log, idx) => {
+                      const isExpanded = expandedLogId === log.id;
+                      const meta = translateAuditAction(log.action);
+                      const cleanTarget = cleanAuditTargetName(log.targetName);
+                      const actorInfo = cleanAuditActor(log.actorName, log.actorRole);
+                      const itemNumber = (auditCurrentPage - 1) * AUDIT_PAGE_SIZE + idx + 1;
 
-                        {/* Expanded Detail Panel */}
-                        {isExpanded && (
-                          <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                            <td colSpan={5} className="px-6 py-4">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                                <div className="sm:col-span-2">
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                    รายละเอียดกิจกรรม (Audit Details)
-                                  </div>
-                                  <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed bg-white dark:bg-[#141d27] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800">
-                                    {log.details}
-                                  </div>
-                                </div>
-                                <div className="space-y-3">
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      IP Address &amp; การเชื่อมต่อ
-                                    </div>
-                                    <div className="font-mono text-slate-300 font-medium">
-                                      {log.ipAddress}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      มาตรฐานการคุ้มครองข้อมูล
-                                    </div>
-                                    <div className="text-emerald-400 text-[11px] flex items-center gap-1.5">
-                                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                                      <span>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)</span>
-                                    </div>
-                                  </div>
-                                </div>
+                      return (
+                        <React.Fragment key={log.id}>
+                          <tr
+                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                            className={`hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors cursor-pointer ${
+                              isExpanded ? 'bg-slate-100/70 dark:bg-[#1a2636]/40' : ''
+                            }`}
+                          >
+                            <td className="w-14 px-3 py-3 text-center tabular-nums text-xs text-slate-400 dark:text-slate-500 font-mono">
+                              {itemNumber}
+                            </td>
+                            <td className="w-44 px-4 py-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap tabular-nums">
+                              {new Date(log.timestamp).toLocaleString('th-TH')}
+                            </td>
+                            <td className="w-[22%] px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dotClass}`} />
+                                <span className={`text-xs font-medium ${meta.textClass}`}>{meta.title}</span>
                               </div>
                             </td>
+                            <td className="w-[24%] px-4 py-3">
+                              <div className="truncate max-w-[200px] font-medium text-slate-800 dark:text-slate-200" title={actorInfo.name}>
+                                {actorInfo.name}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {actorInfo.roleLabel}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                              <div className="truncate max-w-[220px]" title={log.targetName}>
+                                {cleanTarget}
+                              </div>
+                            </td>
+                            <td className="w-12 px-3 py-3 text-right">
+                              <ChevronDown
+                                className={`w-4 h-4 ml-auto text-slate-400 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180 text-emerald-400' : ''
+                                }`}
+                              />
+                            </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  }))}
+
+                          {/* Expanded Detail Panel */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
+                              <td colSpan={6} className="pl-14 pr-6 py-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                  <div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      วันและเวลา / หมายเลข IP
+                                    </div>
+                                    <div className="font-mono text-slate-800 dark:text-slate-200 font-medium">
+                                      {new Date(log.timestamp).toLocaleString('th-TH')}
+                                    </div>
+                                    <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      IP: {log.ipAddress}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      กิจกรรม / รหัสระบบ
+                                    </div>
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
+                                      {meta.title}
+                                    </div>
+                                    <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {log.action}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      ผู้ดำเนินการ / รหัสอ้างอิง
+                                    </div>
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
+                                      {actorInfo.name}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {actorInfo.roleLabel} · {log.id}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                      รายละเอียดการดำเนินการ
+                                    </div>
+                                    <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed bg-white dark:bg-[#141d27] p-2.5 rounded-lg border border-slate-200/90 dark:border-slate-800">
+                                      {log.details || '-'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalAuditPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+                <div className="text-slate-500 dark:text-slate-400">
+                  แสดงหน้า {auditCurrentPage} จาก {totalAuditPages} หน้า (รวม {filteredAndSortedAuditLogs.length} รายการ)
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={auditCurrentPage <= 1}
+                    onClick={() => setAuditCurrentPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    ก่อนหน้า
+                  </button>
+                  <div className="px-2 font-mono text-slate-600 dark:text-slate-400">
+                    {auditCurrentPage} / {totalAuditPages}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={auditCurrentPage >= totalAuditPages}
+                    onClick={() => setAuditCurrentPage((p) => Math.min(totalAuditPages, p + 1))}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    ถัดไป
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
