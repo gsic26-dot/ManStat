@@ -440,9 +440,254 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      academic_years: {
+        Row: {
+          id: string;
+          school_id: string;
+          year_th: number;
+          offered_grades: Json;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id?: string;
+          year_th: number;
+          offered_grades?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          year_th?: number;
+          offered_grades?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      student_census_snapshots: {
+        Row: {
+          id: string;
+          academic_year_id: string;
+          round_code: 'JUN_10' | 'NOV_10';
+          snapshot_date: string;
+          fiscal_year_th: number;
+          kindergarten_students: number;
+          kindergarten_classrooms: number;
+          primary_students: number;
+          primary_classrooms: number;
+          secondary_students: number;
+          secondary_classrooms: number;
+          total_students: number;
+          total_classrooms: number;
+          is_primary_for_manpower: boolean;
+          is_locked: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          academic_year_id: string;
+          round_code: 'JUN_10' | 'NOV_10';
+          snapshot_date: string;
+          fiscal_year_th?: number;
+          kindergarten_students?: number;
+          kindergarten_classrooms?: number;
+          primary_students?: number;
+          primary_classrooms?: number;
+          secondary_students?: number;
+          secondary_classrooms?: number;
+          total_students?: number;
+          total_classrooms?: number;
+          is_primary_for_manpower?: boolean;
+          is_locked?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          academic_year_id?: string;
+          round_code?: 'JUN_10' | 'NOV_10';
+          snapshot_date?: string;
+          fiscal_year_th?: number;
+          kindergarten_students?: number;
+          kindergarten_classrooms?: number;
+          primary_students?: number;
+          primary_classrooms?: number;
+          secondary_students?: number;
+          secondary_classrooms?: number;
+          total_students?: number;
+          total_classrooms?: number;
+          is_primary_for_manpower?: boolean;
+          is_locked?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'student_census_snapshots_academic_year_id_fkey';
+            columns: ['academic_year_id'];
+            isOneToOne: false;
+            referencedRelation: 'academic_years';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+
+      fiscal_periods: {
+        Row: {
+          id: string;
+          school_id: string;
+          fiscal_year_th: number;
+          round_no: 1 | 2;
+          eval_start: string;
+          eval_end: string;
+          ref_census_snapshot_id: string | null;
+          is_active: boolean;
+          is_locked: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id?: string;
+          fiscal_year_th: number;
+          round_no: 1 | 2;
+          eval_start: string;
+          eval_end: string;
+          ref_census_snapshot_id?: string | null;
+          is_active?: boolean;
+          is_locked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          fiscal_year_th?: number;
+          round_no?: 1 | 2;
+          eval_start?: string;
+          eval_end?: string;
+          ref_census_snapshot_id?: string | null;
+          is_active?: boolean;
+          is_locked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fiscal_periods_ref_census_snapshot_id_fkey';
+            columns: ['ref_census_snapshot_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_census_snapshots';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+
+      salary_promotion_records: {
+        Row: {
+          id: string;
+          fiscal_period_id: string;
+          staff_id: string;
+          position_snapshot: string;
+          standing_snapshot: string;
+          salary_before: number;
+          calculation_base: number;
+          promotion_percent: number;
+          salary_after: number;
+          order_no: string | null;
+          order_date: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          fiscal_period_id: string;
+          staff_id: string;
+          position_snapshot?: string;
+          standing_snapshot?: string;
+          salary_before?: number;
+          calculation_base?: number;
+          promotion_percent?: number;
+          salary_after?: number;
+          order_no?: string | null;
+          order_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          fiscal_period_id?: string;
+          staff_id?: string;
+          position_snapshot?: string;
+          standing_snapshot?: string;
+          salary_before?: number;
+          calculation_base?: number;
+          promotion_percent?: number;
+          salary_after?: number;
+          order_no?: string | null;
+          order_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'salary_promotion_records_fiscal_period_id_fkey';
+            columns: ['fiscal_period_id'];
+            isOneToOne: false;
+            referencedRelation: 'fiscal_periods';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
 
     Views: {
+      v_school_info_current: {
+        Row: {
+          schoolName: string;
+          affiliation: string;
+          schoolCode10: string;
+          schoolCode8: string;
+          appName: string;
+          directorName: string;
+          directorPosition: string;
+          contactPhone: string;
+          email: string;
+          address: string;
+          lat: number | null;
+          lng: number | null;
+          logoBase64: string | null;
+          actingDirector1: string;
+          actingDirector2: string;
+          currentTerm: string;
+          academicYear: string;
+          studentCount: number;
+          studentDataDate: string | null;
+          fiscalYear: string;
+          activeClasses: Json;
+          activeAcademicYearId: string | null;
+          primaryCensusId: string | null;
+          censusRoundCode: string | null;
+          activeFiscalPeriodId: string | null;
+          fiscalRoundNo: number | null;
+        };
+        Relationships: [];
+      };
       v_staff_directory: {
         Row: {
           id: string;
@@ -543,6 +788,38 @@ export interface Database {
         Args: Record<string, never>;
         Returns: boolean;
       };
+
+      set_active_academic_year: {
+        Args: {
+          p_school_id: string;
+          p_academic_year_id: string;
+        };
+        Returns: boolean;
+      };
+
+      create_academic_year_with_defaults: {
+        Args: {
+          p_school_id: string;
+          p_year_th: number;
+        };
+        Returns: string;
+      };
+
+      set_primary_census_round: {
+        Args: {
+          p_academic_year_id: string;
+          p_snapshot_id: string;
+        };
+        Returns: boolean;
+      };
+
+      set_active_fiscal_period: {
+        Args: {
+          p_school_id: string;
+          p_fiscal_period_id: string;
+        };
+        Returns: boolean;
+      };
     };
   };
 }
@@ -559,6 +836,12 @@ export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row']
 export type Workload = Database['public']['Tables']['workloads']['Row'];
 export type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
 
+export type AcademicYear = Database['public']['Tables']['academic_years']['Row'];
+export type StudentCensusSnapshot = Database['public']['Tables']['student_census_snapshots']['Row'];
+export type FiscalPeriod = Database['public']['Tables']['fiscal_periods']['Row'];
+export type SalaryPromotionRecord = Database['public']['Tables']['salary_promotion_records']['Row'];
+
 export type StaffDirectoryView = Database['public']['Views']['v_staff_directory']['Row'];
 export type LeavePromotionRadarView = Database['public']['Views']['v_leave_promotion_radar']['Row'];
 export type LicenseStatusView = Database['public']['Views']['v_license_status']['Row'];
+export type SchoolInfoCurrentView = Database['public']['Views']['v_school_info_current']['Row'];

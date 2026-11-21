@@ -131,6 +131,17 @@ export interface StudentCensusSnapshotRecord {
   updatedAt?: string;
 }
 
+export type StudentCensusSnapshot = StudentCensusSnapshotRecord;
+
+export interface CensusDiffResult {
+  diffStudents: number;
+  diffClassrooms: number;
+  diffText: string;
+  diffLongText: string;
+  junRound?: StudentCensusSnapshotRecord;
+  novRound?: StudentCensusSnapshotRecord;
+}
+
 export interface FiscalPeriodRecord {
   id: string;
   schoolId: string;

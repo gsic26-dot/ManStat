@@ -19,8 +19,14 @@ import type {
   Workload,
   LeaveTypeEnum,
   HalfDayEnum,
-  LeaveStatusEnum
+  LeaveStatusEnum,
+  AcademicYear,
+  StudentCensusSnapshot,
+  FiscalPeriod,
+  SalaryPromotionRecord,
+  SchoolInfoCurrentView
 } from '@/types/database.types';
+import type { CensusDiffResult, StudentCensusSnapshotRecord } from '@/lib/data/schoolData';
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -298,6 +304,324 @@ export async function rpcCalculateLeaveDays(
   if (error) {
     console.error('[rpcCalculateLeaveDays Error]', error.message);
     throw new Error(`Failed to calculate leave days via database RPC: ${error.message}`);
+  }
+  return data;
+}
+
+// ============================================================================
+// 9. Academic Years, Student Census & Fiscal Periods Service Layer
+// ============================================================================
+
+/**
+ * Calculates student & classroom differences between NOV_10 and JUN_10 rounds.
+ */
+export function calculateCensusDiff(
+  snapshots: Array<StudentCensusSnapshotRecord | StudentCensusSnapshot>
+): CensusDiffResult {
+  const junRound = snapshots.find((s) => (s as any).roundCode === 'JUN_10' || (s as any).round_code === 'JUN_10');
+  const novRound = snapshots.find((s) => (s as any).roundCode === 'NOV_10' || (s as any).round_code === 'NOV_10');
+
+  const junStudents = junRound ? Number((junRound as any).totalStudents ?? (junRound as any).total_students ?? 0) : 0;
+  const novStudents = novRound ? Number((novRound as any).totalStudents ?? (novRound as any).total_students ?? 0) : 0;
+
+  const junRooms = junRound ? Number((junRound as any).totalClassrooms ?? (junRound as any).total_classrooms ?? 0) : 0;
+  const novRooms = novRound ? Number((novRound as any).totalClassrooms ?? (novRound as any).total_classrooms ?? 0) : 0;
+
+  const diffStudents = novStudents - junStudents;
+  const diffClassrooms = novRooms - junRooms;
+
+  let diffText = '0';
+  if (diffStudents > 0) {
+    diffText = `+${diffStudents}`;
+  } else if (diffStudents < 0) {
+    diffText = `${diffStudents}`;
+  }
+
+  let diffLongText = 'เท่าเดิม (ไม่มีการเปลี่ยนแปลง)';
+  if (diffStudents > 0) {
+    diffLongText = `เพิ่มขึ้น ${diffStudents} คน${diffClassrooms !== 0 ? ` (${diffClassrooms > 0 ? `+${diffClassrooms}` : diffClassrooms} ห้อง)` : ''}`;
+  } else if (diffStudents < 0) {
+    diffLongText = `ลดลง ${Math.abs(diffStudents)} คน${diffClassrooms !== 0 ? ` (${diffClassrooms > 0 ? `+${diffClassrooms}` : diffClassrooms} ห้อง)` : ''}`;
+  } else if (diffClassrooms !== 0) {
+    diffLongText = `นักเรียนเท่าเดิม (${diffClassrooms > 0 ? `+${diffClassrooms}` : diffClassrooms} ห้อง)`;
+  }
+
+  return {
+    diffStudents,
+    diffClassrooms,
+    diffText,
+    diffLongText,
+    junRound: junRound as StudentCensusSnapshotRecord | undefined,
+    novRound: novRound as StudentCensusSnapshotRecord | undefined,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 9.1 Academic Years
+// ----------------------------------------------------------------------------
+
+export async function getAcademicYears(
+  supabase: TypedSupabaseClient,
+  schoolId: string = '30030099'
+): Promise<AcademicYear[]> {
+  const { data, error } = await supabase
+    .from('academic_years')
+    .select('*')
+    .eq('school_id', schoolId)
+    .order('year_th', { ascending: false });
+
+  if (error) {
+    console.error('[getAcademicYears Error]', error.message);
+    throw new Error(`Failed to load academic years: ${error.message}`);
+  }
+  return data || [];
+}
+
+export async function setActiveAcademicYear(
+  supabase: TypedSupabaseClient,
+  schoolId: string,
+  academicYearId: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_active_academic_year', {
+    p_school_id: schoolId,
+    p_academic_year_id: academicYearId,
+  });
+
+  if (error) {
+    console.error('[setActiveAcademicYear Error]', error.message);
+    throw new Error(`Failed to set active academic year: ${error.message}`);
+  }
+  return Boolean(data);
+}
+
+export async function createAcademicYearWithDefaults(
+  supabase: TypedSupabaseClient,
+  schoolId: string,
+  yearTh: number
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_academic_year_with_defaults', {
+    p_school_id: schoolId,
+    p_year_th: yearTh,
+  });
+
+  if (error) {
+    console.error('[createAcademicYearWithDefaults Error]', error.message);
+    throw new Error(`Failed to create academic year: ${error.message}`);
+  }
+  return data as string;
+}
+
+// ----------------------------------------------------------------------------
+// 9.2 Student Census Snapshots (With Strict Lock Guard)
+// ----------------------------------------------------------------------------
+
+export async function getCensusSnapshots(
+  supabase: TypedSupabaseClient,
+  academicYearId?: string
+): Promise<StudentCensusSnapshot[]> {
+  let query = supabase.from('student_census_snapshots').select('*');
+  if (academicYearId) {
+    query = query.eq('academic_year_id', academicYearId);
+  }
+  const { data, error } = await query.order('snapshot_date', { ascending: true });
+
+  if (error) {
+    console.error('[getCensusSnapshots Error]', error.message);
+    throw new Error(`Failed to load student census snapshots: ${error.message}`);
+  }
+  return data || [];
+}
+
+export async function updateCensusSnapshot(
+  supabase: TypedSupabaseClient,
+  snapshotId: string,
+  updates: Partial<Database['public']['Tables']['student_census_snapshots']['Update']>
+): Promise<StudentCensusSnapshot> {
+  // Lock Guard Check: If snapshot is locked, reject data modifications
+  const { data: existing, error: checkError } = await supabase
+    .from('student_census_snapshots')
+    .select('is_locked')
+    .eq('id', snapshotId)
+    .single();
+
+  if (checkError) {
+    console.error('[updateCensusSnapshot Lock Check Error]', checkError.message);
+    throw new Error(`Failed to verify snapshot lock status: ${checkError.message}`);
+  }
+
+  const isChangingLockStatusOnly =
+    updates.is_locked !== undefined &&
+    Object.keys(updates).every((key) => key === 'is_locked' || key === 'updated_at');
+
+  if (existing?.is_locked && !isChangingLockStatusOnly) {
+    throw new Error('ข้อมูลรอบนี้ถูกล็อกไว้แล้ว ไม่สามารถแก้ไขได้ กรุณาปลดล็อกก่อนดำเนินการ (Data is locked)');
+  }
+
+  // Calculate totals automatically if breakdown items are provided
+  const updatePayload = { ...updates, updated_at: new Date().toISOString() };
+  if (
+    updates.kindergarten_students !== undefined ||
+    updates.primary_students !== undefined ||
+    updates.secondary_students !== undefined
+  ) {
+    const k = updates.kindergarten_students ?? 0;
+    const p = updates.primary_students ?? 0;
+    const s = updates.secondary_students ?? 0;
+    updatePayload.total_students = k + p + s;
+  }
+
+  if (
+    updates.kindergarten_classrooms !== undefined ||
+    updates.primary_classrooms !== undefined ||
+    updates.secondary_classrooms !== undefined
+  ) {
+    const kr = updates.kindergarten_classrooms ?? 0;
+    const pr = updates.primary_classrooms ?? 0;
+    const sr = updates.secondary_classrooms ?? 0;
+    updatePayload.total_classrooms = kr + pr + sr;
+  }
+
+  const { data, error } = await supabase
+    .from('student_census_snapshots')
+    .update(updatePayload)
+    .eq('id', snapshotId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[updateCensusSnapshot Error]', error.message);
+    throw new Error(`Failed to update student census snapshot: ${error.message}`);
+  }
+  return data;
+}
+
+export async function setPrimaryCensusRound(
+  supabase: TypedSupabaseClient,
+  academicYearId: string,
+  snapshotId: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_primary_census_round', {
+    p_academic_year_id: academicYearId,
+    p_snapshot_id: snapshotId,
+  });
+
+  if (error) {
+    console.error('[setPrimaryCensusRound Error]', error.message);
+    throw new Error(`Failed to set primary census round: ${error.message}`);
+  }
+  return Boolean(data);
+}
+
+export async function toggleCensusSnapshotLock(
+  supabase: TypedSupabaseClient,
+  snapshotId: string,
+  isLocked: boolean
+): Promise<StudentCensusSnapshot> {
+  const { data, error } = await supabase
+    .from('student_census_snapshots')
+    .update({ is_locked: isLocked, updated_at: new Date().toISOString() })
+    .eq('id', snapshotId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[toggleCensusSnapshotLock Error]', error.message);
+    throw new Error(`Failed to toggle lock on census snapshot: ${error.message}`);
+  }
+  return data;
+}
+
+// ----------------------------------------------------------------------------
+// 9.3 Fiscal Periods
+// ----------------------------------------------------------------------------
+
+export async function getFiscalPeriods(
+  supabase: TypedSupabaseClient,
+  schoolId: string = '30030099'
+): Promise<FiscalPeriod[]> {
+  const { data, error } = await supabase
+    .from('fiscal_periods')
+    .select('*')
+    .eq('school_id', schoolId)
+    .order('fiscal_year_th', { ascending: false })
+    .order('round_no', { ascending: true });
+
+  if (error) {
+    console.error('[getFiscalPeriods Error]', error.message);
+    throw new Error(`Failed to load fiscal periods: ${error.message}`);
+  }
+  return data || [];
+}
+
+export async function createFiscalPeriod(
+  supabase: TypedSupabaseClient,
+  periodData: Database['public']['Tables']['fiscal_periods']['Insert']
+): Promise<FiscalPeriod> {
+  const { data, error } = await supabase
+    .from('fiscal_periods')
+    .insert(periodData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[createFiscalPeriod Error]', error.message);
+    throw new Error(`Failed to create fiscal period: ${error.message}`);
+  }
+  return data;
+}
+
+export async function setActiveFiscalPeriod(
+  supabase: TypedSupabaseClient,
+  schoolId: string,
+  fiscalPeriodId: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_active_fiscal_period', {
+    p_school_id: schoolId,
+    p_fiscal_period_id: fiscalPeriodId,
+  });
+
+  if (error) {
+    console.error('[setActiveFiscalPeriod Error]', error.message);
+    throw new Error(`Failed to set active fiscal period: ${error.message}`);
+  }
+  return Boolean(data);
+}
+
+export async function updateFiscalPeriodRefCensus(
+  supabase: TypedSupabaseClient,
+  fiscalPeriodId: string,
+  refCensusSnapshotId: string | null
+): Promise<FiscalPeriod> {
+  const { data, error } = await supabase
+    .from('fiscal_periods')
+    .update({ ref_census_snapshot_id: refCensusSnapshotId, updated_at: new Date().toISOString() })
+    .eq('id', fiscalPeriodId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[updateFiscalPeriodRefCensus Error]', error.message);
+    throw new Error(`Failed to update fiscal period ref census: ${error.message}`);
+  }
+  return data;
+}
+
+// ----------------------------------------------------------------------------
+// 9.4 Backward-Compatible School Info Current View
+// ----------------------------------------------------------------------------
+
+export async function getSchoolInfoCurrent(
+  supabase: TypedSupabaseClient
+): Promise<SchoolInfoCurrentView | null> {
+  const { data, error } = await supabase
+    .from('v_school_info_current')
+    .select('*')
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getSchoolInfoCurrent Error]', error.message);
+    return null;
   }
   return data;
 }

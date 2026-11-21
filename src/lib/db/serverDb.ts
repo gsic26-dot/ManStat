@@ -2187,6 +2187,22 @@ export async function dbSaveCensusSnapshot(
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
+
+    // Lock Guard: check if current snapshot is locked
+    const { data: currentSnapshot } = await supabase
+      .from('student_census_snapshots')
+      .select('is_locked')
+      .eq('id', snapshot.id)
+      .single();
+
+    const isChangingLockStatusOnly =
+      snapshot.isLocked !== undefined &&
+      Object.keys(snapshot).filter((k) => k !== 'id').every((k) => k === 'isLocked');
+
+    if (currentSnapshot?.is_locked && !isChangingLockStatusOnly) {
+      throw new Error('ข้อมูลรอบนี้ถูกล็อกไว้แล้ว ไม่สามารถแก้ไขได้ กรุณาปลดล็อกก่อนดำเนินการ (Data is locked)');
+    }
+
     const dbUpdate: any = {
       kindergarten_students: snapshot.kindergartenStudents,
       kindergarten_classrooms: snapshot.kindergartenClassrooms,
@@ -2220,6 +2236,14 @@ export async function dbSaveCensusSnapshot(
   if (db.studentCensusSnapshots) {
     const idx = db.studentCensusSnapshots.findIndex((s) => s.id === snapshot.id);
     if (idx >= 0) {
+      const current = db.studentCensusSnapshots[idx];
+      const isChangingLockStatusOnly =
+        snapshot.isLocked !== undefined &&
+        Object.keys(snapshot).filter((k) => k !== 'id').every((k) => k === 'isLocked');
+      if (current?.isLocked && !isChangingLockStatusOnly) {
+        throw new Error('ข้อมูลรอบนี้ถูกล็อกไว้แล้ว ไม่สามารถแก้ไขได้ กรุณาปลดล็อกก่อนดำเนินการ (Data is locked)');
+      }
+
       db.studentCensusSnapshots[idx] = {
         ...db.studentCensusSnapshots[idx],
         ...snapshot,
