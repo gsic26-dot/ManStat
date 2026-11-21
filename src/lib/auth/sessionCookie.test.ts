@@ -121,4 +121,23 @@ describe('Authentication Persistence & Session Cookie Engine', () => {
       assert.equal(verification.error, 'Session token has expired');
     });
   });
+
+  describe('Case 6: Role Resync Cookie Preservation', () => {
+    it('generates correct cookie options preserving rememberMe duration during role updates in /api/auth/me', () => {
+      const headers = new Headers();
+      // When user logged in with rememberMe = true
+      const rememberOptions = getAuthCookieOptions(headers, 'http://localhost:3000', true);
+      assert.equal(rememberOptions.httpOnly, true);
+      assert.equal(rememberOptions.sameSite, 'lax');
+      assert.equal(rememberOptions.path, '/');
+      assert.equal(rememberOptions.maxAge, REMEMBER_ME_MAX_AGE);
+
+      // When user logged in with rememberMe = false
+      const sessionOptions = getAuthCookieOptions(headers, 'http://localhost:3000', false);
+      assert.equal(sessionOptions.httpOnly, true);
+      assert.equal(sessionOptions.sameSite, 'lax');
+      assert.equal(sessionOptions.path, '/');
+      assert.equal(sessionOptions.maxAge, undefined);
+    });
+  });
 });

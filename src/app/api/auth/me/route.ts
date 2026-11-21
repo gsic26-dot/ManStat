@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { dbGetTeachers } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
-import { verifySessionToken } from '@/lib/auth/sessionCookie';
+import { verifySessionToken, getAuthCookieOptions } from '@/lib/auth/sessionCookie';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('manstat_session_token')?.value;
@@ -116,12 +116,9 @@ export async function GET() {
 
     // If database accessLevel changed since cookie was set, re-sync cookie immediately!
     if (authRoleCookie !== currentRole) {
-      const isProduction = process.env.NODE_ENV === 'production';
-      response.cookies.set('manstat_auth_role', currentRole, {
-        path: '/',
-        sameSite: 'lax',
-        secure: isProduction,
-      });
+      const isRememberMe = Boolean(verification.payload?.rem);
+      const cookieOptions = getAuthCookieOptions(request.headers, request.url, isRememberMe);
+      response.cookies.set('manstat_auth_role', currentRole, cookieOptions);
     }
 
     return response;
