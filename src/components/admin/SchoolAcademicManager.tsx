@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Minus,
   Check,
   Building,
   Loader2,
@@ -91,6 +92,73 @@ export function calculateLiveCensusDiff(novTotalStudents: number, junTotalStuden
   return (novTotalStudents || 0) - (junTotalStudents || 0);
 }
 
+/**
+ * Determines whether the primary census round should be June 10 or Nov 10
+ * based on the official school calendar.
+ * In a Thai academic year (e.g. 2569 / CE 2026):
+ * - Prior to November 10 of that year: 'JUN_10' is active/primary.
+ * - From November 10 onwards: 'NOV_10' is active/primary.
+ */
+export function getAutoPrimaryRoundByCalendar(
+  yearTh: number,
+  currentDate: Date = new Date()
+): 'JUN_10' | 'NOV_10' {
+  const yearCe = yearTh - 543;
+  const nov10 = new Date(yearCe, 10, 10, 0, 0, 0); // Month 10 is November
+  return currentDate >= nov10 ? 'NOV_10' : 'JUN_10';
+}
+
+/**
+ * Stepper component for incrementing/decrementing classroom counts
+ */
+interface ClassroomStepperProps {
+  value: number;
+  disabled?: boolean;
+  onChange: (val: number) => void;
+}
+
+export function ClassroomStepper({ value, disabled = false, onChange }: ClassroomStepperProps) {
+  const numValue = Number(value) || 0;
+  return (
+    <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 overflow-hidden h-8">
+      <button
+        type="button"
+        disabled={disabled || numValue <= 0}
+        onClick={() => onChange(Math.max(0, numValue - 1))}
+        className="px-2 h-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+        title="ลดจำนวนห้องเรียน"
+        aria-label="ลดจำนวนห้องเรียน"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      <div className="relative flex-1 h-full flex items-center justify-center">
+        <input
+          type="number"
+          min="0"
+          disabled={disabled}
+          value={numValue === 0 ? '' : numValue}
+          placeholder="0"
+          onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+          className="w-full h-full bg-transparent text-center text-xs font-mono font-semibold text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 pr-1 pointer-events-none shrink-0">
+          ห้อง
+        </span>
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange(numValue + 1)}
+        className="px-2 h-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+        title="เพิ่มจำนวนห้องเรียน"
+        aria-label="เพิ่มจำนวนห้องเรียน"
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 interface SchoolAcademicManagerProps {
   schoolId?: string;
   currentActiveClasses?: string[];
@@ -133,11 +201,19 @@ export function SchoolAcademicManager({
     return [...initial].sort((a, b) => ACTIVE_CLASSES.indexOf(a) - ACTIVE_CLASSES.indexOf(b));
   });
 
+  // Track manual override for primary round if user explicitly clicks radio
+  const [manualPrimaryRound, setManualPrimaryRound] = useState<'JUN_10' | 'NOV_10' | null>(null);
+
   // Confirmation modal state for setting active year
   const [confirmModalYear, setConfirmModalYear] = useState<{ id: string; yearTh: number } | null>(
     null
   );
   const [isSettingActive, setIsSettingActive] = useState<boolean>(false);
+
+  // Reset manual override whenever selected year changes
+  useEffect(() => {
+    setManualPrimaryRound(null);
+  }, [selectedYearId]);
 
   // Form states for the two snapshot cards
   const [junForm, setJunForm] = useState<Partial<StudentCensusSnapshotRecord>>({});
@@ -154,26 +230,31 @@ export function SchoolAcademicManager({
   }, [censusSnapshots]);
 
   // Sync snapshot data to local form states when snapshots change
-  // If not locked and initial classrooms are 0 or empty, populate with tier grade count as default
   useEffect(() => {
     if (junSnapshot) {
       const { kGrades, pGrades, mGrades } = countGradesPerTier(offeredGrades);
       const isLocked = Boolean(junSnapshot.isLocked);
-      const initialK = junSnapshot.kindergartenClassrooms ?? 0;
-      const initialP = junSnapshot.primaryClassrooms ?? 0;
-      const initialS = junSnapshot.secondaryClassrooms ?? 0;
+      const snapK = junSnapshot.kindergartenClassrooms;
+      const snapP = junSnapshot.primaryClassrooms;
+      const snapS = junSnapshot.secondaryClassrooms;
 
       setJunForm({
         id: junSnapshot.id,
         kindergartenStudents: junSnapshot.kindergartenStudents ?? 0,
         kindergartenClassrooms:
-          !isLocked && (initialK === 0 || kGrades === 0) ? kGrades : initialK,
+          !isLocked && (snapK === undefined || snapK === null || (snapK === 0 && kGrades > 0))
+            ? kGrades
+            : (snapK ?? kGrades),
         primaryStudents: junSnapshot.primaryStudents ?? 0,
         primaryClassrooms:
-          !isLocked && (initialP === 0 || pGrades === 0) ? pGrades : initialP,
+          !isLocked && (snapP === undefined || snapP === null || (snapP === 0 && pGrades > 0))
+            ? pGrades
+            : (snapP ?? pGrades),
         secondaryStudents: junSnapshot.secondaryStudents ?? 0,
         secondaryClassrooms:
-          !isLocked && (initialS === 0 || mGrades === 0) ? mGrades : initialS,
+          !isLocked && (snapS === undefined || snapS === null || (snapS === 0 && mGrades > 0))
+            ? mGrades
+            : (snapS ?? mGrades),
       });
     } else {
       setJunForm({});
@@ -184,21 +265,27 @@ export function SchoolAcademicManager({
     if (novSnapshot) {
       const { kGrades, pGrades, mGrades } = countGradesPerTier(offeredGrades);
       const isLocked = Boolean(novSnapshot.isLocked);
-      const initialK = novSnapshot.kindergartenClassrooms ?? 0;
-      const initialP = novSnapshot.primaryClassrooms ?? 0;
-      const initialS = novSnapshot.secondaryClassrooms ?? 0;
+      const snapK = novSnapshot.kindergartenClassrooms;
+      const snapP = novSnapshot.primaryClassrooms;
+      const snapS = novSnapshot.secondaryClassrooms;
 
       setNovForm({
         id: novSnapshot.id,
         kindergartenStudents: novSnapshot.kindergartenStudents ?? 0,
         kindergartenClassrooms:
-          !isLocked && (initialK === 0 || kGrades === 0) ? kGrades : initialK,
+          !isLocked && (snapK === undefined || snapK === null || (snapK === 0 && kGrades > 0))
+            ? kGrades
+            : (snapK ?? kGrades),
         primaryStudents: novSnapshot.primaryStudents ?? 0,
         primaryClassrooms:
-          !isLocked && (initialP === 0 || pGrades === 0) ? pGrades : initialP,
+          !isLocked && (snapP === undefined || snapP === null || (snapP === 0 && pGrades > 0))
+            ? pGrades
+            : (snapP ?? pGrades),
         secondaryStudents: novSnapshot.secondaryStudents ?? 0,
         secondaryClassrooms:
-          !isLocked && (initialS === 0 || mGrades === 0) ? mGrades : initialS,
+          !isLocked && (snapS === undefined || snapS === null || (snapS === 0 && mGrades > 0))
+            ? mGrades
+            : (snapS ?? mGrades),
       });
     } else {
       setNovForm({});
@@ -215,23 +302,12 @@ export function SchoolAcademicManager({
     }
   }, [selectedYear]);
 
-  // Trigger parent onSyncSchoolInfo when active academic year or primary snapshot changes
-  useEffect(() => {
-    if (activeAcademicYear && primarySnapshot && onSyncSchoolInfo) {
-      onSyncSchoolInfo({
-        academicYear: String(activeAcademicYear.yearTh),
-        studentCount: primarySnapshot.totalStudents,
-        activeClasses: offeredGrades,
-      });
-    }
-  }, [activeAcademicYear, primarySnapshot, offeredGrades, onSyncSchoolInfo]);
-
   // Helper to format 1-line grades summary
   const gradesSummary = useMemo(() => {
     return formatOfferedGradesSummary(offeredGrades);
   }, [offeredGrades]);
 
-  // Toggle grade selection and auto-sync classrooms for unlocked rounds
+  // Toggle grade selection and auto-sync classrooms for both rounds
   const handleToggleGrade = (cls: string) => {
     let nextGrades: string[];
     if (offeredGrades.includes(cls)) {
@@ -245,25 +321,20 @@ export function SchoolAcademicManager({
 
     const { kGrades, pGrades, mGrades } = countGradesPerTier(nextGrades);
 
-    // Auto-update classrooms on June 10 card if not locked
-    if (!junSnapshot?.isLocked) {
-      setJunForm((prev) => ({
-        ...prev,
-        kindergartenClassrooms: kGrades,
-        primaryClassrooms: pGrades,
-        secondaryClassrooms: mGrades,
-      }));
-    }
+    // Auto-update classrooms on both June 10 and November 10 cards to keep academic year structure unified
+    setJunForm((prev) => ({
+      ...prev,
+      kindergartenClassrooms: kGrades,
+      primaryClassrooms: pGrades,
+      secondaryClassrooms: mGrades,
+    }));
 
-    // Auto-update classrooms on November 10 card if not locked
-    if (!novSnapshot?.isLocked) {
-      setNovForm((prev) => ({
-        ...prev,
-        kindergartenClassrooms: kGrades,
-        primaryClassrooms: pGrades,
-        secondaryClassrooms: mGrades,
-      }));
-    }
+    setNovForm((prev) => ({
+      ...prev,
+      kindergartenClassrooms: kGrades,
+      primaryClassrooms: pGrades,
+      secondaryClassrooms: mGrades,
+    }));
   };
 
   // Handle adding next academic year
@@ -389,6 +460,42 @@ export function SchoolAcademicManager({
     junCalc.totalStudents || 0
   );
 
+  // Auto-calculated primary round from official school calendar
+  const calendarAutoRound = useMemo(() => {
+    return getAutoPrimaryRoundByCalendar(currentYearTh);
+  }, [currentYearTh]);
+
+  // Effective primary round: User manual selection > Database explicit flag > Calendar automatic determination
+  const effectivePrimaryRound = useMemo<'JUN_10' | 'NOV_10'>(() => {
+    if (manualPrimaryRound) return manualPrimaryRound;
+    if (junSnapshot?.isPrimaryForManpower) return 'JUN_10';
+    if (novSnapshot?.isPrimaryForManpower) return 'NOV_10';
+    return calendarAutoRound;
+  }, [manualPrimaryRound, junSnapshot, novSnapshot, calendarAutoRound]);
+
+  // Trigger parent onSyncSchoolInfo when active academic year or effective primary snapshot changes
+  useEffect(() => {
+    if (activeAcademicYear && onSyncSchoolInfo) {
+      const effectiveSnapshot = effectivePrimaryRound === 'JUN_10' ? junSnapshot : novSnapshot;
+      const effectiveCalc = effectivePrimaryRound === 'JUN_10' ? junCalc : novCalc;
+      const studentCount = effectiveSnapshot?.totalStudents ?? effectiveCalc.totalStudents ?? 0;
+      onSyncSchoolInfo({
+        academicYear: String(activeAcademicYear.yearTh),
+        studentCount,
+        activeClasses: offeredGrades,
+      });
+    }
+  }, [
+    activeAcademicYear,
+    effectivePrimaryRound,
+    junSnapshot,
+    novSnapshot,
+    junCalc,
+    novCalc,
+    offeredGrades,
+    onSyncSchoolInfo,
+  ]);
+
   if (loading && academicYears.length === 0) {
     return (
       <div className="py-8 flex items-center justify-center gap-2 text-slate-400">
@@ -499,10 +606,10 @@ export function SchoolAcademicManager({
                     key={cls}
                     type="button"
                     onClick={() => handleToggleGrade(cls)}
-                    className={`py-2 px-2.5 rounded-lg border text-xs text-center font-medium transition-colors ${
+                    className={`py-2 px-2.5 rounded-lg border text-xs text-center font-medium transition-all ${
                       isOffered
-                        ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300'
-                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 text-slate-400 dark:text-slate-500 line-through opacity-60'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 text-emerald-800 dark:text-emerald-200 font-semibold shadow-xs ring-1 ring-emerald-400/30'
+                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 text-slate-400 dark:text-slate-500 line-through opacity-60 hover:opacity-80'
                     }`}
                   >
                     {cls}
@@ -531,11 +638,21 @@ export function SchoolAcademicManager({
                 <input
                   type="radio"
                   name="primary_round"
-                  checked={Boolean(junSnapshot?.isPrimaryForManpower)}
-                  onChange={() => handleSetPrimary(junSnapshot?.id)}
-                  className="w-3.5 h-3.5 text-sky-600 border-slate-300 dark:border-slate-600 focus:ring-0"
+                  checked={effectivePrimaryRound === 'JUN_10'}
+                  onChange={() => {
+                    setManualPrimaryRound('JUN_10');
+                    if (junSnapshot) handleSetPrimary(junSnapshot.id);
+                  }}
+                  className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500 border-slate-300 dark:border-slate-600 focus:ring-0"
                 />
-                <span>รอบหลัก</span>
+                <span className={effectivePrimaryRound === 'JUN_10' ? 'font-semibold text-slate-800 dark:text-slate-200' : ''}>
+                  รอบหลัก
+                </span>
+                {calendarAutoRound === 'JUN_10' && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    (ตามปฏิทิน)
+                  </span>
+                )}
               </label>
 
               <button
@@ -588,25 +705,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(junSnapshot?.isLocked)}
-                  value={junForm.kindergartenClassrooms ?? ''}
-                  onChange={(e) =>
-                    setJunForm({
-                      ...junForm,
-                      kindergartenClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(junForm.kindergartenClassrooms) || 0}
+                disabled={Boolean(junSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setJunForm((prev) => ({
+                    ...prev,
+                    kindergartenClassrooms: val,
+                  }))
+                }
+              />
             </div>
 
             {/* Primary */}
@@ -631,25 +739,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(junSnapshot?.isLocked)}
-                  value={junForm.primaryClassrooms ?? ''}
-                  onChange={(e) =>
-                    setJunForm({
-                      ...junForm,
-                      primaryClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(junForm.primaryClassrooms) || 0}
+                disabled={Boolean(junSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setJunForm((prev) => ({
+                    ...prev,
+                    primaryClassrooms: val,
+                  }))
+                }
+              />
             </div>
 
             {/* Secondary */}
@@ -674,25 +773,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(junSnapshot?.isLocked)}
-                  value={junForm.secondaryClassrooms ?? ''}
-                  onChange={(e) =>
-                    setJunForm({
-                      ...junForm,
-                      secondaryClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(junForm.secondaryClassrooms) || 0}
+                disabled={Boolean(junSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setJunForm((prev) => ({
+                    ...prev,
+                    secondaryClassrooms: val,
+                  }))
+                }
+              />
             </div>
           </div>
 
@@ -745,11 +835,21 @@ export function SchoolAcademicManager({
                 <input
                   type="radio"
                   name="primary_round"
-                  checked={Boolean(novSnapshot?.isPrimaryForManpower)}
-                  onChange={() => handleSetPrimary(novSnapshot?.id)}
-                  className="w-3.5 h-3.5 text-sky-600 border-slate-300 dark:border-slate-600 focus:ring-0"
+                  checked={effectivePrimaryRound === 'NOV_10'}
+                  onChange={() => {
+                    setManualPrimaryRound('NOV_10');
+                    if (novSnapshot) handleSetPrimary(novSnapshot.id);
+                  }}
+                  className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500 border-slate-300 dark:border-slate-600 focus:ring-0"
                 />
-                <span>รอบหลัก</span>
+                <span className={effectivePrimaryRound === 'NOV_10' ? 'font-semibold text-slate-800 dark:text-slate-200' : ''}>
+                  รอบหลัก
+                </span>
+                {calendarAutoRound === 'NOV_10' && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    (ตามปฏิทิน)
+                  </span>
+                )}
               </label>
 
               <button
@@ -802,25 +902,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(novSnapshot?.isLocked)}
-                  value={novForm.kindergartenClassrooms ?? ''}
-                  onChange={(e) =>
-                    setNovForm({
-                      ...novForm,
-                      kindergartenClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(novForm.kindergartenClassrooms) || 0}
+                disabled={Boolean(novSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setNovForm((prev) => ({
+                    ...prev,
+                    kindergartenClassrooms: val,
+                  }))
+                }
+              />
             </div>
 
             {/* Primary */}
@@ -845,25 +936,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(novSnapshot?.isLocked)}
-                  value={novForm.primaryClassrooms ?? ''}
-                  onChange={(e) =>
-                    setNovForm({
-                      ...novForm,
-                      primaryClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(novForm.primaryClassrooms) || 0}
+                disabled={Boolean(novSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setNovForm((prev) => ({
+                    ...prev,
+                    primaryClassrooms: val,
+                  }))
+                }
+              />
             </div>
 
             {/* Secondary */}
@@ -888,25 +970,16 @@ export function SchoolAcademicManager({
                   คน
                 </span>
               </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  disabled={Boolean(novSnapshot?.isLocked)}
-                  value={novForm.secondaryClassrooms ?? ''}
-                  onChange={(e) =>
-                    setNovForm({
-                      ...novForm,
-                      secondaryClassrooms: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
-                  ห้อง
-                </span>
-              </div>
+              <ClassroomStepper
+                value={Number(novForm.secondaryClassrooms) || 0}
+                disabled={Boolean(novSnapshot?.isLocked)}
+                onChange={(val) =>
+                  setNovForm((prev) => ({
+                    ...prev,
+                    secondaryClassrooms: val,
+                  }))
+                }
+              />
             </div>
           </div>
 

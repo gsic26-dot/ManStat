@@ -4,6 +4,7 @@ import {
   formatOfferedGradesSummary,
   countGradesPerTier,
   calculateLiveCensusDiff,
+  getAutoPrimaryRoundByCalendar,
 } from '../SchoolAcademicManager';
 
 describe('SchoolAcademicManager: Grade Ordering, Classroom Sync & Live Diff', () => {
@@ -137,6 +138,38 @@ describe('SchoolAcademicManager: Grade Ordering, Classroom Sync & Live Diff', ()
       assert.equal(calculateLiveCensusDiff(0, 0), 0);
       assert.equal(calculateLiveCensusDiff(10, 0), 10);
       assert.equal(calculateLiveCensusDiff(0, 10), -10);
+    });
+  });
+
+  describe('getAutoPrimaryRoundByCalendar (Automatic Primary Round Selection based on School Calendar)', () => {
+    it('returns JUN_10 when current date is in the first semester (before 10 November)', () => {
+      // 15 June 2026 for academic year 2569 (CE 2026)
+      const juneDate = new Date(2026, 5, 15); // Month 5 = June
+      assert.equal(getAutoPrimaryRoundByCalendar(2569, juneDate), 'JUN_10');
+
+      // 9 November 2026 (day before census)
+      const nov9Date = new Date(2026, 10, 9);
+      assert.equal(getAutoPrimaryRoundByCalendar(2569, nov9Date), 'JUN_10');
+    });
+
+    it('returns NOV_10 from 10 November onwards for the current academic year', () => {
+      // Exactly 10 November 2026
+      const nov10Date = new Date(2026, 10, 10, 8, 0, 0);
+      assert.equal(getAutoPrimaryRoundByCalendar(2569, nov10Date), 'NOV_10');
+
+      // Today in mid-November (21 November 2026)
+      const todayDate = new Date(2026, 10, 21);
+      assert.equal(getAutoPrimaryRoundByCalendar(2569, todayDate), 'NOV_10');
+
+      // Second semester in January 2027 (same academic year 2569)
+      const janDate = new Date(2027, 0, 15);
+      assert.equal(getAutoPrimaryRoundByCalendar(2569, janDate), 'NOV_10');
+    });
+
+    it('correctly defaults to JUN_10 for upcoming future academic year (e.g. 2570 / CE 2027)', () => {
+      // Tested from current date 21 Nov 2026 against future year 2570 (CE 2027)
+      const currentDate = new Date(2026, 10, 21);
+      assert.equal(getAutoPrimaryRoundByCalendar(2570, currentDate), 'JUN_10');
     });
   });
 });
