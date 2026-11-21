@@ -16,7 +16,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Award,
   Calendar,
-  Search,
   Medal,
   LayoutList,
   LayoutGrid,
@@ -30,7 +29,6 @@ import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-so
 
 export const ViewRegStanding: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -53,47 +51,29 @@ export const ViewRegStanding: React.FC = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const filteredTeachers = useMemo(() => {
-    return teachersList.filter((t) => {
-      const q = searchTerm.toLowerCase();
-      const matchName = t.name.toLowerCase().includes(q);
-      const matchStanding = (t.academicStanding || '').toLowerCase().includes(q);
-      const matchPosition = t.position.toLowerCase().includes(q);
-      const matchDept = t.department.toLowerCase().includes(q);
-      return matchName || matchStanding || matchPosition || matchDept;
-    });
-  }, [teachersList, searchTerm]);
-
   const groupedTeachers = useMemo(() => {
-    return groupAndSortTeachers(filteredTeachers);
-  }, [filteredTeachers]);
+    return groupAndSortTeachers(teachersList);
+  }, [teachersList]);
+
+  const sortedTeachers = useMemo(() => {
+    return groupedTeachers.flatMap((g) => g.members);
+  }, [groupedTeachers]);
 
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
+      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
             <span>ทะเบียนวิทยฐานะ</span>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap">
             ข้อมูลวิทยฐานะและคำสั่งแต่งตั้งตาม พ.ร.บ. ระเบียบข้าราชการครูและบุคลากรทางการศึกษา พ.ศ. 2547
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ค้นหาชื่อ หรือวิทยฐานะ..."
-              className="h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500 w-52 sm:w-64 transition-all"
-            />
-          </div>
-
+        <div className="flex items-center shrink-0">
           <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
             <button
               type="button"
@@ -294,7 +274,7 @@ export const ViewRegStanding: React.FC = () => {
       ) : (
         /* Grid of Standings */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTeachers.map((teacher) => {
+          {sortedTeachers.map((teacher) => {
             const isSupport = getStaffBranch(teacher) === 'support';
             const hasStanding =
               !isSupport &&

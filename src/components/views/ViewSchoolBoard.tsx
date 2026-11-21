@@ -22,7 +22,6 @@ import {
   Briefcase,
   LayoutList,
   LayoutGrid,
-  Search,
   Award,
   ChevronRight,
   ChevronDown,
@@ -73,7 +72,6 @@ export const ViewSchoolBoard: React.FC = () => {
     INITIAL_BOARD_MEMBERS.map(normalizeMember)
   );
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,51 +98,28 @@ export const ViewSchoolBoard: React.FC = () => {
 
   // Sort strictly by statutory hierarchy
   const sortedMembers = useMemo(() => {
-    return [...boardList]
-      .sort((a, b) => {
-        const orderA = BOARD_STATUTORY_ORDER[a.position] ?? 99;
-        const orderB = BOARD_STATUTORY_ORDER[b.position] ?? 99;
-        return orderA - orderB;
-      })
-      .filter((m) => {
-        if (!searchTerm.trim()) return true;
-        const q = searchTerm.toLowerCase();
-        return (
-          m.fullName.toLowerCase().includes(q) ||
-          m.positionTitle.toLowerCase().includes(q) ||
-          m.organization.toLowerCase().includes(q) ||
-          m.occupation.toLowerCase().includes(q)
-        );
-      });
-  }, [boardList, searchTerm]);
+    return [...boardList].sort((a, b) => {
+      const orderA = BOARD_STATUTORY_ORDER[a.position] ?? 99;
+      const orderB = BOARD_STATUTORY_ORDER[b.position] ?? 99;
+      return orderA - orderB;
+    });
+  }, [boardList]);
 
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
+      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Shield className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
             <span>คณะกรรมการสถานศึกษาขั้นพื้นฐาน</span>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap">
             โรงเรียนชุมชนบ้านตะขบ สพป.นครราชสีมา เขต 3 · เรียงลำดับตามกฎกระทรวง พ.ศ. 2546
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ค้นหาชื่อ, ตำแหน่ง, องค์กร..."
-              className="h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 w-52 sm:w-64 transition-all"
-            />
-          </div>
-
+        <div className="flex items-center shrink-0">
           {/* View Switcher */}
           <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
             <button
@@ -157,7 +132,7 @@ export const ViewSchoolBoard: React.FC = () => {
               }`}
             >
               <LayoutList className="w-4 h-4 shrink-0" />
-              <span>แถวตาราง</span>
+              <span>ตาราง</span>
             </button>
             <button
               type="button"

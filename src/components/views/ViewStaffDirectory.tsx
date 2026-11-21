@@ -17,7 +17,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
-  Search,
   GraduationCap,
   Calendar,
   Phone,
@@ -43,15 +42,18 @@ import {
 
 const getShortDeptName = (dept: string): string => {
   if (dept === 'ALL') return 'ทั้งหมด';
+  if (dept.includes('บริหาร') || dept.includes('สนับสนุน')) return 'บริหารฯ';
+  if (dept.includes('สังคม')) return 'สังคมฯ';
+  if (dept.includes('วิทยาศาสตร์') || dept.includes('วิทย์')) return 'วิทย์ฯ';
+  if (dept.includes('คณิต')) return 'คณิตฯ';
+  if (dept.includes('ปฐมวัย')) return 'ปฐมวัย';
+  if (dept.includes('ต่างประเทศ')) return 'ต่างประเทศ';
+  if (dept.includes('ไทย')) return 'ภาษาไทย';
+  if (dept.includes('ศิลปะ')) return 'ศิลปะ';
+  if (dept.includes('สุข')) return 'สุขศึกษาฯ';
   return dept
     .replace(/^กลุ่มสาระการเรียนรู้/, '')
     .replace(/^กลุ่มสาระฯ\s*/, '')
-    .replace('วิทยาศาสตร์และเทคโนโลยี', 'วิทย์ฯ-เทคโนฯ')
-    .replace('สังคมศึกษา ศาสนา และวัฒนธรรม', 'สังคมศึกษาฯ')
-    .replace('สุขศึกษาและพลศึกษา', 'สุขศึกษาฯ')
-    .replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหาร/สนับสนุน')
-    .replace('การศึกษาปฐมวัย', 'ปฐมวัย')
-    .replace('ภาษาต่างประเทศ', 'ต่างประเทศ')
     .trim();
 };
 
@@ -63,7 +65,6 @@ export const ViewStaffDirectory: React.FC = () => {
   const cellPy = isCompact ? 'py-2' : 'py-3.5';
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
@@ -97,18 +98,9 @@ export const ViewStaffDirectory: React.FC = () => {
   }, [teachersList]);
 
   const filteredTeachers = useMemo(() => {
-    return teachersList.filter((t) => {
-      const matchSearch =
-        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.department.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchDept = selectedDept === 'ALL' || t.department === selectedDept;
-
-      return matchSearch && matchDept;
-    });
-  }, [teachersList, searchTerm, selectedDept]);
+    if (selectedDept === 'ALL') return teachersList;
+    return teachersList.filter((t) => t.department === selectedDept);
+  }, [teachersList, selectedDept]);
 
   const groupedTeachers = useMemo(() => {
     return groupAndSortTeachers(filteredTeachers);
@@ -118,7 +110,7 @@ export const ViewStaffDirectory: React.FC = () => {
     <div className="space-y-6">
       {/* View Header & Controls */}
       <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm transition-colors duration-200">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
@@ -129,19 +121,8 @@ export const ViewStaffDirectory: React.FC = () => {
             </p>
           </div>
 
-          {/* Search & View Switcher */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ค้นหาชื่อ, ตำแหน่ง, รหัส..."
-                className="h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 w-56 sm:w-64 transition-all"
-              />
-            </div>
-
+          {/* View Switcher */}
+          <div className="flex items-center shrink-0">
             <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
               <button
                 type="button"
@@ -151,7 +132,7 @@ export const ViewStaffDirectory: React.FC = () => {
                     ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
                 }`}
-                title="มุมมองตารางแนวยาว อ่านง่าย"
+                title="มุมมองตาราง"
               >
                 <LayoutList className="w-4 h-4 shrink-0" />
                 <span>ตาราง</span>
@@ -173,7 +154,7 @@ export const ViewStaffDirectory: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Filter Segmented Pills for Department - Flex Wrap & Clean */}
+        {/* Quick Filter Segmented Pills for Department - Uniform Grid */}
         <div className="pt-2 border-t border-slate-200/90 dark:border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
@@ -184,56 +165,58 @@ export const ViewStaffDirectory: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl">
-            {/* ปุ่มทั้งหมด */}
-            <button
-              type="button"
-              onClick={() => setSelectedDept('ALL')}
-              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                selectedDept === 'ALL'
-                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-              }`}
-              title="ทั้งหมด"
-            >
-              <span>ทั้งหมด</span>
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                selectedDept === 'ALL'
-                  ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
-                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-              }`}>
-                {teachersList.length}
-              </span>
-            </button>
+          <div className="p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl">
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 w-full">
+              {/* ปุ่มทั้งหมด */}
+              <button
+                type="button"
+                onClick={() => setSelectedDept('ALL')}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                  selectedDept === 'ALL'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+                }`}
+                title="บุคลากรทั้งหมด"
+              >
+                <span>ทั้งหมด</span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                  selectedDept === 'ALL'
+                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                    : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                }`}>
+                  {teachersList.length}
+                </span>
+              </button>
 
-            {/* ปุ่มแต่ละกลุ่มสาระ */}
-            {departments.map((dept) => {
-              const count = teachersList.filter((t) => t.department === dept).length;
-              const isSelected = selectedDept === dept;
-              const shortName = getShortDeptName(dept);
-              return (
-                <button
-                  key={dept}
-                  type="button"
-                  onClick={() => setSelectedDept(dept)}
-                  className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                    isSelected
-                      ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                  }`}
-                  title={dept}
-                >
-                  <span className="whitespace-nowrap">{shortName}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                    isSelected
-                      ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
-                      : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+              {/* ปุ่มแต่ละกลุ่มสาระ */}
+              {departments.map((dept) => {
+                const count = teachersList.filter((t) => t.department === dept).length;
+                const isSelected = selectedDept === dept;
+                const shortName = getShortDeptName(dept);
+                return (
+                  <button
+                    key={dept}
+                    type="button"
+                    onClick={() => setSelectedDept(dept)}
+                    className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+                    }`}
+                    title={dept}
+                  >
+                    <span>{shortName}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                      isSelected
+                        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                        : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
