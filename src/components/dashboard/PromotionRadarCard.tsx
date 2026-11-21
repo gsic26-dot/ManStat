@@ -49,7 +49,7 @@ export const PromotionRadarCard: React.FC<PromotionRadarCardProps> = ({
 
       <div className="space-y-2.5 text-xs">
         <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800/60">
-          <span className="text-slate-600 dark:text-slate-400">จำนวนครั้งที่ลา (เกณฑ์ ≤ 6 ครั้ง)</span>
+          <span className="text-slate-600 dark:text-slate-400">จำนวนครั้งที่ลา</span>
           <span
             className={`font-mono font-semibold tabular-nums ${
               leaveCount > maxOccurrences ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
@@ -60,7 +60,7 @@ export const PromotionRadarCard: React.FC<PromotionRadarCardProps> = ({
         </div>
 
         <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800/60">
-          <span className="text-slate-600 dark:text-slate-400">วันลาป่วย-กิจรวม (เกณฑ์ ≤ 23 วัน)</span>
+          <span className="text-slate-600 dark:text-slate-400">วันลาป่วยและลากิจรวม</span>
           <span
             className={`font-mono font-semibold tabular-nums ${
               sickPersonalDays > maxDays ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'

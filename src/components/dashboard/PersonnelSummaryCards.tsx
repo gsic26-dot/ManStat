@@ -7,6 +7,7 @@
  * - Sleek 4-column horizontal strip
  * - Single border-slate-800/80 container, crisp font-mono tabular-nums
  * - Displays authentic real-time data with contextual subtitles
+ * - Displays "วันหยุดราชการ" when current date is weekend or official holiday
  * - Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
  */
@@ -15,11 +16,13 @@ import React from 'react';
 
 export interface PersonnelSummaryStats {
   totalStaff: number;
-  onDutyCount: number;
+  onDutyCount: number | string;
   onLeaveCount: number;
   expiringOrRetiringCount: number;
   onLeaveDetail?: string;
   retiringDetail?: string;
+  isHoliday?: boolean;
+  holidayName?: string;
 }
 
 interface PersonnelSummaryCardsProps {
@@ -36,6 +39,8 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
   },
   isLoading = false,
 }) => {
+  const isHoliday = Boolean(stats.isHoliday);
+
   const items = [
     {
       label: 'บุคลากรทั้งหมด',
@@ -46,10 +51,12 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
     },
     {
       label: 'ปฏิบัติหน้าที่วันนี้',
-      value: stats.onDutyCount,
-      unit: 'คน',
-      dotColor: 'bg-emerald-500',
-      subtext: stats.onDutyCount === stats.totalStaff ? 'มาปฏิบัติหน้าที่ครบทุกคน' : 'พร้อมปฏิบัติหน้าที่ในสถานศึกษา',
+      value: isHoliday ? 'วันหยุดราชการ' : stats.onDutyCount,
+      unit: isHoliday ? '' : 'คน',
+      dotColor: isHoliday ? 'bg-slate-400' : 'bg-emerald-500',
+      subtext: isHoliday
+        ? (stats.holidayName || 'วันหยุดประจำสัปดาห์')
+        : (stats.onDutyCount === stats.totalStaff ? 'มาปฏิบัติหน้าที่ครบทุกคน' : 'พร้อมปฏิบัติหน้าที่ในสถานศึกษา'),
     },
     {
       label: 'อยู่ระหว่างการลา',
@@ -85,11 +92,19 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
               {isLoading ? (
                 <div className="h-8 w-14 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
               ) : (
-                <span className="text-2xl font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                <span
+                  className={`${
+                    typeof item.value === 'string' && item.value.length > 5
+                      ? 'text-lg sm:text-xl font-bold tracking-tight'
+                      : 'text-2xl font-mono font-bold tabular-nums'
+                  } text-slate-900 dark:text-white`}
+                >
                   {item.value}
                 </span>
               )}
-              <span className="text-xs text-slate-400 dark:text-slate-500">{item.unit}</span>
+              {item.unit && (
+                <span className="text-xs text-slate-400 dark:text-slate-500">{item.unit}</span>
+              )}
             </div>
             {item.subtext && (
               <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-1" title={item.subtext}>

@@ -67,8 +67,18 @@ import { PersonnelSummaryCards } from '@/components/dashboard/PersonnelSummaryCa
 import { LeaveProgressRings } from '@/components/dashboard/LeaveProgressRings';
 import { PromotionRadarCard } from '@/components/dashboard/PromotionRadarCard';
 import { PendingApprovalQueue } from '@/components/dashboard/PendingApprovalQueue';
+import { MyRecentLeaveRequests } from '@/components/dashboard/MyRecentLeaveRequests';
 import { useLeaveRealtime } from '@/hooks/useLeaveRealtime';
 import { isZeroDayLeaveType } from '@/lib/regulations/leaveTypes';
+import type { HolidayRecord } from '@/lib/db/serverDb';
+import {
+  resolveDashboardUser,
+  isWeekendOrHoliday,
+  calculateDutyMetric,
+  calculateUserRoundLeaveStats,
+  calculateUserFiscalLeaveQuota,
+  getUserRecentLeaveRequests,
+} from '@/lib/regulations/dashboard-helpers';
 
 // View Components
 import { ViewPersonnelHub } from '@/components/views/ViewPersonnelHub';
@@ -153,6 +163,7 @@ export default function DashboardPage() {
   const [staffList, setStaffList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>([]);
+  const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
 
   const loadLeaveList = useCallback(() => {
     fetch('/api/admin/leave', { cache: 'no-store' })
@@ -181,6 +192,15 @@ export default function DashboardPage() {
       .then((res) => {
         if (res.success && res.data && isMounted) {
           setSchoolInfo(res.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/holidays', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setHolidays(res.data);
         }
       })
       .catch(() => {});
@@ -235,6 +255,29 @@ export default function DashboardPage() {
     retiringCount > 0
       ? staffRetiringThisYear.map((s) => s.name).join(', ')
       : `ปีงบฯ ${fiscalYearBE} ไม่มีผู้เกษียณ`;
+
+  // 3. User resolution and regulatory calculations
+  const activeUserIdentity = resolveDashboardUser(currentUser, staffList, fiscalYearBE);
+  const holidayStatus = isWeekendOrHoliday(now, holidays);
+  const dutyMetric = calculateDutyMetric(staffList.length, onLeaveCount, holidayStatus);
+
+  // 4. Per-user scoped leave calculations (Round & Quota)
+  const userRoundStats = calculateUserRoundLeaveStats(
+    leaveList,
+    activeUserIdentity,
+    fiscalYearBE,
+    currentRound
+  );
+
+  const userQuota = calculateUserFiscalLeaveQuota(
+    leaveList,
+    activeUserIdentity,
+    fiscalYearBE,
+    activeUserIdentity.isFirstYearAppointee,
+    activeUserIdentity.isEligibleForVacation
+  );
+
+  const myRecentLeaves = getUserRecentLeaveRequests(leaveList, activeUserIdentity, 5);
 
   const handleSelectView = (view: ActiveView) => {
     setActiveView(view);
@@ -836,13 +879,18 @@ export default function DashboardPage() {
             <div className="space-y-6">
               {/* 1. Compact Executive Header Bar */}
               <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800/80">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
-                    ภาพรวมการบริหารงานบุคคล
-                  </h1>
-                  <span className="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:border-slate-800/80 rounded-md whitespace-nowrap">
-                    โรงเรียนชุมชนบ้านตะขบ · สพป.นม. 3
-                  </span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
+                      ภาพรวมการบริหารงานบุคคล
+                    </h1>
+                    <span className="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:border-slate-800/80 rounded-md whitespace-nowrap">
+                      โรงเรียนชุมชนบ้านตะขบ · สพป.นม. 3
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    ยินดีต้อนรับ, <span className="font-medium text-slate-800 dark:text-slate-200">{activeUserIdentity.name}</span> · {activeUserIdentity.position}
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
@@ -851,7 +899,7 @@ export default function DashboardPage() {
                     <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300 inline-block whitespace-nowrap shrink-0">{currentDateThai}</span>
                     <span className="text-slate-300 dark:text-slate-600 select-none shrink-0">|</span>
                     <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400 font-medium inline-block whitespace-nowrap shrink-0">
-                      ปีงบฯ {fiscalYearBE} (รอบที่ {currentRound})
+                      ปีงบฯ {fiscalYearBE} · รอบที่ {currentRound}
                     </span>
                   </div>
 
@@ -871,53 +919,63 @@ export default function DashboardPage() {
                 <PersonnelSummaryCards
                   stats={{
                     totalStaff: staffList.length,
-                    onDutyCount,
+                    onDutyCount: dutyMetric.value,
                     onLeaveCount,
                     expiringOrRetiringCount: retiringCount,
                     onLeaveDetail,
                     retiringDetail,
+                    isHoliday: holidayStatus.isHoliday,
+                    holidayName: holidayStatus.reason,
                   }}
                 />
               </section>
 
               {/* 3. Asymmetric Action-First Grid (8 Columns : 4 Columns) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Left Primary Column (8 Cols): คิวคำขอรออนุมัติ (Actionable Inbox) */}
+                {/* Left Primary Column (8 Cols): คิวคำขอรออนุมัติ (Approver) หรือ คำขอลาล่าสุดของฉัน (Teacher) */}
                 <div className="lg:col-span-8">
-                  {isAdminRole(currentRole) ? (
+                  {activeUserIdentity.isApprover ? (
                     <PendingApprovalQueue
                       requests={leaveList}
-                      currentUserId="director-001"
+                      currentUserId={activeUserIdentity.id}
                       onActionComplete={loadLeaveList}
                       onViewAllHistory={() => handleSelectView('tracking_requests')}
                     />
                   ) : (
-                    <div className="bg-white dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800/80 rounded-xl p-8 text-center shadow-sm">
-                      <ShieldCheck className="w-10 h-10 text-sky-500 dark:text-sky-400 mx-auto mb-2 opacity-80" />
-                      <h4 className="text-base font-semibold text-slate-900 dark:text-white">มุมมองบุคลากรทั่วไป (ครูผู้สอน)</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                        เข้าถึงคิวการอนุมัติคำขอลาสำหรับผู้บริหารและเจ้าหน้าที่บุคคล โปรดตรวจสอบสิทธิการเข้าถึงของท่าน
-                      </p>
-                    </div>
+                    <MyRecentLeaveRequests
+                      requests={myRecentLeaves}
+                      onNewLeaveRequest={() => handleSelectView('leave')}
+                      onViewAllHistory={() => handleSelectView('tracking_requests')}
+                    />
                   )}
                 </div>
 
                 {/* Right Secondary Column (4 Cols): สิทธิวันลา & เรดาร์ ว15/2561 */}
                 <aside className="lg:col-span-4 space-y-6">
+                  {/* Subtle 1-line Owner Identification */}
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 px-1">
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">ข้อมูลของ {activeUserIdentity.name}</span>
+                  </div>
+
                   <LeaveProgressRings
-                    sickLeaveUsed={0}
-                    sickLeaveMax={60}
-                    personalLeaveUsed={0}
-                    personalLeaveMax={45}
-                    isFirstYear={false}
+                    fiscalYear={fiscalYearBE}
+                    sickLeaveUsed={userQuota.sickLeaveUsed}
+                    sickLeaveMax={userQuota.sickLeaveMax}
+                    personalLeaveUsed={userQuota.personalLeaveUsed}
+                    personalLeaveMax={userQuota.personalLeaveMax}
+                    vacationLeaveUsed={userQuota.vacationLeaveUsed}
+                    vacationLeaveMax={userQuota.vacationLeaveMax}
+                    hasVacation={userQuota.hasVacation}
+                    isFirstYear={activeUserIdentity.isFirstYearAppointee}
                   />
 
                   <PromotionRadarCard
                     fiscalYear={fiscalYearBE}
-                    evalRound={1}
-                    leaveCount={0}
-                    sickPersonalDays={0}
-                    isEligible={true}
+                    evalRound={currentRound}
+                    leaveCount={userRoundStats.leaveCount}
+                    sickPersonalDays={userRoundStats.sickPersonalDays}
+                    isEligible={userRoundStats.isEligible}
                   />
                 </aside>
               </div>
