@@ -625,3 +625,100 @@ export async function getSchoolInfoCurrent(
   }
   return data;
 }
+
+// ----------------------------------------------------------------------------
+// 9.5 Salary Promotion Records (Snapshot Per Period)
+// ----------------------------------------------------------------------------
+
+export async function getSalaryPromotionRecords(
+  supabase: TypedSupabaseClient,
+  fiscalPeriodId: string
+): Promise<SalaryPromotionRecord[]> {
+  const { data, error } = await supabase
+    .from('salary_promotion_records')
+    .select('*')
+    .eq('fiscal_period_id', fiscalPeriodId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[getSalaryPromotionRecords Error]', error.message);
+    throw new Error(`Failed to load salary promotion records: ${error.message}`);
+  }
+  return data || [];
+}
+
+export async function saveSalaryPromotionRecord(
+  supabase: TypedSupabaseClient,
+  record: any
+): Promise<SalaryPromotionRecord> {
+  const fiscalPeriodId = record.fiscal_period_id || record.fiscalPeriodId || '';
+  const staffId = record.staff_id || record.staffId || '';
+
+  // Check if target fiscal period is locked
+  const { data: period, error: periodErr } = await supabase
+    .from('fiscal_periods')
+    .select('is_locked')
+    .eq('id', fiscalPeriodId)
+    .single();
+
+  if (!periodErr && period?.is_locked) {
+    throw new Error('รอบปีงบประมาณนี้ถูกล็อกแล้ว ไม่สามารถแก้ไขข้อมูลการเลื่อนเงินเดือนได้');
+  }
+
+  const payload: any = {
+    fiscal_period_id: fiscalPeriodId,
+    staff_id: staffId,
+    position_snapshot: record.position_snapshot || record.positionSnapshot || '',
+    standing_snapshot: record.standing_snapshot || record.standingSnapshot || '-',
+    salary_before: Number(record.salary_before ?? record.salaryBefore ?? 0),
+    calculation_base: Number(record.calculation_base ?? record.calculationBase ?? 0),
+    promotion_percent: Number(record.promotion_percent ?? record.promotionPercent ?? 0),
+    salary_after: Number(record.salary_after ?? record.salaryAfter ?? 0),
+    order_no: record.order_no ?? record.orderNo ?? '',
+    order_date: record.order_date ?? record.orderDate ?? null,
+    notes: record.notes ?? '',
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('salary_promotion_records')
+    .upsert(payload, { onConflict: 'fiscal_period_id,staff_id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[saveSalaryPromotionRecord Error]', error.message);
+    throw new Error(`Failed to save salary promotion record: ${error.message}`);
+  }
+  return data;
+}
+
+export async function snapshotStaffForFiscalPeriod(
+  supabase: TypedSupabaseClient,
+  fiscalPeriodId: string,
+  staffList: Array<{ id: string; position?: string; academicStanding?: string }>
+): Promise<SalaryPromotionRecord[]> {
+  const rows = staffList.map((s) => ({
+    fiscal_period_id: fiscalPeriodId,
+    staff_id: s.id,
+    position_snapshot: s.position || 'ครูผู้สอน',
+    standing_snapshot: s.academicStanding || '-',
+    salary_before: 0,
+    calculation_base: 0,
+    promotion_percent: 0,
+    salary_after: 0,
+    order_no: '',
+    notes: '',
+  }));
+
+  const { data, error } = await supabase
+    .from('salary_promotion_records')
+    .upsert(rows, { onConflict: 'fiscal_period_id,staff_id' })
+    .select();
+
+  if (error) {
+    console.error('[snapshotStaffForFiscalPeriod Error]', error.message);
+    throw new Error(`Failed to snapshot staff for fiscal period: ${error.message}`);
+  }
+  return data || [];
+}

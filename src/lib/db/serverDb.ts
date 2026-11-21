@@ -2256,3 +2256,285 @@ export async function dbSaveCensusSnapshot(
   return snapshot;
 }
 
+export async function dbCreateFiscalPeriod(
+  period: Partial<FiscalPeriodRecord> & { schoolId: string; fiscalYearTh: number; roundNo: 1 | 2 }
+): Promise<FiscalPeriodRecord> {
+  const evalStart =
+    period.evalStart ||
+    (period.roundNo === 1
+      ? `${period.fiscalYearTh - 1 - 543}-10-01`
+      : `${period.fiscalYearTh - 543}-04-01`);
+  const evalEnd =
+    period.evalEnd ||
+    (period.roundNo === 1
+      ? `${period.fiscalYearTh - 543}-03-31`
+      : `${period.fiscalYearTh - 543}-09-30`);
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('fiscal_periods')
+      .insert({
+        school_id: period.schoolId,
+        fiscal_year_th: period.fiscalYearTh,
+        round_no: period.roundNo,
+        eval_start: evalStart,
+        eval_end: evalEnd,
+        ref_census_snapshot_id: period.refCensusSnapshotId || null,
+        is_active: false,
+        is_locked: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbCreateFiscalPeriod] Supabase insert error:', error);
+      throw new Error(`ไม่สามารถสร้างรอบปีงบประมาณได้: ${error.message}`);
+    }
+    return {
+      id: data.id,
+      schoolId: data.school_id,
+      fiscalYearTh: data.fiscal_year_th,
+      roundNo: data.round_no,
+      evalStart: data.eval_start,
+      evalEnd: data.eval_end,
+      refCensusSnapshotId: data.ref_census_snapshot_id,
+      isActive: Boolean(data.is_active),
+      isLocked: Boolean(data.is_locked),
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const newPeriod: FiscalPeriodRecord = {
+    id: `fp-${period.fiscalYearTh}-r${period.roundNo}-${Date.now().toString().slice(-4)}`,
+    schoolId: period.schoolId,
+    fiscalYearTh: period.fiscalYearTh,
+    roundNo: period.roundNo,
+    evalStart,
+    evalEnd,
+    refCensusSnapshotId: period.refCensusSnapshotId || null,
+    isActive: false,
+    isLocked: false,
+  };
+  if (!db.fiscalPeriods) db.fiscalPeriods = [];
+  db.fiscalPeriods.push(newPeriod);
+  saveDatabase(db);
+  return newPeriod;
+}
+
+export async function dbUpdateFiscalPeriod(
+  periodId: string,
+  updates: Partial<FiscalPeriodRecord>
+): Promise<FiscalPeriodRecord> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbUpdate: any = { updated_at: new Date().toISOString() };
+    if (updates.refCensusSnapshotId !== undefined) {
+      dbUpdate.ref_census_snapshot_id = updates.refCensusSnapshotId;
+    }
+    if (updates.isLocked !== undefined) {
+      dbUpdate.is_locked = updates.isLocked;
+    }
+
+    const { data, error } = await supabase
+      .from('fiscal_periods')
+      .update(dbUpdate)
+      .eq('id', periodId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbUpdateFiscalPeriod] Supabase update error:', error);
+      throw new Error(`ไม่สามารถอัปเดตรอบปีงบประมาณได้: ${error.message}`);
+    }
+    return {
+      id: data.id,
+      schoolId: data.school_id,
+      fiscalYearTh: data.fiscal_year_th,
+      roundNo: data.round_no,
+      evalStart: data.eval_start,
+      evalEnd: data.eval_end,
+      refCensusSnapshotId: data.ref_census_snapshot_id,
+      isActive: Boolean(data.is_active),
+      isLocked: Boolean(data.is_locked),
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (db.fiscalPeriods) {
+    const idx = db.fiscalPeriods.findIndex((p) => p.id === periodId);
+    if (idx >= 0) {
+      db.fiscalPeriods[idx] = {
+        ...db.fiscalPeriods[idx],
+        ...updates,
+      };
+      saveDatabase(db);
+      return db.fiscalPeriods[idx];
+    }
+  }
+  return { id: periodId, ...updates } as FiscalPeriodRecord;
+}
+
+export async function dbGetSalaryPromotionRecords(
+  fiscalPeriodId: string
+): Promise<SalaryPromotionRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('salary_promotion_records')
+      .select('*')
+      .eq('fiscal_period_id', fiscalPeriodId)
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+      return data.map((r: any) => ({
+        id: r.id,
+        fiscalPeriodId: r.fiscal_period_id,
+        staffId: r.staff_id,
+        positionSnapshot: r.position_snapshot,
+        standingSnapshot: r.standing_snapshot,
+        salaryBefore: Number(r.salary_before),
+        calculationBase: Number(r.calculation_base),
+        promotionPercent: Number(r.promotion_percent),
+        salaryAfter: Number(r.salary_after),
+        orderNo: r.order_no || '',
+        orderDate: r.order_date || null,
+        notes: r.notes || '',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    }
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const records = db.salaryPromotionRecords || [];
+  return records.filter((r) => r.fiscalPeriodId === fiscalPeriodId);
+}
+
+export async function dbSaveSalaryPromotionRecord(
+  record: Partial<SalaryPromotionRecord> & { fiscalPeriodId: string; staffId: string }
+): Promise<SalaryPromotionRecord> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+
+    // Check if target fiscal period is locked
+    const { data: period } = await supabase
+      .from('fiscal_periods')
+      .select('is_locked')
+      .eq('id', record.fiscalPeriodId)
+      .single();
+
+    if (period?.is_locked) {
+      throw new Error('รอบปีงบประมาณนี้ถูกล็อกแล้ว ไม่สามารถแก้ไขข้อมูลการเลื่อนเงินเดือนได้');
+    }
+
+    const payload: any = {
+      fiscal_period_id: record.fiscalPeriodId,
+      staff_id: record.staffId,
+      position_snapshot: record.positionSnapshot || '',
+      standing_snapshot: record.standingSnapshot || '-',
+      salary_before: Number(record.salaryBefore ?? 0),
+      calculation_base: Number(record.calculationBase ?? 0),
+      promotion_percent: Number(record.promotionPercent ?? 0),
+      salary_after: Number(record.salaryAfter ?? 0),
+      order_no: record.orderNo || '',
+      order_date: record.orderDate || null,
+      notes: record.notes || '',
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('salary_promotion_records')
+      .upsert(payload, { onConflict: 'fiscal_period_id,staff_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[dbSaveSalaryPromotionRecord] Supabase upsert error:', error);
+      throw new Error(`ไม่สามารถบันทึกข้อมูลการเลื่อนเงินเดือนได้: ${error.message}`);
+    }
+    return {
+      id: data.id,
+      fiscalPeriodId: data.fiscal_period_id,
+      staffId: data.staff_id,
+      positionSnapshot: data.position_snapshot,
+      standingSnapshot: data.standing_snapshot,
+      salaryBefore: Number(data.salary_before),
+      calculationBase: Number(data.calculation_base),
+      promotionPercent: Number(data.promotion_percent),
+      salaryAfter: Number(data.salary_after),
+      orderNo: data.order_no || '',
+      orderDate: data.order_date || null,
+      notes: data.notes || '',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  if (!db.salaryPromotionRecords) db.salaryPromotionRecords = [];
+
+  const existingIdx = db.salaryPromotionRecords.findIndex(
+    (r) => r.fiscalPeriodId === record.fiscalPeriodId && r.staffId === record.staffId
+  );
+
+  const fullRecord: SalaryPromotionRecord = {
+    id: record.id || `spr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    fiscalPeriodId: record.fiscalPeriodId,
+    staffId: record.staffId,
+    positionSnapshot: record.positionSnapshot || '',
+    standingSnapshot: record.standingSnapshot || '-',
+    salaryBefore: Number(record.salaryBefore ?? 0),
+    calculationBase: Number(record.calculationBase ?? 0),
+    promotionPercent: Number(record.promotionPercent ?? 0),
+    salaryAfter: Number(record.salaryAfter ?? 0),
+    orderNo: record.orderNo || '',
+    orderDate: record.orderDate || null,
+    notes: record.notes || '',
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    db.salaryPromotionRecords[existingIdx] = fullRecord;
+  } else {
+    db.salaryPromotionRecords.push(fullRecord);
+  }
+  saveDatabase(db);
+  return fullRecord;
+}
+
+export async function dbSnapshotStaffForFiscalPeriod(
+  fiscalPeriodId: string,
+  staffList: TeacherRecord[]
+): Promise<SalaryPromotionRecord[]> {
+  const records: SalaryPromotionRecord[] = [];
+  for (const staff of staffList) {
+    const record = await dbSaveSalaryPromotionRecord({
+      fiscalPeriodId,
+      staffId: staff.id,
+      positionSnapshot: staff.position || 'ครูผู้สอน',
+      standingSnapshot: staff.academicStanding || '-',
+      salaryBefore: 0,
+      calculationBase: 0,
+      promotionPercent: 0,
+      salaryAfter: 0,
+      orderNo: '',
+      notes: '',
+    });
+    records.push(record);
+  }
+  return records;
+}
+

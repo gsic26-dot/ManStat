@@ -54,6 +54,7 @@ import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
 import { SchoolAcademicManager } from '@/components/admin/SchoolAcademicManager';
+import { FiscalPeriodManager } from '@/components/admin/FiscalPeriodManager';
 import { isAdminRole } from '@/lib/auth/roles';
 import {
   INITIAL_TEACHERS,
@@ -1672,58 +1673,19 @@ export default function AdminPage() {
         {/* TAB 4: ปีงบประมาณและปฏิทินวันหยุด (Fiscal Year & Holidays) */}
         {/* =================================================================== */}
         {activeTab === 'fiscal' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Fiscal Year Overview */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>รอบปีงบประมาณราชการ</span>
-                </h3>
+          <div className="space-y-6">
+            {/* Minimal & Clean Fiscal Period & Salary Promotion Snapshot Manager */}
+            <FiscalPeriodManager
+              schoolId={schoolInfo.schoolCode8 || '30030099'}
+              teachers={teachers}
+              onPeriodChange={(activeYear) => setFiscalYearBE(activeYear)}
+              showToast={showToast}
+            />
 
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1">ปีงบประมาณปัจจุบัน</label>
-                    <input
-                      type="number"
-                      value={fiscalYearBE}
-                      onChange={(e) => setFiscalYearBE(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono font-bold"
-                    />
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2">
-                    <div className="text-[11px] font-semibold text-sky-300">
-                      รอบการประเมินที่ 1 (ก.ค.ศ. ว15/2561)
-                    </div>
-                    <div className="text-slate-700 dark:text-slate-300 font-mono text-[11px]">
-                      1 ตุลาคม {fiscalYearBE - 1} - 31 มีนาคม {fiscalYearBE}
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#151e2b] border border-slate-200/90 dark:border-slate-800/80 space-y-2">
-                    <div className="text-[11px] font-semibold text-emerald-300">
-                      รอบการประเมินที่ 2 (ก.ค.ศ. ว15/2561)
-                    </div>
-                    <div className="text-slate-700 dark:text-slate-300 font-mono text-[11px]">
-                      1 เมษายน {fiscalYearBE} - 30 กันยายน {fiscalYearBE}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveFiscalYear}
-                    disabled={isSaving}
-                    className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs inline-flex items-center justify-center gap-2 transition-colors duration-200 disabled:opacity-50"
-                  >
-                    <Save className="w-3.5 h-3.5 shrink-0" />
-                    <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึกปีงบประมาณ'}</span>
-                  </button>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Add Holiday Box */}
-              <form
+              <div className="lg:col-span-1 space-y-4">
+                <form
                 onSubmit={handleAddHoliday}
                 className="bg-white dark:bg-[#111822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-3 text-xs"
               >
@@ -1906,6 +1868,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        </div>
         )}
 
         {/* =================================================================== */}

@@ -173,6 +173,10 @@ export interface SalaryPromotionRecord {
   updatedAt?: string;
 }
 
+export function calculateSalaryAfterPromotion(calculationBase: number, promotionPercent: number): number {
+  return Math.round(Number(calculationBase || 0) + (Number(calculationBase || 0) * Number(promotionPercent || 0)) / 100);
+}
+
 export const ACTIVE_CLASSES: string[] = [
   'อนุบาล 1', 'อนุบาล 2', 'อนุบาล 3',
   'ประถมศึกษาปีที่ 1', 'ประถมศึกษาปีที่ 2', 'ประถมศึกษาปีที่ 3',

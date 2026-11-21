@@ -8,10 +8,16 @@ import {
   dbSetPrimaryCensusRound,
   dbSetActiveFiscalPeriod,
   dbSaveCensusSnapshot,
+  dbCreateFiscalPeriod,
+  dbUpdateFiscalPeriod,
+  dbGetSalaryPromotionRecords,
+  dbSaveSalaryPromotionRecord,
+  dbSnapshotStaffForFiscalPeriod,
+  dbGetTeachers,
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
-import type { StudentCensusSnapshotRecord } from '@/lib/data/schoolData';
+import type { StudentCensusSnapshotRecord, SalaryPromotionRecord } from '@/lib/data/schoolData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,11 +27,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId') || '30030099';
     const academicYearId = searchParams.get('academicYearId') || undefined;
+    const fiscalPeriodId = searchParams.get('fiscalPeriodId') || undefined;
 
-    const [academicYears, censusSnapshots, fiscalPeriods] = await Promise.all([
+    const [academicYears, censusSnapshots, fiscalPeriods, salaryPromotionRecords] = await Promise.all([
       dbGetAcademicYears(schoolId),
       dbGetStudentCensusSnapshots(academicYearId),
       dbGetFiscalPeriods(schoolId),
+      fiscalPeriodId ? dbGetSalaryPromotionRecords(fiscalPeriodId) : Promise.resolve([]),
     ]);
 
     return NextResponse.json(
@@ -35,6 +43,7 @@ export async function GET(request: Request) {
           academicYears,
           censusSnapshots,
           fiscalPeriods,
+          salaryPromotionRecords,
         },
       },
       {
@@ -154,6 +163,80 @@ export async function POST(request: Request) {
           `เปลี่ยนรอบปีงบประมาณที่เปิดใช้งานเป็น ID: ${fiscalPeriodId}`
         );
         return NextResponse.json({ success: true, message: 'เปลี่ยนรอบปีงบประมาณที่ใช้งานสำเร็จ' });
+      }
+
+      case 'CREATE_FISCAL_PERIOD': {
+        const { schoolId = '30030099', fiscalYearTh, roundNo, refCensusSnapshotId } = payload;
+        const newPeriod = await dbCreateFiscalPeriod({
+          schoolId,
+          fiscalYearTh: Number(fiscalYearTh),
+          roundNo: Number(roundNo) as 1 | 2,
+          refCensusSnapshotId: refCensusSnapshotId || null,
+        });
+        recordAuditLog(
+          'CREATE_FISCAL_PERIOD',
+          actorName,
+          actorRole,
+          schoolId,
+          `สร้างรอบปีงบประมาณใหม่: ปี ${fiscalYearTh} รอบที่ ${roundNo}`
+        );
+        return NextResponse.json({
+          success: true,
+          data: newPeriod,
+          message: `สร้างรอบปีงบประมาณ ${fiscalYearTh} รอบที่ ${roundNo} สำเร็จ`,
+        });
+      }
+
+      case 'UPDATE_FISCAL_PERIOD': {
+        const { periodId, updates } = payload;
+        const updated = await dbUpdateFiscalPeriod(periodId, updates);
+        recordAuditLog(
+          'UPDATE_FISCAL_PERIOD',
+          actorName,
+          actorRole,
+          periodId,
+          `อัปเดตสถานะรอบปีงบประมาณ ID: ${periodId}`
+        );
+        return NextResponse.json({
+          success: true,
+          data: updated,
+          message: 'อัปเดตรอบปีงบประมาณสำเร็จ',
+        });
+      }
+
+      case 'SNAPSHOT_STAFF_SALARY': {
+        const { fiscalPeriodId } = payload;
+        const teachers = await dbGetTeachers();
+        const records = await dbSnapshotStaffForFiscalPeriod(fiscalPeriodId, teachers);
+        recordAuditLog(
+          'SNAPSHOT_STAFF_SALARY',
+          actorName,
+          actorRole,
+          fiscalPeriodId,
+          `บันทึก Snapshot ข้อมูลบุคลากร ${records.length} คน สำหรับรอบปีงบประมาณ ID: ${fiscalPeriodId}`
+        );
+        return NextResponse.json({
+          success: true,
+          data: records,
+          message: `บันทึก Snapshot บุคลากร ${records.length} คน เรียบร้อยแล้ว`,
+        });
+      }
+
+      case 'SAVE_SALARY_PROMOTION_RECORD': {
+        const { record } = payload as { record: Partial<SalaryPromotionRecord> & { fiscalPeriodId: string; staffId: string } };
+        const saved = await dbSaveSalaryPromotionRecord(record);
+        recordAuditLog(
+          'SAVE_SALARY_PROMOTION_RECORD',
+          actorName,
+          actorRole,
+          record.staffId,
+          `บันทึกข้อมูลการเลื่อนเงินเดือนสำหรับครู ID: ${record.staffId}`
+        );
+        return NextResponse.json({
+          success: true,
+          data: saved,
+          message: 'บันทึกข้อมูลการเลื่อนเงินเดือนสำเร็จ',
+        });
       }
 
       default:
