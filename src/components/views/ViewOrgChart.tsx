@@ -286,40 +286,68 @@ export const ViewOrgChart: React.FC = () => {
         {/* ================================================================= */}
         {/* LEVEL 1: TOP EXECUTIVE NODE & LATERAL ADVISORY NODE               */}
         {/* ================================================================= */}
-        <div className="relative max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 z-10">
-          
-          {/* Left invisible spacer matching right board container width, guaranteeing Director is mathematically in the absolute center */}
-          <div className="hidden md:block w-72 lg:w-80 shrink-0 pointer-events-none" aria-hidden="true" />
-
-          {/* Main Executive Node (Director - Dead Center) */}
-          <div className="w-full max-w-sm md:w-[360px] lg:w-[380px] bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border-2 border-sky-500/70 shadow-lg relative text-left transition-colors duration-200 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shrink-0">
-                <School className="w-6 h-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                  ผู้บังคับบัญชาสูงสุด
-                </div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={directorInfo.name}>
-                  {directorInfo.name}
-                </h3>
-                <div className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate" title={directorInfo.positionFormatted}>
-                  {directorInfo.positionFormatted}
-                </div>
-              </div>
-            </div>
+        <div className="relative max-w-5xl mx-auto z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4 lg:gap-0">
             
-            <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span>การบริหารงานสถานศึกษาขั้นพื้นฐาน</span>
-              <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นครราชสีมา เขต 3</span>
-            </div>
-          </div>
+            {/* Left Column Spacer (balances right board card so Director is exactly centered) */}
+            <div className="hidden lg:block" aria-hidden="true" />
 
-          {/* Lateral Connector Link & School Board Node (Desktop/Tablet) */}
-          <div className="hidden md:flex items-center w-72 lg:w-80 shrink-0">
-            <div className="w-6 lg:w-8 border-t-2 border-dashed border-amber-500/50 shrink-0" />
-            <div className="flex-1 bg-slate-50 dark:bg-[#101723] p-3.5 sm:p-4 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left transition-colors duration-200">
+            {/* Main Executive Node (Director - Dead Center) */}
+            <div className="w-full max-w-sm mx-auto lg:w-[360px] bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border-2 border-sky-500/70 shadow-lg relative text-left transition-colors duration-200 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shrink-0">
+                  <School className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                    ผู้บังคับบัญชาสูงสุด
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate" title={directorInfo.name}>
+                    {directorInfo.name}
+                  </h3>
+                  <div className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate" title={directorInfo.positionFormatted}>
+                    {directorInfo.positionFormatted}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                <span>การบริหารงานสถานศึกษาขั้นพื้นฐาน</span>
+                <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นครราชสีมา เขต 3</span>
+              </div>
+            </div>
+
+            {/* Right Column: Lateral Connector Link & School Board Node (Desktop) */}
+            <div className="hidden lg:flex items-center pl-2 xl:pl-4 min-w-0">
+              <div className="w-4 xl:w-6 border-t-2 border-dashed border-amber-500/50 shrink-0" />
+              <div className="flex-1 min-w-0 bg-slate-50 dark:bg-[#101723] p-3.5 sm:p-4 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left transition-colors duration-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                      องค์กรกำกับดูแล
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate" title="คณะกรรมการสถานศึกษาขั้นพื้นฐาน">
+                      คณะกรรมการสถานศึกษาขั้นพื้นฐาน
+                    </h4>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate" title={`ประธาน: ${boardChair}`}>
+                      ประธาน: {boardChair}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60 gap-1">
+                  <span className="truncate">ให้ความเห็นชอบแผนและงบประมาณ</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap shrink-0">
+                    รวม {totalBoardMembers} ท่าน
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile / Tablet School Board Node (< lg) */}
+            <div className="lg:hidden w-full max-w-sm mx-auto bg-slate-50 dark:bg-[#101723] p-3.5 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
                   <Award className="w-5 h-5" />
@@ -328,41 +356,17 @@ export const ViewOrgChart: React.FC = () => {
                   <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                     องค์กรกำกับดูแล
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate" title="คณะกรรมการสถานศึกษาขั้นพื้นฐาน">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
                     คณะกรรมการสถานศึกษาขั้นพื้นฐาน
                   </h4>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate" title={`ประธาน: ${boardChair}`}>
-                    ประธาน: {boardChair}
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                    ประธาน: {boardChair} · รวม {totalBoardMembers} ท่าน
                   </div>
                 </div>
               </div>
-              <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
-                <span>ให้ความเห็นชอบแผนและงบประมาณ</span>
-                <span className="text-amber-600 dark:text-amber-400 font-medium">รวม {totalBoardMembers} ท่าน</span>
-              </div>
             </div>
-          </div>
 
-          {/* Mobile School Board Node */}
-          <div className="md:hidden w-full max-w-sm bg-slate-50 dark:bg-[#101723] p-3.5 rounded-xl border border-dashed border-amber-500/40 shadow-sm text-left">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                <Award className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                  องค์กรกำกับดูแล
-                </div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                  คณะกรรมการสถานศึกษาขั้นพื้นฐาน
-                </h4>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                  ประธาน: {boardChair} · รวม {totalBoardMembers} ท่าน
-                </div>
-              </div>
-            </div>
           </div>
-
         </div>
 
         {/* ================================================================= */}
@@ -391,66 +395,64 @@ export const ViewOrgChart: React.FC = () => {
         {/* ================================================================= */}
         {/* LEVEL 2: 4 CORE ADMINISTRATIVE DIVISIONS (4 กลุ่มบริหารงาน)        */}
         {/* ================================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 max-w-7xl mx-auto items-start relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 max-w-7xl mx-auto items-stretch relative z-10">
           {divisions.map((div) => {
             const Icon = div.icon;
 
             return (
               <div
                 key={div.id}
-                className="bg-white dark:bg-[#121822] rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
+                className="bg-white dark:bg-[#121822] rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden"
               >
                 {/* Node Top Section */}
-                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    {/* Division Header (2 Lines uniform to prevent word-break issues) */}
-                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-                      <div className={`p-2.5 rounded-xl ${div.accentBg} ${div.accentText} shrink-0`}>
-                        <Icon className="w-5 h-5 shrink-0" />
+                <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                  {/* Division Header */}
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                    <div className={`p-2.5 rounded-xl ${div.accentBg} ${div.accentText} shrink-0`}>
+                      <Icon className="w-5 h-5 shrink-0" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        กลุ่มบริหารงาน
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          กลุ่มบริหารงาน
-                        </div>
-                        <div className="text-base font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                          {div.shortName}
-                        </div>
+                      <div className="text-base font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                        {div.shortName}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Division Head Sub-Card (No name truncation on Desktop) */}
-                    <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200">
-                      <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-tight break-words" title={div.headName}>
-                        {div.headName}
-                      </div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                        {div.headPositionFormatted}
-                      </div>
+                  {/* Division Head Sub-Card (Equal min-h to prevent awkward word wrapping) */}
+                  <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 min-h-[76px] flex flex-col justify-center transition-colors duration-200">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug break-words" title={div.headName}>
+                      {div.headName}
                     </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate" title={div.headPositionFormatted}>
+                      {div.headPositionFormatted}
+                    </div>
+                  </div>
 
-                    {/* Core Scopes Preview (Fixed 3 items for perfectly equal height) */}
-                    <div className="mt-3.5 space-y-1.5">
-                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                        ขอบข่ายภารกิจ · {div.duties.length} งาน
-                      </div>
-                      <div className="space-y-1.5">
-                        {div.duties.slice(0, 3).map((duty, idx) => (
-                          <div
-                            key={idx}
-                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
-                            title={duty}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
-                            <span className="truncate leading-relaxed">{duty}</span>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Core Scopes Preview (Fixed 3 items) */}
+                  <div className="mt-3.5 space-y-1.5 flex-1">
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                      ขอบข่ายภารกิจ · {div.duties.length} งาน
+                    </div>
+                    <div className="space-y-1.5">
+                      {div.duties.slice(0, 3).map((duty, idx) => (
+                        <div
+                          key={idx}
+                          className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
+                          title={duty}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
+                          <span className="truncate leading-relaxed">{duty}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Node Footer Button: Opens Full Duties Modal without stretching other cards */}
-                <div className="p-3 bg-slate-50/80 dark:bg-[#0f1520] border-t border-slate-100 dark:border-slate-800/80 transition-colors duration-200">
+                {/* Node Footer Button: Pinned to bottom with mt-auto */}
+                <div className="mt-auto p-3 bg-slate-50/80 dark:bg-[#0f1520] border-t border-slate-100 dark:border-slate-800/80 transition-colors duration-200">
                   <button
                     type="button"
                     onClick={() => setActiveModalDivision(div)}

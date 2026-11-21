@@ -893,14 +893,9 @@ export default function DashboardPage() {
               {/* 1. Compact Executive Header Bar */}
               <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800/80">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
-                      ภาพรวมการบริหารงานบุคคล
-                    </h1>
-                    <span className="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#121822] dark:text-slate-300 dark:border-slate-800/80 rounded-md whitespace-nowrap">
-                      โรงเรียนชุมชนบ้านตะขบ · สพป.นม. 3
-                    </span>
-                  </div>
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    ภาพรวมการบริหารงานบุคคล
+                  </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     ยินดีต้อนรับ, <span className="font-medium text-slate-800 dark:text-slate-200">{activeUserIdentity.name}</span> · {activeUserIdentity.position}
                   </p>

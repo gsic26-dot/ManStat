@@ -173,7 +173,7 @@ export const ViewStaffDirectory: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Filter Segmented Pills for Department - Uniform Widths & Abbreviated */}
+        {/* Quick Filter Segmented Pills for Department - Flex Wrap & Clean */}
         <div className="pt-2 border-t border-slate-200/90 dark:border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
@@ -184,58 +184,56 @@ export const ViewStaffDirectory: React.FC = () => {
             </span>
           </div>
 
-          <div className="overflow-x-auto pb-1 -mx-1 px-1">
-            <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl gap-1">
-              {/* ปุ่มทั้งหมด - ขนาดกว้างคงที่เท่ากัน */}
-              <button
-                type="button"
-                onClick={() => setSelectedDept('ALL')}
-                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 w-28 shrink-0 ${
-                  selectedDept === 'ALL'
-                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                }`}
-                title="ทั้งหมด"
-              >
-                <span className="truncate">ทั้งหมด</span>
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  selectedDept === 'ALL'
-                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
-                    : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                }`}>
-                  {teachersList.length}
-                </span>
-              </button>
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl">
+            {/* ปุ่มทั้งหมด */}
+            <button
+              type="button"
+              onClick={() => setSelectedDept('ALL')}
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                selectedDept === 'ALL'
+                  ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+              }`}
+              title="ทั้งหมด"
+            >
+              <span>ทั้งหมด</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                selectedDept === 'ALL'
+                  ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {teachersList.length}
+              </span>
+            </button>
 
-              {/* ปุ่มแต่ละกลุ่มสาระ - ปรับปุ่มให้เท่ากันทุกปุ่ม (w-32) พร้อมชื่อย่อและ truncate */}
-              {departments.map((dept) => {
-                const count = teachersList.filter((t) => t.department === dept).length;
-                const isSelected = selectedDept === dept;
-                const shortName = getShortDeptName(dept);
-                return (
-                  <button
-                    key={dept}
-                    type="button"
-                    onClick={() => setSelectedDept(dept)}
-                    className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 w-32 shrink-0 ${
-                      isSelected
-                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                    }`}
-                    title={dept}
-                  >
-                    <span className="truncate">{shortName}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                      isSelected
-                        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
-                        : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* ปุ่มแต่ละกลุ่มสาระ */}
+            {departments.map((dept) => {
+              const count = teachersList.filter((t) => t.department === dept).length;
+              const isSelected = selectedDept === dept;
+              const shortName = getShortDeptName(dept);
+              return (
+                <button
+                  key={dept}
+                  type="button"
+                  onClick={() => setSelectedDept(dept)}
+                  className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
+                  }`}
+                  title={dept}
+                >
+                  <span className="whitespace-nowrap">{shortName}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                    isSelected
+                      ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                      : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -306,24 +304,13 @@ export const ViewStaffDirectory: React.FC = () => {
                                   {seq}
                                 </td>
 
-                                {/* Staff Name & Initials */}
+                                {/* Staff Name */}
                                 <td className={`px-4 ${cellPy}`}>
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center font-bold text-sm shrink-0 ${
-                                      isSupport
-                                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-500 dark:text-amber-400'
-                                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sky-600 dark:text-sky-400'
-                                    }`}>
-                                      {teacher.firstName ? teacher.firstName[0] : 'ค'}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="font-bold text-slate-900 dark:text-white text-sm" title={teacher.name}>
-                                        {teacher.name}
-                                      </div>
-                                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono" title={`รหัส: ${teacher.employeeCode}`}>
-                                        รหัส: {teacher.employeeCode}
-                                      </div>
-                                    </div>
+                                  <div className="font-bold text-slate-900 dark:text-white text-sm" title={teacher.name}>
+                                    {teacher.name}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5" title={`รหัส: ${teacher.employeeCode}`}>
+                                    รหัส: {teacher.employeeCode}
                                   </div>
                                 </td>
 
