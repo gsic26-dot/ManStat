@@ -4,10 +4,13 @@
  * ============================================================================
  * ManStat: Ultra-Clean User Authentication & Sign-in Page
  * ============================================================================
+ * - Balanced Minimalist Brand Hierarchy (size 72 logo, text-2xl/3xl title)
  * - Dynamic School Name fetched from real database
- * - Borderless & Zero-Clutter Minimalist Centered Layout
+ * - Borderless & Zero-Clutter Single-Column Layout (max-w-[350px])
+ * - Autofill-Safe Password Field (Flex container separating input and eye button)
  * - Browser Password Manager Ready (method="post", autocomplete attributes)
  * - Persistent 30-Day Session Support (rememberMe)
+ * - Cohesive Deep Blue Tone (#3B82F6 / bg-blue-600 matching logo palette)
  * - Zero Emojis, Pure Lucide SVG Icons, Strict Accessibility standards
  * ============================================================================
  */
@@ -122,18 +125,23 @@ export default function LoginPage() {
         <ThemeSwitcher />
       </div>
 
-      <div className="w-full max-w-[320px] mx-auto px-4">
-        {/* Header */}
+      <div className="w-full max-w-[350px] mx-auto px-5">
+        {/* Header - Balanced Brand Presence */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <AppLogoIcon size={44} />
-          <h1 className="text-xl font-semibold tracking-tight text-white mt-3.5">ManStat</h1>
-          <p className="text-xs text-slate-500 mt-1">{schoolName}</p>
+          <AppLogoIcon size={72} />
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mt-4">
+            ManStat
+          </h1>
+          <p className="text-sm text-slate-400 mt-1.5">
+            {schoolName}
+          </p>
         </div>
 
         {/* Minimal Form */}
-        <form method="post" onSubmit={handleLogin} className="space-y-3">
+        <form method="post" onSubmit={handleLogin} className="space-y-4">
+          {/* Username Group */}
           <div>
-            <label htmlFor="username" className="sr-only">
+            <label htmlFor="username" className="block text-xs font-medium text-slate-400 mb-1.5">
               ชื่อผู้ใช้
             </label>
             <input
@@ -145,15 +153,16 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               placeholder="ชื่อผู้ใช้"
-              className="h-11 w-full rounded-lg bg-white/[0.04] border border-white/10 px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-sky-400/60 focus:bg-white/[0.06] focus:outline-none transition-colors"
+              className="h-11 w-full rounded-lg bg-white/[0.04] border border-white/10 px-3.5 text-sm text-white placeholder:text-slate-600 focus:border-sky-400/60 focus:bg-white/[0.06] focus:outline-none transition-colors"
             />
           </div>
 
+          {/* Password Group - Autofill-Safe Flex Container */}
           <div>
-            <label htmlFor="password" className="sr-only">
+            <label htmlFor="password" className="block text-xs font-medium text-slate-400 mb-1.5">
               รหัสผ่าน
             </label>
-            <div className="relative flex items-center">
+            <div className="flex items-center h-11 w-full rounded-lg bg-white/[0.04] border border-white/10 focus-within:border-sky-400/60 focus-within:bg-white/[0.06] transition-colors">
               <input
                 id="password"
                 name="password"
@@ -163,12 +172,12 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="รหัสผ่าน"
-                className="h-11 w-full rounded-lg bg-white/[0.04] border border-white/10 pl-3.5 pr-11 text-sm text-white placeholder:text-slate-500 focus:border-sky-400/60 focus:bg-white/[0.06] focus:outline-none transition-colors"
+                className="flex-1 min-w-0 h-full bg-transparent pl-3.5 pr-2 text-sm text-white placeholder:text-slate-600 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 p-1.5 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none cursor-pointer z-10"
+                className="shrink-0 h-full px-3 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none cursor-pointer"
                 aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                 tabIndex={-1}
               >
@@ -177,6 +186,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Remember Me Checkbox */}
           <div className="flex items-center justify-between pt-0.5">
             <label htmlFor="rememberMe" className="inline-flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -185,22 +195,24 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-white/15 bg-white/[0.04] text-sky-500 focus:ring-sky-500/30 focus:ring-offset-0 cursor-pointer"
+                className="w-4 h-4 rounded border-white/15 bg-white/[0.04] text-blue-600 accent-blue-600 focus:ring-blue-500/30 focus:ring-offset-0 cursor-pointer"
               />
               <span className="text-xs text-slate-400">จดจำการเข้าสู่ระบบ</span>
             </label>
           </div>
 
+          {/* Error Message */}
           {errorMessage && (
             <p className="text-xs text-rose-400 text-center py-0.5">
               {errorMessage}
             </p>
           )}
 
+          {/* Submit Button - Cohesive Deep Blue Tone */}
           <button
             type="submit"
             disabled={isLoading}
-            className="h-11 w-full rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-medium text-sm transition-colors mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="h-11 w-full rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-sm transition-colors mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
             <span>เข้าสู่ระบบ</span>
