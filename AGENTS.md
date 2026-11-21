@@ -1,10 +1,10 @@
-# ManStat-Modern: Architectural Standards & Iron Laws
+# ManStat: Architectural Standards & Iron Laws
 
-This document governs all architectural decisions, code contributions, and automated agent workflows for **ManStat-Modern**. Every engineer and AI agent operating on this repository must strictly comply with these Iron Laws without exception.
+This document governs all architectural decisions, code contributions, and automated agent workflows for **ManStat**. Every engineer and AI agent operating on this repository must strictly comply with these Iron Laws without exception.
 
 ---
 
-## 1. The 5 Iron Laws of ManStat-Modern
+## 1. The 5 Iron Laws of ManStat
 
 ### Law 1: ZERO GAS (Google Apps Script Ban)
 - **Zero GAS Artifacts:** Absolutely no Google Apps Script code, APIs, or configuration files are permitted anywhere in the repository.

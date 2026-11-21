@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Inactivity Guard Component (Session Security Standard)
+ * ManStat: Inactivity Guard Component (Session Security Standard)
  * ============================================================================
  * - Activity Tracking: Listens to mousemove, keydown, click, touchstart, scroll
  *   with a 5-second throttle to eliminate CPU overhead.

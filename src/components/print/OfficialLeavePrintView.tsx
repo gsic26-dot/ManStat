@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Official A4 Leave & Permission Document Print Engine
+ * ManStat: Official A4 Leave & Permission Document Print Engine
  * ============================================================================
  * Standard:
  *   1. แฟ้ม บค 4/1: ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555 (11 ประเภท)

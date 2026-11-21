@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: My Recent Leave Requests (มุมมองคำขอลาล่าสุดของฉัน)
+ * ManStat: My Recent Leave Requests (มุมมองคำขอลาล่าสุดของฉัน)
  * ============================================================================
  * - For regular teachers and educational personnel (without approver rights)
  * - Clean personal leave tracking: View latest requests & quick-submit new leave

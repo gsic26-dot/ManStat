@@ -5,7 +5,7 @@ const { execSync } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const stagingDir = path.join(rootDir, '.temp_admin_bundle');
 
-console.log('Packaging ManStat-Modern Admin Center Files...');
+console.log('Packaging ManStat Admin Center Files...');
 
 if (fs.existsSync(stagingDir)) {
   fs.rmSync(stagingDir, { recursive: true, force: true });
@@ -54,7 +54,7 @@ for (const rel of files) {
 }
 
 const readmeContent = `# เอกสารและโครงสร้างไฟล์ศูนย์ผู้ดูแลระบบ (Admin Center Files)
-## โครงการ ManStat-Modern (โรงเรียนชุมชนบ้านตะขบ)
+## โครงการ ManStat (โรงเรียนชุมชนบ้านตะขบ)
 
 ไฟล์ชุดนี้รวบรวมโค้ด ฐานข้อมูล และคอมโพเนนต์ทั้งหมดที่เกี่ยวข้องกับ **ศูนย์ผู้ดูแลระบบ (Admin Center)** ใน 4 ฟังก์ชันหลักตามที่ร้องขอ:
 

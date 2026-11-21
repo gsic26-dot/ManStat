@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewRegScout (ทะเบียนวุฒิทางการลูกเสือ)
+ * ManStat: ViewRegScout (ทะเบียนวุฒิทางการลูกเสือ)
  * ============================================================================
  * - Registry of National Scout Organization of Thailand leader qualifications
  * - Wood Badge (W.B. 2-4 Beads), B.T.C., A.T.C. courses

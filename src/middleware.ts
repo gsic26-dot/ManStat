@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Fail-Safe Root Edge Middleware (src/middleware.ts)
+ * ManStat: Fail-Safe Root Edge Middleware (src/middleware.ts)
  * ============================================================================
  * 100% Resilient Next.js Edge Middleware for Session Protection & RBAC
  * Guaranteed 0 Crash / 0 MIDDLEWARE_INVOCATION_FAILED

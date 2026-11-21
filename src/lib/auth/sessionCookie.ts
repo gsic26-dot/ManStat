@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Session Cookie & Token Engine (sessionCookie.ts)
+ * ManStat: Session Cookie & Token Engine (sessionCookie.ts)
  * ============================================================================
  * - Standards-compliant "Remember Me" session persistence (30 days vs session)
  * - Safe HttpOnly, Lax, Path=/ cookies with dynamic protocol-aware Secure flag

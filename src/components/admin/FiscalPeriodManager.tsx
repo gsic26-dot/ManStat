@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Fiscal Period & Salary Promotion Manager
+ * ManStat: Fiscal Period & Salary Promotion Manager
  * ============================================================================
  * Strict Minimal & Clean Standard:
  * - Clean selector: "ปีงบฯ 2570 · 1 ต.ค. – 31 มี.ค." or "ปีงบฯ 2570 · 1 เม.ย. – 30 ก.ย." (Emerald green active state)

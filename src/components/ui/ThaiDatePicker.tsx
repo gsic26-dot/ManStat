@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Thai Buddhist Era Pop-up DatePicker (ThaiDatePicker)
+ * ManStat: Thai Buddhist Era Pop-up DatePicker (ThaiDatePicker)
  * ============================================================================
  * - Interactive Thai Pop-up Calendar
  * - Year in Buddhist Era (พ.ศ. = ค.ศ. + 543)

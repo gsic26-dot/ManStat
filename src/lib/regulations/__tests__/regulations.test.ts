@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Core Regulatory Engine Unit Tests
+ * ManStat: Core Regulatory Engine Unit Tests
  * ============================================================================
  * Strict Verification of Thai Civil Service Laws & OBEC Standards
  * Location: /src/lib/regulations/__tests__/regulations.test.ts

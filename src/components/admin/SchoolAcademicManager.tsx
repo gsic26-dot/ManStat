@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: School Academic Manager (Minimal & Clean Refactor)
+ * ManStat: School Academic Manager (Minimal & Clean Refactor)
  * ============================================================================
  * Strict Design Rules:
  * - Airy whitespace, subtle borders, high legibility, clear hierarchy

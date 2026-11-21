@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveHub (ติดตามและประวัติการลา)
+ * ManStat: ViewLeaveHub (ติดตามและประวัติการลา)
  * ============================================================================
  * - Consolidates "รายการคำร้อง" (Leave Requests) & "ติดตามสถานะ" (Workflow Tracking)
  * - Minimalist top segmented tab switcher

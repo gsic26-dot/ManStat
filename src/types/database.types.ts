@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Database TypeScript Schema Types
+ * ManStat: Database TypeScript Schema Types
  * ============================================================================
  * 100% Strict Mapping to /supabase/migrations/001_init_manstat_schema.sql
  * Conforms to Iron Law 2: Strict Typing, No Any.

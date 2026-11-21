@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Brand Identity & AppLogo Component (Geometric M-Bar)
+ * ManStat: Brand Identity & AppLogo Component (Geometric M-Bar)
  * ============================================================================
  * - Option 1: Geometric M-Bar Monogram
  * - Navy background container (#0B1320)
@@ -47,7 +47,7 @@ export function AppLogoIcon({
       height={size}
       fill="none"
       className={className}
-      aria-label="ManStat-Modern Logo"
+      aria-label="ManStat Logo"
     >
       <defs>
         <linearGradient id="manstatLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -113,7 +113,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({
       <div className="text-left">
         <div className="flex items-center gap-2">
           <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
-            ManStat-Modern
+            ManStat
           </span>
           {badgeText && (
             <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-semibold rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">

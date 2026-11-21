@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: User Authentication & Sign-in Page
+ * ManStat: User Authentication & Sign-in Page
  * ============================================================================
  * - Supabase Auth Email/Password Sign-In
  * - Clean Thai Civil Service Professional UI
@@ -118,7 +118,7 @@ export default function LoginPage() {
           <div className="mb-4 drop-shadow-xl">
             <AppLogoIcon size={64} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ManStat-Modern</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ManStat</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
             ระบบบริหารงานบุคคล โรงเรียนชุมชนบ้านตะขบ
           </p>

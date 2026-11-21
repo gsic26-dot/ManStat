@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: UserSettingsContext & useUserSettings
+ * ManStat: UserSettingsContext & useUserSettings
  * ============================================================================
  * Per-User UI/UX Preferences Persistence (Server DB + Supabase + LocalStorage)
  *

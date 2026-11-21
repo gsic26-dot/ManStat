@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Role-Based Access Control (RBAC) Standards (roles.ts)
+ * ManStat: Role-Based Access Control (RBAC) Standards (roles.ts)
  * ============================================================================
  * Single Source of Truth for Role Mapping across Client and Server:
  * - 'Superuser'  -> 'superuser'  (Full root access to all modules and configurations)

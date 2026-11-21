@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: View Khurusapha Professional Licenses (ทะเบียนใบอนุญาตฯ)
+ * ManStat: View Khurusapha Professional Licenses (ทะเบียนใบอนุญาตฯ)
  * ============================================================================
  * - Group by Person: 1 row = 1 staff member (no duplicates)
  * - Symmetrical 6-column unified table layout

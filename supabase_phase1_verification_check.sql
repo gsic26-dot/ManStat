@@ -1,5 +1,5 @@
 -- ============================================================================
--- ManStat-Modern: Full SQL Verification & Dry-Run Suite (Phases 1-4)
+-- ManStat: Full SQL Verification & Dry-Run Suite (Phases 1-4)
 -- Canonical Migration: supabase/migrations/004_academic_and_fiscal_split.sql
 -- ============================================================================
 

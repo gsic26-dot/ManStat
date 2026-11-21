@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewOrgChart (ผังโครงสร้างการบริหารงานสถานศึกษา)
+ * ManStat: ViewOrgChart (ผังโครงสร้างการบริหารงานสถานศึกษา)
  * ============================================================================
  * Standard: Thai OBEC (สพฐ.) School Administrative Structure
  * Pattern: Authentic Hierarchical Tree Diagram (ผังสายการบังคับบัญชา 4 กลุ่มงาน)

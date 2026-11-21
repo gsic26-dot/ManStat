@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Administrative Management Center (/admin)
+ * ManStat: Administrative Management Center (/admin)
  * ============================================================================
  * Master Management Center for Superuser and HR Administrators:
  * 1. จัดการข้อมูลบุคลากร (Staff Directory & Access Control)

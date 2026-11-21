@@ -1,5 +1,5 @@
 -- ============================================================================
--- ManStat-Modern: Safe Incremental Schema Update for Existing Supabase Tables
+-- ManStat: Safe Incremental Schema Update for Existing Supabase Tables
 -- ============================================================================
 -- คำแนะนำ: คัดลอกโค้ดทั้งหมดนี้ไปวางใน Supabase Dashboard -> SQL Editor -> New Query แล้วกด Run
 -- ปลอดภัย 100%: ไม่มีคำสั่ง DROP, DELETE, หรือ TRUNCATE ใดๆ ไม่กระทบข้อมูลเดิมที่มีอยู่

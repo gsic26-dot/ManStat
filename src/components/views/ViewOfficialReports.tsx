@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewOfficialReports (สรุปวันลาและรายงาน สพฐ. มาตรฐาน)
+ * ManStat: ViewOfficialReports (สรุปวันลาและรายงาน สพฐ. มาตรฐาน)
  * ============================================================================
  * - Official OBEC Summary Table of personnel leaves
  * - Salary promotion eligibility checks (ว15/2561)

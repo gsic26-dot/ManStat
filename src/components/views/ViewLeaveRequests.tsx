@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveRequests (รายการคำร้องและประวัติการลา)
+ * ManStat: ViewLeaveRequests (รายการคำร้องและประวัติการลา)
  * ============================================================================
  * - Tabular view of all leave requests (Pending, Approved, Rejected)
  * - Filtering by status, leave type, and teacher name search
@@ -82,7 +82,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           id,
           status: 'approved',
           currentStep: 3,
-          directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+          directorRemark: 'อนุมัติผ่านระบบ ManStat',
         }),
       });
     } catch {}
@@ -93,7 +93,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               ...r,
               status: 'approved',
               currentStep: 3,
-              directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+              directorRemark: 'อนุมัติผ่านระบบ ManStat',
             }
           : r
       )
@@ -105,7 +105,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               ...prev,
               status: 'approved',
               currentStep: 3,
-              directorRemark: 'อนุมัติผ่านระบบ ManStat-Modern',
+              directorRemark: 'อนุมัติผ่านระบบ ManStat',
             }
           : null
       );

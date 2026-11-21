@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: View Teacher Workload (ภาระงานบุคลากรและข้อตกลง PA 4 หมวด)
+ * ManStat: View Teacher Workload (ภาระงานบุคลากรและข้อตกลง PA 4 หมวด)
  * ============================================================================
  * - Criteria per OPSC Guidelines ว9/2564 & ว21/2564
  * - Full 4 Categories restored from legacy ManStat (d:\GAS-Projects\ManStat):

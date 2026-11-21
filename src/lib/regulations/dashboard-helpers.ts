@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Dashboard Helper Functions & Regulations Compliance
+ * ManStat: Dashboard Helper Functions & Regulations Compliance
  * ============================================================================
  * - Dynamic Current User identity resolution & per-user scoping
  * - Regulation 2555 & ก.ค.ศ. ว15/2561 evaluation round leave calculations

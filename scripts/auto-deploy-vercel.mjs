@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ============================================================================
- * ManStat-Modern: Automated Vercel Deployment & Environment Sync Engine
+ * ManStat: Automated Vercel Deployment & Environment Sync Engine
  * ============================================================================
  * File: /scripts/auto-deploy-vercel.mjs
  * Purpose:
@@ -37,7 +37,7 @@ if (fs.existsSync(envLocalPath)) {
 }
 
 console.log('------------------------------------------------------------');
-console.log(' MANSTAT-MODERN: AUTOMATED VERCEL DEPLOYMENT ENGINE');
+console.log(' MANSTAT: AUTOMATED VERCEL DEPLOYMENT ENGINE');
 console.log('------------------------------------------------------------');
 
 function runCommand(command, description, ignoreError = false) {

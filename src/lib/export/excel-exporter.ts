@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: OBEC Standard Excel Export Engine (excel-exporter.ts)
+ * ManStat: OBEC Standard Excel Export Engine (excel-exporter.ts)
  * ============================================================================
  * 100% Zero-GAS Native Excel Generator (.xlsx)
  * Library: SheetJS (xlsx)

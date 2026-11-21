@@ -1125,7 +1125,7 @@
       "action": "SYSTEM_INIT",
       "actorName": "Superuser (นายธีรศักดิ์ มโนธรรม)",
       "actorRole": "superuser",
-      "targetName": "ระบบส่วนกลาง ManStat-Modern",
+      "targetName": "ระบบส่วนกลาง ManStat",
       "ipAddress": "127.0.0.1",
       "timestamp": "2026-11-19T08:00:00Z",
       "details": "เริ่มต้นระบบฐานข้อมูลและลงทะเบียนสิทธิ์การเข้าถึง"

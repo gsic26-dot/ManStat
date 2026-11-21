@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewRetroLeave (บันทึกการลาย้อนหลังตามระเบียบราชการ)
+ * ManStat: ViewRetroLeave (บันทึกการลาย้อนหลังตามระเบียบราชการ)
  * ============================================================================
  * - Form for HR Admins to record retroactive leave for school personnel
  * - Synchronized 100% with Master 13 Leave Types Config

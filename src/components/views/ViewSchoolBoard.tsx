@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: View School Board (คณะกรรมการสถานศึกษาขั้นพื้นฐาน)
+ * ManStat: View School Board (คณะกรรมการสถานศึกษาขั้นพื้นฐาน)
  * ============================================================================
  * - Ground-truth Basic Education School Board Members
  * - Order strictly by statutory position (ลำดับตามกฎกระทรวง พ.ศ. 2546)

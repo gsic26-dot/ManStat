@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * ManStat-Modern: Relational DB Test Suite (test-relational-db.ts)
+ * ManStat: Relational DB Test Suite (test-relational-db.ts)
  * ============================================================================
  * Validates:
  * 1. Row Mappers matching existing Supabase schema (16 tables):
@@ -58,7 +58,7 @@ import type { HolidayRecord } from '../src/lib/db/serverDb';
 import { isSupabaseConfigured } from '../src/lib/supabase/admin';
 
 async function runTestSuite() {
-  console.log('[TEST] Starting ManStat-Modern Existing Schema Alignment Test Suite');
+  console.log('[TEST] Starting ManStat Existing Schema Alignment Test Suite');
   console.log(`[TEST] Supabase configured: ${isSupabaseConfigured()}`);
 
   let passed = 0;

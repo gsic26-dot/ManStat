@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Thai Numerals & Formatted Official Date Utilities
+ * ManStat: Thai Numerals & Formatted Official Date Utilities
  * ============================================================================
  * Converts standard Arabic digits to Thai digits (0-9 -> ๐-๙)
  * and formats dates according to Thai Bureaucratic Form Standards (ระเบียบสารบรรณ).

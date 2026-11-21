@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Khurusapha Licenses & PA Workload Regulatory Engine
+ * ManStat: Khurusapha Licenses & PA Workload Regulatory Engine
  * ============================================================================
  * Governing Regulations:
  * 1. ข้อบังคับคุรุสภาว่าด้วยใบอนุญาตประกอบวิชาชีพ พ.ศ. 2565

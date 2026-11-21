@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * ManStat-Modern: End-to-End RBAC Security Verification Script
+ * ManStat: End-to-End RBAC Security Verification Script
  * ============================================================================
  * Tests the 4 mandatory RBAC scenarios:
  * 1. Login with regular 'User' (teacher) -> Role 'teacher', cannot access admin
@@ -15,7 +15,7 @@ import { mapAccessLevelToRole, isAdminRole } from '../src/lib/auth/roles';
 
 function runRBACTests() {
   console.log('================================================================');
-  console.log(' MANSTAT-MODERN: RBAC COMPREHENSIVE SECURITY VERIFICATION');
+  console.log(' MANSTAT: RBAC COMPREHENSIVE SECURITY VERIFICATION');
   console.log('================================================================\n');
 
   const db = loadDatabase();

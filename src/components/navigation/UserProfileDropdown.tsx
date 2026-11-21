@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: UserProfileDropdown Component
+ * ManStat: UserProfileDropdown Component
  * ============================================================================
  * Compact User Profile Dropdown:
  * - Trigger: Clean Avatar Button + Subtle Chevron (Name/Position/ROOT moved inside)

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewPersonnelHub (ศูนย์งานทะเบียนประวัติบุคลากร)
+ * ManStat: ViewPersonnelHub (ศูนย์งานทะเบียนประวัติบุคลากร)
  * ============================================================================
  * - Segmented Tab Switcher for Category 3 Registries:
  *   1. ทะเบียนประวัติฯ (Staff Directory)

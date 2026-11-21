@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: OBEC Standard Excel Export Button Component
+ * ManStat: OBEC Standard Excel Export Button Component
  * ============================================================================
  * Single-click export of 4 OBEC standard worksheets to .xlsx:
  * 1. สถิติการลาและเกณฑ์ ว15/2561

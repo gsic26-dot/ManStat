@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: School Organization Structure & Governance Helpers
+ * ManStat: School Organization Structure & Governance Helpers
  * ============================================================================
  * Binds real personnel and school board data into the 4 administrative divisions:
  * 1. วิชาการ (Academic Affairs)

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Server Database Engine (serverDb.ts)
+ * ManStat: Server Database Engine (serverDb.ts)
  * ============================================================================
  * Compatible Dual-Mode Database Store:
  * 1. Supabase PostgreSQL (Full Relational & Pre-existing 16 Tables Architecture)
@@ -187,7 +187,7 @@ export const INITIAL_AUDIT_LOGS: AuditLogRecord[] = [
     action: 'SYSTEM_INIT',
     actorName: 'Superuser (นายธีรศักดิ์ มโนธรรม)',
     actorRole: 'superuser',
-    targetName: 'ระบบส่วนกลาง ManStat-Modern',
+    targetName: 'ระบบส่วนกลาง ManStat',
     ipAddress: '127.0.0.1',
     timestamp: '2026-11-19T08:00:00Z',
     details: 'เริ่มต้นระบบฐานข้อมูลและลงทะเบียนสิทธิ์การเข้าถึง',
@@ -433,7 +433,7 @@ export const SCHOOL_INFO_KEYS_MAP: Record<string, keyof SchoolInfoRecord> = {
 export function schoolInfoToDb(info: Partial<SchoolInfoRecord>) {
   return {
     id: 'default',
-    app_name: info.appName ?? 'ManStat-Modern',
+    app_name: info.appName ?? 'ManStat',
     school_name: info.schoolName ?? '',
     affiliation: info.affiliation ?? '',
     school_code_10: info.schoolCode10 ?? '',
@@ -478,7 +478,7 @@ export function schoolInfoFromDb(row: any): SchoolInfoRecord {
 
   // Flat row format
   return {
-    appName: row.app_name || row.appName || 'ManStat-Modern',
+    appName: row.app_name || row.appName || 'ManStat',
     schoolName: row.school_name || row.schoolName || '',
     affiliation: row.affiliation || '',
     schoolCode10: row.school_code_10 || row.schoolCode10 || '',

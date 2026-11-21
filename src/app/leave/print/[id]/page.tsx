@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * ManStat-Modern: Official Leave Print Page (/leave/print/[id])
+ * ManStat: Official Leave Print Page (/leave/print/[id])
  * ============================================================================
  * Server Component rendering OfficialLeavePrintView for official A4 printing.
  * Zero-GAS Document Engine replacing Google Docs/Sheets template generation.

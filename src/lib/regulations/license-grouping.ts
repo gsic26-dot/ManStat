@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: License Grouping & Aggregation Engine (license-grouping.ts)
+ * ManStat: License Grouping & Aggregation Engine (license-grouping.ts)
  * ============================================================================
  * - Groups teaching and administrative licenses strictly by person (1 row = 1 staff)
  * - Identifies nearest expiration date and most urgent status across held licenses

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Realtime Leave Subscription Hook (useLeaveRealtime)
+ * ManStat: Realtime Leave Subscription Hook (useLeaveRealtime)
  * ============================================================================
  * - Subscribes to Supabase postgres_changes on table 'leave_requests'.
  * - Listens for new submissions (INSERT), status updates (UPDATE), and cancellations (DELETE).

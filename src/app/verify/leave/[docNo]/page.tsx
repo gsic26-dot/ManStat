@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * ManStat-Modern: Official Leave Verification Certificate Page
+ * ManStat: Official Leave Verification Certificate Page
  * ============================================================================
  * Endpoint: /verify/leave/[docNo]
  * Target: Scanned by QR Code on official paper printout.
@@ -126,7 +126,7 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
               หนังสือรับรองความถูกต้องของใบลาราชการ
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              ระบบสารสนเทศบริหารงานบุคคลอิเล็กทรอนิกส์ (ManStat-Modern)
+              ระบบสารสนเทศบริหารงานบุคคลอิเล็กทรอนิกส์ (ManStat)
             </p>
             <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold font-mono">
               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -218,7 +218,7 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
-              <span>เข้าสู่หน้าหลักระบบ ManStat-Modern</span>
+              <span>เข้าสู่หน้าหลักระบบ ManStat</span>
             </Link>
           </div>
         </div>

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Academic Years & Student Census Custom Hook
+ * ManStat: Academic Years & Student Census Custom Hook
  * ============================================================================
  * Hook for managing:
  * - Academic Years (ปีการศึกษา)

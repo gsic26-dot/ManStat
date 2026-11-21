@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: SystemSettingsTab (Admin Center Tab 6)
+ * ManStat: SystemSettingsTab (Admin Center Tab 6)
  * ============================================================================
  * Consolidated System Preferences & Configuration Tab in Admin Center.
  * Includes:

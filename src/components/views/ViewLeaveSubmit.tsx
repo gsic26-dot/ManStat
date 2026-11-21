@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveSubmit (หน้ายื่นคำร้องขอลาแบบเต็มหน้าจอ)
+ * ManStat: ViewLeaveSubmit (หน้ายื่นคำร้องขอลาแบบเต็มหน้าจอ)
  * ============================================================================
  * - Full-page view container for SmartLeaveForm
  * - Thai regulatory checks (ว15/2561, 60/45/10 days limits, half-day count)

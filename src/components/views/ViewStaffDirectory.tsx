@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: View Staff Directory (ทะเบียนประวัติบุคลากรทางการศึกษา)
+ * ManStat: View Staff Directory (ทะเบียนประวัติบุคลากรทางการศึกษา)
  * ============================================================================
  * - Ground-truth 15 Teachers & Educational Personnel of Ban Takhob Community School
  * - Dual View Modes: Spacious Horizontal Table (Default) & Responsive Cards

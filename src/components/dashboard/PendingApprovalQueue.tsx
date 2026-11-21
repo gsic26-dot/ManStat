@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Pending Approval Queue (Actionable Inbox)
+ * ManStat: Pending Approval Queue (Actionable Inbox)
  * ============================================================================
  * - For HR Admins and School Directors (Role-based access).
  * - Action-First Executive Inbox: Decide within 2 seconds.
@@ -123,7 +123,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
         }
       } else {
         const newStatus = action === 'approve' ? 'approved' : 'rejected';
-        const defaultRemark = action === 'approve' ? 'อนุมัติผ่านระบบ ManStat-Modern' : 'ไม่อนุมัติตามดุลยพินิจ';
+        const defaultRemark = action === 'approve' ? 'อนุมัติผ่านระบบ ManStat' : 'ไม่อนุมัติตามดุลยพินิจ';
         const res = await fetch('/api/admin/leave', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

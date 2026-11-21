@@ -1,5 +1,5 @@
 -- ============================================================================
--- ManStat-Modern: Complete Supabase PostgreSQL Schema & Regulatory Engine
+-- ManStat: Complete Supabase PostgreSQL Schema & Regulatory Engine
 -- Compliance: พ.ร.บ. บำเหน็จบำนาญฯ ม.19 (กฎ 1 ต.ค.), ระเบียบการลา 2555, 
 --             ก.ค.ศ. ว15/2561, ว9/2564 (PA), ข้อบังคับคุรุสภา 2565, PDPA 2562
 -- ============================================================================

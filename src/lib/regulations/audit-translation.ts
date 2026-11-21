@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Audit Log Translation, Categorization & Filtering
+ * ManStat: Audit Log Translation, Categorization & Filtering
  * ============================================================================
  * Provides:
  * 1. Action code translation to concise Thai

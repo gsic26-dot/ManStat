@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Master Leave Types & Special Permissions Config
+ * ManStat: Master Leave Types & Special Permissions Config
  * Single Source of Truth for Statutory Leave & School Exit Permissions
  * ============================================================================
  * Governing Regulations:

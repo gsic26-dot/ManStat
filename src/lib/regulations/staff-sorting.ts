@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Official Thai Civil Service Staff Sorting & Categorization
+ * ManStat: Official Thai Civil Service Staff Sorting & Categorization
  * ============================================================================
  * Categorizes and sorts school personnel into 3 official branches:
  * 1. สายบริหาร (Management): ผู้อำนวยการ -> รองผู้อำนวยการ

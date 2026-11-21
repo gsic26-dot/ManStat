@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveReportsHub (รายงานและสถิติวันลา)
+ * ManStat: ViewLeaveReportsHub (รายงานและสถิติวันลา)
  * ============================================================================
  * - Consolidates "กราฟและสถิติวันลา" (Analytics) & "รายงานวันลา สพฐ." (Official Reports)
  * - Minimalist top segmented tab switcher

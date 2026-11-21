@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Main Application & Legacy Multi-View Navigation Hub
+ * ManStat: Main Application & Legacy Multi-View Navigation Hub
  * ============================================================================
  * - Full restoration of all 14 legacy ManStat views and features
  * - Steam Dark Theme responsive navigation sidebar
@@ -322,7 +322,7 @@ export default function DashboardPage() {
               <AppLogoIcon size={38} className="shrink-0 transition-transform group-hover:scale-105" />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">ManStat-Modern</span>
+                  <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">ManStat</span>
                   <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-semibold rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">
                     สพป.นม. 3
                   </span>
@@ -642,7 +642,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
                   <AppLogoIcon size={28} className="shrink-0" />
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">ManStat-Modern</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">ManStat</span>
                 </div>
                 <button
                   type="button"

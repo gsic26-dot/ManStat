@@ -1,5 +1,5 @@
 -- ============================================================================
--- ManStat-Modern: Migration 002 - Automated Storage Buckets & Storage RLS
+-- ManStat: Migration 002 - Automated Storage Buckets & Storage RLS
 -- ============================================================================
 -- สร้าง Bucket 'leave-documents' และ 'signatures' อัตโนมัติผ่าน SQL
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

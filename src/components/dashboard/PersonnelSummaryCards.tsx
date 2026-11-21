@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Personnel Summary Cards (Minimalist Metric Strip)
+ * ManStat: Personnel Summary Cards (Minimalist Metric Strip)
  * ============================================================================
  * - Sleek 4-column horizontal strip
  * - Single border-slate-800/80 container, crisp font-mono tabular-nums

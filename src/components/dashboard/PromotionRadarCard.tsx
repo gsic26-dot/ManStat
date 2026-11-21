@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Promotion Radar Widget (สถานะเกณฑ์เลื่อนเงินเดือน ว15/2561)
+ * ManStat: Promotion Radar Widget (สถานะเกณฑ์เลื่อนเงินเดือน ว15/2561)
  * ============================================================================
  * - Minimalist criteria rows with crisp tabular nums
  * - Clear criteria indicators (<= 6 occurrences, <= 23 days)

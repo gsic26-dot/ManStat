@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Fiscal Year & Civil Service Retirement Regulatory Engine
+ * ManStat: Fiscal Year & Civil Service Retirement Regulatory Engine
  * ============================================================================
  * Governing Law: พ.ร.บ. บำเหน็จบำนาญข้าราชการ พ.ศ. 2494 มาตรา 19
  * กฎเหล็ก 1 ตุลาคม:

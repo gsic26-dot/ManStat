@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: UserSettingsModal
+ * ManStat: UserSettingsModal
  * ============================================================================
  * Modal for user UI/UX preferences customization & cloud persistence.
  *

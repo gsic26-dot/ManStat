@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { UserSettingsProvider } from '@/context/UserSettingsContext';
 
 export const metadata: Metadata = {
-  title: 'ManStat-Modern | ระบบบริหารงานบุคคลโรงเรียนชุมชนบ้านตะขบ',
+  title: 'ManStat | ระบบบริหารงานบุคคลโรงเรียนชุมชนบ้านตะขบ',
   description: 'ระบบบริหารงานบุคคลและคำนวณระเบียบราชการไทย สพฐ. มาตรฐานความปลอดภัย PDPA',
   manifest: '/manifest.json',
   icons: {

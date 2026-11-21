@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveTracking (ติดตามสถานะคำร้องขอลาแบบ Step-by-Step)
+ * ManStat: ViewLeaveTracking (ติดตามสถานะคำร้องขอลาแบบ Step-by-Step)
  * ============================================================================
  * - Visual step timeline (Submission -> Supervisor Review -> Director Decision)
  * - Real-time tracking with document number (เลขที่หนังสือราชการ)
@@ -99,7 +99,7 @@ export function ViewLeaveTracking() {
       title: 'บันทึกสารสนเทศและตรวจสอบ QR Code',
       desc: 'ลงทะเบียนสถิติวันลาและออกรหัสยืนยันความถูกต้องทางดิจิทัล',
       time: selectedReq?.status === 'approved' ? 'มีผลสมบูรณ์' : 'รอดำเนินการ',
-      actor: 'ระบบสารสนเทศ ManStat-Modern',
+      actor: 'ระบบสารสนเทศ ManStat',
       done: selectedReq?.status === 'approved',
     },
   ];

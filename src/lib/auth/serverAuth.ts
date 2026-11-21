@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Server-Side Authentication Helper (serverAuth.ts)
+ * ManStat: Server-Side Authentication Helper (serverAuth.ts)
  * ============================================================================
  * Verifies session cookies and RBAC permissions in Next.js Server Components
  * and Route Handlers.

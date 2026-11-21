@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Supabase Service Layer (queries.ts)
+ * ManStat: Supabase Service Layer (queries.ts)
  * ============================================================================
  * 100% Zero-GAS Native Supabase Queries & RPC Calls
  * Typesafe service functions consuming Views, Tables, and Stored Procedures.

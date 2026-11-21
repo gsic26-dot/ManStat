@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Smart Leave Form (Real-time Thai Regulatory Engine & PDPA)
+ * ManStat: Smart Leave Form (Real-time Thai Regulatory Engine & PDPA)
  * ============================================================================
  * Governing Regulations:
  * 1. ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555 (11 ประเภท)

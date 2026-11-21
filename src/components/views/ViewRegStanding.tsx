@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: View Academic Standings (ทะเบียนวิทยฐานะและการเลื่อนวิทยฐานะ)
+ * ManStat: View Academic Standings (ทะเบียนวิทยฐานะและการเลื่อนวิทยฐานะ)
  * ============================================================================
  * - Academic Standing Tiers: ครูผู้ช่วย, ครู คศ.1, ครูชำนาญการ, ครูชำนาญการพิเศษ, ครูเชี่ยวชาญ
  * - Dual Views: Spacious Table View (Default) & Responsive Cards

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewLeaveAnalytics (กราฟและสถิติภาพรวมการลา)
+ * ManStat: ViewLeaveAnalytics (กราฟและสถิติภาพรวมการลา)
  * ============================================================================
  * - Fiscal year leave trends (ตุลาคม - กันยายน)
  * - Leave type distribution (Sick, Personal, Vacation)

@@ -1,4 +1,4 @@
-name: ManStat-Modern CI/CD Deployment
+name: ManStat CI/CD Deployment
 
 on:
   push:

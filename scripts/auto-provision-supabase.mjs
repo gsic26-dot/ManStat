@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ============================================================================
- * ManStat-Modern: Automated Supabase Provisioning Engine
+ * ManStat: Automated Supabase Provisioning Engine
  * ============================================================================
  * File: /scripts/auto-provision-supabase.mjs
  * Purpose:
@@ -43,7 +43,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 console.log('------------------------------------------------------------');
-console.log(' MANSTAT-MODERN: AUTOMATED SUPABASE PROVISIONING ENGINE');
+console.log(' MANSTAT: AUTOMATED SUPABASE PROVISIONING ENGINE');
 console.log('------------------------------------------------------------');
 
 async function runDirectSqlMigrations() {

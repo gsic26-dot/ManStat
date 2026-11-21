@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Leave Calculator & Quota Validation Regulatory Engine
+ * ManStat: Leave Calculator & Quota Validation Regulatory Engine
  * ============================================================================
  * Governing Regulations:
  * 1. ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555

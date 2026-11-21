@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Citizen ID Shield Component (PDPA Security & Audit Log)
+ * ManStat: Citizen ID Shield Component (PDPA Security & Audit Log)
  * ============================================================================
  * - Default: Masked format (e.g. 1-xxxx-xxxxx-12-3)
  * - Reveal: Invokes Supabase RPC 'rpc_reveal_citizen_id' to fetch decrypted ID

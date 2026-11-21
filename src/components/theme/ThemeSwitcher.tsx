@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ThemeSwitcher Component (Compact Popover & Clean Header)
+ * ManStat: ThemeSwitcher Component (Compact Popover & Clean Header)
  * ============================================================================
  * Compact Single-Icon Button with Popover Menu:
  * - Sun: โหมดสว่าง (Clean Civil-Service Paper)

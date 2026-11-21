@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ThemeContext & ThemeProvider
+ * ManStat: ThemeContext & ThemeProvider
  * ============================================================================
  * 3-Mode Theme System:
  * - 'light': Forces Light Mode (Clean Civil-Service Paper)

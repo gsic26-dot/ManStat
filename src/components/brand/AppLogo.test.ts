@@ -35,6 +35,7 @@ describe('Brand Identity: Geometric M-Bar Logo (Option 1)', () => {
   it('provides valid PWA manifest referencing /icon.svg', () => {
     assert.ok(fs.existsSync(manifestPath), 'public/manifest.json must exist');
     const json = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    assert.equal(json.name, 'ManStat | ระบบบริหารงานบุคคล');
     assert.equal(json.short_name, 'ManStat');
     assert.equal(json.background_color, '#0B1320');
     assert.equal(json.icons[0].src, '/icon.svg');

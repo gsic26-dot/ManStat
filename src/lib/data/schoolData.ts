@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================================
- * ManStat-Modern: Ground-Truth School Data (โรงเรียนชุมชนบ้านตะขบ)
+ * ManStat: Ground-Truth School Data (โรงเรียนชุมชนบ้านตะขบ)
  * Synchronized directly with legacy ManStat database
  * ============================================================================
  */

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 console.log('================================================================');
-console.log(' MANSTAT-MODERN: ADMIN 5 TABS PERSISTENCE & CACHING VERIFICATION');
+console.log(' MANSTAT: ADMIN 5 TABS PERSISTENCE & CACHING VERIFICATION');
 console.log('================================================================\n');
 
 const dbPath = path.join(process.cwd(), 'data', 'manstat_db.json');

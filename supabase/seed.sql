@@ -1,5 +1,5 @@
 -- ============================================================================
--- ManStat-Modern: Seed Data (supabase/seed.sql)
+-- ManStat: Seed Data (supabase/seed.sql)
 -- School Settings & Official Thai Government Holidays for Fiscal Year 2570
 -- ============================================================================
 

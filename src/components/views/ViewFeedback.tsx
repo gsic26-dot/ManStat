@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: ViewFeedback (ระบบแจ้งข้อเสนอแนะและปรับปรุงระบบ)
+ * ManStat: ViewFeedback (ระบบแจ้งข้อเสนอแนะและปรับปรุงระบบ)
  * ============================================================================
  * - Form for teachers and staff to submit bugs or feature ideas
  * - Tracking submitted suggestions with status indicators
@@ -111,7 +111,7 @@ export function ViewFeedback() {
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">แจ้งปรับปรุงระบบและข้อเสนอแนะ</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          รับฟังความคิดเห็นจากคณะครูและบุคลากร เพื่อพัฒนา ManStat-Modern ให้ตอบสนองการปฏิบัติงานดียิ่งขึ้น
+          รับฟังความคิดเห็นจากคณะครูและบุคลากร เพื่อพัฒนา ManStat ให้ตอบสนองการปฏิบัติงานดียิ่งขึ้น
         </p>
       </div>
 

@@ -5,7 +5,7 @@ const { execSync } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const stagingDir = path.join(rootDir, '.temp_leave_bundle');
 
-console.log('Packaging ManStat-Modern Overview & Leave Management Files...');
+console.log('Packaging ManStat Overview & Leave Management Files...');
 
 if (fs.existsSync(stagingDir)) {
   fs.rmSync(stagingDir, { recursive: true, force: true });
@@ -62,7 +62,7 @@ for (const rel of files) {
 }
 
 const readmeContent = `# เอกสารและโครงสร้างไฟล์หมวดภาพรวม และหมวดที่ 2 งานวันลา
-## โครงการ ManStat-Modern (โรงเรียนชุมชนบ้านตะขบ)
+## โครงการ ManStat (โรงเรียนชุมชนบ้านตะขบ)
 
 ไฟล์ชุดนี้รวบรวมโค้ด ฐานข้อมูล เอนจินกฎหมาย และคอมโพเนนต์ทั้งหมดที่เกี่ยวข้องกับ **หมวด 1: ภาพรวมสถิติและภาพรวม** และ **หมวด 2: งานวันลา** ครบทั้ง 4 ฟังก์ชันหลักตามระเบียบสำนักนายกรัฐมนตรีฯ และมาตรฐาน สพฐ.:
 

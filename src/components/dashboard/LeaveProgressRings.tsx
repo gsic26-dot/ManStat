@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 /**
  * ============================================================================
- * ManStat-Modern: Leave Quota Widget (Clean Health Quota)
+ * ManStat: Leave Quota Widget (Clean Health Quota)
  * ============================================================================
  * - Sleek minimal quota bars for sick, personal, and vacation leave
  * - Tabular nums with clear ratios (0/60, 0/45 or 0/15 for first-year)
