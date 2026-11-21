@@ -1013,13 +1013,13 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Navigation Tabs Bar - Modern Segmented Control */}
-        <div className="bg-white dark:bg-[#121822] p-2 sm:p-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm">
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg">
+        <div className="bg-white dark:bg-[#121822] p-1.5 sm:p-2 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg w-full">
             {/* 1. จัดการบุคลากร */}
             <button
               type="button"
               onClick={() => setActiveTab('staff')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'staff'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1027,7 +1027,7 @@ export default function AdminPage() {
               title="จัดการข้อมูลบุคลากร"
             >
               <Users className={`w-4 h-4 shrink-0 ${activeTab === 'staff' ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}`} />
-              <span className="truncate">จัดการบุคลากร</span>
+              <span>จัดการบุคลากร</span>
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                 activeTab === 'staff'
                   ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/20'
@@ -1041,7 +1041,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab('board')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'board'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1049,7 +1049,8 @@ export default function AdminPage() {
               title="คณะกรรมการสถานศึกษา"
             >
               <Award className={`w-4 h-4 shrink-0 ${activeTab === 'board' ? 'text-purple-500 dark:text-purple-400' : 'text-slate-400'}`} />
-              <span className="truncate">คณะกรรมการสถานศึกษา</span>
+              <span className="lg:hidden xl:inline">คณะกรรมการสถานศึกษา</span>
+              <span className="hidden lg:inline xl:hidden">คณะกรรมการฯ</span>
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                 activeTab === 'board'
                   ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20'
@@ -1063,7 +1064,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab('school')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'school'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1071,14 +1072,14 @@ export default function AdminPage() {
               title="ข้อมูลสถานศึกษา"
             >
               <Building className={`w-4 h-4 shrink-0 ${activeTab === 'school' ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400'}`} />
-              <span className="truncate">ข้อมูลสถานศึกษา</span>
+              <span>ข้อมูลสถานศึกษา</span>
             </button>
 
             {/* 4. ปีงบประมาณและวันหยุด */}
             <button
               type="button"
               onClick={() => setActiveTab('fiscal')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'fiscal'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1086,7 +1087,8 @@ export default function AdminPage() {
               title="ปีงบประมาณและวันหยุด"
             >
               <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'fiscal' ? 'text-amber-500 dark:text-amber-400' : 'text-slate-400'}`} />
-              <span className="truncate">ปีงบประมาณและวันหยุด</span>
+              <span className="lg:hidden xl:inline">ปีงบประมาณและวันหยุด</span>
+              <span className="hidden lg:inline xl:hidden">ปีงบประมาณ</span>
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                 activeTab === 'fiscal'
                   ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20'
@@ -1100,7 +1102,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab('audit')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'audit'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1108,14 +1110,14 @@ export default function AdminPage() {
               title="ตรวจสอบ PDPA Audit Logs"
             >
               <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab === 'audit' ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400'}`} />
-              <span className="truncate">บันทึก PDPA</span>
+              <span>บันทึก PDPA</span>
             </button>
 
             {/* 6. ตั้งค่าระบบ */}
             <button
               type="button"
               onClick={() => setActiveTab('preferences')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+              className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 sm:px-2.5 sm:py-2.5 rounded-md text-xs xl:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === 'preferences'
                   ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -1123,7 +1125,7 @@ export default function AdminPage() {
               title="ตั้งค่าระบบ"
             >
               <Sliders className={`w-4 h-4 shrink-0 ${activeTab === 'preferences' ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}`} />
-              <span className="truncate">ตั้งค่าระบบ</span>
+              <span>ตั้งค่าระบบ</span>
             </button>
           </div>
         </div>
