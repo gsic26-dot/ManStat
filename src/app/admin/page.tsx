@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ShieldAlert,
@@ -222,16 +222,11 @@ export default function AdminPage() {
 
   // Fiscal Year & Holidays State
   const [fiscalYearBE, setFiscalYearBE] = useState(2570);
-  const [holidays, setHolidays] = useState<HolidayRecord[]>([
-    { id: 'h1', date: '2026-10-23', name: 'วันปิยมหาราช', type: 'วันหยุดราชการประจำปี' },
-    { id: 'h2', date: '2026-12-05', name: 'วันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ', type: 'วันหยุดราชการประจำปี' },
-    { id: 'h3', date: '2026-12-10', name: 'วันรัฐธรรมนูญ', type: 'วันหยุดราชการประจำปี' },
-    { id: 'h4', date: '2026-12-31', name: 'วันสิ้นปี', type: 'วันหยุดราชการประจำปี' },
-    { id: 'h5', date: '2027-01-01', name: 'วันขึ้นปีใหม่', type: 'วันหยุดราชการประจำปี' },
-    { id: 'h6', date: '2027-01-16', name: 'วันครูแห่งชาติ (วันหยุดสถานศึกษา)', type: 'วันหยุดเฉพาะสถานศึกษา' },
-  ]);
+  const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
+  const [holidayYearFilter, setHolidayYearFilter] = useState<'ALL' | '2569' | '2570'>('ALL');
+  const [holidaySearch, setHolidaySearch] = useState('');
 
   // Real Immutable Audit Logs from Database
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
@@ -387,6 +382,32 @@ export default function AdminPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const count2569 = useMemo(() => holidays.filter((h) => h.date.startsWith('2026')).length, [holidays]);
+  const count2570 = useMemo(() => holidays.filter((h) => h.date.startsWith('2027')).length, [holidays]);
+
+  const filteredHolidays = useMemo(() => {
+    return holidays.filter((h) => {
+      if (holidayYearFilter === '2569' && !h.date.startsWith('2026')) return false;
+      if (holidayYearFilter === '2570' && !h.date.startsWith('2027')) return false;
+      if (holidaySearch.trim()) {
+        const q = holidaySearch.toLowerCase().trim();
+        const matchesName = h.name.toLowerCase().includes(q);
+        const matchesType = (h.type || '').toLowerCase().includes(q);
+        const matchesDate = h.date.includes(q) || formatThaiDateDisplay(h.date).includes(q);
+        return matchesName || matchesType || matchesDate;
+      }
+      return true;
+    });
+  }, [holidays, holidayYearFilter, holidaySearch]);
+
+  const getThaiDayOfWeek = (dateStr: string) => {
+    if (!dateStr || !dateStr.includes('-')) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const days = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+    return days[date.getDay()] || '';
   };
 
   const handleSaveFiscalYear = async () => {
@@ -1788,46 +1809,145 @@ export default function AdminPage() {
             </div>
 
             {/* Holiday Calendar List */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden">
-              <div className="p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between">
+            <div className="lg:col-span-2 bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col">
+              {/* Header */}
+              <div className="p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                    ปฏิทินวันหยุดราชการประจำปีงบประมาณ {fiscalYearBE}
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
+                    <span>ปฏิทินวันหยุดราชการ (พ.ศ. 2569 - 2570)</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    ระบบคำนวณวันลาจะนำวันหยุดเหล่านี้ไปหักลบออกจากวันลาจริงโดยอัตโนมัติ (Zero-GAS Engine)
+                    นำไปหักลบออกจากวันลาทำการจริงโดยอัตโนมัติ ตามระเบียบสำนักนายกรัฐมนตรี
                   </p>
                 </div>
-                <span className="font-mono text-xs text-amber-600 dark:text-amber-400 font-bold">
-                  {holidays.length} วัน
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-mono">
+                    {filteredHolidays.length} / {holidays.length} วัน
+                  </span>
+                </div>
               </div>
 
-              <div className="divide-y divide-slate-200/80 dark:divide-slate-800/60 text-xs">
-                {holidays.map((h) => (
-                  <div
-                    key={h.id}
-                    className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-[#151f2c] transition-colors"
+              {/* Filter Toolbar (Segmented Year Pills + Search) */}
+              <div className="p-3 bg-white dark:bg-[#111822] border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                {/* Year Filter Pills */}
+                <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setHolidayYearFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      holidayYearFilter === 'ALL'
+                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
                   >
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{h.name}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{h.type}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs text-sky-400">
-                        {formatThaiDateDisplay(h.date)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteHoliday(h.id)}
-                        className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                        title="ลบวันหยุด"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    ทั้งหมด ({holidays.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHolidayYearFilter('2569')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      holidayYearFilter === '2569'
+                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ปี 2569 ({count2569})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHolidayYearFilter('2570')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      holidayYearFilter === '2570'
+                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ปี 2570 ({count2570})
+                  </button>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative flex-1 sm:max-w-xs">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={holidaySearch}
+                    onChange={(e) => setHolidaySearch(e.target.value)}
+                    placeholder="ค้นหาชื่อหรือวันที่..."
+                    className="w-full h-8 pl-8 pr-3 text-xs bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                  />
+                  {holidaySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setHolidaySearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Holiday List */}
+              <div className="divide-y divide-slate-200/80 dark:divide-slate-800/60 text-xs overflow-y-auto max-h-[600px]">
+                {filteredHolidays.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 dark:text-slate-500 space-y-2">
+                    <Calendar className="w-8 h-8 mx-auto opacity-40 text-slate-400" />
+                    <p>ไม่พบรายการวันหยุดที่ตรงกับเงื่อนไข</p>
                   </div>
-                ))}
+                ) : (
+                  filteredHolidays.map((h: HolidayRecord) => {
+                    const dayOfWeek = getThaiDayOfWeek(h.date);
+                    const is2569 = h.date.startsWith('2026');
+
+                    let badgeColor = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20';
+                    if (h.type?.includes('ชดเชย')) {
+                      badgeColor = 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
+                    } else if (h.type?.includes('ครม') || h.type?.includes('พิเศษ')) {
+                      badgeColor = 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20';
+                    } else if (h.type?.includes('สถานศึกษา')) {
+                      badgeColor = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
+                    }
+
+                    return (
+                      <div
+                        key={h.id}
+                        className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-[#151f2c] transition-colors"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">
+                              {h.name}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${badgeColor}`}>
+                              {h.type}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <span>{dayOfWeek}</span>
+                            <span>•</span>
+                            <span className="font-mono">{h.date}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 px-2.5 py-1 rounded-md border border-sky-200/60 dark:border-sky-800/50">
+                            {formatThaiDateDisplay(h.date, 'full')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteHoliday(h.id)}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="ลบวันหยุด"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
