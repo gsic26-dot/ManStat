@@ -58,6 +58,10 @@ import { SchoolAcademicManager } from '@/components/admin/SchoolAcademicManager'
 import { FiscalPeriodManager } from '@/components/admin/FiscalPeriodManager';
 import { isAdminRole } from '@/lib/auth/roles';
 import {
+  groupAndSortTeachers,
+  formatAcademicStandingSubtext,
+} from '@/lib/regulations/staff-sorting';
+import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
@@ -939,6 +943,10 @@ export default function AdminPage() {
       t.department.toLowerCase().includes(staffSearch.toLowerCase())
   );
 
+  const sortedTeacherGroups = useMemo(() => {
+    return groupAndSortTeachers(filteredTeachers);
+  }, [filteredTeachers]);
+
   const filteredBoard = boardMembers
     .filter(
       (b) =>
@@ -1118,7 +1126,9 @@ export default function AdminPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-mono">
-                  แสดง {filteredTeachers.length} จาก {teachers.length} ท่าน
+                  {staffSearch.trim()
+                    ? `แสดง ${filteredTeachers.length} จาก ${teachers.length} ท่าน`
+                    : `ทั้งหมด ${teachers.length} ท่าน`}
                 </span>
                 <button
                   type="button"
@@ -1136,156 +1146,239 @@ export default function AdminPage() {
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800">
                     <tr>
-                      <th scope="col" className="w-10 px-3 py-3 text-center">
-                        <span className="sr-only">ขยายรายละเอียด</span>
-                      </th>
-                      <th scope="col" className="px-4 py-3 min-w-[200px]">รหัส / ชื่อ-สกุล</th>
-                      <th scope="col" className="px-4 py-3 min-w-[190px]">ตำแหน่ง / วิทยฐานะ</th>
-                      <th scope="col" className="px-4 py-3 text-center min-w-[120px]">สิทธิ์การใช้งาน</th>
-                      <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
+                      <th scope="col" className="w-14 px-3 py-3 text-center shrink-0">ลำดับ</th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px] w-[36%]">รหัส / ชื่อ-สกุล</th>
+                      <th scope="col" className="px-4 py-3 min-w-[190px] w-[28%]">ตำแหน่ง / วิทยฐานะ</th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[120px] w-[16%]">สิทธิ์การใช้งาน</th>
+                      <th scope="col" className="px-4 py-3 text-right w-36 shrink-0">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                    {filteredTeachers.map((t) => {
-                      const posDisplay = t.position
-                        .replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')
-                        .replace('ผู้อำนวยการโรงเรียน', 'ผอ.โรงเรียน');
-                      const isExpanded = expandedStaffId === t.id;
-                      return (
-                        <React.Fragment key={t.id}>
-                          <tr
-                            onClick={() => setExpandedStaffId(isExpanded ? null : t.id)}
-                            className={`hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors cursor-pointer ${
-                              isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
-                            }`}
-                          >
-                            <td className="px-3 py-3 text-center">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedStaffId(isExpanded ? null : t.id);
-                                }}
-                                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                                aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
-                              >
-                                <ChevronRight
-                                  className={`w-4 h-4 transition-transform duration-200 ${
-                                    isExpanded ? 'rotate-90 text-sky-400' : ''
-                                  }`}
-                                />
-                              </button>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]" title={t.name}>{t.name}</div>
-                              <div className="text-[11px] font-mono text-sky-400 mt-0.5 truncate max-w-[180px]" title={`${t.employeeCode} ${t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}`}>
-                                {t.employeeCode} {t.positionNo ? `(ตำแหน่ง ${t.positionNo})` : ''}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-slate-800 dark:text-slate-200 truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[180px]" title={t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}>
-                                {t.academicStanding !== '-' ? t.academicStanding : 'ไม่มีวิทยฐานะ'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap">
-                              {t.accessLevel === 'Superuser' || t.role === 'superuser' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
-                                  Superuser
-                                </span>
-                              ) : t.accessLevel === 'Admin' || t.role === 'hr_admin' ? (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30">
-                                  Admin
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-                                  Teacher
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditStaff(t)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
-                                  title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteStaff(t.id)}
-                                  className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                                  title="ลบข้อมูลบุคลากร"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Expanded Detail Panel */}
-                          {isExpanded && (
-                            <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                              <td colSpan={5} className="px-6 py-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      วุฒิลูกเสือ &amp; ใบอนุญาต
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-1.5 text-amber-300">
-                                        <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                        <span className="font-medium">{t.highestScout || 'ไม่มีวุฒิลูกเสือ'}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-emerald-300">
-                                        <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                        <span className="font-medium">
-                                          {t.licenses && t.licenses.length > 0 ? t.licenses[0].type : 'ไม่มีข้อมูลใบอนุญาต'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      ภาระงานสอนและ TA
-                                    </div>
-                                    <div className="text-slate-800 dark:text-slate-200 font-mono">
-                                      <span className="text-sky-300 font-bold text-sm">{t.teachingHours ?? 18}</span>
-                                      <span className="text-slate-500"> สอน + </span>
-                                      <span className="text-amber-300 font-bold text-sm">{t.taHours ?? 0}</span>
-                                      <span className="text-slate-400 text-xs"> TA ชม./สัปดาห์</span>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      วันลาสะสม (ป่วย / กิจ / พักผ่อน)
-                                    </div>
-                                    <div className="font-mono text-xs">
-                                      <span className="text-rose-400 font-bold">{t.sickUsed}</span> วันป่วย /{' '}
-                                      <span className="text-amber-400 font-bold">{t.personalUsed}</span> วันกิจ /{' '}
-                                      <span className="text-emerald-400 font-bold">{t.vacationUsed}</span> วันพักผ่อน
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                      กลุ่มสาระ / ฝ่ายงาน
-                                    </div>
-                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
-                                      {t.department}
-                                    </div>
-                                    <div className="text-[11px] text-slate-400 mt-0.5">
-                                      บรรจุ: {t.startDate}
-                                    </div>
-                                  </div>
-                                </div>
+                    {(() => {
+                      let staffRowIdx = 0;
+                      return sortedTeacherGroups.map((group) => {
+                        return (
+                          <React.Fragment key={group.category}>
+                            {/* Group Section Header */}
+                            <tr
+                              className={
+                                group.category === 'support'
+                                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300/90 font-semibold text-[11px] tracking-wider uppercase border-y border-amber-500/20'
+                                  : 'bg-slate-100/60 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 font-semibold text-[11px] tracking-wider uppercase border-y border-slate-200/80 dark:border-slate-800'
+                              }
+                            >
+                              <td colSpan={5} className="py-1.5 px-4">
+                                {group.title}
                               </td>
                             </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
+
+                            {/* Group Members */}
+                            {group.members.map((t) => {
+                              const seq = ++staffRowIdx;
+                              const isSupport = group.category === 'support';
+                              const posDisplay = t.position
+                                .replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')
+                                .replace('ผู้อำนวยการโรงเรียน', 'ผอ.โรงเรียน');
+                              const isExpanded = expandedStaffId === t.id;
+                              const standingSubtext = formatAcademicStandingSubtext(t.position, t.academicStanding);
+
+                              return (
+                                <React.Fragment key={t.id}>
+                                  <tr
+                                    onClick={() => setExpandedStaffId(isExpanded ? null : t.id)}
+                                    className={`group cursor-pointer transition-colors ${
+                                      isSupport
+                                        ? 'border-l-2 border-amber-400/80 bg-amber-400/[0.03] hover:bg-amber-400/[0.06]'
+                                        : 'hover:bg-slate-50/80 dark:hover:bg-white/[0.03]'
+                                    } ${
+                                      isExpanded
+                                        ? isSupport
+                                          ? 'bg-amber-400/[0.08]'
+                                          : 'bg-slate-100/70 dark:bg-[#162231]/40'
+                                        : ''
+                                    }`}
+                                  >
+                                    <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                                      {seq}
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                      <div className="font-semibold text-slate-900 dark:text-white text-sm" title={t.name}>
+                                        {t.name}
+                                      </div>
+                                      <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                        {t.employeeCode}{t.positionNo ? ` · เลขที่ ${t.positionNo}` : ''}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                      {isSupport ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                          <span className="text-slate-800 dark:text-slate-200 text-sm font-medium" title={t.position}>
+                                            {posDisplay}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="text-slate-800 dark:text-slate-200 text-sm" title={t.position}>
+                                          {posDisplay}
+                                        </div>
+                                      )}
+                                      {standingSubtext && (
+                                        <div className="text-xs text-slate-400 mt-0.5" title={standingSubtext}>
+                                          {standingSubtext}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                      {t.accessLevel === 'Superuser' || t.role === 'superuser' ? (
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+                                          <span className="text-violet-600 dark:text-violet-300 font-medium text-sm">
+                                            Superuser
+                                          </span>
+                                        </div>
+                                      ) : t.accessLevel === 'Admin' || t.role === 'hr_admin' ? (
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />
+                                          <span className="text-sky-600 dark:text-sky-300 font-medium text-sm">
+                                            Admin
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400 text-sm">
+                                          Teacher
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="w-36 px-4 py-3.5 text-right whitespace-nowrap">
+                                      <div className="inline-flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditStaff(t)}
+                                          className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors duration-200"
+                                          title="ตั้งค่าและแก้ไขข้อมูลบุคลากร"
+                                        >
+                                          <Edit className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteStaff(t.id)}
+                                          className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors duration-200"
+                                          title="ลบข้อมูลบุคลากร"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+
+                                        <span className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setExpandedStaffId(isExpanded ? null : t.id);
+                                          }}
+                                          className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors duration-200"
+                                          title={isExpanded ? 'ย่อรายละเอียด' : 'ขยายรายละเอียด'}
+                                          aria-label={isExpanded ? 'ย่อรายละเอียด' : 'ขยายรายละเอียด'}
+                                        >
+                                          <ChevronDown
+                                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                              isExpanded ? 'rotate-180 text-sky-500 dark:text-sky-400' : ''
+                                            }`}
+                                          />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+
+                                  {/* Expanded Detail Panel */}
+                                  {isExpanded && (
+                                    <tr className="bg-slate-50/70 dark:bg-white/[0.02] border-t border-slate-200/80 dark:border-white/[0.04]">
+                                      <td colSpan={5} className="px-4 sm:pl-14 sm:pr-6 py-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
+                                          <div>
+                                            <div className="text-xs text-slate-400 font-medium">
+                                              วุฒิลูกเสือ &amp; ใบอนุญาต
+                                            </div>
+                                            <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 space-y-1">
+                                              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-300">
+                                                <Compass className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                                                <span className="font-medium text-xs">
+                                                  {t.highestScout || 'ไม่มีวุฒิลูกเสือ'}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-300">
+                                                <Award className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                                                <span
+                                                  className="font-medium text-xs truncate max-w-[200px]"
+                                                  title={
+                                                    t.licenses && t.licenses.length > 0
+                                                      ? t.licenses[0].type
+                                                      : 'ไม่มีข้อมูลใบอนุญาต'
+                                                  }
+                                                >
+                                                  {t.licenses && t.licenses.length > 0
+                                                    ? t.licenses[0].type
+                                                    : 'ไม่มีข้อมูลใบอนุญาต'}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div className="text-xs text-slate-400 font-medium">
+                                              ภาระงานสอนและ TA
+                                            </div>
+                                            <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 font-mono">
+                                              <span className="text-sky-600 dark:text-sky-300 font-bold">
+                                                {t.teachingHours ?? 18}
+                                              </span>
+                                              <span className="text-slate-500"> สอน + </span>
+                                              <span className="text-amber-600 dark:text-amber-300 font-bold">
+                                                {t.taHours ?? 0}
+                                              </span>
+                                              <span className="text-slate-400 text-xs"> TA ชม./สัปดาห์</span>
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div className="text-xs text-slate-400 font-medium">
+                                              วันลาสะสม (ป่วย / กิจ / พักผ่อน)
+                                            </div>
+                                            <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 font-mono text-xs">
+                                              <span className="text-rose-500 dark:text-rose-400 font-bold">
+                                                {t.sickUsed}
+                                              </span>{' '}
+                                              ป่วย /{' '}
+                                              <span className="text-amber-500 dark:text-amber-400 font-bold">
+                                                {t.personalUsed}
+                                              </span>{' '}
+                                              กิจ /{' '}
+                                              <span className="text-emerald-500 dark:text-emerald-400 font-bold">
+                                                {t.vacationUsed}
+                                              </span>{' '}
+                                              พักผ่อน
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div className="text-xs text-slate-400 font-medium">
+                                              กลุ่มสาระ / วันบรรจุ
+                                            </div>
+                                            <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 font-medium">
+                                              {t.department}
+                                            </div>
+                                            <div className="text-xs text-slate-400 mt-0.5">
+                                              บรรจุ: {t.startDate}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -1331,9 +1424,9 @@ export default function AdminPage() {
                   <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800 text-xs">
                     <tr>
                       <th scope="col" className="w-14 px-3 py-3 text-center shrink-0">ลำดับ</th>
-                      <th scope="col" className="px-4 py-3 min-w-[200px]">ชื่อ - สกุล</th>
-                      <th scope="col" className="px-4 py-3 min-w-[200px]">ตำแหน่งในคณะกรรมการ</th>
-                      <th scope="col" className="px-4 py-3 text-center min-w-[120px] shrink-0">จัดการ</th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px] w-[40%]">ชื่อ - สกุล</th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px] w-[36%]">ตำแหน่งในคณะกรรมการ</th>
+                      <th scope="col" className="px-4 py-3 text-right w-36 shrink-0">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
@@ -1357,7 +1450,7 @@ export default function AdminPage() {
                                 {b.fullName}
                               </div>
                               {isDirector && (
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[240px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
+                                <span className="block text-xs text-slate-400 mt-0.5 truncate max-w-[240px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
                                   ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
                                 </span>
                               )}
@@ -1366,22 +1459,22 @@ export default function AdminPage() {
                               {isChair ? (
                                 <div className="inline-flex items-center gap-2">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                  <span className="text-sm font-medium text-amber-300">
                                     {b.positionTitle}
                                   </span>
                                 </div>
                               ) : isDirector ? (
-                                <span className="text-sm font-medium text-slate-800 dark:text-sky-300/90">
+                                <span className="text-sm font-medium text-slate-200">
                                   {b.positionTitle}
                                 </span>
                               ) : (
-                                <span className="text-sm text-slate-600 dark:text-slate-300 font-normal">
+                                <span className="text-sm text-slate-300 font-normal">
                                   {b.positionTitle}
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3.5 text-center">
-                              <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <td className="w-36 px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditBoardMember(b)}
@@ -1399,7 +1492,7 @@ export default function AdminPage() {
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
 
-                                <span className="w-px h-3.5 bg-slate-200 dark:bg-slate-800 mx-1 shrink-0" />
+                                <span className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-1 shrink-0" />
 
                                 <button
                                   type="button"
@@ -1423,30 +1516,30 @@ export default function AdminPage() {
 
                           {/* Expanded Detail Panel */}
                           {isExpanded && (
-                            <tr className="bg-slate-50/70 dark:bg-white/[0.02] border-y border-slate-200/80 dark:border-slate-800/80">
-                              <td colSpan={4} className="px-6 py-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                            <tr className="bg-slate-50/70 dark:bg-white/[0.02] border-t border-slate-200/80 dark:border-white/[0.04]">
+                              <td colSpan={4} className="px-4 sm:pl-14 sm:pr-6 py-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
                                   <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-xs text-slate-400 font-medium">
                                       สังกัดองค์กร / หน่วยงาน
                                     </div>
-                                    <div className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                    <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
                                       {b.organization}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-xs text-slate-400 font-medium">
                                       อาชีพ / บทบาท
                                     </div>
-                                    <div className="text-slate-700 dark:text-slate-300 font-medium">
+                                    <div className="text-sm text-slate-700 dark:text-slate-300 mt-1 font-medium">
                                       {b.occupation || 'ไม่ได้ระบุ'}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-xs text-slate-400 font-medium">
                                       วาระการดำรงตำแหน่ง
                                     </div>
-                                    <div className="text-slate-800 dark:text-slate-200 font-medium">
+                                    <div className="text-sm text-slate-800 dark:text-slate-200 mt-1 font-medium">
                                       {isDirector ? (
                                         <div className="flex flex-col gap-1 items-start">
                                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/25">
@@ -1454,11 +1547,11 @@ export default function AdminPage() {
                                             <span>โดยตำแหน่ง</span>
                                           </span>
                                           {b.endReason && b.endDate ? (
-                                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                                               สิ้นสุด {formatOfficialThaiDate(b.endDate)} ({b.endReason})
                                             </span>
                                           ) : b.appointmentDate && formatServiceDuration(b.appointmentDate) ? (
-                                            <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium font-mono">
+                                            <span className="text-xs text-sky-600 dark:text-sky-400 font-medium font-mono mt-0.5">
                                               ปฏิบัติหน้าที่มาแล้ว {formatServiceDuration(b.appointmentDate)}
                                             </span>
                                           ) : null}
@@ -1469,16 +1562,16 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                    <div className="text-xs text-slate-400 font-medium">
                                       สถานะการดำรงตำแหน่ง
                                     </div>
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 mt-1">
                                       <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                         <span>{b.status}</span>
                                       </span>
                                     </div>
-                                    <div className="text-[11px] text-slate-400 mt-1">
+                                    <div className="text-xs text-slate-400 mt-1">
                                       ตามกฎกระทรวง พ.ศ. 2546
                                     </div>
                                   </div>
