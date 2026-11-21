@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -994,7 +995,8 @@ export default function AdminPage() {
               <ArrowLeft className="w-4 h-4 shrink-0" />
               <span>กลับสู่หน้าหลัก</span>
             </Link>
-            <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-3">
+            <div className="flex items-center gap-2.5 border-l border-slate-200 dark:border-slate-700 pl-3">
+              <AppLogoIcon size={26} className="shrink-0" />
               <span className="font-bold text-base text-slate-900 dark:text-white">ศูนย์ผู้ดูแลระบบ</span>
             </div>
           </div>

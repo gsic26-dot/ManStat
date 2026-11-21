@@ -35,8 +35,8 @@ import {
   getFiscalYearBE,
   getEvalRound,
 } from '@/lib/regulations/fiscal-and-retirement';
+import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
-  School,
   Calendar,
   PlusCircle,
   ShieldCheck,
@@ -317,11 +317,9 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => handleSelectView('dashboard')}
-              className="flex items-center gap-3 text-left focus:outline-none"
+              className="flex items-center gap-3 text-left focus:outline-none group"
             >
-              <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-sm ring-1 ring-sky-500/20">
-                <Users className="w-5 h-5 shrink-0" />
-              </div>
+              <AppLogoIcon size={38} className="shrink-0 transition-transform group-hover:scale-105" />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">ManStat-Modern</span>
@@ -642,7 +640,10 @@ export default function DashboardPage() {
             />
             <div className="relative w-72 max-w-[80vw] bg-white dark:bg-[#121822] border-r border-slate-200/90 dark:border-slate-800/80 p-5 overflow-y-auto z-10 space-y-4 shadow-xl transition-colors duration-200">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <span className="font-bold text-slate-900 dark:text-white text-sm">เมนูระบบ ManStat-Modern</span>
+                <div className="flex items-center gap-2.5">
+                  <AppLogoIcon size={28} className="shrink-0" />
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">ManStat-Modern</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}

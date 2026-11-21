@@ -12,7 +12,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { School, Lock, Mail, ArrowRight, AlertCircle, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { AppLogoIcon } from '@/components/brand/AppLogo';
+import { Lock, Mail, ArrowRight, AlertCircle, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
@@ -131,8 +132,8 @@ export default function LoginPage() {
       <div className="w-full max-w-[420px] relative z-10 flex flex-col items-center">
         {/* School & System Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#0ea5e9] to-[#0284c7] flex items-center justify-center shadow-xl shadow-sky-950/20 border border-sky-400/20 mb-4">
-            <School className="w-8 h-8 text-white" />
+          <div className="mb-4 drop-shadow-xl">
+            <AppLogoIcon size={64} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">ManStat-Modern</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">

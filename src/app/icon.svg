@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <linearGradient id="manstatLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Dark Navy Background Base -->
+  <rect width="64" height="64" rx="15" fill="#0B1320" />
+  <rect
+    x="0.75"
+    y="0.75"
+    width="62.5"
+    height="62.5"
+    rx="14.25"
+    stroke="#38BDF8"
+    stroke-opacity="0.18"
+    stroke-width="1.5"
+  />
+
+  <!-- Center Statistical Bar -->
+  <rect x="28.5" y="41" width="7" height="9" rx="3.5" fill="url(#manstatLogoGrad)" />
+
+  <!-- Primary Geometric M Monogram -->
+  <path
+    d="M 16.5 50 V 17.5 L 32 33.5 L 47.5 17.5 V 50"
+    stroke="url(#manstatLogoGrad)"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

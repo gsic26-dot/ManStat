@@ -7,6 +7,15 @@ import { UserSettingsProvider } from '@/context/UserSettingsContext';
 export const metadata: Metadata = {
   title: 'ManStat-Modern | ระบบบริหารงานบุคคลโรงเรียนชุมชนบ้านตะขบ',
   description: 'ระบบบริหารงานบุคคลและคำนวณระเบียบราชการไทย สพฐ. มาตรฐานความปลอดภัย PDPA',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({
