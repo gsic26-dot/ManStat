@@ -19,7 +19,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Lock,
   Unlock,
@@ -33,6 +33,63 @@ import {
 import { useAcademicCensus } from '@/hooks/useAcademicCensus';
 import { ACTIVE_CLASSES, type StudentCensusSnapshotRecord } from '@/lib/data/schoolData';
 import { calculateManpowerV23 } from '@/lib/regulations/manpower-v23-2563';
+
+/**
+ * Counts selected active grades partitioned by education tier
+ */
+export function countGradesPerTier(grades: string[]): {
+  kGrades: number;
+  pGrades: number;
+  mGrades: number;
+} {
+  const kList = ['อนุบาล 1', 'อนุบาล 2', 'อนุบาล 3'];
+  const pList = [
+    'ประถมศึกษาปีที่ 1',
+    'ประถมศึกษาปีที่ 2',
+    'ประถมศึกษาปีที่ 3',
+    'ประถมศึกษาปีที่ 4',
+    'ประถมศึกษาปีที่ 5',
+    'ประถมศึกษาปีที่ 6',
+  ];
+  const mList = ['มัธยมศึกษาปีที่ 1', 'มัธยมศึกษาปีที่ 2', 'มัธยมศึกษาปีที่ 3'];
+
+  return {
+    kGrades: grades.filter((g) => kList.includes(g)).length,
+    pGrades: grades.filter((g) => pList.includes(g)).length,
+    mGrades: grades.filter((g) => mList.includes(g)).length,
+  };
+}
+
+/**
+ * Formats a clean 1-line summary of offered grades strictly following
+ * standard pedagogical order (ACTIVE_CLASSES).
+ */
+export function formatOfferedGradesSummary(grades: string[]): string {
+  if (!grades || grades.length === 0) {
+    return 'ระดับชั้นที่เปิดสอน · ยังไม่ได้กำหนด';
+  }
+  // Sort strictly according to ACTIVE_CLASSES standard ordering
+  const sorted = [...grades].sort(
+    (a, b) => ACTIVE_CLASSES.indexOf(a) - ACTIVE_CLASSES.indexOf(b)
+  );
+  const shortNames = sorted.map((g) => {
+    if (g.startsWith('อนุบาล')) return 'อ.' + g.replace('อนุบาล', '').trim();
+    if (g.startsWith('ประถมศึกษาปีที่')) return 'ป.' + g.replace('ประถมศึกษาปีที่', '').trim();
+    if (g.startsWith('มัธยมศึกษาปีที่')) return 'ม.' + g.replace('มัธยมศึกษาปีที่', '').trim();
+    return g;
+  });
+  const first = shortNames[0];
+  const last = shortNames[shortNames.length - 1];
+  const range = first === last ? first : `${first} – ${last}`;
+  return `ระดับชั้นที่เปิดสอน · ${range} · ${sorted.length} ระดับชั้น`;
+}
+
+/**
+ * Calculates student difference between Nov 10 and Jun 10 rounds live in real time
+ */
+export function calculateLiveCensusDiff(novTotalStudents: number, junTotalStudents: number): number {
+  return (novTotalStudents || 0) - (junTotalStudents || 0);
+}
 
 interface SchoolAcademicManagerProps {
   schoolId?: string;
@@ -59,7 +116,6 @@ export function SchoolAcademicManager({
     setSelectedYearId,
     censusSnapshots,
     primarySnapshot,
-    censusDiff,
     loading,
     setActiveYear,
     createYear,
@@ -71,10 +127,11 @@ export function SchoolAcademicManager({
   // Collapsible panel state (Defaults to collapsed)
   const [gradesExpanded, setGradesExpanded] = useState<boolean>(false);
 
-  // Local offered grades state for active editing
-  const [offeredGrades, setOfferedGrades] = useState<string[]>(
-    currentActiveClasses || ACTIVE_CLASSES
-  );
+  // Local offered grades state for active editing (sorted by standard order)
+  const [offeredGrades, setOfferedGrades] = useState<string[]>(() => {
+    const initial = currentActiveClasses || ACTIVE_CLASSES;
+    return [...initial].sort((a, b) => ACTIVE_CLASSES.indexOf(a) - ACTIVE_CLASSES.indexOf(b));
+  });
 
   // Confirmation modal state for setting active year
   const [confirmModalYear, setConfirmModalYear] = useState<{ id: string; yearTh: number } | null>(
@@ -97,16 +154,26 @@ export function SchoolAcademicManager({
   }, [censusSnapshots]);
 
   // Sync snapshot data to local form states when snapshots change
+  // If not locked and initial classrooms are 0 or empty, populate with tier grade count as default
   useEffect(() => {
     if (junSnapshot) {
+      const { kGrades, pGrades, mGrades } = countGradesPerTier(offeredGrades);
+      const isLocked = Boolean(junSnapshot.isLocked);
+      const initialK = junSnapshot.kindergartenClassrooms ?? 0;
+      const initialP = junSnapshot.primaryClassrooms ?? 0;
+      const initialS = junSnapshot.secondaryClassrooms ?? 0;
+
       setJunForm({
         id: junSnapshot.id,
-        kindergartenStudents: junSnapshot.kindergartenStudents,
-        kindergartenClassrooms: junSnapshot.kindergartenClassrooms,
-        primaryStudents: junSnapshot.primaryStudents,
-        primaryClassrooms: junSnapshot.primaryClassrooms,
-        secondaryStudents: junSnapshot.secondaryStudents,
-        secondaryClassrooms: junSnapshot.secondaryClassrooms,
+        kindergartenStudents: junSnapshot.kindergartenStudents ?? 0,
+        kindergartenClassrooms:
+          !isLocked && (initialK === 0 || kGrades === 0) ? kGrades : initialK,
+        primaryStudents: junSnapshot.primaryStudents ?? 0,
+        primaryClassrooms:
+          !isLocked && (initialP === 0 || pGrades === 0) ? pGrades : initialP,
+        secondaryStudents: junSnapshot.secondaryStudents ?? 0,
+        secondaryClassrooms:
+          !isLocked && (initialS === 0 || mGrades === 0) ? mGrades : initialS,
       });
     } else {
       setJunForm({});
@@ -115,14 +182,23 @@ export function SchoolAcademicManager({
 
   useEffect(() => {
     if (novSnapshot) {
+      const { kGrades, pGrades, mGrades } = countGradesPerTier(offeredGrades);
+      const isLocked = Boolean(novSnapshot.isLocked);
+      const initialK = novSnapshot.kindergartenClassrooms ?? 0;
+      const initialP = novSnapshot.primaryClassrooms ?? 0;
+      const initialS = novSnapshot.secondaryClassrooms ?? 0;
+
       setNovForm({
         id: novSnapshot.id,
-        kindergartenStudents: novSnapshot.kindergartenStudents,
-        kindergartenClassrooms: novSnapshot.kindergartenClassrooms,
-        primaryStudents: novSnapshot.primaryStudents,
-        primaryClassrooms: novSnapshot.primaryClassrooms,
-        secondaryStudents: novSnapshot.secondaryStudents,
-        secondaryClassrooms: novSnapshot.secondaryClassrooms,
+        kindergartenStudents: novSnapshot.kindergartenStudents ?? 0,
+        kindergartenClassrooms:
+          !isLocked && (initialK === 0 || kGrades === 0) ? kGrades : initialK,
+        primaryStudents: novSnapshot.primaryStudents ?? 0,
+        primaryClassrooms:
+          !isLocked && (initialP === 0 || pGrades === 0) ? pGrades : initialP,
+        secondaryStudents: novSnapshot.secondaryStudents ?? 0,
+        secondaryClassrooms:
+          !isLocked && (initialS === 0 || mGrades === 0) ? mGrades : initialS,
       });
     } else {
       setNovForm({});
@@ -132,7 +208,10 @@ export function SchoolAcademicManager({
   // Sync offered grades when selected year changes
   useEffect(() => {
     if (selectedYear?.offeredGrades && Array.isArray(selectedYear.offeredGrades)) {
-      setOfferedGrades(selectedYear.offeredGrades);
+      const sorted = [...selectedYear.offeredGrades].sort(
+        (a, b) => ACTIVE_CLASSES.indexOf(a) - ACTIVE_CLASSES.indexOf(b)
+      );
+      setOfferedGrades(sorted);
     }
   }, [selectedYear]);
 
@@ -149,19 +228,43 @@ export function SchoolAcademicManager({
 
   // Helper to format 1-line grades summary
   const gradesSummary = useMemo(() => {
-    if (!offeredGrades || offeredGrades.length === 0) {
-      return 'ระดับชั้นที่เปิดสอน · ยังไม่ได้กำหนด';
-    }
-    const shortNames = offeredGrades.map((g) => {
-      if (g.startsWith('อนุบาล')) return 'อ.' + g.replace('อนุบาล', '').trim();
-      if (g.startsWith('ประถมศึกษาปีที่')) return 'ป.' + g.replace('ประถมศึกษาปีที่', '').trim();
-      if (g.startsWith('มัธยมศึกษาปีที่')) return 'ม.' + g.replace('มัธยมศึกษาปีที่', '').trim();
-      return g;
-    });
-    const first = shortNames[0];
-    const last = shortNames[shortNames.length - 1];
-    return `ระดับชั้นที่เปิดสอน · ${first} – ${last} · ${offeredGrades.length} ระดับชั้น`;
+    return formatOfferedGradesSummary(offeredGrades);
   }, [offeredGrades]);
+
+  // Toggle grade selection and auto-sync classrooms for unlocked rounds
+  const handleToggleGrade = (cls: string) => {
+    let nextGrades: string[];
+    if (offeredGrades.includes(cls)) {
+      nextGrades = offeredGrades.filter((c) => c !== cls);
+    } else {
+      nextGrades = [...offeredGrades, cls];
+    }
+    // Maintain standard ordering
+    nextGrades.sort((a, b) => ACTIVE_CLASSES.indexOf(a) - ACTIVE_CLASSES.indexOf(b));
+    setOfferedGrades(nextGrades);
+
+    const { kGrades, pGrades, mGrades } = countGradesPerTier(nextGrades);
+
+    // Auto-update classrooms on June 10 card if not locked
+    if (!junSnapshot?.isLocked) {
+      setJunForm((prev) => ({
+        ...prev,
+        kindergartenClassrooms: kGrades,
+        primaryClassrooms: pGrades,
+        secondaryClassrooms: mGrades,
+      }));
+    }
+
+    // Auto-update classrooms on November 10 card if not locked
+    if (!novSnapshot?.isLocked) {
+      setNovForm((prev) => ({
+        ...prev,
+        kindergartenClassrooms: kGrades,
+        primaryClassrooms: pGrades,
+        secondaryClassrooms: mGrades,
+      }));
+    }
+  };
 
   // Handle adding next academic year
   const handleAddYear = async () => {
@@ -274,6 +377,18 @@ export function SchoolAcademicManager({
     });
   }, [novForm]);
 
+  // Derived: Active/Selected Academic Year Thai number for headers
+  const currentYearTh =
+    selectedYear?.yearTh ||
+    activeAcademicYear?.yearTh ||
+    (academicYears.length > 0 ? academicYears[0].yearTh : 2569);
+
+  // Derived: Student difference between Nov 10 and Jun 10 computed live from active form values
+  const liveDiffStudents = calculateLiveCensusDiff(
+    novCalc.totalStudents || 0,
+    junCalc.totalStudents || 0
+  );
+
   if (loading && academicYears.length === 0) {
     return (
       <div className="py-8 flex items-center justify-center gap-2 text-slate-400">
@@ -383,15 +498,7 @@ export function SchoolAcademicManager({
                   <button
                     key={cls}
                     type="button"
-                    onClick={() => {
-                      let nextGrades: string[];
-                      if (isOffered) {
-                        nextGrades = offeredGrades.filter((c) => c !== cls);
-                      } else {
-                        nextGrades = [...offeredGrades, cls];
-                      }
-                      setOfferedGrades(nextGrades);
-                    }}
+                    onClick={() => handleToggleGrade(cls)}
                     className={`py-2 px-2.5 rounded-lg border text-xs text-center font-medium transition-colors ${
                       isOffered
                         ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300'
@@ -416,7 +523,7 @@ export function SchoolAcademicManager({
           {/* Card Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
             <span className="font-semibold text-sm text-slate-900 dark:text-white">
-              10 มิถุนายน
+              10 มิถุนายน {currentYearTh}
             </span>
 
             <div className="flex items-center gap-2.5">
@@ -617,18 +724,18 @@ export function SchoolAcademicManager({
           <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                10 พฤศจิกายน
+                10 พฤศจิกายน {currentYearTh}
               </span>
-              {/* Shortest Difference display: e.g. +2 คน, -1 คน (hidden if 0) */}
-              {censusDiff && censusDiff.diffStudents !== 0 && (
+              {/* Shortest Difference display computed live: e.g. +2 คน, -1 คน (hidden if 0) */}
+              {liveDiffStudents !== 0 && (
                 <span
                   className={`text-xs font-mono font-medium ${
-                    censusDiff.diffStudents > 0
+                    liveDiffStudents > 0
                       ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  {censusDiff.diffStudents > 0 ? `+${censusDiff.diffStudents}` : censusDiff.diffStudents} คน
+                  {liveDiffStudents > 0 ? `+${liveDiffStudents}` : liveDiffStudents} คน
                 </span>
               )}
             </div>

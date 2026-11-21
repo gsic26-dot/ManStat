@@ -1,0 +1,142 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  formatOfferedGradesSummary,
+  countGradesPerTier,
+  calculateLiveCensusDiff,
+} from '../SchoolAcademicManager';
+
+describe('SchoolAcademicManager: Grade Ordering, Classroom Sync & Live Diff', () => {
+  describe('formatOfferedGradesSummary (Standard Pedagogical Ordering)', () => {
+    it('returns default message when grades array is empty or undefined', () => {
+      assert.equal(formatOfferedGradesSummary([]), 'ระดับชั้นที่เปิดสอน · ยังไม่ได้กำหนด');
+      assert.equal(
+        formatOfferedGradesSummary(undefined as unknown as string[]),
+        'ระดับชั้นที่เปิดสอน · ยังไม่ได้กำหนด'
+      );
+    });
+
+    it('correctly sorts all 12 classes in standard order when all grades are offered', () => {
+      const allTwelve = [
+        'อนุบาล 1',
+        'อนุบาล 2',
+        'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1',
+        'ประถมศึกษาปีที่ 2',
+        'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4',
+        'ประถมศึกษาปีที่ 5',
+        'ประถมศึกษาปีที่ 6',
+        'มัธยมศึกษาปีที่ 1',
+        'มัธยมศึกษาปีที่ 2',
+        'มัธยมศึกษาปีที่ 3',
+      ];
+      const result = formatOfferedGradesSummary(allTwelve);
+      assert.equal(result, 'ระดับชั้นที่เปิดสอน · อ.1 – ม.3 · 12 ระดับชั้น');
+    });
+
+    it('corrects out-of-order grade list [อ.2, ม.3, อ.1] into sorted range อ.1 – ม.3', () => {
+      // Simulates user clicking อ.2 first, then ม.3, and adding อ.1 later
+      const outOfOrder = ['อนุบาล 2', 'มัธยมศึกษาปีที่ 3', 'อนุบาล 1'];
+      const result = formatOfferedGradesSummary(outOfOrder);
+      assert.equal(result, 'ระดับชั้นที่เปิดสอน · อ.1 – ม.3 · 3 ระดับชั้น');
+    });
+
+    it('correctly handles typical primary school (อ.2 – ป.6) without อ.1 and without มัธยม', () => {
+      const primarySchool = [
+        'อนุบาล 2',
+        'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1',
+        'ประถมศึกษาปีที่ 2',
+        'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4',
+        'ประถมศึกษาปีที่ 5',
+        'ประถมศึกษาปีที่ 6',
+      ];
+      const result = formatOfferedGradesSummary(primarySchool);
+      assert.equal(result, 'ระดับชั้นที่เปิดสอน · อ.2 – ป.6 · 8 ระดับชั้น');
+    });
+
+    it('handles single grade selection properly without repeating dash range', () => {
+      const singleGrade = ['ประถมศึกษาปีที่ 1'];
+      const result = formatOfferedGradesSummary(singleGrade);
+      assert.equal(result, 'ระดับชั้นที่เปิดสอน · ป.1 · 1 ระดับชั้น');
+    });
+  });
+
+  describe('countGradesPerTier (Classroom Auto-Sync per Education Tier)', () => {
+    it('correctly counts tiers when all grades are active (3 kindergarten, 6 primary, 3 secondary)', () => {
+      const allTwelve = [
+        'อนุบาล 1',
+        'อนุบาล 2',
+        'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1',
+        'ประถมศึกษาปีที่ 2',
+        'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4',
+        'ประถมศึกษาปีที่ 5',
+        'ประถมศึกษาปีที่ 6',
+        'มัธยมศึกษาปีที่ 1',
+        'มัธยมศึกษาปีที่ 2',
+        'มัธยมศึกษาปีที่ 3',
+      ];
+      const { kGrades, pGrades, mGrades } = countGradesPerTier(allTwelve);
+      assert.equal(kGrades, 3);
+      assert.equal(pGrades, 6);
+      assert.equal(mGrades, 3);
+    });
+
+    it('returns 0 for unselected tiers (e.g. primary school with no secondary classes)', () => {
+      const primaryOnly = [
+        'อนุบาล 2',
+        'อนุบาล 3',
+        'ประถมศึกษาปีที่ 1',
+        'ประถมศึกษาปีที่ 2',
+        'ประถมศึกษาปีที่ 3',
+        'ประถมศึกษาปีที่ 4',
+        'ประถมศึกษาปีที่ 5',
+        'ประถมศึกษาปีที่ 6',
+      ];
+      const { kGrades, pGrades, mGrades } = countGradesPerTier(primaryOnly);
+      assert.equal(kGrades, 2);
+      assert.equal(pGrades, 6);
+      assert.equal(mGrades, 0);
+    });
+
+    it('returns all zeroes when no grades are selected', () => {
+      const { kGrades, pGrades, mGrades } = countGradesPerTier([]);
+      assert.equal(kGrades, 0);
+      assert.equal(pGrades, 0);
+      assert.equal(mGrades, 0);
+    });
+  });
+
+  describe('calculateLiveCensusDiff (Real-time Nov 10 vs Jun 10 student difference)', () => {
+    it('returns positive difference (+2) when Nov round has more students', () => {
+      const novTotal = 96;
+      const junTotal = 94;
+      const diff = calculateLiveCensusDiff(novTotal, junTotal);
+      assert.equal(diff, 2);
+    });
+
+    it('returns negative difference (-1) when Nov round has fewer students', () => {
+      const novTotal = 93;
+      const junTotal = 94;
+      const diff = calculateLiveCensusDiff(novTotal, junTotal);
+      assert.equal(diff, -1);
+    });
+
+    it('returns 0 when student counts are identical in both rounds', () => {
+      const novTotal = 94;
+      const junTotal = 94;
+      const diff = calculateLiveCensusDiff(novTotal, junTotal);
+      assert.equal(diff, 0);
+    });
+
+    it('handles undefined or 0 inputs safely', () => {
+      assert.equal(calculateLiveCensusDiff(0, 0), 0);
+      assert.equal(calculateLiveCensusDiff(10, 0), 10);
+      assert.equal(calculateLiveCensusDiff(0, 10), -10);
+    });
+  });
+});
