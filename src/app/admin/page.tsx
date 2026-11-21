@@ -40,6 +40,7 @@ import {
   X,
   Plus,
   ChevronRight,
+  ChevronDown,
   Sliders,
   Loader2,
   AlertCircle,
@@ -1311,7 +1312,7 @@ export default function AdminPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-mono">
-                  ทั้งหมด {boardMembers.length} ท่าน (ตามลำดับกฎกระทรวง)
+                  ทั้งหมด {boardMembers.length} ท่าน
                 </span>
                 <button
                   type="button"
@@ -1329,64 +1330,62 @@ export default function AdminPage() {
                 <table className="w-full text-left text-sm text-slate-200">
                   <thead className="bg-slate-50 dark:bg-[#16202c] text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200/90 dark:border-slate-800 text-xs">
                     <tr>
-                      <th scope="col" className="w-10 px-3 py-3.5 text-center">
-                        <span className="sr-only">ขยายรายละเอียด</span>
-                      </th>
-                      <th scope="col" className="px-4 py-3 text-center min-w-[56px] shrink-0">ลำดับ</th>
+                      <th scope="col" className="w-14 px-3 py-3 text-center shrink-0">ลำดับ</th>
                       <th scope="col" className="px-4 py-3 min-w-[200px]">ชื่อ - สกุล</th>
-                      <th scope="col" className="px-4 py-3 min-w-[190px]">ตำแหน่งในคณะกรรมการ</th>
-                      <th scope="col" className="px-4 py-3 text-center min-w-[100px]">จัดการ</th>
+                      <th scope="col" className="px-4 py-3 min-w-[200px]">ตำแหน่งในคณะกรรมการ</th>
+                      <th scope="col" className="px-4 py-3 text-center min-w-[120px] shrink-0">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
                     {filteredBoard.map((b, idx) => {
-                      const isDirector = b.position === 'DIRECTOR_SEC';
+                      const isDirector = b.position === 'DIRECTOR_SEC' || b.positionTitle.includes('เลขานุการ');
+                      const isChair = b.position === 'CHAIR' || b.positionTitle.includes('ประธาน');
                       const isExpanded = expandedBoardId === b.id;
                       return (
                         <React.Fragment key={b.id}>
                           <tr
                             onClick={() => setExpandedBoardId(isExpanded ? null : b.id)}
-                            className={`hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors cursor-pointer ${
+                            className={`group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.03] ${
                               isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
                             }`}
                           >
-                            <td className="px-3 py-3.5 text-center">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedBoardId(isExpanded ? null : b.id);
-                                }}
-                                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                                aria-label={isExpanded ? 'ย่อแถว' : 'ขยายแถว'}
-                              >
-                                <ChevronRight
-                                  className={`w-4 h-4 transition-transform duration-200 ${
-                                    isExpanded ? 'rotate-90 text-sky-400' : ''
-                                  }`}
-                                />
-                              </button>
+                            <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                              {idx + 1}
                             </td>
-                            <td className="px-4 py-3.5 font-mono text-slate-400 text-center font-bold whitespace-nowrap">{idx + 1}</td>
                             <td className="px-4 py-3.5">
-                              <div className="font-bold text-slate-900 dark:text-white text-base truncate max-w-[200px]" title={b.fullName}>{b.fullName}</div>
+                              <div className="font-semibold text-slate-900 dark:text-white text-sm truncate max-w-[240px]" title={b.fullName}>
+                                {b.fullName}
+                              </div>
                               {isDirector && (
-                                <span className="block text-xs text-sky-400 font-normal mt-0.5 truncate max-w-[200px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
+                                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[240px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
                                   ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
                                 </span>
                               )}
                             </td>
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30" title={b.positionTitle}>
-                                {b.positionTitle}
-                              </span>
+                              {isChair ? (
+                                <div className="inline-flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                    {b.positionTitle}
+                                  </span>
+                                </div>
+                              ) : isDirector ? (
+                                <span className="text-sm font-medium text-slate-800 dark:text-sky-300/90">
+                                  {b.positionTitle}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-slate-600 dark:text-slate-300 font-normal">
+                                  {b.positionTitle}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3.5 text-center">
-                              <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditBoardMember(b)}
-                                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
+                                  className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors duration-200"
                                   title="แก้ไขข้อมูลกรรมการ"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
@@ -1394,10 +1393,29 @@ export default function AdminPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteBoardMember(b.id)}
-                                  className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
+                                  className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors duration-200"
                                   title="ลบกรรมการสถานศึกษา"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+
+                                <span className="w-px h-3.5 bg-slate-200 dark:bg-slate-800 mx-1 shrink-0" />
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedBoardId(isExpanded ? null : b.id);
+                                  }}
+                                  className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors duration-200"
+                                  title={isExpanded ? 'ย่อรายละเอียด' : 'ขยายรายละเอียด'}
+                                  aria-label={isExpanded ? 'ย่อรายละเอียด' : 'ขยายรายละเอียด'}
+                                >
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                      isExpanded ? 'rotate-180 text-sky-500 dark:text-sky-400' : ''
+                                    }`}
+                                  />
                                 </button>
                               </div>
                             </td>
@@ -1405,8 +1423,8 @@ export default function AdminPage() {
 
                           {/* Expanded Detail Panel */}
                           {isExpanded && (
-                            <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
-                              <td colSpan={5} className="px-6 py-4">
+                            <tr className="bg-slate-50/70 dark:bg-white/[0.02] border-y border-slate-200/80 dark:border-slate-800/80">
+                              <td colSpan={4} className="px-6 py-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                                   <div>
                                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
@@ -1431,7 +1449,7 @@ export default function AdminPage() {
                                     <div className="text-slate-800 dark:text-slate-200 font-medium">
                                       {isDirector ? (
                                         <div className="flex flex-col gap-1 items-start">
-                                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border border-sky-500/30">
+                                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/25">
                                             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                                             <span>โดยตำแหน่ง</span>
                                           </span>
@@ -1455,7 +1473,7 @@ export default function AdminPage() {
                                       สถานะการดำรงตำแหน่ง
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                         <span>{b.status}</span>
                                       </span>
