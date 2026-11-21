@@ -6,12 +6,16 @@
  * ============================================================================
  * Strict Design Rules:
  * - Airy whitespace, subtle borders, high legibility, clear hierarchy
- * - No verbose parenthetical notes (no "(ปัจจุบัน)", "(ภาคเรียนที่ 1)", etc.)
- * - Mark active year with ★ only
+ * - No verbose parenthetical notes
+ * - Emerald Green active state for current academic year (No stars)
+ * - Distinct highlight when viewing non-active years
  * - Collapsible offered grades panel (defaults to collapsed)
  * - Parallel dual-column census cards (10 มิถุนายน / 10 พฤศจิกายน)
- * - Shortest difference display (+2, -1, 0)
- * - Strict Lock Guard enforcement
+ * - Table header row: ระดับการศึกษา | นักเรียน | ห้องเรียน
+ * - Clean input suffix: 'คน' on student input, 'ห้อง' on classroom input
+ * - Minimal difference text: '+2 คน' / '-1 คน' (hidden if 0)
+ * - Clean card-specific save buttons: 'บันทึกรอบ 10 มิ.ย.' / 'บันทึกรอบ 10 พ.ย.'
+ * - Official ก.ค.ศ. ว 23/2563 manpower calculation (3 personnel lines)
  * ============================================================================
  */
 
@@ -24,11 +28,11 @@ import {
   Plus,
   Check,
   Building,
-  Users,
   Loader2,
 } from 'lucide-react';
 import { useAcademicCensus } from '@/hooks/useAcademicCensus';
 import { ACTIVE_CLASSES, type StudentCensusSnapshotRecord } from '@/lib/data/schoolData';
+import { calculateManpowerV23 } from '@/lib/regulations/manpower-v23-2563';
 
 interface SchoolAcademicManagerProps {
   schoolId?: string;
@@ -104,7 +108,12 @@ export function SchoolAcademicManager({
         secondaryStudents: junSnapshot.secondaryStudents,
         secondaryClassrooms: junSnapshot.secondaryClassrooms,
       });
+    } else {
+      setJunForm({});
     }
+  }, [junSnapshot]);
+
+  useEffect(() => {
     if (novSnapshot) {
       setNovForm({
         id: novSnapshot.id,
@@ -115,8 +124,10 @@ export function SchoolAcademicManager({
         secondaryStudents: novSnapshot.secondaryStudents,
         secondaryClassrooms: novSnapshot.secondaryClassrooms,
       });
+    } else {
+      setNovForm({});
     }
-  }, [junSnapshot, novSnapshot]);
+  }, [novSnapshot]);
 
   // Sync offered grades when selected year changes
   useEffect(() => {
@@ -125,7 +136,7 @@ export function SchoolAcademicManager({
     }
   }, [selectedYear]);
 
-  // Notify parent component about active year, primary student count, and classes
+  // Trigger parent onSyncSchoolInfo when active academic year or primary snapshot changes
   useEffect(() => {
     if (activeAcademicYear && primarySnapshot && onSyncSchoolInfo) {
       onSyncSchoolInfo({
@@ -155,11 +166,11 @@ export function SchoolAcademicManager({
   // Handle adding next academic year
   const handleAddYear = async () => {
     try {
-      const maxYear =
+      const nextYear =
         academicYears.length > 0
-          ? Math.max(...academicYears.map((y) => y.yearTh))
-          : 2569;
-      const nextYear = maxYear + 1;
+          ? Math.max(...academicYears.map((y) => y.yearTh)) + 1
+          : 2570;
+
       const newId = await createYear(nextYear);
       setSelectedYearId(newId);
       showToast(`สร้างปีการศึกษา ${nextYear} สำเร็จ`, 'success');
@@ -174,10 +185,10 @@ export function SchoolAcademicManager({
     try {
       setIsSettingActive(true);
       await setActiveYear(confirmModalYear.id);
-      showToast(`ตั้งปีการศึกษา ${confirmModalYear.yearTh} เป็นปีปัจจุบันแล้ว`, 'success');
+      showToast(`ตั้งปีการศึกษา ${confirmModalYear.yearTh} เป็นปีปัจจุบันสำเร็จ`, 'success');
       setConfirmModalYear(null);
     } catch (err: any) {
-      showToast(err.message || 'ไม่สามารถเปลี่ยนปีการศึกษาได้', 'error');
+      showToast(err.message || 'เกิดข้อผิดพลาดในการตั้งปีการศึกษาปัจจุบัน', 'error');
     } finally {
       setIsSettingActive(false);
     }
@@ -188,38 +199,41 @@ export function SchoolAcademicManager({
     if (!snapshotId || !selectedYear) return;
     try {
       await setPrimaryRound(selectedYear.id, snapshotId);
-      showToast('ตั้งเป็นรอบหลักสำหรับภาพรวมสำเร็จ', 'success');
+      showToast('เปลี่ยนรอบหลักสำหรับคำนวณอัตรากำลังสำเร็จ', 'success');
     } catch (err: any) {
-      showToast(err.message || 'ไม่สามารถตั้งรอบหลักได้', 'error');
+      showToast(err.message || 'ไม่สามารถเปลี่ยนรอบหลักได้', 'error');
     }
   };
 
-  // Handle toggle lock on snapshot
+  // Handle locking snapshot
   const handleToggleLock = async (snapshot?: StudentCensusSnapshotRecord) => {
     if (!snapshot) return;
     try {
-      const newStatus = !snapshot.isLocked;
-      await toggleLock(snapshot.id, newStatus);
-      showToast(newStatus ? 'ล็อกข้อมูลรอบนี้แล้ว' : 'ปลดล็อกข้อมูลรอบนี้แล้ว', 'success');
+      await toggleLock(snapshot.id, !snapshot.isLocked);
+      showToast(snapshot.isLocked ? 'ปลดล็อกรอบสำเร็จ' : 'ล็อกรอบสำเร็จ', 'success');
     } catch (err: any) {
       showToast(err.message || 'ไม่สามารถเปลี่ยนสถานะล็อกได้', 'error');
     }
   };
 
-  // Save changes for June or November card
-  const handleSaveSnapshot = async (round: 'JUN_10' | 'NOV_10') => {
-    const isJun = round === 'JUN_10';
+  // Handle saving snapshot card
+  const handleSaveSnapshot = async (roundCode: 'JUN_10' | 'NOV_10') => {
+    const isJun = roundCode === 'JUN_10';
     const snapshot = isJun ? junSnapshot : novSnapshot;
     const form = isJun ? junForm : novForm;
 
-    if (!snapshot) return;
-    if (snapshot.isLocked) {
-      showToast('ข้อมูลรอบนี้ถูกล็อกไว้แล้ว กรุณาปลดล็อกก่อนแก้ไข', 'error');
+    if (!snapshot) {
+      showToast('ไม่พบข้อมูลรอบสถิตินักเรียน', 'error');
       return;
     }
 
+    if (snapshot.isLocked) {
+      showToast('รอบนี้ถูกล็อกแล้ว ไม่สามารถแก้ไขได้', 'error');
+      return;
+    }
+
+    setSavingCard(roundCode);
     try {
-      setSavingCard(round);
       await updateSnapshot({
         id: snapshot.id,
         kindergartenStudents: Number(form.kindergartenStudents) || 0,
@@ -237,35 +251,27 @@ export function SchoolAcademicManager({
     }
   };
 
-  // Calculation helpers
+  // Official ว 23/2563 Manpower Calculation
   const junCalc = useMemo(() => {
-    const kStudents = Number(junForm.kindergartenStudents) || 0;
-    const pStudents = Number(junForm.primaryStudents) || 0;
-    const sStudents = Number(junForm.secondaryStudents) || 0;
-    const totalStudents = kStudents + pStudents + sStudents;
-
-    const kRooms = Number(junForm.kindergartenClassrooms) || 0;
-    const pRooms = Number(junForm.primaryClassrooms) || 0;
-    const sRooms = Number(junForm.secondaryClassrooms) || 0;
-    const totalRooms = kRooms + pRooms + sRooms;
-
-    const estimatedTeachers = Math.max(totalRooms, Math.ceil(totalStudents / 20));
-    return { totalStudents, totalRooms, estimatedTeachers };
+    return calculateManpowerV23({
+      kStudents: junForm.kindergartenStudents,
+      kRooms: junForm.kindergartenClassrooms,
+      pStudents: junForm.primaryStudents,
+      pRooms: junForm.primaryClassrooms,
+      mLowerStudents: junForm.secondaryStudents,
+      mLowerRooms: junForm.secondaryClassrooms,
+    });
   }, [junForm]);
 
   const novCalc = useMemo(() => {
-    const kStudents = Number(novForm.kindergartenStudents) || 0;
-    const pStudents = Number(novForm.primaryStudents) || 0;
-    const sStudents = Number(novForm.secondaryStudents) || 0;
-    const totalStudents = kStudents + pStudents + sStudents;
-
-    const kRooms = Number(novForm.kindergartenClassrooms) || 0;
-    const pRooms = Number(novForm.primaryClassrooms) || 0;
-    const sRooms = Number(novForm.secondaryClassrooms) || 0;
-    const totalRooms = kRooms + pRooms + sRooms;
-
-    const estimatedTeachers = Math.max(totalRooms, Math.ceil(totalStudents / 20));
-    return { totalStudents, totalRooms, estimatedTeachers };
+    return calculateManpowerV23({
+      kStudents: novForm.kindergartenStudents,
+      kRooms: novForm.kindergartenClassrooms,
+      pStudents: novForm.primaryStudents,
+      pRooms: novForm.primaryClassrooms,
+      mLowerStudents: novForm.secondaryStudents,
+      mLowerRooms: novForm.secondaryClassrooms,
+    });
   }, [novForm]);
 
   if (loading && academicYears.length === 0) {
@@ -280,46 +286,60 @@ export function SchoolAcademicManager({
   return (
     <div className="space-y-4">
       {/* ------------------------------------------------------------------ */}
-      {/* 1. Academic Year Selector (Segmented Control & Clean Button)       */}
+      {/* 1. Academic Year Selector (Green Active State & Clean Highlights)  */}
       {/* ------------------------------------------------------------------ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
             ปีการศึกษา
           </span>
-          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60">
+          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60 gap-1">
             {academicYears.map((year) => {
-              const isSelected = year.id === (selectedYear?.id || selectedYearId);
+              const isViewing = year.id === (selectedYear?.id || selectedYearId);
+              const isActive = Boolean(year.isActive);
+
+              let btnClass = 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800';
+              if (isActive) {
+                if (isViewing) {
+                  btnClass = 'bg-emerald-600 text-white font-semibold shadow-xs ring-2 ring-emerald-400/50 dark:ring-emerald-500/40';
+                } else {
+                  btnClass = 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 font-medium hover:bg-emerald-600/25';
+                }
+              } else if (isViewing) {
+                btnClass = 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold ring-1 ring-sky-500 dark:ring-sky-400';
+              }
+
               return (
                 <button
                   key={year.id}
                   type="button"
                   onClick={() => setSelectedYearId(year.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isSelected
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs transition-all ${btnClass}`}
                 >
                   {year.yearTh}
-                  {year.isActive ? ' ★' : ''}
                 </button>
               );
             })}
           </div>
 
-          {/* If selected year is not active, provide a quiet button to activate it */}
-          {selectedYear && !selectedYear.isActive && (
+          {/* Active status badge or Activate button */}
+          {selectedYear?.isActive ? (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1">
+              <Check className="w-3.5 h-3.5" />
+              <span>ใช้งานอยู่</span>
+            </span>
+          ) : selectedYear ? (
             <button
               type="button"
               onClick={() =>
                 setConfirmModalYear({ id: selectedYear.id, yearTh: selectedYear.yearTh })
               }
-              className="text-xs text-sky-600 dark:text-sky-400 hover:underline px-2 py-1 font-medium"
+              className="inline-flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline px-2 py-1 font-medium transition-colors"
             >
-              ★ ตั้งเป็นปีปัจจุบัน
+              <Check className="w-3.5 h-3.5" />
+              <span>ตั้งเป็นปีปัจจุบัน</span>
             </button>
-          )}
+          ) : null}
         </div>
 
         <button
@@ -395,16 +415,9 @@ export function SchoolAcademicManager({
         <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-4 space-y-3.5 shadow-xs">
           {/* Card Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                10 มิถุนายน
-              </span>
-              {junSnapshot?.isPrimaryForManpower && (
-                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
-                  · รอบหลัก
-                </span>
-              )}
-            </div>
+            <span className="font-semibold text-sm text-slate-900 dark:text-white">
+              10 มิถุนายน
+            </span>
 
             <div className="flex items-center gap-2.5">
               <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
@@ -439,127 +452,161 @@ export function SchoolAcademicManager({
 
           {/* Form Rows */}
           <div className="space-y-2 text-xs">
+            {/* Header row */}
+            <div className="grid grid-cols-3 items-center gap-2 pb-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800/60">
+              <span>ระดับการศึกษา</span>
+              <span className="text-center">นักเรียน</span>
+              <span className="text-center">ห้องเรียน</span>
+            </div>
+
             {/* Kindergarten */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับอนุบาล</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.kindergartenStudents ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    kindergartenStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.kindergartenClassrooms ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    kindergartenClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.kindergartenStudents ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      kindergartenStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.kindergartenClassrooms ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      kindergartenClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
 
             {/* Primary */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับประถม</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.primaryStudents ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    primaryStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.primaryClassrooms ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    primaryClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.primaryStudents ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      primaryStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.primaryClassrooms ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      primaryClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
 
             {/* Secondary */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับมัธยม</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.secondaryStudents ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    secondaryStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(junSnapshot?.isLocked)}
-                value={junForm.secondaryClassrooms ?? ''}
-                onChange={(e) =>
-                  setJunForm({
-                    ...junForm,
-                    secondaryClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.secondaryStudents ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      secondaryStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(junSnapshot?.isLocked)}
+                  value={junForm.secondaryClassrooms ?? ''}
+                  onChange={(e) =>
+                    setJunForm({
+                      ...junForm,
+                      secondaryClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Footer Summary & Action */}
-          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-              <span>
-                นักเรียน <strong className="text-slate-900 dark:text-white">{junCalc.totalStudents}</strong> คน
-              </span>
-              <span>
-                ห้องเรียน <strong className="text-slate-900 dark:text-white">{junCalc.totalRooms}</strong> ห้อง
-              </span>
-              <span>
-                ครูพึงมี <strong className="text-slate-900 dark:text-white">{junCalc.estimatedTeachers}</strong> อัตรา
-              </span>
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+            <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-400">
+              <div className="font-medium text-slate-700 dark:text-slate-300">
+                {junCalc.summaryStudentsAndRooms}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {junCalc.summaryManpower}
+              </div>
             </div>
 
             <button
               type="button"
               disabled={Boolean(junSnapshot?.isLocked) || savingCard === 'JUN_10'}
               onClick={() => handleSaveSnapshot('JUN_10')}
-              className="text-xs font-medium px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-40 transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-40 transition-colors shrink-0"
             >
-              {savingCard === 'JUN_10' ? 'กำลังบันทึก...' : 'บันทึก'}
+              {savingCard === 'JUN_10' ? 'กำลังบันทึก...' : 'บันทึกรอบ 10 มิ.ย.'}
             </button>
           </div>
         </div>
@@ -572,23 +619,16 @@ export function SchoolAcademicManager({
               <span className="font-semibold text-sm text-slate-900 dark:text-white">
                 10 พฤศจิกายน
               </span>
-              {/* Shortest Difference display: e.g. +2, -1, 0 */}
-              {censusDiff && (
+              {/* Shortest Difference display: e.g. +2 คน, -1 คน (hidden if 0) */}
+              {censusDiff && censusDiff.diffStudents !== 0 && (
                 <span
-                  className={`text-xs font-mono font-medium px-1.5 py-0.5 rounded ${
+                  className={`text-xs font-mono font-medium ${
                     censusDiff.diffStudents > 0
-                      ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40'
-                      : censusDiff.diffStudents < 0
-                      ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40'
-                      : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  {censusDiff.diffText}
-                </span>
-              )}
-              {novSnapshot?.isPrimaryForManpower && (
-                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
-                  · รอบหลัก
+                  {censusDiff.diffStudents > 0 ? `+${censusDiff.diffStudents}` : censusDiff.diffStudents} คน
                 </span>
               )}
             </div>
@@ -626,127 +666,161 @@ export function SchoolAcademicManager({
 
           {/* Form Rows */}
           <div className="space-y-2 text-xs">
+            {/* Header row */}
+            <div className="grid grid-cols-3 items-center gap-2 pb-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800/60">
+              <span>ระดับการศึกษา</span>
+              <span className="text-center">นักเรียน</span>
+              <span className="text-center">ห้องเรียน</span>
+            </div>
+
             {/* Kindergarten */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับอนุบาล</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.kindergartenStudents ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    kindergartenStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.kindergartenClassrooms ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    kindergartenClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.kindergartenStudents ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      kindergartenStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.kindergartenClassrooms ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      kindergartenClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
 
             {/* Primary */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับประถม</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.primaryStudents ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    primaryStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.primaryClassrooms ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    primaryClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.primaryStudents ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      primaryStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.primaryClassrooms ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      primaryClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
 
             {/* Secondary */}
             <div className="grid grid-cols-3 items-center gap-2">
               <span className="text-slate-600 dark:text-slate-400">ระดับมัธยม</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="จำนวนนักเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.secondaryStudents ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    secondaryStudents: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="ห้องเรียน"
-                disabled={Boolean(novSnapshot?.isLocked)}
-                value={novForm.secondaryClassrooms ?? ''}
-                onChange={(e) =>
-                  setNovForm({
-                    ...novForm,
-                    secondaryClassrooms: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.secondaryStudents ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      secondaryStudents: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  คน
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={Boolean(novSnapshot?.isLocked)}
+                  value={novForm.secondaryClassrooms ?? ''}
+                  onChange={(e) =>
+                    setNovForm({
+                      ...novForm,
+                      secondaryClassrooms: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:opacity-60"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none">
+                  ห้อง
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Footer Summary & Action */}
-          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-              <span>
-                นักเรียน <strong className="text-slate-900 dark:text-white">{novCalc.totalStudents}</strong> คน
-              </span>
-              <span>
-                ห้องเรียน <strong className="text-slate-900 dark:text-white">{novCalc.totalRooms}</strong> ห้อง
-              </span>
-              <span>
-                ครูพึงมี <strong className="text-slate-900 dark:text-white">{novCalc.estimatedTeachers}</strong> อัตรา
-              </span>
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+            <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-400">
+              <div className="font-medium text-slate-700 dark:text-slate-300">
+                {novCalc.summaryStudentsAndRooms}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {novCalc.summaryManpower}
+              </div>
             </div>
 
             <button
               type="button"
               disabled={Boolean(novSnapshot?.isLocked) || savingCard === 'NOV_10'}
               onClick={() => handleSaveSnapshot('NOV_10')}
-              className="text-xs font-medium px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-40 transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 disabled:opacity-40 transition-colors shrink-0"
             >
-              {savingCard === 'NOV_10' ? 'กำลังบันทึก...' : 'บันทึก'}
+              {savingCard === 'NOV_10' ? 'กำลังบันทึก...' : 'บันทึกรอบ 10 พ.ย.'}
             </button>
           </div>
         </div>

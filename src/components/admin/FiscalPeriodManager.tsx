@@ -5,7 +5,7 @@
  * ManStat-Modern: Fiscal Period & Salary Promotion Manager
  * ============================================================================
  * Strict Minimal & Clean Standard:
- * - Clean selector: "ปีงบฯ 2570 · 1 เม.ย. ★" or "ปีงบฯ 2570 · 1 ต.ค."
+ * - Clean selector: "ปีงบฯ 2570 · 1 ต.ค. – 31 มี.ค." or "ปีงบฯ 2570 · 1 เม.ย. – 30 ก.ย." (Emerald green active state)
  * - 1-line clean census snapshot reference: "อ้างอิงยอดนักเรียน: 10 มิ.ย. 2569"
  * - Round locking (is_locked) disables editing when orders are finalized
  * - Immutable salary snapshots per round (protecting historic data)
@@ -365,38 +365,53 @@ export function FiscalPeriodManager({
             {fiscalPeriods.length === 0 ? (
               <span className="text-xs text-slate-400 py-1 px-2">ยังไม่มีข้อมูลรอบปีงบประมาณ</span>
             ) : (
-              <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60">
+              <div className="inline-flex flex-wrap rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200/60 dark:border-slate-700/60 gap-1">
                 {fiscalPeriods.map((period) => {
-                  const isSelected = period.id === selectedPeriod?.id;
-                  const roundText = period.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.';
+                  const isViewing = period.id === selectedPeriod?.id;
+                  const isActive = Boolean(period.isActive);
+                  const roundDates = period.roundNo === 1 ? '1 ต.ค. – 31 มี.ค.' : '1 เม.ย. – 30 ก.ย.';
+
+                  let btnClass = 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800';
+                  if (isActive) {
+                    if (isViewing) {
+                      btnClass = 'bg-emerald-600 text-white font-semibold shadow-xs ring-2 ring-emerald-400/50 dark:ring-emerald-500/40';
+                    } else {
+                      btnClass = 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 font-medium hover:bg-emerald-600/25';
+                    }
+                  } else if (isViewing) {
+                    btnClass = 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold ring-1 ring-sky-500 dark:ring-sky-400';
+                  }
+
                   return (
                     <button
                       key={period.id}
                       type="button"
                       onClick={() => setSelectedPeriodId(period.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        isSelected
-                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all ${btnClass}`}
                     >
-                      ปีงบฯ {period.fiscalYearTh} · {roundText}
-                      {period.isActive ? ' ★' : ''}
+                      ปีงบฯ {period.fiscalYearTh} · {roundDates}
                     </button>
                   );
                 })}
               </div>
             )}
 
-            {selectedPeriod && !selectedPeriod.isActive && (
+            {/* Active status or Activate button */}
+            {selectedPeriod?.isActive ? (
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1">
+                <Check className="w-3.5 h-3.5" />
+                <span>ใช้งานอยู่</span>
+              </span>
+            ) : selectedPeriod ? (
               <button
                 type="button"
                 onClick={() => setConfirmModalPeriod(selectedPeriod)}
-                className="text-xs text-sky-600 dark:text-sky-400 hover:underline px-2 py-1 font-medium"
+                className="inline-flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline px-2 py-1 font-medium transition-colors"
               >
-                ★ ตั้งเป็นรอบปัจจุบัน
+                <Check className="w-3.5 h-3.5" />
+                <span>ตั้งเป็นรอบปัจจุบัน</span>
               </button>
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -560,7 +575,7 @@ export function FiscalPeriodManager({
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               ต้องการตั้งรอบปีงบประมาณ{' '}
               <strong className="text-slate-900 dark:text-white">
-                ปีงบฯ {confirmModalPeriod.fiscalYearTh} · {confirmModalPeriod.roundNo === 1 ? '1 เม.ย.' : '1 ต.ค.'}
+                ปีงบฯ {confirmModalPeriod.fiscalYearTh} · {confirmModalPeriod.roundNo === 1 ? '1 ต.ค. – 31 มี.ค.' : '1 เม.ย. – 30 ก.ย.'}
               </strong>{' '}
               เป็นรอบปัจจุบันหรือไม่?
             </p>
