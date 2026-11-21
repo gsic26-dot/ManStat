@@ -53,6 +53,7 @@ import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDateP
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
+import { SchoolAcademicManager } from '@/components/admin/SchoolAcademicManager';
 import { isAdminRole } from '@/lib/auth/roles';
 import {
   INITIAL_TEACHERS,
@@ -1616,31 +1617,11 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ปีการศึกษา</label>
-                  <input
-                    type="text"
-                    value={schoolInfo.academicYear}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, academicYear: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">ภาคเรียนที่</label>
                   <input
                     type="text"
                     value={schoolInfo.currentTerm}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, currentTerm: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">จำนวนนักเรียนรวม (คน)</label>
-                  <input
-                    type="number"
-                    value={schoolInfo.studentCount}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, studentCount: Number(e.target.value) || 0 })}
                     className="w-full bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                   />
                 </div>
@@ -1656,48 +1637,22 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Active Classes Management */}
-              <div className="pt-4 border-t border-slate-200/90 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Building className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>ระดับชั้นเรียนที่เปิดทำการสอน (Active Classes)</span>
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      คลิกเพื่อเปิดหรือปิดชั้นเรียนสำหรับปีการศึกษานี้ (ใช้งานในตารางภาระงานและครูประจำชั้น)
-                    </p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                    เปิดสอน {activeClasses.length} ชั้นเรียน
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-2">
-                  {ACTIVE_CLASSES.map((cls) => {
-                    const isActive = activeClasses.includes(cls);
-                    return (
-                      <button
-                        key={cls}
-                        type="button"
-                        onClick={() => {
-                          if (isActive) {
-                            setActiveClasses((prev) => prev.filter((c) => c !== cls));
-                          } else {
-                            setActiveClasses((prev) => [...prev, cls]);
-                          }
-                        }}
-                        className={`p-2.5 rounded-lg border text-center font-medium text-xs transition-colors duration-200 ${
-                          isActive
-                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-200'
-                            : 'bg-slate-800/40 border-slate-700/60 text-slate-400 line-through opacity-60 hover:opacity-90'
-                        }`}
-                      >
-                        {cls}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Minimal & Clean School Academic Years, Census Snapshots & Offered Grades */}
+              <div className="pt-4 border-t border-slate-200/90 dark:border-slate-800">
+                <SchoolAcademicManager
+                  schoolId={schoolInfo.schoolCode8 || '30030099'}
+                  currentActiveClasses={activeClasses}
+                  onSyncSchoolInfo={({ academicYear, studentCount, activeClasses: syncedClasses }) => {
+                    setSchoolInfo((prev) => ({
+                      ...prev,
+                      academicYear,
+                      studentCount,
+                      activeClasses: syncedClasses,
+                    }));
+                    setActiveClasses(syncedClasses);
+                  }}
+                  showToast={showToast}
+                />
               </div>
 
               <div className="pt-4 border-t border-slate-800 flex justify-end">
