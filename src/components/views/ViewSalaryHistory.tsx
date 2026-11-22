@@ -44,6 +44,7 @@ import {
   X,
   CheckCircle2,
   XCircle,
+  Clock,
 } from 'lucide-react';
 import type {
   FiscalPeriodRecord,
@@ -51,6 +52,12 @@ import type {
   TeacherRecord,
   EvaluationRoundStatus,
 } from '@/lib/data/schoolData';
+import {
+  resolveEvaluationAccess,
+  computeAutoUnlockDateStr,
+  formatThaiDateArabic,
+  isStaffManuallyUnlocked,
+} from '@/lib/regulations/evaluation-access';
 import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
@@ -348,16 +355,34 @@ export function ViewSalaryHistory({
     }
   };
 
-  // 3-State Round Status evaluation
+  // 3-State Round Status evaluation ('auto' | 'open' | 'locked')
   const roundStatus: EvaluationRoundStatus = useMemo(() => {
-    if (!selectedPeriod) return 'closed';
-    if (selectedPeriod.evaluationStatus) return selectedPeriod.evaluationStatus;
-    if (selectedPeriod.isLocked) return 'locked';
-    if (selectedPeriod.isActive) return 'open';
-    return 'closed';
+    if (!selectedPeriod) return 'auto';
+    if (selectedPeriod.isLocked || selectedPeriod.evaluationStatus === 'locked') return 'locked';
+    if (selectedPeriod.evaluationStatus === 'open') return 'open';
+    if (selectedPeriod.evaluationStatus === 'auto') return 'auto';
+    return 'auto';
   }, [selectedPeriod]);
 
-  // Handle 3-state round control toggle by Manager
+  const autoUnlockDays = selectedPeriod?.autoUnlockDays ?? 15;
+  const autoUnlockDateStr = useMemo(() => {
+    return computeAutoUnlockDateStr(selectedPeriod?.evalEnd || '', autoUnlockDays);
+  }, [selectedPeriod?.evalEnd, autoUnlockDays]);
+  const formattedAutoUnlockDate = useMemo(() => {
+    return formatThaiDateArabic(autoUnlockDateStr);
+  }, [autoUnlockDateStr]);
+
+  const currentStaffId = currentUser?.id || currentUser?.employeeCode || '';
+  const teacherHeaderAccess = useMemo(() => {
+    return resolveEvaluationAccess({
+      staffId: currentStaffId,
+      isTeacher: true,
+      isAuthorizedManager: false,
+      period: selectedPeriod,
+    });
+  }, [currentStaffId, selectedPeriod]);
+
+  // Handle 3-state round control toggle by Manager ('auto' | 'open' | 'locked')
   const handleUpdateRoundStatus = async (newStatus: EvaluationRoundStatus) => {
     if (!selectedPeriod) return;
     try {
@@ -368,10 +393,12 @@ export function ViewSalaryHistory({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'UPDATE_FISCAL_PERIOD',
-          periodId: selectedPeriod.id,
-          updates: {
-            evaluationStatus: newStatus,
-            isLocked,
+          payload: {
+            periodId: selectedPeriod.id,
+            updates: {
+              evaluationStatus: newStatus,
+              isLocked,
+            },
           },
         }),
       });
@@ -386,10 +413,10 @@ export function ViewSalaryHistory({
         );
         showToast?.(
           `เปลี่ยนสถานะรอบเป็น "${
-            newStatus === 'closed'
-              ? 'ปิดรับการประเมิน'
+            newStatus === 'auto'
+              ? `อัตโนมัติ (${autoUnlockDays} วัน)`
               : newStatus === 'open'
-              ? 'เปิดให้ประเมินตนเอง'
+              ? 'ปลดล็อกทั้งหมด'
               : 'ปิดรอบถาวร'
           }" เรียบร้อยแล้ว`,
           'success'
@@ -399,6 +426,56 @@ export function ViewSalaryHistory({
       }
     } catch (err: any) {
       console.error('[handleUpdateRoundStatus Error]', err);
+      showToast?.(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle toggling per-user manual unlock override
+  const handleToggleUserLock = async (teacherId: string, teacherName: string) => {
+    if (!selectedPeriod || !isAuthorizedManager) return;
+    try {
+      setIsSaving(true);
+      const currentList = selectedPeriod.unlockedStaffIds || [];
+      const isAlreadyUnlocked = currentList.includes(teacherId);
+      const updatedList = isAlreadyUnlocked
+        ? currentList.filter((id) => id !== teacherId)
+        : [...currentList, teacherId];
+
+      const res = await fetch('/api/admin/academic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_FISCAL_PERIOD',
+          payload: {
+            periodId: selectedPeriod.id,
+            updates: {
+              unlockedStaffIds: updatedList,
+            },
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFiscalPeriods((prev) =>
+          prev.map((p) =>
+            p.id === selectedPeriod.id
+              ? { ...p, unlockedStaffIds: updatedList }
+              : p
+          )
+        );
+        showToast?.(
+          isAlreadyUnlocked
+            ? `ยกเลิกการปลดล็อกเฉพาะบุคคลของ ${teacherName} แล้ว`
+            : `ปลดล็อกการประเมินตนเองให้ ${teacherName} เรียบร้อยแล้ว`,
+          'success'
+        );
+      } else {
+        showToast?.(json.error || 'เกิดข้อผิดพลาดในการเปลี่ยนการปลดล็อกเฉพาะบุคคล', 'error');
+      }
+    } catch (err: any) {
+      console.error('[handleToggleUserLock Error]', err);
       showToast?.(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
     } finally {
       setIsSaving(false);
@@ -470,6 +547,7 @@ export function ViewSalaryHistory({
         roundNumber={selectedPeriod.roundNo}
         currentUser={currentUser}
         roundStatus={roundStatus}
+        selectedPeriod={selectedPeriod}
         onClose={() => setSelfEvalTeacher(null)}
         onSaved={(updatedStatus) => {
           setEvalStatusMap((prev) => ({
@@ -523,50 +601,49 @@ export function ViewSalaryHistory({
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
-                onClick={() => handleUpdateRoundStatus('closed')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
-                  roundStatus === 'closed'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                onClick={() => handleUpdateRoundStatus('auto')}
+                className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
+                  roundStatus === 'auto'
+                    ? 'bg-sky-600 text-white shadow-xs font-semibold'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
-                title="ปิดรับการประเมิน (ครูยังประเมินไม่ได้)"
+                title={`เปิดอัตโนมัติก่อนสิ้นรอบ ${autoUnlockDays} วัน (${formattedAutoUnlockDate})`}
               >
-                ปิดรับการประเมิน
+                อัตโนมัติ ({autoUnlockDays} วัน)
               </button>
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
                 onClick={() => handleUpdateRoundStatus('open')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
+                className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
                   roundStatus === 'open'
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs font-semibold'
                     : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
-                title="เปิดให้ประเมินตนเอง (ครูสามารถเข้าประเมินตนเองได้)"
+                title="ปลดล็อกทั้งหมด (เปิดให้ประเมินตนเองทันที)"
               >
-                เปิดให้ประเมินตนเอง
+                ปลดล็อกทั้งหมด
               </button>
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
                 onClick={() => handleUpdateRoundStatus('locked')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
+                className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
                   roundStatus === 'locked'
-                    ? 'bg-amber-600 text-white shadow-xs'
+                    ? 'bg-amber-600 text-white shadow-xs font-semibold'
                     : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400'
                 }`}
-                title="ปิดรอบถาวร (อ่านอย่างเดียว)"
+                title="ปิดรอบถาวร (ล็อกข้อมูลทั้งหมด)"
               >
                 ปิดรอบถาวร
               </button>
             </div>
           ) : (
-            <span className="text-xs px-2.5 py-1 rounded-md font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              {roundStatus === 'open'
-                ? 'เปิดให้ประเมินตนเอง'
-                : roundStatus === 'locked'
-                ? 'ปิดรอบแล้ว'
-                : 'รอเปิดรอบประเมิน'}
+            <span
+              className="text-xs px-2.5 py-1 rounded-md font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+              title={teacherHeaderAccess.tooltip}
+            >
+              {teacherHeaderAccess.statusLabel}
             </span>
           )}
 
@@ -728,7 +805,7 @@ export function ViewSalaryHistory({
             ) : roundStatus === 'open' ? (
               <Unlock className="w-4 h-4 text-emerald-500" />
             ) : (
-              <Lock className="w-4 h-4 text-slate-400" />
+              <Clock className="w-4 h-4 text-sky-500" />
             )}
           </div>
           <div className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -736,14 +813,14 @@ export function ViewSalaryHistory({
               ? 'เปิดให้ประเมินตนเอง'
               : roundStatus === 'locked'
               ? 'ปิดรอบถาวร'
-              : 'ปิดรับการประเมิน'}
+              : `อัตโนมัติ (${autoUnlockDays} วัน)`}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             {roundStatus === 'open'
-              ? 'ครูสามารถบันทึกแบบประเมินตนเองได้'
+              ? 'ปลดล็อกทั้งหมดทันที'
               : roundStatus === 'locked'
               ? 'ประวัติศาสตร์แบบอ่านอย่างเดียว'
-              : 'รอผู้บริหารเปิดรอบประเมิน'}
+              : `เปิดประเมินอัตโนมัติ ${formattedAutoUnlockDate}`}
           </p>
         </div>
       </div>
@@ -823,10 +900,12 @@ export function ViewSalaryHistory({
                       isLocked={Boolean(selectedPeriod?.isLocked)}
                       canEdit={isAuthorizedManager}
                       roundStatus={roundStatus}
+                      selectedPeriod={selectedPeriod}
                       onToggleExpand={() => toggleExpandStaff(teacher.id)}
                       onSave={handleSaveRecord}
                       onOpenSelfEval={() => setSelfEvalTeacher(teacher)}
                       onPrintA4={() => setPrintRecordData({ teacher, record })}
+                      onToggleUserLock={handleToggleUserLock}
                       evaluationStatus={evalStatusMap[teacher.id] || evalStatusMap[teacher.employeeCode]}
                     />
                   );
@@ -864,10 +943,12 @@ interface SalaryPromotionMasterRowProps {
   isLocked: boolean;
   canEdit: boolean;
   roundStatus: EvaluationRoundStatus;
+  selectedPeriod?: FiscalPeriodRecord | null;
   onToggleExpand: () => void;
   onSave: (record: Partial<SalaryPromotionRecord> & { staffId: string }) => void;
   onOpenSelfEval: () => void;
   onPrintA4: () => void;
+  onToggleUserLock?: (teacherId: string, teacherName: string) => void;
   evaluationStatus?: string;
 }
 
@@ -880,10 +961,12 @@ function SalaryPromotionMasterRow({
   isLocked,
   canEdit,
   roundStatus,
+  selectedPeriod,
   onToggleExpand,
   onSave,
   onOpenSelfEval,
   onPrintA4,
+  onToggleUserLock,
   evaluationStatus,
 }: SalaryPromotionMasterRowProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -920,17 +1003,17 @@ function SalaryPromotionMasterRow({
     pct > 0 ||
     hasOrder;
 
-  // RBAC for Evaluation Button:
-  // - Authorized Managers: Always enabled (preview/evaluate)
-  // - Teachers: Disabled with tooltip when closed or locked
+  // Hybrid Evaluation Access Resolution
   const isTeacher = !canEdit;
-  const isEvalDisabled = isTeacher && (roundStatus === 'closed' || roundStatus === 'locked');
-  const evalTooltip =
-    isTeacher && roundStatus === 'closed'
-      ? 'รอผู้บริหารเปิดรอบประเมิน'
-      : isTeacher && roundStatus === 'locked'
-      ? 'ปิดรอบแล้ว'
-      : 'ประเมิน';
+  const access = resolveEvaluationAccess({
+    staffId: teacher.id,
+    isTeacher,
+    isAuthorizedManager: canEdit,
+    period: selectedPeriod,
+  });
+
+  const isEvalDisabled = isTeacher && !access.isUnlocked;
+  const evalTooltip = isTeacher ? access.tooltip : 'ประเมินผลการปฏิบัติงาน';
 
   // Computed financial figures
   const currentBase = Number(record.calculationBase || (teacher as any).salary || 0);
@@ -1017,23 +1100,46 @@ function SalaryPromotionMasterRow({
           onClick={(e) => e.stopPropagation()} // Prevent row expand toggle when clicking buttons
         >
           <div className="flex items-center justify-end gap-2 whitespace-nowrap shrink-0">
-            {/* Aligned Lock/Unlock icon */}
-            <span
-              title={
-                isLocked || roundStatus === 'locked'
-                  ? 'ปิดรอบถาวร'
-                  : roundStatus === 'closed'
-                  ? 'ปิดรับการประเมิน'
-                  : 'เปิดให้ประเมินตนเอง'
-              }
-              className="text-slate-400 dark:text-slate-500 shrink-0"
-            >
-              {isLocked || roundStatus === 'locked' || roundStatus === 'closed' ? (
-                <Lock className="w-3.5 h-3.5" />
-              ) : (
-                <Unlock className="w-3.5 h-3.5" />
-              )}
-            </span>
+            {/* Aligned Lock/Unlock icon (interactive for Manager, status indicator for Teacher) */}
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => onToggleUserLock?.(teacher.id, displayName)}
+                title={
+                  isStaffManuallyUnlocked(teacher.id, selectedPeriod?.unlockedStaffIds)
+                    ? 'ปลดล็อกเฉพาะบุคคลแล้ว (คลิกเพื่อยกเลิก)'
+                    : access.isUnlocked
+                    ? 'เปิดระบบอยู่ (คลิกเพื่อปลดล็อกเฉพาะบุคคลกรณีพิเศษ)'
+                    : 'ล็อกอยู่ (คลิกเพื่อปลดล็อกเฉพาะบุคคล)'
+                }
+                className={`p-1 rounded-md transition-colors cursor-pointer shrink-0 ${
+                  access.isUnlocked
+                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                {access.isUnlocked ? (
+                  <Unlock className="w-3.5 h-3.5" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
+              </button>
+            ) : (
+              <span
+                title={access.tooltip}
+                className={`shrink-0 ${
+                  access.isUnlocked
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {access.isUnlocked ? (
+                  <Unlock className="w-3.5 h-3.5" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
+              </span>
+            )}
 
             {/* Compact flat button: "ประเมิน" */}
             <button

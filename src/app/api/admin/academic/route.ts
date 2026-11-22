@@ -250,7 +250,7 @@ export async function POST(request: Request) {
       }
 
       case 'UPDATE_FISCAL_PERIOD': {
-        const { periodId, updates } = payload;
+        const { periodId, updates } = payload || body;
         const updated = await dbUpdateFiscalPeriod(periodId, updates);
         recordAuditLog(
           'UPDATE_FISCAL_PERIOD',

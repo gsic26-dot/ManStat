@@ -25,6 +25,10 @@ import type {
   StudentCensusSnapshotRecord,
   TeacherRecord,
 } from '@/lib/data/schoolData';
+import {
+  computeAutoUnlockDateStr,
+  formatThaiDateArabic,
+} from '@/lib/regulations/evaluation-access';
 
 interface FiscalPeriodManagerProps {
   schoolId?: string;
@@ -233,6 +237,40 @@ export function FiscalPeriodManager({
     }
   };
 
+  // Handle changing auto unlock lead days
+  const handleChangeAutoUnlockDays = async (days: number) => {
+    if (!selectedPeriod) return;
+    if (selectedPeriod.isLocked) {
+      showToast('รอบนี้ถูกล็อกแล้ว ไม่สามารถแก้ไขจำนวนวันเปิดล่วงหน้าได้', 'error');
+      return;
+    }
+    const safeDays = Math.min(60, Math.max(1, days || 15));
+    try {
+      setIsSaving(true);
+      const res = await fetch('/api/admin/academic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_FISCAL_PERIOD',
+          payload: {
+            periodId: selectedPeriod.id,
+            updates: { autoUnlockDays: safeDays },
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกจำนวนวันเปิดล่วงหน้าได้');
+      }
+      showToast(`ตั้งเวลาเปิดประเมินอัตโนมัติก่อนสิ้นรอบเป็น ${safeDays} วันแล้ว`, 'success');
+      await fetchPeriods();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading && fiscalPeriods.length === 0) {
     return (
       <div className="py-6 flex items-center justify-center gap-2 text-slate-400">
@@ -370,6 +408,49 @@ export function FiscalPeriodManager({
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Configurable Auto-Unlock Lead Days */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs w-full">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-slate-500 dark:text-slate-400">เปิดประเมินอัตโนมัติก่อนสิ้นรอบ (วัน):</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    disabled={Boolean(selectedPeriod.isLocked) || isSaving}
+                    defaultValue={selectedPeriod.autoUnlockDays ?? 15}
+                    key={`days-${selectedPeriod.id}-${selectedPeriod.autoUnlockDays ?? 15}`}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val !== (selectedPeriod.autoUnlockDays ?? 15)) {
+                        handleChangeAutoUnlockDays(val);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt((e.target as HTMLInputElement).value, 10);
+                        if (!isNaN(val)) {
+                          handleChangeAutoUnlockDays(val);
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }
+                    }}
+                    className="w-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-60"
+                  />
+                  <span className="text-slate-400">วัน</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                <span>ระบบจะเปิดให้อัตโนมัติในวันที่ </span>
+                <strong className="text-slate-800 dark:text-slate-200 font-medium">
+                  {formatThaiDateArabic(
+                    computeAutoUnlockDateStr(selectedPeriod.evalEnd, selectedPeriod.autoUnlockDays ?? 15)
+                  )}
+                </strong>
+              </div>
             </div>
           </div>
         )}

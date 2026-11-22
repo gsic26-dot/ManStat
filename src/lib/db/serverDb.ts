@@ -2202,7 +2202,9 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
         refCensusSnapshotId: r.ref_census_snapshot_id,
         isActive: Boolean(r.is_active),
         isLocked: Boolean(r.is_locked),
-        evaluationStatus: (r.evaluation_status as any) || (Boolean(r.is_locked) ? 'locked' : Boolean(r.is_active) ? 'open' : 'closed'),
+        autoUnlockDays: r.auto_unlock_days ? Number(r.auto_unlock_days) : 15,
+        unlockedStaffIds: Array.isArray(r.unlocked_staff_ids) ? r.unlocked_staff_ids : [],
+        evaluationStatus: (r.evaluation_status as any) || (Boolean(r.is_locked) ? 'locked' : 'auto'),
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       }));
@@ -2222,7 +2224,9 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
       refCensusSnapshotId: 'census-2569-jun',
       isActive: true,
       isLocked: false,
-      evaluationStatus: 'closed',
+      evaluationStatus: 'auto',
+      autoUnlockDays: 15,
+      unlockedStaffIds: [],
     },
     {
       id: 'fp-2570-r2',
@@ -2234,7 +2238,9 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
       refCensusSnapshotId: 'census-2569-jun',
       isActive: false,
       isLocked: false,
-      evaluationStatus: 'closed',
+      evaluationStatus: 'auto',
+      autoUnlockDays: 15,
+      unlockedStaffIds: [],
     },
   ];
 }
@@ -2564,6 +2570,9 @@ export async function dbCreateFiscalPeriod(
         ref_census_snapshot_id: period.refCensusSnapshotId || null,
         is_active: false,
         is_locked: false,
+        evaluation_status: period.evaluationStatus || 'auto',
+        auto_unlock_days: period.autoUnlockDays || 15,
+        unlocked_staff_ids: period.unlockedStaffIds || [],
       })
       .select()
       .single();
@@ -2582,6 +2591,9 @@ export async function dbCreateFiscalPeriod(
       refCensusSnapshotId: data.ref_census_snapshot_id,
       isActive: Boolean(data.is_active),
       isLocked: Boolean(data.is_locked),
+      autoUnlockDays: data.auto_unlock_days ? Number(data.auto_unlock_days) : 15,
+      unlockedStaffIds: Array.isArray(data.unlocked_staff_ids) ? data.unlocked_staff_ids : [],
+      evaluationStatus: (data.evaluation_status as any) || 'auto',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -2599,6 +2611,9 @@ export async function dbCreateFiscalPeriod(
     refCensusSnapshotId: period.refCensusSnapshotId || null,
     isActive: false,
     isLocked: false,
+    evaluationStatus: period.evaluationStatus || 'auto',
+    autoUnlockDays: period.autoUnlockDays || 15,
+    unlockedStaffIds: period.unlockedStaffIds || [],
   };
   if (!db.fiscalPeriods) db.fiscalPeriods = [];
   db.fiscalPeriods.push(newPeriod);
@@ -2619,6 +2634,12 @@ export async function dbUpdateFiscalPeriod(
     }
     if (updates.isLocked !== undefined) {
       dbUpdate.is_locked = updates.isLocked;
+    }
+    if (updates.autoUnlockDays !== undefined) {
+      dbUpdate.auto_unlock_days = updates.autoUnlockDays;
+    }
+    if (updates.unlockedStaffIds !== undefined) {
+      dbUpdate.unlocked_staff_ids = updates.unlockedStaffIds;
     }
     if (updates.evaluationStatus !== undefined) {
       dbUpdate.evaluation_status = updates.evaluationStatus;
@@ -2664,7 +2685,9 @@ export async function dbUpdateFiscalPeriod(
       refCensusSnapshotId: data.ref_census_snapshot_id,
       isActive: Boolean(data.is_active),
       isLocked: Boolean(data.is_locked),
-      evaluationStatus: (data.evaluation_status as any) || updates.evaluationStatus || (Boolean(data.is_locked) ? 'locked' : Boolean(data.is_active) ? 'open' : 'closed'),
+      autoUnlockDays: data.auto_unlock_days ? Number(data.auto_unlock_days) : (updates.autoUnlockDays ?? 15),
+      unlockedStaffIds: Array.isArray(data.unlocked_staff_ids) ? data.unlocked_staff_ids : (updates.unlockedStaffIds || []),
+      evaluationStatus: (data.evaluation_status as any) || updates.evaluationStatus || (Boolean(data.is_locked) ? 'locked' : 'auto'),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

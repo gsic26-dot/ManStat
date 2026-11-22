@@ -41,8 +41,9 @@ import {
   type EvaluationScores,
   type RatingLevel,
 } from '@/lib/evaluationEngine';
-import type { TeacherRecord } from '@/lib/data/schoolData';
+import type { TeacherRecord, FiscalPeriodRecord, EvaluationRoundStatus } from '@/lib/data/schoolData';
 import { EvaluationA4PrintDocument } from './EvaluationA4PrintDocument';
+import { resolveEvaluationAccess } from '@/lib/regulations/evaluation-access';
 
 export interface EvaluationWorkspaceProps {
   staffId: string;
@@ -56,7 +57,8 @@ export interface EvaluationWorkspaceProps {
     department?: string;
     name?: string;
   } | null;
-  roundStatus?: 'closed' | 'open' | 'locked';
+  roundStatus?: EvaluationRoundStatus;
+  selectedPeriod?: FiscalPeriodRecord | null;
   onClose?: () => void;
   onSaved?: (updatedStatus: string, grandTotal: number, rating: string) => void;
 }
@@ -67,6 +69,7 @@ export function EvaluationWorkspace({
   roundNumber,
   currentUser,
   roundStatus,
+  selectedPeriod,
   onClose,
   onSaved,
 }: EvaluationWorkspaceProps) {
@@ -113,17 +116,26 @@ export function EvaluationWorkspace({
 
   const isSelf = useMemo(() => {
     if (!currentUser) return false;
-    return (
+    return Boolean(
       currentUser.id === staffId ||
       currentUser.employeeCode === staffId ||
       (teacher && (currentUser.id === teacher.id || currentUser.employeeCode === teacher.employeeCode))
     );
   }, [currentUser, staffId, teacher]);
 
-  const isLockedRound = roundStatus === 'locked' || status === 'evaluated' || status === 'acknowledged';
-  const canEditSelf = !isLockedRound && (isSelf || isManager) && (roundStatus === 'open' || isManager);
-  const canEditSupervisor = !isLockedRound && isManager;
-  const canEditAny = !isLockedRound && (canEditSelf || canEditSupervisor);
+  const access = useMemo(() => {
+    return resolveEvaluationAccess({
+      staffId,
+      isTeacher: isSelf,
+      isAuthorizedManager: isManager,
+      period: selectedPeriod,
+    });
+  }, [staffId, isSelf, isManager, selectedPeriod]);
+
+  const isLockedRound = (roundStatus === 'locked' || status === 'evaluated' || status === 'acknowledged') && !access.isUnlocked;
+  const canEditSelf = !isLockedRound && (isSelf || isManager) && (access.isUnlocked || isManager);
+  const canEditSupervisor = access.canEditForm && isManager && status !== 'acknowledged';
+  const canEditAny = canEditSelf || canEditSupervisor;
 
   const isEvaluateeDirector = useMemo(() => {
     const pos = teacher?.position || part1Snapshot.position || '';
