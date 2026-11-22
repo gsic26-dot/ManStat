@@ -660,6 +660,70 @@ export interface Database {
           }
         ];
       };
+
+      performance_evaluations: {
+        Row: {
+          id: string;
+          staff_id: string;
+          fiscal_year: number;
+          round_number: number;
+          template_key: string;
+          part1_snapshot: Record<string, unknown>;
+          self_scores: Record<string, unknown>;
+          supervisor_scores: Record<string, unknown>;
+          self_total: number | null;
+          supervisor_total: number | null;
+          rating_level: string | null;
+          supervisor_comment: string | null;
+          status: 'draft' | 'self_submitted' | 'evaluated' | 'acknowledged';
+          self_signed_at: string | null;
+          supervisor_signed_at: string | null;
+          acknowledged_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          fiscal_year: number;
+          round_number: number;
+          template_key: string;
+          part1_snapshot?: Record<string, unknown>;
+          self_scores?: Record<string, unknown>;
+          supervisor_scores?: Record<string, unknown>;
+          self_total?: number | null;
+          supervisor_total?: number | null;
+          rating_level?: string | null;
+          supervisor_comment?: string | null;
+          status?: 'draft' | 'self_submitted' | 'evaluated' | 'acknowledged';
+          self_signed_at?: string | null;
+          supervisor_signed_at?: string | null;
+          acknowledged_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          staff_id?: string;
+          fiscal_year?: number;
+          round_number?: number;
+          template_key?: string;
+          part1_snapshot?: Record<string, unknown>;
+          self_scores?: Record<string, unknown>;
+          supervisor_scores?: Record<string, unknown>;
+          self_total?: number | null;
+          supervisor_total?: number | null;
+          rating_level?: string | null;
+          supervisor_comment?: string | null;
+          status?: 'draft' | 'self_submitted' | 'evaluated' | 'acknowledged';
+          self_signed_at?: string | null;
+          supervisor_signed_at?: string | null;
+          acknowledged_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
 
     Views: {
@@ -846,6 +910,7 @@ export type AcademicYear = Database['public']['Tables']['academic_years']['Row']
 export type StudentCensusSnapshot = Database['public']['Tables']['student_census_snapshots']['Row'];
 export type FiscalPeriod = Database['public']['Tables']['fiscal_periods']['Row'];
 export type SalaryPromotionRecord = Database['public']['Tables']['salary_promotion_records']['Row'];
+export type PerformanceEvaluationRecord = Database['public']['Tables']['performance_evaluations']['Row'];
 
 export type StaffDirectoryView = Database['public']['Views']['v_staff_directory']['Row'];
 export type LeavePromotionRadarView = Database['public']['Views']['v_leave_promotion_radar']['Row'];
