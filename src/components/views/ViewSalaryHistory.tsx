@@ -364,7 +364,7 @@ export function ViewSalaryHistory({
                   ประวัติการเลื่อนเงินเดือน
                 </h2>
                 <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  ข้าราชการครู 12 ท่าน
+                  ข้าราชการครู {civilServants.length} ท่าน
                 </span>
                 {!isAuthorizedManager && (
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">

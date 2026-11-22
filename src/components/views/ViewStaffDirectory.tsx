@@ -41,6 +41,7 @@ import {
   getStaffBranch,
 } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { isCivilServantForSalary } from '@/lib/auth/roles';
 
 const getShortDeptName = (dept: string): string => {
   if (dept === 'ALL') return 'ทั้งหมด';
@@ -68,6 +69,7 @@ export const ViewStaffDirectory: React.FC = () => {
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [selectedEmploymentType, setSelectedEmploymentType] = useState<'ALL' | 'civil_servant' | 'temporary_employee'>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -121,10 +123,35 @@ export const ViewStaffDirectory: React.FC = () => {
     return Array.from(set);
   }, [teachersList]);
 
+  const civilServantCount = useMemo(() => {
+    return teachersList.filter((t) => {
+      const emp = t.employment_type || (t as any).employmentType;
+      return emp ? emp === 'civil_servant' : isCivilServantForSalary(t);
+    }).length;
+  }, [teachersList]);
+
+  const supportCount = useMemo(() => {
+    return teachersList.length - civilServantCount;
+  }, [teachersList, civilServantCount]);
+
   const filteredTeachers = useMemo(() => {
-    if (selectedDept === 'ALL') return teachersList;
-    return teachersList.filter((t) => t.department === selectedDept);
-  }, [teachersList, selectedDept]);
+    let result = teachersList;
+    if (selectedEmploymentType === 'civil_servant') {
+      result = result.filter((t) => {
+        const emp = t.employment_type || (t as any).employmentType;
+        return emp ? emp === 'civil_servant' : isCivilServantForSalary(t);
+      });
+    } else if (selectedEmploymentType === 'temporary_employee') {
+      result = result.filter((t) => {
+        const emp = t.employment_type || (t as any).employmentType;
+        return emp ? emp !== 'civil_servant' : !isCivilServantForSalary(t);
+      });
+    }
+    if (selectedDept !== 'ALL') {
+      result = result.filter((t) => t.department === selectedDept);
+    }
+    return result;
+  }, [teachersList, selectedEmploymentType, selectedDept]);
 
   const groupedTeachers = useMemo(() => {
     return groupAndSortTeachers(filteredTeachers);
@@ -173,6 +200,70 @@ export const ViewStaffDirectory: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Employment Type Filter Pills (ข้าราชการ vs ลูกจ้าง/สายสนับสนุน) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200/90 dark:border-slate-800">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
+              ประเภทบุคลากร:
+            </span>
+            <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl gap-1">
+              <button
+                type="button"
+                onClick={() => setSelectedEmploymentType('ALL')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  selectedEmploymentType === 'ALL'
+                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>ทั้งหมด</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
+                  {teachersList.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedEmploymentType('civil_servant')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  selectedEmploymentType === 'civil_servant'
+                    ? 'bg-sky-600 text-white shadow-sm font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>ข้าราชการครู</span>
+                <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                  selectedEmploymentType === 'civil_servant'
+                    ? 'bg-sky-700 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  {civilServantCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedEmploymentType('temporary_employee')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  selectedEmploymentType === 'temporary_employee'
+                    ? 'bg-amber-600 text-white shadow-sm font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>ลูกจ้าง / สายสนับสนุน</span>
+                <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                  selectedEmploymentType === 'temporary_employee'
+                    ? 'bg-amber-700 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  {supportCount}
+                </span>
+              </button>
+            </div>
+          </div>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            แสดง {filteredTeachers.length} จาก {teachersList.length} ท่าน
+          </span>
         </div>
 
         {/* Quick Filter Segmented Pills for Department - Uniform Grid */}

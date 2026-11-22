@@ -61,6 +61,8 @@ import { isAdminRole } from '@/lib/auth/roles';
 import {
   groupAndSortTeachers,
   formatAcademicStandingSubtext,
+  deriveEmploymentType,
+  formatEmploymentTypeLabel,
 } from '@/lib/regulations/staff-sorting';
 import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
 import {
@@ -479,6 +481,7 @@ export default function AdminPage() {
       lastName: '',
       position: 'ครู',
       academicStanding: '-',
+      employment_type: 'civil_servant',
       department: 'ภาษาไทย',
       division: 'ครูผู้สอน',
       classLevel: '-',
@@ -525,6 +528,7 @@ export default function AdminPage() {
       prefix: prefix || 'นาย',
       firstName,
       lastName,
+      employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
       accessLevel: t.accessLevel || (t.role === 'superuser' ? 'Superuser' : t.role === 'hr_admin' ? 'Admin' : 'User'),
       licenses: t.licenses || [],
       standings: t.standings || [],
@@ -2535,7 +2539,28 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-slate-400 mb-1">
+                          ประเภทบุคลากร <span className="text-sky-500 font-semibold">*</span>
+                        </label>
+                        <select
+                          value={selectedStaff.employment_type || deriveEmploymentType(selectedStaff)}
+                          onChange={(e) => {
+                            const newType = e.target.value as 'civil_servant' | 'government_employee' | 'temporary_employee';
+                            setSelectedStaff({
+                              ...selectedStaff,
+                              employment_type: newType,
+                              academicStanding: newType === 'temporary_employee' ? '-' : selectedStaff.academicStanding,
+                            });
+                          }}
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-medium"
+                        >
+                          <option value="civil_servant">ข้าราชการครูและบุคลากรทางการศึกษา</option>
+                          <option value="government_employee">พนักงานราชการ</option>
+                          <option value="temporary_employee">ลูกจ้างชั่วคราว / จ้างเหมาบริการ</option>
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-slate-400 mb-1">ตำแหน่งมาตรฐาน สพฐ.</label>
                         <select
@@ -2554,54 +2579,67 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block text-slate-400">วิทยฐานะ</label>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedStaff({ ...selectedStaff, academicStanding: '-' })}
-                            className="text-[10px] text-sky-500 hover:text-sky-400 font-medium underline"
-                            title="ตั้งค่าเป็นไม่มีวิทยฐานะ (-)"
-                          >
-                            ไม่มีวิทยฐานะ
-                          </button>
-                        </div>
-                        <div className="space-y-1.5">
-                          <select
-                            value={
-                              STANDARD_STANDINGS.includes(selectedStaff.academicStanding)
-                                ? selectedStaff.academicStanding
-                                : selectedStaff.academicStanding === ''
-                                ? '-'
-                                : 'custom'
-                            }
-                            onChange={(e) => {
-                              if (e.target.value !== 'custom') {
-                                setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value });
-                              }
-                            }}
-                            className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                          >
-                            <option value="-">- ไม่มีวิทยฐานะ -</option>
-                            <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
-                            <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
-                            <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
-                            <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
-                            <option value="ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)">ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)</option>
-                            <option value="ผู้อำนวยการเชี่ยวชาญ (คศ. 4)">ผู้อำนวยการเชี่ยวชาญ (คศ. 4)</option>
-                            <option value="ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)">ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)</option>
-                            <option value="custom">ระบุเอง...</option>
-                          </select>
-                          {(!STANDARD_STANDINGS.includes(selectedStaff.academicStanding) || selectedStaff.academicStanding === 'custom') && (
-                            <input
-                              type="text"
-                              value={selectedStaff.academicStanding === 'custom' ? '' : selectedStaff.academicStanding}
-                              placeholder="ระบุวิทยฐานะ หรือพิมพ์ -"
-                              onChange={(e) =>
-                                setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
-                              }
-                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                            />
+                          <label className="block text-slate-400">
+                            วิทยฐานะ
+                            {selectedStaff.employment_type === 'temporary_employee' && (
+                              <span className="text-[10px] text-amber-500 ml-1">(เฉพาะข้าราชการ)</span>
+                            )}
+                          </label>
+                          {selectedStaff.employment_type !== 'temporary_employee' && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStaff({ ...selectedStaff, academicStanding: '-' })}
+                              className="text-[10px] text-sky-500 hover:text-sky-400 font-medium underline"
+                              title="ตั้งค่าเป็นไม่มีวิทยฐานะ (-)"
+                            >
+                              ไม่มีวิทยฐานะ
+                            </button>
                           )}
                         </div>
+                        {selectedStaff.employment_type === 'temporary_employee' ? (
+                          <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-slate-400 text-xs italic">
+                            - ไม่ใช้วิทยฐานะ (ลูกจ้างชั่วคราว/จ้างเหมา) -
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <select
+                              value={
+                                STANDARD_STANDINGS.includes(selectedStaff.academicStanding)
+                                  ? selectedStaff.academicStanding
+                                  : selectedStaff.academicStanding === ''
+                                  ? '-'
+                                  : 'custom'
+                              }
+                              onChange={(e) => {
+                                if (e.target.value !== 'custom') {
+                                  setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value });
+                                }
+                              }}
+                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                            >
+                              <option value="-">- ไม่มีวิทยฐานะ -</option>
+                              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
+                              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
+                              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
+                              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
+                              <option value="ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)">ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)</option>
+                              <option value="ผู้อำนวยการเชี่ยวชาญ (คศ. 4)">ผู้อำนวยการเชี่ยวชาญ (คศ. 4)</option>
+                              <option value="ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)">ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)</option>
+                              <option value="custom">ระบุเอง...</option>
+                            </select>
+                            {(!STANDARD_STANDINGS.includes(selectedStaff.academicStanding) || selectedStaff.academicStanding === 'custom') && (
+                              <input
+                                type="text"
+                                value={selectedStaff.academicStanding === 'custom' ? '' : selectedStaff.academicStanding}
+                                placeholder="ระบุวิทยฐานะ หรือพิมพ์ -"
+                                onChange={(e) =>
+                                  setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
+                                }
+                                className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -3051,133 +3089,147 @@ export default function AdminPage() {
                       </span>
                     </div>
 
-                    <div className="space-y-2">
-                      {(!selectedStaff.standings || selectedStaff.standings.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
-                          ยังไม่มีข้อมูลประวัติวิทยฐานะ
+                    {selectedStaff.employment_type === 'temporary_employee' ? (
+                      <div className="p-4 rounded-xl bg-slate-100 dark:bg-[#16212e] border border-slate-200 dark:border-slate-800 text-center space-y-1">
+                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span>ไม่ใช้วิทยฐานะสำหรับลูกจ้างชั่วคราวและจ้างเหมาบริการ</span>
                         </div>
-                      ) : (
-                        selectedStaff.standings.map((std, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
-                              editingStandingIndex === idx
-                                ? 'border-sky-500 ring-1 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20'
-                                : 'border-slate-200/90 dark:border-slate-700'
-                            }`}
-                          >
-                            <div>
-                              <div className="font-bold text-slate-900 dark:text-white text-xs">{std.level}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                                วันที่มีผล: {std.effectiveDate} | คำสั่ง: {std.orderNumber}
-                              </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          วิทยฐานะและการเลื่อนวิทยฐานะสงวนสิทธิ์เฉพาะตำแหน่งข้าราชการครูและบุคลากรทางการศึกษาเท่านั้น
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          {(!selectedStaff.standings || selectedStaff.standings.length === 0) ? (
+                            <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
+                              ยังไม่มีข้อมูลประวัติวิทยฐานะ
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                          ) : (
+                            selectedStaff.standings.map((std, idx) => (
+                              <div
+                                key={idx}
+                                className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
+                                  editingStandingIndex === idx
+                                    ? 'border-sky-500 ring-1 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20'
+                                    : 'border-slate-200/90 dark:border-slate-700'
+                                }`}
+                              >
+                                <div>
+                                  <div className="font-bold text-slate-900 dark:text-white text-xs">{std.level}</div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                                    วันที่มีผล: {std.effectiveDate} | คำสั่ง: {std.orderNumber}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditStanding(idx)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+                                    title="แก้ไขรายการนี้"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteStandingFromStaff(idx)}
+                                    className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
+                                    title="ลบรายการนี้"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                          <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              {editingStandingIndex !== null ? (
+                                <>
+                                  <Pencil className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                                  <span>แก้ไขประวัติการดำรงตำแหน่ง/วิทยฐานะ (รายการที่ {editingStandingIndex + 1})</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                                  <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
+                                </>
+                              )}
+                            </div>
+                            {editingStandingIndex !== null && (
                               <button
                                 type="button"
-                                onClick={() => handleEditStanding(idx)}
-                                className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                title="แก้ไขรายการนี้"
+                                onClick={handleCancelEditStanding}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
                               >
-                                <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                ยกเลิกการแก้ไข
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStandingFromStaff(idx)}
-                                className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                                title="ลบรายการนี้"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="sm:col-span-1">
+                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ตำแหน่ง/วิทยฐานะ</label>
+                              <input
+                                type="text"
+                                value={newStdLevel}
+                                onChange={(e) => setNewStdLevel(e.target.value)}
+                                className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่มีผล</label>
+                              <ThaiDatePicker
+                                value={newStdDate}
+                                onChange={(dateStr) => setNewStdDate(dateStr)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่คำสั่ง</label>
+                              <input
+                                type="text"
+                                value={newStdOrder}
+                                placeholder="เช่น ศธ 04123/2565"
+                                onChange={(e) => setNewStdOrder(e.target.value)}
+                                className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                              />
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          {editingStandingIndex !== null ? (
-                            <>
-                              <Pencil className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                              <span>แก้ไขประวัติการดำรงตำแหน่ง/วิทยฐานะ (รายการที่ {editingStandingIndex + 1})</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                              <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
-                            </>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {editingStandingIndex !== null && (
+                              <button
+                                type="button"
+                                onClick={handleCancelEditStanding}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
+                              >
+                                <X className="w-3.5 h-3.5 shrink-0" />
+                                <span>ยกเลิก</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleSaveStanding}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
+                            >
+                              {editingStandingIndex !== null ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
+                                  <span>บันทึกการแก้ไข</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                                  <span>เพิ่มรายการวิทยฐานะ</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        {editingStandingIndex !== null && (
-                          <button
-                            type="button"
-                            onClick={handleCancelEditStanding}
-                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
-                          >
-                            ยกเลิกการแก้ไข
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div className="sm:col-span-1">
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ตำแหน่ง/วิทยฐานะ</label>
-                          <input
-                            type="text"
-                            value={newStdLevel}
-                            onChange={(e) => setNewStdLevel(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่มีผล</label>
-                          <ThaiDatePicker
-                            value={newStdDate}
-                            onChange={(dateStr) => setNewStdDate(dateStr)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่คำสั่ง</label>
-                          <input
-                            type="text"
-                            value={newStdOrder}
-                            placeholder="เช่น ศธ 04123/2565"
-                            onChange={(e) => setNewStdOrder(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
-                        {editingStandingIndex !== null && (
-                          <button
-                            type="button"
-                            onClick={handleCancelEditStanding}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
-                          >
-                            <X className="w-3.5 h-3.5 shrink-0" />
-                            <span>ยกเลิก</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleSaveStanding}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
-                        >
-                          {editingStandingIndex !== null ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 shrink-0" />
-                              <span>บันทึกการแก้ไข</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5 shrink-0" />
-                              <span>เพิ่มรายการวิทยฐานะ</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Education History Section */}

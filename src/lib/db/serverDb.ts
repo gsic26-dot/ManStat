@@ -41,6 +41,7 @@ import {
   type StudentCensusSnapshotRecord,
   type FiscalPeriodRecord,
   type SalaryPromotionRecord,
+  type EmploymentType,
 } from '@/lib/data/schoolData';
 import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
@@ -505,6 +506,31 @@ export function schoolInfoFromDb(row: any): SchoolInfoRecord {
   };
 }
 
+// ----------------------------------------------------------------------------
+// Employment Type Helper (Separates Civil Servants vs. Contract/Support Staff)
+// ----------------------------------------------------------------------------
+export function deriveEmploymentType(staff: any): EmploymentType {
+  const raw = staff?.employment_type || staff?.employmentType;
+  if (raw && ['civil_servant', 'government_employee', 'temporary_employee'].includes(raw)) {
+    return raw as EmploymentType;
+  }
+  const pos = (staff?.position || staff?.role || staff?.position_name || '').toLowerCase();
+  if (
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('ลูกจ้าง') ||
+    pos.includes('จ้างเหมา')
+  ) {
+    return 'temporary_employee';
+  }
+  if (pos.includes('พนักงานราชการ')) {
+    return 'government_employee';
+  }
+  return 'civil_servant';
+}
+
 // 2. teachers (PK: id)
 export function teacherToDb(t: TeacherRecord) {
   const accessLevel =
@@ -544,6 +570,7 @@ export function teacherToDb(t: TeacherRecord) {
     last_name: lastName,
     position: positionTitle,
     academic_standing: t.academicStanding || '-',
+    employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
     department: t.department || '',
     division: t.division || '',
     class_level: t.classLevel || '-',
@@ -621,6 +648,8 @@ export function teacherFromDb(row: any): TeacherRecord {
     lastName,
     position,
     academicStanding: row.academic_standing || '-',
+    employment_type: row.employment_type || row.employmentType || deriveEmploymentType(row),
+    employmentType: row.employment_type || row.employmentType || deriveEmploymentType(row),
     department: row.department || '',
     division: row.division || '',
     classLevel: row.class_level || '-',

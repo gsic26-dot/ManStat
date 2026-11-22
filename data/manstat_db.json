@@ -81,7 +81,8 @@
           "gradYear": "2548"
         }
       ],
-      "role": "superuser"
+      "role": "superuser",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-003",
@@ -116,7 +117,8 @@
         }
       ],
       "educations": [],
-      "role": "hr_admin"
+      "role": "hr_admin",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-004",
@@ -145,7 +147,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "hr_admin"
+      "role": "hr_admin",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-005",
@@ -174,7 +177,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-006",
@@ -203,7 +207,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-007",
@@ -232,7 +237,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "hr_admin"
+      "role": "hr_admin",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-008",
@@ -261,7 +267,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-009",
@@ -290,7 +297,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-010",
@@ -319,7 +327,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-011",
@@ -348,7 +357,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-012",
@@ -377,7 +387,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-013",
@@ -406,7 +417,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "civil_servant"
     },
     {
       "id": "TCH-014",
@@ -435,7 +447,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "temporary_employee"
     },
     {
       "id": "STF-001",
@@ -464,7 +477,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "hr_admin"
+      "role": "hr_admin",
+      "employment_type": "temporary_employee"
     },
     {
       "id": "STF-002",
@@ -493,7 +507,8 @@
       "licenses": [],
       "standings": [],
       "educations": [],
-      "role": "teacher"
+      "role": "teacher",
+      "employment_type": "temporary_employee"
     }
   ],
   "boardMembers": [
@@ -1280,9 +1295,14 @@
       "schoolId": "30030099",
       "yearTh": 2569,
       "offeredGrades": [
-        "อนุบาล 2", "อนุบาล 3",
-        "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3",
-        "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"
+        "อนุบาล 2",
+        "อนุบาล 3",
+        "ประถมศึกษาปีที่ 1",
+        "ประถมศึกษาปีที่ 2",
+        "ประถมศึกษาปีที่ 3",
+        "ประถมศึกษาปีที่ 4",
+        "ประถมศึกษาปีที่ 5",
+        "ประถมศึกษาปีที่ 6"
       ],
       "isActive": true
     },
@@ -1291,9 +1311,14 @@
       "schoolId": "30030099",
       "yearTh": 2570,
       "offeredGrades": [
-        "อนุบาล 2", "อนุบาล 3",
-        "ประถมศึกษาปีที่ 1", "ประถมศึกษาปีที่ 2", "ประถมศึกษาปีที่ 3",
-        "ประถมศึกษาปีที่ 4", "ประถมศึกษาปีที่ 5", "ประถมศึกษาปีที่ 6"
+        "อนุบาล 2",
+        "อนุบาล 3",
+        "ประถมศึกษาปีที่ 1",
+        "ประถมศึกษาปีที่ 2",
+        "ประถมศึกษาปีที่ 3",
+        "ประถมศึกษาปีที่ 4",
+        "ประถมศึกษาปีที่ 5",
+        "ประถมศึกษาปีที่ 6"
       ],
       "isActive": false
     }

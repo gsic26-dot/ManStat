@@ -172,6 +172,13 @@ export function canManageSalaryPromotions(
  * Excludes support, contract, and non-civil servant staff (เจ้าหน้าที่ธุรการ, นักการภารโรง, พี่เลี้ยงเด็กพิการ, ลูกจ้าง).
  */
 export function isCivilServantForSalary(staff: TeacherRecord): boolean {
+  // 1. Strict schema-level check if employment_type or employmentType is specified
+  const empType = staff.employment_type || (staff as any).employmentType;
+  if (empType) {
+    return empType === 'civil_servant';
+  }
+
+  // 2. Fallback heuristic for legacy records without employment_type
   const branch = getStaffBranch(staff);
   if (branch === 'support') return false;
 

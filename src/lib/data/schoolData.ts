@@ -5,6 +5,8 @@
  * ============================================================================
  */
 
+export type EmploymentType = 'civil_servant' | 'government_employee' | 'temporary_employee';
+
 export interface TeacherRecord {
   id: string;
   employeeCode: string;
@@ -14,6 +16,8 @@ export interface TeacherRecord {
   lastName: string;
   position: string;
   academicStanding: string;
+  employment_type?: EmploymentType;
+  employmentType?: EmploymentType;
   department: string;
   division: string;
   classLevel?: string;
@@ -222,6 +226,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "มโนธรรม",
     "position": "ผู้อำนวยการโรงเรียน",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "สายงานบริหารและสนับสนุนการศึกษา",
     "division": "ผู้บริหารสถานศึกษา",
     "classLevel": "-",
@@ -273,6 +278,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "เหลืองโอฬาร",
     "position": "ครูชำนาญการพิเศษ",
     "academicStanding": "ครูชำนาญการพิเศษ",
+    "employment_type": "civil_servant",
     "department": "ศิลปะ",
     "division": "ผู้รักษาราชการแทนผู้อำนวยการสถานศึกษา (ลำดับที่ 2), หัวหน้าฝ่ายบริหารทั่วไปและกิจการนักเรียน, หัวหน้ากลุ่มสาระการเรียนรู้ศิลปะ, [หลัก] งานกิจการนักเรียน การปกครอง และส่งเสริมวินัย, [หลัก] งานป้องกันและแก้ไขปัญหาพฤติกรรม ยาเสพติด การกลั่นแกล้ง และความรุนแรง",
     "classLevel": "มัธยมศึกษาปีที่ 1",
@@ -307,6 +313,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "ภวฤทธิ์นาคินทร์",
     "position": "ครูชำนาญการพิเศษ",
     "academicStanding": "ครูชำนาญการพิเศษ",
+    "employment_type": "civil_servant",
     "department": "คณิตศาสตร์",
     "division": "หัวหน้าฝ่ายบริหารวิชาการ, ผู้รักษาราชการแทนผู้อำนวยการสถานศึกษา (ลำดับที่ 1), หัวหน้าระดับชั้นมัธยมศึกษาตอนต้น (ม.1 - ม.3), [หลัก] ผู้ดูแลห้องปฏิบัติการคอมพิวเตอร์",
     "classLevel": "มัธยมศึกษาปีที่ 3",
@@ -335,6 +342,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "พราหมณ์ตะขบ",
     "position": "ครูชำนาญการพิเศษ",
     "academicStanding": "ครูชำนาญการพิเศษ",
+    "employment_type": "civil_servant",
     "department": "ภาษาต่างประเทศ",
     "division": "งานประกันคุณภาพภายในสถานศึกษา",
     "classLevel": "มัธยมศึกษาปีที่ 2",
@@ -363,6 +371,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "พลอยฉิมพลี",
     "position": "ครูชำนาญการพิเศษ",
     "academicStanding": "ครูชำนาญการพิเศษ",
+    "employment_type": "civil_servant",
     "department": "คณิตศาสตร์",
     "division": "เจ้าหน้าที่ฝ่ายบริหารทั่วไป",
     "classLevel": "ประถมศึกษาปีที่ 4",
@@ -391,6 +400,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "ช่วยจังหรีด",
     "position": "ครูชำนาญการพิเศษ",
     "academicStanding": "ครูชำนาญการพิเศษ",
+    "employment_type": "civil_servant",
     "department": "คณิตศาสตร์",
     "division": "หัวหน้าฝ่ายบริหารงานบุคคล",
     "classLevel": "ประถมศึกษาปีที่ 5",
@@ -419,6 +429,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "สุทธิวงศ์",
     "position": "ครู คศ. 1",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "วิทยาศาสตร์และเทคโนโลยี",
     "division": "หัวหน้าฝ่ายบริหารงบประมาณและแผนงาน",
     "classLevel": "ประถมศึกษาปีที่ 6",
@@ -447,6 +458,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "พรหมทอง",
     "position": "ครู คศ. 1",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "สังคมศึกษา ศาสนาและวัฒนธรรม",
     "division": "งานระบบดูแลช่วยเหลือนักเรียน / กิจการนักเรียน",
     "classLevel": "ประถมศึกษาปีที่ 3",
@@ -475,6 +487,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "ทองลาด",
     "position": "ครู คศ. 1",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "การศึกษาปฐมวัย",
     "division": "งานพัสดุและสินทรัพย์",
     "classLevel": "อนุบาล 2",
@@ -503,6 +516,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "สินไชย",
     "position": "ครู คศ. 1",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "การศึกษาปฐมวัย",
     "division": "งานการเงินและบัญชี",
     "classLevel": "อนุบาล 3",
@@ -531,6 +545,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "สิงขรอาจ",
     "position": "ครู คศ. 1",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "ภาษาไทย",
     "division": "งานพัสดุและสินทรัพย์",
     "classLevel": "ประถมศึกษาปีที่ 1",
@@ -559,6 +574,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "มาตย์นอก",
     "position": "ครูผู้ช่วย",
     "academicStanding": "-",
+    "employment_type": "civil_servant",
     "department": "ภาษาไทย",
     "division": "งานเทคโนโลยีสารสนเทศ (ICT / DMC)",
     "classLevel": "ประถมศึกษาปีที่ 2",
@@ -587,6 +603,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "พุสดีดอน",
     "position": "พี่เลี้ยงเด็กพิการโรงเรียนทั่วไปจัดการเรียนรวม",
     "academicStanding": "-",
+    "employment_type": "temporary_employee",
     "department": "สังคมศึกษา ศาสนาและวัฒนธรรม",
     "division": "[รอง] งานระบบดูแลช่วยเหลือนักเรียน / กิจการนักเรียน",
     "classLevel": "อนุบาล 1",
@@ -615,6 +632,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "อินแพง",
     "position": "เจ้าหน้าที่ธุรการโรงเรียน",
     "academicStanding": "-",
+    "employment_type": "temporary_employee",
     "department": "สังคมศึกษา ศาสนาและวัฒนธรรม",
     "division": "งานธุรการและสารบรรณ",
     "classLevel": "-",
@@ -643,6 +661,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
     "lastName": "กักหมื่นไวย",
     "position": "นักการภารโรง",
     "academicStanding": "-",
+    "employment_type": "temporary_employee",
     "department": "ภาษาไทย",
     "division": "เจ้าหน้าที่ฝ่ายบริหารทั่วไป",
     "classLevel": "-",

@@ -30,9 +30,9 @@ import {
   ChevronRight,
   QrCode,
 } from 'lucide-react';
-import { LeaveRequestRecord } from '@/lib/data/schoolData';
+import { LeaveRequestRecord, TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
-import { formatPDPAProtectedLeaveReason } from '@/lib/auth/roles';
+import { formatPDPAProtectedLeaveReason, isCivilServantForSalary } from '@/lib/auth/roles';
 
 interface ViewLeaveRequestsProps {
   onOpenSubmitModal?: () => void;
@@ -40,9 +40,11 @@ interface ViewLeaveRequestsProps {
 
 export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps) {
   const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'sick' | 'personal' | 'vacation'>('ALL');
+  const [employmentFilter, setEmploymentFilter] = useState<'ALL' | 'civil_servant' | 'temporary_employee'>('ALL');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -78,6 +80,16 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
         }
       })
       .catch(() => {});
+
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && isMounted) {
+          setTeachersList(res.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -94,7 +106,17 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
       req.reason.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
     const matchesType = typeFilter === 'ALL' || req.leaveType === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+
+    let matchesEmployment = true;
+    if (employmentFilter !== 'ALL') {
+      const matchStaff = teachersList.find((t) => t.id === req.teacherId || t.employeeCode === req.teacherId);
+      const isCivil = matchStaff
+        ? ((matchStaff.employment_type || (matchStaff as any).employmentType) ? (matchStaff.employment_type || (matchStaff as any).employmentType) === 'civil_servant' : isCivilServantForSalary(matchStaff))
+        : !['STF-001', 'STF-002', 'STF-003', 'TCH-014'].includes(req.teacherId);
+      matchesEmployment = employmentFilter === 'civil_servant' ? isCivil : !isCivil;
+    }
+
+    return matchesSearch && matchesStatus && matchesType && matchesEmployment;
   });
 
   const handleApprove = async (id: string) => {
@@ -201,7 +223,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
       </div>
 
       {/* Filter and Search Bar (Standard 40px Height) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
           <input
@@ -211,6 +233,18 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-10 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
           />
+        </div>
+
+        <div className="h-10 flex items-center bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">
+          <select
+            value={employmentFilter}
+            onChange={(e) => setEmploymentFilter(e.target.value as 'ALL' | 'civil_servant' | 'temporary_employee')}
+            className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer font-medium"
+          >
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">บุคลากรทุกประเภท</option>
+            <option value="civil_servant" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ข้าราชการครู</option>
+            <option value="temporary_employee" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลูกจ้าง / สายสนับสนุน</option>
+          </select>
         </div>
 
         <div className="h-10 flex items-center gap-2 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-800 dark:text-slate-200 focus-within:border-sky-500 transition-all">

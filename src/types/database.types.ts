@@ -20,6 +20,9 @@ export type Json =
 // ----------------------------------------------------------------------------
 export type UserRole = 'teacher' | 'hr_admin' | 'director' | 'superuser';
 
+export type EmploymentTypeEnum = 'civil_servant' | 'government_employee' | 'temporary_employee';
+export type EmploymentType = EmploymentTypeEnum;
+
 export type LeaveTypeEnum =
   | 'ลาป่วย'
   | 'ลากิจส่วนตัว'
@@ -121,6 +124,7 @@ export interface Database {
           birth_date: string;
           start_service_date: string;
           is_year_round_staff: boolean;
+          employment_type?: EmploymentTypeEnum;
           role: UserRole;
           signature_url: string | null;
           preferences?: Json | null;
@@ -140,6 +144,7 @@ export interface Database {
           birth_date: string;
           start_service_date: string;
           is_year_round_staff?: boolean;
+          employment_type?: EmploymentTypeEnum;
           role?: UserRole;
           signature_url?: string | null;
           preferences?: Json | null;
@@ -159,6 +164,7 @@ export interface Database {
           birth_date?: string;
           start_service_date?: string;
           is_year_round_staff?: boolean;
+          employment_type?: EmploymentTypeEnum;
           role?: UserRole;
           signature_url?: string | null;
           preferences?: Json | null;

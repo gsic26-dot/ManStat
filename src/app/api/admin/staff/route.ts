@@ -97,6 +97,9 @@ export async function POST(request: Request) {
       if (oldStaff.academicStanding !== updatedStaff.academicStanding) {
         changes.push(`เปลี่ยนวิทยฐานะ: ${oldStaff.academicStanding} -> ${updatedStaff.academicStanding}`);
       }
+      if (oldStaff.employment_type !== updatedStaff.employment_type) {
+        changes.push(`เปลี่ยนประเภทบุคลากร: ${oldStaff.employment_type || 'civil_servant'} -> ${updatedStaff.employment_type}`);
+      }
       if (oldStaff.position !== updatedStaff.position) {
         changes.push(`เปลี่ยนตำแหน่ง: ${oldStaff.position} -> ${updatedStaff.position}`);
       }

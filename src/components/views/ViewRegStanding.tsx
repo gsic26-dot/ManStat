@@ -27,6 +27,7 @@ import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { isCivilServantForSalary } from '@/lib/auth/roles';
 
 export const ViewRegStanding: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
@@ -52,9 +53,18 @@ export const ViewRegStanding: React.FC = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const groupedTeachers = useMemo(() => {
-    return groupAndSortTeachers(teachersList);
+  // Filter strictly by civil servants: exact 12 members (Khurusapha & Civil Service Standards)
+  const civilServants = useMemo(() => {
+    return teachersList.filter((t) => {
+      const empType = t.employment_type || (t as any).employmentType;
+      if (empType) return empType === 'civil_servant';
+      return isCivilServantForSalary(t);
+    });
   }, [teachersList]);
+
+  const groupedTeachers = useMemo(() => {
+    return groupAndSortTeachers(civilServants);
+  }, [civilServants]);
 
   const sortedTeachers = useMemo(() => {
     return groupedTeachers.flatMap((g) => g.members);
@@ -66,9 +76,19 @@ export const ViewRegStanding: React.FC = () => {
       <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
         <div className="flex items-center gap-2.5">
           <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-            ทะเบียนวิทยฐานะ
-          </h2>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                ทะเบียนวิทยฐานะ
+              </h2>
+              <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                เฉพาะข้าราชการครู {civilServants.length} ท่าน
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              ทะเบียนวิทยฐานะและการแต่งตั้งให้มีหรือเลื่อนวิทยฐานะตามมาตรฐานตำแหน่ง ก.ค.ศ.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center shrink-0">

@@ -234,3 +234,47 @@ export function formatAcademicStandingSubtext(
 
   return stripped || null;
 }
+
+/**
+ * Derives employment type cleanly from record attributes.
+ * Defaults to 'civil_servant' unless position explicitly indicates contract/support staff.
+ */
+export function deriveEmploymentType(
+  staff: Partial<TeacherRecord> | any
+): 'civil_servant' | 'government_employee' | 'temporary_employee' {
+  const raw = staff?.employment_type || staff?.employmentType;
+  if (raw && ['civil_servant', 'government_employee', 'temporary_employee'].includes(raw)) {
+    return raw;
+  }
+  const pos = (staff?.position || staff?.role || staff?.position_name || '').toLowerCase();
+  if (
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('ลูกจ้าง') ||
+    pos.includes('จ้างเหมา')
+  ) {
+    return 'temporary_employee';
+  }
+  if (pos.includes('พนักงานราชการ')) {
+    return 'government_employee';
+  }
+  return 'civil_servant';
+}
+
+/**
+ * Returns official Thai label for employment type
+ */
+export function formatEmploymentTypeLabel(type?: string): string {
+  switch (type) {
+    case 'civil_servant':
+      return 'ข้าราชการครูและบุคลากรทางการศึกษา';
+    case 'government_employee':
+      return 'พนักงานราชการ';
+    case 'temporary_employee':
+      return 'ลูกจ้างชั่วคราว / จ้างเหมาบริการ';
+    default:
+      return 'ข้าราชการครูและบุคลากรทางการศึกษา';
+  }
+}
