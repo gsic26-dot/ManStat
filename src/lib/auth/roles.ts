@@ -11,6 +11,8 @@
  */
 
 import type { UserRole } from '@/types/database.types';
+import type { TeacherRecord } from '@/lib/data/schoolData';
+import { getStaffBranch } from '@/lib/regulations/staff-sorting';
 
 /**
  * Maps database/staff accessLevel string to standard UserRole.
@@ -112,4 +114,78 @@ export function getRoleBadgeConfig(role?: string | null): {
         initial: 'U',
       };
   }
+}
+
+/**
+ * Checks whether the current user is authorized to view and manage salary promotion records.
+ * Permitted:
+ * - 'superuser'
+ * - 'director'
+ * - 'hr_admin'
+ * - Staff members heading or assigned to the HR / Personnel department ('บริหารงานบุคคล')
+ * Explicitly BLOCKED:
+ * - Support staff ('office' / 'เจ้าหน้าที่ธุรการ', 'นักการภารโรง', 'พี่เลี้ยงเด็กพิการ', 'support')
+ * - Regular teachers outside of HR
+ */
+export function canManageSalaryPromotions(
+  role?: string | null,
+  position?: string | null,
+  department?: string | null
+): boolean {
+  if (!role) return false;
+  const cleanRole = role.toLowerCase().trim();
+  if (cleanRole === 'superuser' || cleanRole === 'director' || cleanRole === 'hr_admin') {
+    return true;
+  }
+  const pos = (position || '').toLowerCase().trim();
+  const dept = (department || '').toLowerCase().trim();
+
+  // Strict safety block for support staff and non-civil servant positions
+  if (
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('ลูกจ้าง') ||
+    pos.includes('จ้างเหมา')
+  ) {
+    return false;
+  }
+
+  // Personnel / HR department staff
+  if (
+    dept.includes('บริหารงานบุคคล') ||
+    dept.includes('งานบุคคล') ||
+    pos.includes('บริหารงานบุคคล') ||
+    pos.includes('หัวหน้าฝ่ายบริหารงานบุคคล') ||
+    pos.includes('เจ้าหน้าที่บริหารงานบุคคล')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determines if a staff member is an eligible civil servant for government salary promotions
+ * (ข้าราชการครูและบุคลากรทางการศึกษา: ผู้อำนวยการสถานศึกษา, ครูชำนาญการพิเศษ, ครูชำนาญการ, ครู คศ. 1, ครูผู้ช่วย).
+ * Excludes support, contract, and non-civil servant staff (เจ้าหน้าที่ธุรการ, นักการภารโรง, พี่เลี้ยงเด็กพิการ, ลูกจ้าง).
+ */
+export function isCivilServantForSalary(staff: TeacherRecord): boolean {
+  const branch = getStaffBranch(staff);
+  if (branch === 'support') return false;
+
+  const pos = staff.position || '';
+  if (
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('ลูกจ้าง') ||
+    pos.includes('จ้างเหมา')
+  ) {
+    return false;
+  }
+
+  return branch === 'management' || branch === 'teaching';
 }

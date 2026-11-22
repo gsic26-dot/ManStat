@@ -19,6 +19,7 @@ import {
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import type { StudentCensusSnapshotRecord, SalaryPromotionRecord } from '@/lib/data/schoolData';
 
 export const dynamic = 'force-dynamic';
@@ -31,12 +32,17 @@ export async function GET(request: Request) {
     const academicYearId = searchParams.get('academicYearId') || undefined;
     const fiscalPeriodId = searchParams.get('fiscalPeriodId') || undefined;
 
-    const [academicYears, censusSnapshots, fiscalPeriods, salaryPromotionRecords] = await Promise.all([
+    const [academicYears, censusSnapshots, fiscalPeriods, rawSalaryRecords, allTeachers] = await Promise.all([
       dbGetAcademicYears(schoolId),
       dbGetStudentCensusSnapshots(academicYearId),
       dbGetFiscalPeriods(schoolId),
       fiscalPeriodId ? dbGetSalaryPromotionRecords(fiscalPeriodId) : Promise.resolve([]),
+      dbGetTeachers(),
     ]);
+
+    // Ensure only eligible civil servants are returned in salary promotion records
+    const civilServantIds = new Set(allTeachers.filter((t) => isCivilServantForSalary(t)).map((t) => t.id));
+    const salaryPromotionRecords = rawSalaryRecords.filter((r) => civilServantIds.has(r.staffId));
 
     return NextResponse.json(
       {
@@ -239,24 +245,37 @@ export async function POST(request: Request) {
       }
 
       case 'SNAPSHOT_STAFF_SALARY': {
+        if (!canManageSalaryPromotions(adminSession.user?.role, adminSession.user?.position, adminSession.user?.department)) {
+          return NextResponse.json(
+            { success: false, error: 'สงวนสิทธิ์เฉพาะผู้อำนวยการและเจ้าหน้าที่งานบุคคล' },
+            { status: 403 }
+          );
+        }
         const { fiscalPeriodId } = payload;
         const teachers = await dbGetTeachers();
-        const records = await dbSnapshotStaffForFiscalPeriod(fiscalPeriodId, teachers);
+        const civilServants = teachers.filter((t) => isCivilServantForSalary(t));
+        const records = await dbSnapshotStaffForFiscalPeriod(fiscalPeriodId, civilServants);
         recordAuditLog(
           'SNAPSHOT_STAFF_SALARY',
           actorName,
           actorRole,
           fiscalPeriodId,
-          `บันทึก Snapshot ข้อมูลบุคลากร ${records.length} คน สำหรับรอบปีงบประมาณ ID: ${fiscalPeriodId}`
+          `บันทึก Snapshot ข้อมูลข้าราชการครู ${records.length} คน สำหรับรอบปีงบประมาณ ID: ${fiscalPeriodId}`
         );
         return NextResponse.json({
           success: true,
           data: records,
-          message: `บันทึก Snapshot บุคลากร ${records.length} คน เรียบร้อยแล้ว`,
+          message: `บันทึก Snapshot ข้าราชการครู ${records.length} คน เรียบร้อยแล้ว`,
         });
       }
 
       case 'SAVE_SALARY_PROMOTION_RECORD': {
+        if (!canManageSalaryPromotions(adminSession.user?.role, adminSession.user?.position, adminSession.user?.department)) {
+          return NextResponse.json(
+            { success: false, error: 'สงวนสิทธิ์เฉพาะผู้อำนวยการและเจ้าหน้าที่งานบุคคล' },
+            { status: 403 }
+          );
+        }
         const { record } = payload as { record: Partial<SalaryPromotionRecord> & { fiscalPeriodId: string; staffId: string } };
         const saved = await dbSaveSalaryPromotionRecord(record);
         recordAuditLog(
