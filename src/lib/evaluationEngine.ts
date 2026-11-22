@@ -324,14 +324,14 @@ export function validateEvaluationScores(
 
   // ตรวจองค์ประกอบที่ 2
   if (!scores.comp2Level || scores.comp2Level < 1) {
-    missing.push('องค์ประกอบที่ ๒ (การมีส่วนร่วมในการพัฒนาการศึกษา)');
+    missing.push('องค์ประกอบที่ 2 (การมีส่วนร่วมในการพัฒนาการศึกษา)');
   }
 
   // ตรวจองค์ประกอบที่ 3
   const p3 = scores.comp3 || {};
   COMPONENT_3_CONFIG.items.forEach((item) => {
     if (!p3[item.id] || p3[item.id] < 1) {
-      missing.push(`องค์ประกอบที่ ๓ ข้อ ${item.no} (${item.name.slice(0, 30)}...)`);
+      missing.push(`องค์ประกอบที่ 3 ข้อ ${item.no} (${item.name.slice(0, 30)}...)`);
     }
   });
 

@@ -34,13 +34,13 @@ function getRoundDateRange(fiscalYear: number, roundNumber: number) {
     return {
       startDate: `${ceYear - 1}-10-01`,
       endDate: `${ceYear}-03-31`,
-      label: `ครั้งที่ ๑ (๑ ตุลาคม ${fiscalYear - 1} – ๓๑ มีนาคม ${fiscalYear})`,
+      label: `ครั้งที่ 1 (1 ตุลาคม ${fiscalYear - 1} – 31 มีนาคม ${fiscalYear})`,
     };
   }
   return {
     startDate: `${ceYear}-04-01`,
     endDate: `${ceYear}-09-30`,
-    label: `ครั้งที่ ๒ (๑ เมษายน ${fiscalYear} – ๓๐ กันยายน ${fiscalYear})`,
+    label: `ครั้งที่ 2 (1 เมษายน ${fiscalYear} – 30 กันยายน ${fiscalYear})`,
   };
 }
 

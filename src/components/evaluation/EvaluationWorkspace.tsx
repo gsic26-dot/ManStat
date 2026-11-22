@@ -491,11 +491,11 @@ export function EvaluationWorkspace({
             {/* Step navigation */}
             <nav className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 shadow-xs space-y-1">
               {[
-                { id: 1, label: '๑. ข้อมูลทั่วไปและวันลา' },
-                { id: 2, label: '๒. องค์ประกอบที่ ๑ (มาตรฐานตำแหน่ง)' },
-                { id: 3, label: '๓. องค์ประกอบที่ ๒ (การมีส่วนร่วม)' },
-                { id: 4, label: '๔. องค์ประกอบที่ ๓ (วินัย/จรรยาบรรณ)' },
-                { id: 5, label: '๕. สรุปผลและการลงนาม' },
+                { id: 1, label: '1. ข้อมูลทั่วไปและวันลา' },
+                { id: 2, label: '2. องค์ประกอบที่ 1 (มาตรฐานตำแหน่ง)' },
+                { id: 3, label: '3. องค์ประกอบที่ 2 (การมีส่วนร่วม)' },
+                { id: 4, label: '4. องค์ประกอบที่ 3 (วินัย/จรรยาบรรณ)' },
+                { id: 5, label: '5. สรุปผลและการลงนาม' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -528,19 +528,19 @@ export function EvaluationWorkspace({
 
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>องค์ประกอบ ๑</span>
+                  <span>องค์ประกอบ 1</span>
                   <span className="font-mono font-medium text-slate-900 dark:text-white">
                     {activeCalc.component1.totalComponent1} / 80
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>องค์ประกอบ ๒</span>
+                  <span>องค์ประกอบ 2</span>
                   <span className="font-mono font-medium text-slate-900 dark:text-white">
                     {activeCalc.component2.score} / 10
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>องค์ประกอบ ๓</span>
+                  <span>องค์ประกอบ 3</span>
                   <span className="font-mono font-medium text-slate-900 dark:text-white">
                     {activeCalc.component3.score} / 10
                   </span>
@@ -564,14 +564,14 @@ export function EvaluationWorkspace({
           {/* RIGHT MAIN CONTENT AREA (9 cols) */}
           <main className="lg:col-span-9 space-y-6">
         {/* ================================================================ */}
-        {/* TAB 1: ส่วนที่ ๑ ข้อมูลของผู้ขอรับการประเมิน (AUTO-FILLED)       */}
+        {/* TAB 1: ส่วนที่ 1 ข้อมูลของผู้ขอรับการประเมิน (AUTO-FILLED)       */}
         {/* ================================================================ */}
         {activeTab === 1 && (
           <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <User className="w-4 h-4 text-sky-600" />
-                <span>ส่วนที่ ๑ : ข้อมูลของผู้ขอรับการประเมิน</span>
+                <span>ส่วนที่ 1 : ข้อมูลของผู้ขอรับการประเมิน</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 ระบบดึงข้อมูลพื้นฐานจากทะเบียนประวัติครู ภาระงานสอน และสถิติวันลาในรอบการประเมินให้อัตโนมัติ
@@ -592,7 +592,7 @@ export function EvaluationWorkspace({
                     disabled
                     className="accent-sky-600"
                   />
-                  <span>ครั้งที่ ๑ (๑ ตุลาคม {fiscalYear - 1} – ๓๑ มีนาคม {fiscalYear})</span>
+                  <span>ครั้งที่ 1 (1 ตุลาคม {fiscalYear - 1} – 31 มีนาคม {fiscalYear})</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -602,7 +602,7 @@ export function EvaluationWorkspace({
                     disabled
                     className="accent-sky-600"
                   />
-                  <span>ครั้งที่ ๒ (๑ เมษายน {fiscalYear} – ๓๐ กันยายน {fiscalYear})</span>
+                  <span>ครั้งที่ 2 (1 เมษายน {fiscalYear} – 30 กันยายน {fiscalYear})</span>
                 </label>
               </div>
             </div>
@@ -738,7 +738,7 @@ export function EvaluationWorkspace({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 block mb-1">๑) ลาป่วย</span>
+                  <span className="text-slate-500 block mb-1">1) ลาป่วย</span>
                   <div className="flex items-center justify-between font-mono">
                     <span>{part1Snapshot.leaveStats?.sickCount ?? 0} ครั้ง</span>
                     <span className="font-bold">{part1Snapshot.leaveStats?.sickDays ?? 0} วัน</span>
@@ -746,7 +746,7 @@ export function EvaluationWorkspace({
                 </div>
 
                 <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 block mb-1">๒) ลากิจ</span>
+                  <span className="text-slate-500 block mb-1">2) ลากิจ</span>
                   <div className="flex items-center justify-between font-mono">
                     <span>{part1Snapshot.leaveStats?.businessCount ?? 0} ครั้ง</span>
                     <span className="font-bold">{part1Snapshot.leaveStats?.businessDays ?? 0} วัน</span>
@@ -755,7 +755,7 @@ export function EvaluationWorkspace({
 
                 <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                   <span className="text-slate-500 block mb-1">
-                    ๓) ลาอื่น ๆ {part1Snapshot.leaveStats?.otherTypes ? `(${part1Snapshot.leaveStats.otherTypes})` : ''}
+                    3) ลาอื่น ๆ {part1Snapshot.leaveStats?.otherTypes ? `(${part1Snapshot.leaveStats.otherTypes})` : ''}
                   </span>
                   <div className="flex items-center justify-between font-mono">
                     <span>{part1Snapshot.leaveStats?.otherCount ?? 0} ครั้ง</span>
@@ -811,7 +811,7 @@ export function EvaluationWorkspace({
                 onClick={() => setActiveTab(2)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition-colors"
               >
-                <span>ถัดไป: องค์ประกอบที่ ๑</span>
+                <span>ถัดไป: องค์ประกอบที่ 1</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -819,7 +819,7 @@ export function EvaluationWorkspace({
         )}
 
         {/* ================================================================ */}
-        {/* TAB 2: องค์ประกอบที่ ๑ มาตรฐานตำแหน่ง (& ประเด็นท้าทาย)            */}
+        {/* TAB 2: องค์ประกอบที่ 1 มาตรฐานตำแหน่ง (& ประเด็นท้าทาย)            */}
         {/* ================================================================ */}
         {activeTab === 2 && (
           <div className="space-y-6">
@@ -837,7 +837,7 @@ export function EvaluationWorkspace({
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500 font-mono">
-                    คะแนนตอนที่ ๑: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part1Score : liveSelfCalc.component1.part1Score}</strong> /{' '}
+                    คะแนนตอนที่ 1: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part1Score : liveSelfCalc.component1.part1Score}</strong> /{' '}
                     {template.component1.part1.maxScore}
                   </span>
                   {canEditSupervisor && (
@@ -948,7 +948,7 @@ export function EvaluationWorkspace({
               </div>
             </div>
 
-            {/* ตอนที่ ๒ : ประเด็นท้าทาย (สำหรับแบบ 2, 3, 4, 5, 6) */}
+            {/* ตอนที่ 2 : ประเด็นท้าทาย (สำหรับแบบ 2, 3, 4, 5, 6) */}
             {template.hasChallengePart && template.component1.part2 && (
               <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -958,11 +958,11 @@ export function EvaluationWorkspace({
                       <span>{template.component1.part2.title}</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      เกณฑ์การให้คะแนน: ระดับ ๑=๒๕%, ระดับ ๒=๕๐%, ระดับ ๓=๗๕%, ระดับ ๔=๑๐๐% (สูตร: คะแนนรวม × ๒๐ / ๔๐)
+                      เกณฑ์การให้คะแนน: ระดับ 1=25%, ระดับ 2=50%, ระดับ 3=75%, ระดับ 4=100% (สูตร: คะแนนรวม × 20 / 40)
                     </p>
                   </div>
                   <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
-                    คะแนนตอนที่ ๒: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part2Score : liveSelfCalc.component1.part2Score}</strong> / 20
+                    คะแนนตอนที่ 2: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part2Score : liveSelfCalc.component1.part2Score}</strong> / 20
                   </span>
                 </div>
 
@@ -1048,7 +1048,7 @@ export function EvaluationWorkspace({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>ย้อนกลับ: ส่วนที่ ๑</span>
+                <span>ย้อนกลับ: ส่วนที่ 1</span>
               </button>
 
               <button
@@ -1056,7 +1056,7 @@ export function EvaluationWorkspace({
                 onClick={() => setActiveTab(3)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition-colors"
               >
-                <span>ถัดไป: องค์ประกอบที่ ๒</span>
+                <span>ถัดไป: องค์ประกอบที่ 2</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -1064,7 +1064,7 @@ export function EvaluationWorkspace({
         )}
 
         {/* ================================================================ */}
-        {/* TAB 3: องค์ประกอบที่ ๒ การมีส่วนร่วมในการพัฒนาการศึกษา (10 คะแนน)  */}
+        {/* TAB 3: องค์ประกอบที่ 2 การมีส่วนร่วมในการพัฒนาการศึกษา (10 คะแนน)  */}
         {/* ================================================================ */}
         {activeTab === 3 && (
           <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
@@ -1072,10 +1072,10 @@ export function EvaluationWorkspace({
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-sky-600" />
-                  <span>{COMPONENT_2_CONFIG.title} (๑๐ คะแนน)</span>
+                  <span>{COMPONENT_2_CONFIG.title} (10 คะแนน)</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  พิจารณาจากปริมาณงานที่ได้รับมอบหมายจากผู้บังคับบัญชาแล้วเสร็จ (คะแนนที่ได้ = ระดับการประเมิน × ค่าน้ำหนัก ๒)
+                  พิจารณาจากปริมาณงานที่ได้รับมอบหมายจากผู้บังคับบัญชาแล้วเสร็จ (คะแนนที่ได้ = ระดับการประเมิน × ค่าน้ำหนัก 2)
                 </p>
               </div>
 
@@ -1101,7 +1101,7 @@ export function EvaluationWorkspace({
 
             <div className="space-y-4">
               <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
-                {COMPONENT_2_CONFIG.indicator.name} (ค่าน้ำหนัก ๒)
+                {COMPONENT_2_CONFIG.indicator.name} (ค่าน้ำหนัก 2)
               </div>
 
               <div className="grid grid-cols-1 gap-2.5">
@@ -1167,7 +1167,7 @@ export function EvaluationWorkspace({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>ย้อนกลับ: องค์ประกอบที่ ๑</span>
+                <span>ย้อนกลับ: องค์ประกอบที่ 1</span>
               </button>
 
               <button
@@ -1175,7 +1175,7 @@ export function EvaluationWorkspace({
                 onClick={() => setActiveTab(4)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition-colors"
               >
-                <span>ถัดไป: องค์ประกอบที่ ๓</span>
+                <span>ถัดไป: องค์ประกอบที่ 3</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -1183,7 +1183,7 @@ export function EvaluationWorkspace({
         )}
 
         {/* ================================================================ */}
-        {/* TAB 4: องค์ประกอบที่ ๓ วินัย คุณธรรม จริยธรรม (10 คะแนน)           */}
+        {/* TAB 4: องค์ประกอบที่ 3 วินัย คุณธรรม จริยธรรม (10 คะแนน)           */}
         {/* ================================================================ */}
         {activeTab === 4 && (
           <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
@@ -1191,10 +1191,10 @@ export function EvaluationWorkspace({
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <FileText className="w-4 h-4 text-sky-600" />
-                  <span>{COMPONENT_3_CONFIG.title} (๑๐ คะแนน)</span>
+                  <span>{COMPONENT_3_CONFIG.title} (10 คะแนน)</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  ประเมิน ๑๐ รายการ (คะแนนเต็ม ๔๐ แปลงเป็น ๑๐ คะแนน โดยนำคะแนนรวมหารด้วย ๔)
+                  ประเมิน 10 รายการ (คะแนนเต็ม 40 แปลงเป็น 10 คะแนน โดยนำคะแนนรวมหารด้วย 4)
                 </p>
               </div>
 
@@ -1299,7 +1299,7 @@ export function EvaluationWorkspace({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>ย้อนกลับ: องค์ประกอบที่ ๒</span>
+                <span>ย้อนกลับ: องค์ประกอบที่ 2</span>
               </button>
 
               <button
@@ -1315,14 +1315,14 @@ export function EvaluationWorkspace({
         )}
 
         {/* ================================================================ */}
-        {/* TAB 5: สรุปผลการประเมิน (ส่วนที่ ๒–๔) และการลงนาม                  */}
+        {/* TAB 5: สรุปผลการประเมิน (ส่วนที่ 2–4) และการลงนาม                  */}
         {/* ================================================================ */}
         {activeTab === 5 && (
           <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileCheck className="w-4 h-4 text-sky-600" />
-                <span>ส่วนที่ ๒ : สรุปผลการประเมิน</span>
+                <span>ส่วนที่ 2 : สรุปผลการประเมิน</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 เปรียบเทียบคะแนนเต็ม คะแนนประเมินตนเอง และคะแนนของผู้บังคับบัญชา
@@ -1343,9 +1343,9 @@ export function EvaluationWorkspace({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   <tr>
                     <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                      องค์ประกอบที่ ๑ การประเมินประสิทธิภาพและประสิทธิผลการปฏิบัติงานตามมาตรฐานตำแหน่ง
+                      องค์ประกอบที่ 1 การประเมินประสิทธิภาพและประสิทธิผลการปฏิบัติงานตามมาตรฐานตำแหน่ง
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-500">๘๐</td>
+                    <td className="py-3 px-3 text-center font-mono text-slate-500">80</td>
                     <td className="py-3 px-3 text-center font-mono font-semibold text-slate-900 dark:text-white">
                       {liveSelfCalc.component1.totalComponent1}
                     </td>
@@ -1355,9 +1355,9 @@ export function EvaluationWorkspace({
                   </tr>
                   <tr>
                     <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                      องค์ประกอบที่ ๒ การประเมินการมีส่วนร่วมในการพัฒนาการศึกษา
+                      องค์ประกอบที่ 2 การประเมินการมีส่วนร่วมในการพัฒนาการศึกษา
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-500">๑๐</td>
+                    <td className="py-3 px-3 text-center font-mono text-slate-500">10</td>
                     <td className="py-3 px-3 text-center font-mono font-semibold text-slate-900 dark:text-white">
                       {liveSelfCalc.component2.score}
                     </td>
@@ -1367,9 +1367,9 @@ export function EvaluationWorkspace({
                   </tr>
                   <tr>
                     <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                      องค์ประกอบที่ ๓ การประเมินการปฏิบัติตนในการรักษาวินัย คุณธรรม จริยธรรม และจรรยาบรรณวิชาชีพ
+                      องค์ประกอบที่ 3 การประเมินการปฏิบัติตนในการรักษาวินัย คุณธรรม จริยธรรม และจรรยาบรรณวิชาชีพ
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-500">๑๐</td>
+                    <td className="py-3 px-3 text-center font-mono text-slate-500">10</td>
                     <td className="py-3 px-3 text-center font-mono font-semibold text-slate-900 dark:text-white">
                       {liveSelfCalc.component3.score}
                     </td>
@@ -1379,7 +1379,7 @@ export function EvaluationWorkspace({
                   </tr>
                   <tr className="bg-slate-50/80 dark:bg-slate-900/60 font-bold">
                     <td className="py-3 px-4 text-slate-900 dark:text-white">คะแนนรวมสุทธิ</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-500">๑๐๐</td>
+                    <td className="py-3 px-3 text-center font-mono text-slate-500">100</td>
                     <td className="py-3 px-3 text-center font-mono text-base text-slate-900 dark:text-white">
                       {liveSelfCalc.grandTotal}
                     </td>
@@ -1391,24 +1391,24 @@ export function EvaluationWorkspace({
               </table>
             </div>
 
-            {/* ส่วนที่ ๓ : ผลการประเมินและความเห็นของผู้บังคับบัญชา */}
+            {/* ส่วนที่ 3 : ผลการประเมินและความเห็นของผู้บังคับบัญชา */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
               <h3 className="font-bold text-xs text-slate-900 dark:text-white">
-                ส่วนที่ ๓ : ผลการประเมินและความเห็นของผู้บังคับบัญชา
+                ส่วนที่ 3 : ผลการประเมินและความเห็นของผู้บังคับบัญชา
               </h3>
 
               {/* 5 ระดับเกณฑ์ ก.ค.ศ. */}
               <div className="space-y-1.5 text-xs">
-                <span className="text-slate-500 block mb-1">ระดับผลการประเมิน (๕ ระดับ):</span>
+                <span className="text-slate-500 block mb-1">ระดับผลการประเมิน (5 ระดับ):</span>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {(() => {
                     const hasSuperScores = liveSupervisorCalc.ratingLevel !== 'รอการประเมิน';
                     return [
-                      { label: 'ดีเด่น', range: 'ร้อยละ ๙๐.๐๐ ขึ้นไป', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 90 },
-                      { label: 'ดีมาก', range: 'ร้อยละ ๘๐.๐๐ – ๘๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 80 && liveSupervisorCalc.grandTotal < 90 },
-                      { label: 'ดี', range: 'ร้อยละ ๗๐.๐๐ – ๗๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 70 && liveSupervisorCalc.grandTotal < 80 },
-                      { label: 'พอใช้', range: 'ร้อยละ ๖๐.๐๐ – ๖๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 60 && liveSupervisorCalc.grandTotal < 70 },
-                      { label: 'ปรับปรุง', range: 'ร้อยละ ๕๙.๙๙ ลงมา', active: hasSuperScores && liveSupervisorCalc.grandTotal < 60 },
+                      { label: 'ดีเด่น', range: 'ร้อยละ 90.00 ขึ้นไป', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 90 },
+                      { label: 'ดีมาก', range: 'ร้อยละ 80.00 – 89.99', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 80 && liveSupervisorCalc.grandTotal < 90 },
+                      { label: 'ดี', range: 'ร้อยละ 70.00 – 79.99', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 70 && liveSupervisorCalc.grandTotal < 80 },
+                      { label: 'พอใช้', range: 'ร้อยละ 60.00 – 69.99', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 60 && liveSupervisorCalc.grandTotal < 70 },
+                      { label: 'ปรับปรุง', range: 'ร้อยละ 59.99 ลงมา', active: hasSuperScores && liveSupervisorCalc.grandTotal < 60 },
                     ].map((tier) => (
                       <div
                         key={tier.label}
@@ -1429,7 +1429,7 @@ export function EvaluationWorkspace({
               {/* ความเห็นของผู้บังคับบัญชา */}
               <div className="space-y-1 text-xs">
                 <label className="block text-slate-600 dark:text-slate-400 font-medium">
-                  ๓.๒ ความเห็นของผู้บังคับบัญชา
+                  3.2 ความเห็นของผู้บังคับบัญชา
                 </label>
                 <textarea
                   rows={3}
@@ -1446,11 +1446,11 @@ export function EvaluationWorkspace({
               </div>
             </div>
 
-            {/* ส่วนที่ ๔ : การรับทราบผลการประเมินและการลงนาม */}
+            {/* ส่วนที่ 4 : การรับทราบผลการประเมินและการลงนาม */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/30">
                 <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                  ๓.๑ การลงนามประเมินตนเอง
+                  3.1 การลงนามประเมินตนเอง
                 </span>
                 <p className="text-[11px] text-slate-500">
                   ข้าพเจ้าขอรับรองว่าได้ประเมินตนเองตรงตามความเป็นจริง
@@ -1463,7 +1463,7 @@ export function EvaluationWorkspace({
 
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/30">
                 <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                  ๓.๒ การลงนามของผู้บังคับบัญชา
+                  3.2 การลงนามของผู้บังคับบัญชา
                 </span>
                 <p className="text-[11px] text-slate-500">
                   ผลการประเมินและข้อคิดเห็นได้รับการกลั่นกรองตามระเบียบ
@@ -1483,7 +1483,7 @@ export function EvaluationWorkspace({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>ย้อนกลับ: องค์ประกอบที่ ๓</span>
+                <span>ย้อนกลับ: องค์ประกอบที่ 3</span>
               </button>
 
               <div className="flex items-center gap-2 flex-wrap">
