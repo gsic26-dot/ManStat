@@ -36,7 +36,7 @@ import {
   Clock,
   Layers,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
@@ -129,252 +129,12 @@ export const WORKLOAD_CATEGORY_PRESETS: Record<
   ],
 };
 
-const INITIAL_WORKLOAD_ITEMS: WorkloadItem[] = [
-  // T002 - นางศิริพร บุญช่วย
-  {
-    id: 'WL-001',
-    teacherId: 'T002',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'ภาษาไทยพื้นฐาน',
-    courseCode: 'ท15101',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.5/1',
-    hoursPerWeek: 5,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 12/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-002',
-    teacherId: 'T002',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'ภาษาไทยเพิ่มเติม',
-    courseCode: 'ท15201',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.5/2',
-    hoursPerWeek: 4,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 12/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-003',
-    teacherId: 'T002',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'ผู้ช่วยสอน (TA) ทักษะภาษาและการอ่าน',
-    type: 'TA',
-    subGroupOrLevel: 'ป.4/1',
-    hoursPerWeek: 3,
-    roleInTask: 'ผู้ช่วยสอน',
-    orderOrRef: 'คำสั่งที่ 15/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-004',
-    teacherId: 'T002',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'กิจกรรมลูกเสือ - เนตรนารี',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.5',
-    hoursPerWeek: 2,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 18/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-005',
-    teacherId: 'T002',
-    category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
-    title: 'งานบริหารวิชาการและเลขานุการฝ่าย',
-    subGroupOrLevel: 'ฝ่ายบริหารวิชาการ',
-    hoursPerWeek: 4,
-    roleInTask: 'หัวหน้าฝ่าย',
-    orderOrRef: 'คำสั่งที่ 05/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-  {
-    id: 'WL-006',
-    teacherId: 'T002',
-    category: 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ',
-    title: 'งานผู้รับผิดชอบโครงการตามแผนปฏิบัติการประจำปี',
-    subGroupOrLevel: 'โครงการพัฒนาการอ่านออกเขียนได้',
-    hoursPerWeek: 3,
-    roleInTask: 'ผู้รับผิดชอบหลัก',
-    orderOrRef: 'คำสั่งที่ 22/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-007',
-    teacherId: 'T002',
-    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
-    title: 'งานครูที่ปรึกษาและดูแลนักเรียนประจำชั้น',
-    subGroupOrLevel: 'ป.5/1',
-    hoursPerWeek: 2,
-    roleInTask: 'ครูที่ปรึกษา',
-    orderOrRef: 'คำสั่งที่ 02/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-  {
-    id: 'WL-008',
-    teacherId: 'T002',
-    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
-    title: 'งานเวรประจำวันหน้าประตูโรงเรียน',
-    subGroupOrLevel: 'เวรวันจันทร์',
-    hoursPerWeek: 2,
-    roleInTask: 'ครูเวร',
-    orderOrRef: 'คำสั่งที่ 08/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-
-  // T003 - นายสมพงษ์ ใจดี
-  {
-    id: 'WL-009',
-    teacherId: 'T003',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'คณิตศาสตร์พื้นฐาน',
-    courseCode: 'ค16101',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.6/1',
-    hoursPerWeek: 5,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 12/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-010',
-    teacherId: 'T003',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'ผู้ช่วยสอน (TA) วิทยาการคำนวณ',
-    type: 'TA',
-    subGroupOrLevel: 'ม.1',
-    hoursPerWeek: 4,
-    roleInTask: 'ผู้ช่วยสอน',
-    orderOrRef: 'คำสั่งที่ 15/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-011',
-    teacherId: 'T003',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'แนะแนวและการศึกษาต่อ',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.6',
-    hoursPerWeek: 3,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 12/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-012',
-    teacherId: 'T003',
-    category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
-    title: 'งานบริหารงานบุคคลและอัตรากำลัง',
-    subGroupOrLevel: 'ฝ่ายบริหารงานบุคคล',
-    hoursPerWeek: 4,
-    roleInTask: 'หัวหน้าฝ่าย',
-    orderOrRef: 'คำสั่งที่ 05/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-  {
-    id: 'WL-013',
-    teacherId: 'T003',
-    category: 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ',
-    title: 'งานคณะกรรมการจัดกิจกรรมค่ายพักแรมลูกเสือ-เนตรนารี',
-    subGroupOrLevel: 'ค่ายลูกเสือระดับอำเภอ',
-    hoursPerWeek: 2,
-    roleInTask: 'กรรมการ / ผู้ร่วมงาน',
-    orderOrRef: 'คำสั่งที่ 31/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-014',
-    teacherId: 'T003',
-    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
-    title: 'งานครูที่ปรึกษาและดูแลนักเรียนประจำชั้น',
-    subGroupOrLevel: 'ป.6/1',
-    hoursPerWeek: 2,
-    roleInTask: 'ครูที่ปรึกษา',
-    orderOrRef: 'คำสั่งที่ 02/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-  {
-    id: 'WL-015',
-    teacherId: 'T003',
-    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
-    title: 'งานเวรรักษาการณ์สถานศึกษา (กลางวัน/กลางคืน)',
-    subGroupOrLevel: 'เวรผลัด 2',
-    hoursPerWeek: 2,
-    roleInTask: 'ครูเวร',
-    orderOrRef: 'คำสั่งที่ 09/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-
-  // EXE-001 - นายธีรศักดิ์ มโนธรรม (ผอ.สถานศึกษา)
-  {
-    id: 'WL-016',
-    teacherId: 'EXE-001',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'งานการสอนกิจกรรมพัฒนาผู้เรียน (ลูกเสือ)',
-    type: 'MAIN',
-    subGroupOrLevel: 'ป.4-6',
-    hoursPerWeek: 2,
-    roleInTask: 'ผู้สอน',
-    orderOrRef: 'คำสั่งที่ 18/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-017',
-    teacherId: 'EXE-001',
-    category: 'งานสอนและการจัดการเรียนรู้',
-    title: 'งานนิเทศการสอนภายในกลุ่มสาระการเรียนรู้',
-    type: 'MAIN',
-    subGroupOrLevel: 'นิเทศทุกกลุ่มสาระ',
-    hoursPerWeek: 4,
-    roleInTask: 'ผู้รับผิดชอบหลัก',
-    orderOrRef: 'คำสั่งที่ 14/2569',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-018',
-    teacherId: 'EXE-001',
-    category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
-    title: 'งานบริหารสถานศึกษาและผู้อำนวยการสถานศึกษา',
-    subGroupOrLevel: 'งานบริหาร 4 ฝ่าย',
-    hoursPerWeek: 10,
-    roleInTask: 'หัวหน้าสถานศึกษา',
-    orderOrRef: 'พระราชบัญญัติระเบียบข้าราชการครูฯ',
-    status: 'งานประจำต่อเนื่อง',
-  },
-  {
-    id: 'WL-019',
-    teacherId: 'EXE-001',
-    category: 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ',
-    title: 'งานสนองนโยบายเร่งด่วนของกระทรวงศึกษาธิการ / สพฐ.',
-    subGroupOrLevel: 'นโยบายเรียนดี มีความสุข',
-    hoursPerWeek: 4,
-    roleInTask: 'ผู้รับผิดชอบหลัก',
-    orderOrRef: 'หนังสือ สพฐ. ด่วนที่สุด',
-    status: 'กำลังดำเนินการ',
-  },
-  {
-    id: 'WL-020',
-    teacherId: 'EXE-001',
-    category: 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่',
-    title: 'งานผู้ตรวจเวรประจำวัน',
-    subGroupOrLevel: 'ตรวจเวรประจำสัปดาห์',
-    hoursPerWeek: 2,
-    roleInTask: 'ผู้ตรวจเวร',
-    orderOrRef: 'คำสั่งที่ 08/2569',
-    status: 'งานประจำต่อเนื่อง',
-  },
-];
-
 export const ViewWorkload: React.FC = () => {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [tierFilter, setTierFilter] = useState<'ALL' | 'PASSED' | 'FAILED'>('ALL');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
-  const [workloads, setWorkloads] = useState<WorkloadItem[]>(INITIAL_WORKLOAD_ITEMS);
+  const [workloads, setWorkloads] = useState<WorkloadItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -422,7 +182,7 @@ export const ViewWorkload: React.FC = () => {
 
   // Open Modal (Global or for specific teacher/category)
   const handleOpenAssignModal = (teacherId?: string, category?: WorkloadCategory) => {
-    const targetTeacherId = teacherId || (teachersList[0]?.id || INITIAL_TEACHERS[0].id);
+    const targetTeacherId = teacherId || teachersList[0]?.id || '';
     const targetCat = category || 'งานสอนและการจัดการเรียนรู้';
 
     setFormTeacherId(targetTeacherId);
@@ -681,7 +441,14 @@ export const ViewWorkload: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-              {filtered.map((w, index) => {
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                    ยังไม่มีข้อมูลตารางสอนและภาระงาน
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((w, index) => {
                 const isExpanded = expandedTeacherId === w.id;
                 const isSupport = w.branch === 'support';
                 const posDisplay = w.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
@@ -1065,7 +832,8 @@ export const ViewWorkload: React.FC = () => {
                     )}
                   </React.Fragment>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>

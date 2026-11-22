@@ -21,11 +21,11 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 
 export function ViewOfficialReports() {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roundFilter, setRoundFilter] = useState<'FULL' | 'ROUND_1' | 'ROUND_2'>('FULL');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -85,15 +85,9 @@ export function ViewOfficialReports() {
       <div className="space-y-6 print:hidden">
         {/* Header & Export Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-              <FileSpreadsheet className="w-4 h-4 shrink-0" />
-              <span>Official Attendance & Evaluation Reports</span>
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">สรุปวันลาและรายงาน สพฐ.</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              รายงานสถิติการมาปฏิบัติราชการเพื่อประกอบการประเมินเลื่อนขั้นเงินเดือนตาม ว15/2561
-            </p>
+          <div className="flex items-center gap-2.5">
+            <FileSpreadsheet className="w-5 h-5 text-sky-500 shrink-0" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">สรุปวันลาและรายงาน สพฐ.</h2>
           </div>
 
           {/* Action Buttons: Excel Export & Print */}
@@ -107,7 +101,7 @@ export function ViewOfficialReports() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
             >
               <Printer className="w-4 h-4 shrink-0" />
-              <span>พิมพ์รายงาน (A4 แนวนอน)</span>
+              <span>พิมพ์รายงาน A4</span>
             </button>
           </div>
         </div>
@@ -179,7 +173,14 @@ export function ViewOfficialReports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                {filteredTeachers.map((t, idx) => {
+                {filteredTeachers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                      ไม่พบข้อมูลบุคลากรในรอบการประเมินนี้
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTeachers.map((t, idx) => {
                   const total = t.sickUsed + t.personalUsed + t.vacationUsed;
                   const isEligible = total <= 23;
                   const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
@@ -223,7 +224,8 @@ export function ViewOfficialReports() {
                       </td>
                     </tr>
                   );
-                })}
+                })
+              )}
               </tbody>
             </table>
           </div>

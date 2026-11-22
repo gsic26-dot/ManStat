@@ -57,7 +57,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
             }`}
-            title="ทะเบียนประวัติบุคลากร (Staff Directory)"
+            title="ทะเบียนประวัติบุคลากร"
           >
             <User className={`w-4 h-4 shrink-0 ${activeTab === 'directory' ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}`} />
             <span className="truncate">ทะเบียนประวัติฯ</span>
@@ -72,7 +72,7 @@ export const ViewPersonnelHub: React.FC<ViewPersonnelHubProps> = ({
                 ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
             }`}
-            title="ทะเบียนวิทยฐานะ (Academic Standings)"
+            title="ทะเบียนวิทยฐานะ"
           >
             <GraduationCap className={`w-4 h-4 shrink-0 ${activeTab === 'standing' ? 'text-cyan-500 dark:text-cyan-400' : 'text-slate-400'}`} />
             <span className="truncate">ทะเบียนวิทยฐานะ</span>

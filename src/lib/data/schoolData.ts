@@ -293,7 +293,7 @@ export const INITIAL_TEACHERS: TeacherRecord[] = [
       {
         "level": "ครูชำนาญการพิเศษ",
         "effectiveDate": "2016-11-02",
-        "orderNumber": "XX/2559"
+        "orderNumber": "-"
       }
     ],
     "educations": []

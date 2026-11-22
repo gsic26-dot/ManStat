@@ -171,15 +171,9 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
     <div className="space-y-6">
       {/* Header & Action Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-            <FileText className="w-4 h-4 shrink-0" />
-            <span>Leave Request Management</span>
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">รายการคำร้องและประวัติการลา</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            ตรวจสอบ อนุมัติ และพิมพ์แบบฟอร์มใบลาราชการมาตรฐาน A4 พร้อมระบบตรวจสอบ QR Code
-          </p>
+        <div className="flex items-center gap-2.5">
+          <FileText className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">รายการคำร้องและประวัติการลา</h2>
         </div>
       </div>
 
@@ -204,9 +198,9 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
             <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">สถานะทั้งหมด</option>
-            <option value="pending" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอการอนุมัติ (Pending)</option>
-            <option value="approved" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">อนุมัติแล้ว (Approved)</option>
-            <option value="rejected" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ไม่อนุมัติ (Rejected)</option>
+            <option value="pending" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รออนุมัติ</option>
+            <option value="approved" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">อนุมัติแล้ว</option>
+            <option value="rejected" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ไม่อนุมัติ</option>
           </select>
         </div>
 
@@ -216,7 +210,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
             onChange={(e) => setTypeFilter(e.target.value as 'ALL' | 'sick' | 'personal' | 'vacation')}
             className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
           >
-            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ประเภทการลาทั้งหมด</option>
+            <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ทุกประเภทการลา</option>
             <option value="sick" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลาป่วย</option>
             <option value="personal" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลากิจส่วนตัว</option>
             <option value="vacation" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ลาพักผ่อน</option>

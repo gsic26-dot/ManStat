@@ -32,8 +32,8 @@ interface PersonnelSummaryCardsProps {
 
 export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
   stats = {
-    totalStaff: 15,
-    onDutyCount: 15,
+    totalStaff: 0,
+    onDutyCount: 0,
     onLeaveCount: 0,
     expiringOrRetiringCount: 0,
   },
@@ -56,7 +56,7 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
       dotColor: isHoliday ? 'bg-slate-400' : 'bg-emerald-500',
       subtext: isHoliday
         ? (stats.holidayName || 'วันหยุดประจำสัปดาห์')
-        : (stats.onDutyCount === stats.totalStaff ? 'มาปฏิบัติหน้าที่ครบทุกคน' : 'พร้อมปฏิบัติหน้าที่ในสถานศึกษา'),
+        : (stats.onDutyCount === stats.totalStaff && stats.totalStaff > 0 ? 'มาปฏิบัติหน้าที่ครบทุกคน' : 'พร้อมปฏิบัติหน้าที่ในสถานศึกษา'),
     },
     {
       label: 'อยู่ระหว่างการลา',
@@ -70,7 +70,7 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
       value: stats.expiringOrRetiringCount,
       unit: 'คน',
       dotColor: 'bg-rose-500',
-      subtext: stats.retiringDetail || (stats.expiringOrRetiringCount === 0 ? 'ปีงบฯ 2570 ไม่มีผู้เกษียณ' : `${stats.expiringOrRetiringCount} คนครบวาระ`),
+      subtext: stats.retiringDetail || (stats.expiringOrRetiringCount === 0 ? 'ปีงบประมาณนี้ไม่มีผู้เกษียณ' : `${stats.expiringOrRetiringCount} คนครบวาระ`),
     },
   ];
 

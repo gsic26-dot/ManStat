@@ -71,8 +71,6 @@ import {
   type AuditCategory,
 } from '@/lib/regulations/audit-translation';
 import {
-  INITIAL_TEACHERS,
-  INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
   ACTIVE_CLASSES,
   TeacherRecord,
@@ -195,7 +193,7 @@ export default function AdminPage() {
   };
 
   // Staff State
-  const [teachers, setTeachers] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
   const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [expandedBoardId, setExpandedBoardId] = useState<string | null>(null);
@@ -226,7 +224,7 @@ export default function AdminPage() {
   const [editingEducationIndex, setEditingEducationIndex] = useState<number | null>(null);
 
   // School Board State
-  const [boardMembers, setBoardMembers] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
+  const [boardMembers, setBoardMembers] = useState<BoardMemberRecord[]>([]);
   const [boardSearch, setBoardSearch] = useState('');
   const [selectedBoardMember, setSelectedBoardMember] = useState<BoardMemberRecord | null>(null);
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
@@ -1196,9 +1194,16 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                    {(() => {
-                      let staffRowIdx = 0;
-                      return sortedTeacherGroups.map((group) => {
+                    {filteredTeachers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+                          ยังไม่มีข้อมูลบุคลากรในระบบ
+                        </td>
+                      </tr>
+                    ) : (
+                      (() => {
+                        let staffRowIdx = 0;
+                        return sortedTeacherGroups.map((group) => {
                         return (
                           <React.Fragment key={group.category}>
                             {/* Group Section Header */}
@@ -1420,7 +1425,8 @@ export default function AdminPage() {
                           </React.Fragment>
                         );
                       });
-                    })()}
+                    })()
+                  )}
                   </tbody>
                 </table>
               </div>
@@ -1472,31 +1478,38 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                    {filteredBoard.map((b, idx) => {
-                      const isDirector = b.position === 'DIRECTOR_SEC' || b.positionTitle.includes('เลขานุการ');
-                      const isChair = b.position === 'CHAIR' || b.positionTitle.includes('ประธาน');
-                      const isExpanded = expandedBoardId === b.id;
-                      return (
-                        <React.Fragment key={b.id}>
-                          <tr
-                            onClick={() => setExpandedBoardId(isExpanded ? null : b.id)}
-                            className={`group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.03] ${
-                              isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
-                            }`}
-                          >
-                            <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
-                              {idx + 1}
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <div className="font-semibold text-slate-900 dark:text-white text-sm truncate max-w-[240px]" title={b.fullName}>
-                                {b.fullName}
-                              </div>
-                              {isDirector && (
-                                <span className="block text-xs text-slate-400 mt-0.5 truncate max-w-[240px]" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
-                                  ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
-                                </span>
-                              )}
-                            </td>
+                    {filteredBoard.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                          ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredBoard.map((b, idx) => {
+                        const isDirector = b.position === 'DIRECTOR_SEC' || b.positionTitle.includes('เลขานุการ');
+                        const isChair = b.position === 'CHAIR' || b.positionTitle.includes('ประธาน');
+                        const isExpanded = expandedBoardId === b.id;
+                        return (
+                          <React.Fragment key={b.id}>
+                            <tr
+                              onClick={() => setExpandedBoardId(isExpanded ? null : b.id)}
+                              className={`group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.03] ${
+                                isExpanded ? 'bg-slate-100/70 dark:bg-[#162231]/40' : ''
+                              }`}
+                            >
+                              <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                                {idx + 1}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="font-semibold text-slate-900 dark:text-white text-sm truncate max-w-[240px]" title={b.fullName}>
+                                  {b.fullName}
+                                </div>
+                                {isDirector && (
+                                  <span className="block text-xs text-slate-400 mt-0.5 truncate max-w-[240px]" title="ผู้อำนวยการสถานศึกษา">
+                                    ผู้อำนวยการสถานศึกษา
+                                  </span>
+                                )}
+                              </td>
                             <td className="px-4 py-3.5 whitespace-nowrap">
                               {isChair ? (
                                 <div className="inline-flex items-center gap-2">
@@ -1623,7 +1636,8 @@ export default function AdminPage() {
                           )}
                         </React.Fragment>
                       );
-                    })}
+                    })
+                  )}
                   </tbody>
                 </table>
               </div>
@@ -1640,7 +1654,7 @@ export default function AdminPage() {
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Building className="w-5 h-5 text-sky-400 shrink-0" />
-                  <span>ข้อมูลพื้นฐานสถานศึกษา (School Profile Configuration)</span>
+                  <span>ข้อมูลพื้นฐานสถานศึกษา</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   ข้อมูลนี้จะถูกนำไปใช้ในหัวกระดาษราชการ แบบฟอร์มใบลา A4 และรายงาน สพฐ. ทั้งระบบ

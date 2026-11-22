@@ -20,6 +20,8 @@ import {
   Clock,
   User,
   ArrowLeft,
+  AlertTriangle,
+  AlertOctagon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
@@ -87,29 +89,48 @@ export default async function LeaveVerificationPage({ params }: PageProps) {
         totalDays: request.total_days,
         status: (request.status === 'approved' ? 'approved' : request.status === 'rejected' ? 'rejected' : 'pending'),
         approvedAt: request.approved_at,
-        approverName: 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ)',
+        approverName: 'ผู้อำนวยการสถานศึกษา',
       };
     }
   } catch (err) {
     console.error('[LeaveVerificationPage Error]', err);
   }
 
-  // Fallback demo dataset for preview/testing
-  if (!verifiedRecord) {
-    verifiedRecord = {
-      documentNo: decodedDocNo,
-      isValid: true,
-      staffMaskedName: 'นางสาว ก********** พ*********',
-      position: 'ครูชำนาญการพิเศษ',
-      schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
-      leaveType: 'ลาป่วย',
-      startDate: '2026-11-18',
-      endDate: '2026-11-19',
-      totalDays: 2,
-      status: 'approved',
-      approvedAt: '2026-11-16T10:00:00Z',
-      approverName: 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ)',
-    };
+  // Not found or invalid document state
+  if (!verifiedRecord || !verifiedRecord.isValid) {
+    return (
+      <div className="min-h-screen bg-[#0e141b] text-slate-100 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-lg">
+          <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-rose-500/30 shadow-2xl relative overflow-hidden text-center space-y-4">
+            <div className="inline-flex p-3 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 mx-auto">
+              <AlertTriangle className="w-10 h-10 shrink-0" />
+            </div>
+            <h1 className="text-xl font-bold text-white tracking-tight">
+              ไม่พบเอกสารในระบบสารสนเทศ
+            </h1>
+            <p className="text-xs text-slate-400">
+              เลขที่เอกสารอ้างอิง: <span className="font-mono text-slate-200">{decodedDocNo}</span>
+            </p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-semibold">
+              <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+              <span>ไม่สามารถยืนยันความถูกต้องของเอกสารได้</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed pt-2">
+              เอกสารนี้อาจยังไม่ได้รับการอนุมัติ หรือไม่มีอยู่ในฐานข้อมูลของสถานศึกษา กรุณาตรวจสอบกับกลุ่มบริหารงานบุคคลของโรงเรียน
+            </p>
+            <div className="pt-4 border-t border-slate-700/80">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#121822] hover:bg-slate-800/70 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition-colors duration-200"
+              >
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span>เข้าสู่หน้าหลักระบบ ManStat</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

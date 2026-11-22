@@ -26,7 +26,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { INITIAL_BOARD_MEMBERS, BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
+import { BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
@@ -70,9 +70,7 @@ const normalizeMember = (b: any): BoardMemberRecord => {
 };
 
 export const ViewSchoolBoard: React.FC = () => {
-  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(() =>
-    INITIAL_BOARD_MEMBERS.map(normalizeMember)
-  );
+  const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
 
@@ -82,10 +80,7 @@ export const ViewSchoolBoard: React.FC = () => {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data) && isMounted) {
-          const list = json.data.map(normalizeMember);
-          if (list.length > 0) {
-            setBoardList(list);
-          }
+          setBoardList(json.data.map(normalizeMember));
         }
       })
       .catch(() => {});
@@ -111,14 +106,11 @@ export const ViewSchoolBoard: React.FC = () => {
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
-            <span>คณะกรรมการสถานศึกษาขั้นพื้นฐาน</span>
+        <div className="flex items-center gap-2.5">
+          <Shield className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            คณะกรรมการสถานศึกษาขั้นพื้นฐาน
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap">
-            โรงเรียนชุมชนบ้านตะขบ สพป.นครราชสีมา เขต 3 · เรียงลำดับตามกฎกระทรวง พ.ศ. 2546
-          </p>
         </div>
 
         <div className="flex items-center shrink-0">
@@ -169,35 +161,42 @@ export const ViewSchoolBoard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {sortedMembers.map((member, index) => {
-                  const isChair = member.position === 'CHAIR';
-                  const isDirector = member.position === 'DIRECTOR_SEC';
-                  const isExpanded = expandedMemberId === member.id;
+                {sortedMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                      ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา
+                    </td>
+                  </tr>
+                ) : (
+                  sortedMembers.map((member, index) => {
+                    const isChair = member.position === 'CHAIR';
+                    const isDirector = member.position === 'DIRECTOR_SEC';
+                    const isExpanded = expandedMemberId === member.id;
 
-                  return (
-                    <React.Fragment key={member.id}>
-                      <tr
-                        onClick={() => toggleExpand(member.id)}
-                        className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-slate-50/90 dark:bg-[#182536]/40' : isDirector ? 'bg-sky-50/50 dark:bg-sky-950/20' : ''
-                        }`}
-                      >
-                        {/* Statutory Sequence Number */}
-                        <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
-                          {index + 1}
-                        </td>
+                    return (
+                      <React.Fragment key={member.id}>
+                        <tr
+                          onClick={() => toggleExpand(member.id)}
+                          className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
+                            isExpanded ? 'bg-slate-50/90 dark:bg-[#182536]/40' : isDirector ? 'bg-sky-50/50 dark:bg-sky-950/20' : ''
+                          }`}
+                        >
+                          {/* Statutory Sequence Number */}
+                          <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
+                            {index + 1}
+                          </td>
 
-                        {/* Full Name */}
-                        <td className="px-4 py-3.5">
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(member.fullName)}>
-                            {formatStaffName(member.fullName)}
-                          </div>
-                          {isDirector && (
-                            <div className="text-xs text-slate-400 font-normal mt-0.5" title="ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ">
-                              ผอ.สถานศึกษา โรงเรียนชุมชนบ้านตะขบ
+                          {/* Full Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(member.fullName)}>
+                              {formatStaffName(member.fullName)}
                             </div>
-                          )}
-                        </td>
+                            {isDirector && (
+                              <div className="text-xs text-slate-400 font-normal mt-0.5" title="ผู้อำนวยการสถานศึกษา">
+                                ผู้อำนวยการสถานศึกษา
+                              </div>
+                            )}
+                          </td>
 
                         {/* Position in Board */}
                         <td className="px-4 py-3.5">
@@ -300,7 +299,7 @@ export const ViewSchoolBoard: React.FC = () => {
                                 </div>
                                 <div className="text-slate-700 dark:text-slate-300">
                                   {isDirector
-                                    ? 'ดำรงตำแหน่งโดยตำแหน่งนับแต่วันบรรจุแต่งตั้ง (10 ม.ค. 2555)'
+                                    ? 'โดยตำแหน่ง (ผู้อำนวยการสถานศึกษา)'
                                     : `${member.status} (วาระการดำรงตำแหน่ง 4 ปี)`}
                                 </div>
                               </div>
@@ -310,10 +309,15 @@ export const ViewSchoolBoard: React.FC = () => {
                       )}
                     </React.Fragment>
                   );
-                })}
+                })
+              )}
               </tbody>
             </table>
           </div>
+        </div>
+      ) : sortedMembers.length === 0 ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
+          ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา
         </div>
       ) : (
         /* Alternative Responsive Cards View */

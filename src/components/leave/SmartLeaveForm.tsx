@@ -430,18 +430,18 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
               className="w-full h-11 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer font-medium"
             >
-              <optgroup label="กลุ่มที่ 1: การลาตามระเบียบ 2555 (11 ประเภท)">
+              <optgroup label="การลาตามระเบียบสำนักนายกรัฐมนตรี พ.ศ. 2555">
                 {MASTER_LEAVE_TYPES.filter((t) => t.category === 'statutory').map((lt) => (
                   <option
                     key={lt.id}
                     value={lt.value}
                     className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100 py-1"
                   >
-                    {lt.label} — {lt.description}
+                    {lt.label}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="กลุ่มที่ 2: การขออนุญาตออกนอกสถานศึกษาและไปราชการ (วันลา = 0 วัน)">
+              <optgroup label="การขออนุญาตออกนอกสถานศึกษาและไปราชการ">
                 {MASTER_LEAVE_TYPES.filter((t) => t.category === 'special_permission').map((lt) => (
                   <option
                     key={lt.id}
@@ -967,7 +967,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
                   >
                     <option value="" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                      -- เลือกครูผู้สอนแทน (ถ้ามี) --
+                      ไม่ระบุ / ไม่มีผู้สอนแทน
                     </option>
                     {substituteTeachers.map((sub) => (
                       <option key={sub.id} value={sub.id} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">

@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 
 interface FeedbackItem {
   id: string;
@@ -31,13 +31,13 @@ interface FeedbackItem {
 }
 
 export function ViewFeedback() {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
   const [category, setCategory] = useState<'bug' | 'feature' | 'inquiry'>('feature');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [senderName, setSenderName] = useState(INITIAL_TEACHERS[0].name);
+  const [senderName, setSenderName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -47,6 +47,7 @@ export function ViewFeedback() {
       .then((data) => {
         if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
           setTeachersList(data.data);
+          setSenderName((prev) => prev || data.data[0].name);
         }
       })
       .catch(() => {});
@@ -105,14 +106,10 @@ export function ViewFeedback() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
-        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-          <MessageSquare className="w-4 h-4 shrink-0" />
-          <span>System Feedback & Support</span>
+        <div className="flex items-center gap-2.5">
+          <MessageSquare className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">แจ้งปรับปรุงระบบและข้อเสนอแนะ</h2>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">แจ้งปรับปรุงระบบและข้อเสนอแนะ</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          รับฟังความคิดเห็นจากคณะครูและบุคลากร เพื่อพัฒนา ManStat ให้ตอบสนองการปฏิบัติงานดียิ่งขึ้น
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -135,9 +132,9 @@ export function ViewFeedback() {
                 onChange={(e) => setCategory(e.target.value as 'bug' | 'feature' | 'inquiry')}
                 className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                <option value="feature" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">เสนอแนะฟังก์ชันการทำงานใหม่ (Feature Request)</option>
-                <option value="bug" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">แจ้งปัญหา / ข้อผิดพลาดของระบบ (Bug Report)</option>
-                <option value="inquiry" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">สอบถามการใช้งาน / ระเบียบการลา (Inquiry)</option>
+                <option value="feature" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">เสนอแนะฟังก์ชันการทำงานใหม่</option>
+                <option value="bug" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">แจ้งปัญหา / ข้อผิดพลาดของระบบ</option>
+                <option value="inquiry" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">สอบถามการใช้งาน / ระเบียบการลา</option>
               </select>
             </div>
 
@@ -150,11 +147,15 @@ export function ViewFeedback() {
                 onChange={(e) => setSenderName(e.target.value)}
                 className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
               >
-                {teachersList.map((t) => (
-                  <option key={t.id} value={t.name} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                    {t.name}
-                  </option>
-                ))}
+                {teachersList.length === 0 ? (
+                  <option value="" disabled>-- ยังไม่มีรายชื่อบุคลากร --</option>
+                ) : (
+                  teachersList.map((t) => (
+                    <option key={t.id} value={t.name} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
+                      {t.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

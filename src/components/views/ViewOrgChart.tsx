@@ -35,9 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import {
-  INITIAL_BOARD_MEMBERS,
   INITIAL_SCHOOL_INFO,
-  INITIAL_TEACHERS,
   BoardMemberRecord,
   SchoolInfoRecord,
   TeacherRecord,
@@ -196,8 +194,8 @@ export interface ActiveDivisionModalData extends DivisionCardConfig {
 }
 
 export const ViewOrgChart: React.FC = () => {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
-  const [boardList, setBoardList] = useState<BoardMemberRecord[]>(INITIAL_BOARD_MEMBERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [activeModalDivision, setActiveModalDivision] = useState<ActiveDivisionModalData | null>(null);
 
@@ -249,7 +247,7 @@ export const ViewOrgChart: React.FC = () => {
     return boardList.find((b) => b.position === 'CHAIR')?.fullName || 'นางเสาวนีย์ ศิริวรรณโยธา';
   }, [boardList]);
 
-  const totalBoardMembers = boardList.length || 9;
+  const totalBoardMembers = boardList.length;
 
   // 3. Bind real division heads dynamically to 4 divisions
   const divisions = useMemo(() => {
@@ -267,17 +265,11 @@ export const ViewOrgChart: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Header Strip (Minimal & Clean, no duplicate pill) */}
       <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
-        <div>
-          <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-            <Layers className="w-4 h-4 shrink-0" />
-            <span>โครงสร้างการบริหารงานและการบังคับบัญชา</span>
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+        <div className="flex items-center gap-2.5">
+          <Layers className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             ผังโครงสร้างการบริหารงานสถานศึกษา
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            โครงสร้างการบริหาร 4 กลุ่มงาน ตามพระราชบัญญัติระเบียบบริหารราชการกระทรวงศึกษาธิการ และระเบียบ สพฐ.
-          </p>
         </div>
       </div>
 

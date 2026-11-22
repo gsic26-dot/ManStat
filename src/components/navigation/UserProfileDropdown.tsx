@@ -57,6 +57,7 @@ interface UserProfileDropdownProps {
   showAdminCenterLink?: boolean;
   currentUser?: CurrentUserRecord | null;
   currentRole?: string;
+  schoolName?: string;
 }
 
 interface AvatarPreset {
@@ -123,6 +124,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
   showAdminCenterLink = false,
   currentUser: propUser,
   currentRole: propRole,
+  schoolName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
@@ -299,7 +301,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
                 <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
                   <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 truncate">
                     <Building className="w-3 h-3 shrink-0" />
-                    <span className="truncate">ร.ร. ชุมชนบ้านตะขบ</span>
+                    <span className="truncate">{schoolName || 'สถานศึกษา'}</span>
                   </div>
                   <button
                     type="button"
@@ -423,7 +425,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
               >
                 <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>ศูนย์ผู้ดูแลระบบ (Admin Center)</span>
+                <span>ศูนย์ผู้ดูแลระบบ</span>
               </Link>
             )}
 

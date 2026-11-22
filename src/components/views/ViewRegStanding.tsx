@@ -23,13 +23,13 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export const ViewRegStanding: React.FC = () => {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -64,14 +64,11 @@ export const ViewRegStanding: React.FC = () => {
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
-            <span>ทะเบียนวิทยฐานะ</span>
+        <div className="flex items-center gap-2.5">
+          <Medal className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            ทะเบียนวิทยฐานะ
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap">
-            ข้อมูลวิทยฐานะและคำสั่งแต่งตั้งตาม พ.ร.บ. ระเบียบข้าราชการครูและบุคลากรทางการศึกษา พ.ศ. 2547
-          </p>
         </div>
 
         <div className="flex items-center shrink-0">
@@ -121,9 +118,16 @@ export const ViewRegStanding: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {(() => {
-                  let runningSeq = 0;
-                  return groupedTeachers.map((group) => {
+                {sortedTeachers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+                      ยังไม่มีข้อมูลทะเบียนวิทยฐานะ
+                    </td>
+                  </tr>
+                ) : (
+                  (() => {
+                    let runningSeq = 0;
+                    return groupedTeachers.map((group) => {
                     const isSupportGroup = group.category === 'support';
                     return (
                       <React.Fragment key={group.category}>
@@ -267,10 +271,15 @@ export const ViewRegStanding: React.FC = () => {
                       </React.Fragment>
                     );
                   });
-                })()}
+                })()
+              )}
               </tbody>
             </table>
           </div>
+        </div>
+      ) : sortedTeachers.length === 0 ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
+          ยังไม่มีข้อมูลทะเบียนวิทยฐานะ
         </div>
       ) : (
         /* Grid of Standings */

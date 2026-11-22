@@ -43,7 +43,7 @@ export function findDivisionHead(
   teachers: TeacherRecord[],
   divisionKey: DivisionKey
 ): HeadInfo {
-  // Strictly filter to teaching branch only (สายการสอน)
+  // Strictly filter to teaching staff only (สายการสอน)
   const teachingStaff = teachers.filter((t) => getStaffBranch(t) === 'teaching');
 
   let matched: TeacherRecord | undefined;
@@ -52,29 +52,25 @@ export function findDivisionHead(
     case 'academic':
       matched =
         teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารวิชาการ') || t.division?.includes('หัวหน้างานวิชาการ')) ||
-        teachingStaff.find((t) => t.division?.includes('บริหารวิชาการ') && !t.division?.includes('เจ้าหน้าที่')) ||
-        teachingStaff.find((t) => t.id === 'TCH-004');
+        teachingStaff.find((t) => t.division?.includes('บริหารวิชาการ') && !t.division?.includes('เจ้าหน้าที่'));
       break;
 
     case 'budget':
       matched =
         teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงบประมาณ') || t.division?.includes('หัวหน้างานงบประมาณ')) ||
-        teachingStaff.find((t) => t.division?.includes('บริหารงบประมาณ') && !t.division?.includes('เจ้าหน้าที่')) ||
-        teachingStaff.find((t) => t.id === 'TCH-008');
+        teachingStaff.find((t) => t.division?.includes('บริหารงบประมาณ') && !t.division?.includes('เจ้าหน้าที่'));
       break;
 
     case 'personnel':
       matched =
         teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารงานบุคคล') || t.division?.includes('หัวหน้างานบุคคล')) ||
-        teachingStaff.find((t) => t.division?.includes('บริหารงานบุคคล') && !t.division?.includes('เจ้าหน้าที่')) ||
-        teachingStaff.find((t) => t.id === 'TCH-007');
+        teachingStaff.find((t) => t.division?.includes('บริหารงานบุคคล') && !t.division?.includes('เจ้าหน้าที่'));
       break;
 
     case 'general':
       matched =
         teachingStaff.find((t) => t.division?.includes('หัวหน้าฝ่ายบริหารทั่วไป') || t.division?.includes('หัวหน้างานบริหารทั่วไป')) ||
-        teachingStaff.find((t) => t.division?.includes('บริหารทั่วไป') && !t.division?.includes('เจ้าหน้าที่')) ||
-        teachingStaff.find((t) => t.id === 'TCH-003');
+        teachingStaff.find((t) => t.division?.includes('บริหารทั่วไป') && !t.division?.includes('เจ้าหน้าที่'));
       break;
   }
 
@@ -88,7 +84,7 @@ export function findDivisionHead(
   }
 
   return {
-    name: 'ยังไม่ได้ระบุ',
+    name: 'ยังไม่ได้แต่งตั้ง',
     position: 'ครูผู้สอน',
     positionFormatted: 'ครูผู้สอน',
   };
@@ -99,7 +95,7 @@ export function findDivisionHead(
  */
 export function getDirectorInfo(
   teachers: TeacherRecord[],
-  fallbackName: string = 'นายธีรศักดิ์ มโนธรรม',
+  fallbackName: string = 'ผู้อำนวยการสถานศึกษา',
   fallbackPosition: string = 'ผู้อำนวยการสถานศึกษา'
 ): { name: string; positionFormatted: string } {
   const director = teachers.find(

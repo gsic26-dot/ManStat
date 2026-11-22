@@ -24,7 +24,6 @@ import { isAdminRole } from '@/lib/auth/roles';
 import type { UserRole } from '@/types/database.types';
 import {
   INITIAL_SCHOOL_INFO,
-  INITIAL_TEACHERS,
   INITIAL_LEAVE_REQUESTS,
   SchoolInfoRecord,
   TeacherRecord,
@@ -161,7 +160,7 @@ export default function DashboardPage() {
   // Real-time toast notifications hook
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });
 
-  const [staffList, setStaffList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [staffList, setStaffList] = useState<TeacherRecord[]>([]);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
@@ -343,7 +342,7 @@ export default function DashboardPage() {
               <Link
                 href="/admin"
                 className="inline-flex items-center justify-center p-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 transition-colors duration-200 cursor-pointer shadow-sm"
-                title="ศูนย์ผู้ดูแลระบบ (Admin Center)"
+                title="ศูนย์ผู้ดูแลระบบ"
                 aria-label="ศูนย์ผู้ดูแลระบบ"
               >
                 <Settings className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
@@ -356,6 +355,7 @@ export default function DashboardPage() {
               showAdminCenterLink={isAdminRole(currentRole)}
               currentUser={currentUser}
               currentRole={currentRole}
+              schoolName={schoolInfo.schoolName}
             />
           </div>
         </div>
@@ -601,7 +601,7 @@ export default function DashboardPage() {
                 <Link
                   href="/admin"
                   className="w-full flex items-center justify-between py-1.5 px-3 text-xs rounded-md transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30"
-                  title="เข้าสู่ศูนย์ผู้ดูแลระบบ (Admin Center)"
+                  title="ศูนย์ผู้ดูแลระบบ"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-sky-500 dark:text-sky-400" />

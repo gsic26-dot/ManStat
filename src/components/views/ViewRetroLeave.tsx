@@ -33,7 +33,7 @@ import {
   Trash2,
   Info,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import {
   MASTER_LEAVE_TYPES,
@@ -53,8 +53,8 @@ interface TeachingWorkloadRow {
 }
 
 export function ViewRetroLeave() {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(INITIAL_TEACHERS[0].id);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [leaveType, setLeaveType] = useState<LeaveType>('ลาป่วย');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -63,7 +63,7 @@ export function ViewRetroLeave() {
   const [reason, setReason] = useState('');
   const [retroReason, setRetroReason] = useState('');
   const [medicalCertNo, setMedicalCertNo] = useState('');
-  const [substituteTeacher, setSubstituteTeacher] = useState(formatStaffName(INITIAL_TEACHERS[1]));
+  const [substituteTeacher, setSubstituteTeacher] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -72,6 +72,10 @@ export function ViewRetroLeave() {
       .then((data) => {
         if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
           setTeachersList(data.data);
+          setSelectedTeacherId((prev) => prev || data.data[0].id);
+          if (data.data.length > 1) {
+            setSubstituteTeacher(formatStaffName(data.data[1]));
+          }
         }
       })
       .catch(() => {});
@@ -229,16 +233,12 @@ export function ViewRetroLeave() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors duration-200">
-        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-          <RotateCcw className="w-4 h-4 shrink-0" />
-          <span>Retroactive Leave & Permission Logging</span>
+        <div className="flex items-center gap-2.5">
+          <RotateCcw className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            บันทึกการลาย้อนหลังและขออนุญาตราชการ
+          </h2>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-          บันทึกการลาย้อนหลังและขออนุญาตราชการ
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          ระบบบันทึกคำร้องย้อนหลังสำหรับเจ้าหน้าที่ธุรการ/งานบุคคล ครอบคลุม 13 ประเภทการลาตามระเบียบ สพฐ. และการขออนุญาตออกนอกสถานที่
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -271,15 +271,19 @@ export function ViewRetroLeave() {
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all cursor-pointer"
                 >
-                  {teachersList.map((t) => (
-                    <option
-                      key={t.id}
-                      value={t.id}
-                      className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100"
-                    >
-                      {formatStaffName(t)} — {t.position} ({t.department})
-                    </option>
-                  ))}
+                  {teachersList.length === 0 ? (
+                    <option value="" disabled>-- ยังไม่มีข้อมูลบุคลากรในระบบ --</option>
+                  ) : (
+                    teachersList.map((t) => (
+                      <option
+                        key={t.id}
+                        value={t.id}
+                        className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100"
+                      >
+                        {formatStaffName(t)} — {t.position} ({t.department})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -287,7 +291,7 @@ export function ViewRetroLeave() {
             {/* Master 13 Leave Types Dropdown */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                ประเภทการลา / การขออนุญาต (Master Config 13 ประเภท) <span className="text-rose-500">*</span>
+                ประเภทการลา / การขออนุญาต <span className="text-rose-500">*</span>
               </label>
               <select
                 value={leaveType}

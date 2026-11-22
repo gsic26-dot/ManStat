@@ -22,12 +22,12 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, TeacherRecord, LeaveRequestRecord } from '@/lib/data/schoolData';
+import { TeacherRecord, LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export function ViewLeaveAnalytics() {
   const [fiscalYear, setFiscalYear] = useState('2570');
   const [selectedSemester, setSelectedSemester] = useState<'ALL' | 'H1' | 'H2'>('ALL');
-  const [teachers, setTeachers] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
 
   useEffect(() => {
@@ -133,9 +133,9 @@ export function ViewLeaveAnalytics() {
               onChange={(e) => setFiscalYear(e.target.value)}
               className="bg-transparent text-sky-600 dark:text-sky-300 font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="2570" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ปีงบประมาณ 2570</option>
-              <option value="2569" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ปีงบประมาณ 2569</option>
-              <option value="2568" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">ปีงบประมาณ 2568</option>
+              <option value="2570" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2570</option>
+              <option value="2569" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2569</option>
+              <option value="2568" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">2568</option>
             </select>
           </div>
 
@@ -205,7 +205,7 @@ export function ViewLeaveAnalytics() {
             <span className="text-xs text-slate-500 dark:text-slate-400">/ {totalTeachers} ท่าน</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            คิดเป็น {Math.round((zeroLeaveTeachers / totalTeachers) * 100)}% ของบุคลากรทั้งหมด
+            คิดเป็น {totalTeachers > 0 ? Math.round((zeroLeaveTeachers / totalTeachers) * 100) : 0}% ของบุคลากรทั้งหมด
           </p>
         </div>
 

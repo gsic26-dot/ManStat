@@ -23,11 +23,11 @@ import {
   ChevronDown,
   Compass,
 } from 'lucide-react';
-import { INITIAL_SCOUTS, ScoutRecord } from '@/lib/data/schoolData';
+import { ScoutRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export function ViewRegScout() {
-  const [scouts, setScouts] = useState<ScoutRecord[]>(INITIAL_SCOUTS);
+  const [scouts, setScouts] = useState<ScoutRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -67,14 +67,11 @@ export function ViewRegScout() {
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
-            <span>ทะเบียนวุฒิทางลูกเสือ</span>
+        <div className="flex items-center gap-2.5">
+          <Award className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            ทะเบียนวุฒิทางลูกเสือ
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            ฐานข้อมูลวุฒิบัตรและเครื่องหมายผู้บังคับบัญชาลูกเสือ สำนักงานลูกเสือแห่งชาติ
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

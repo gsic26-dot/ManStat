@@ -29,7 +29,7 @@ import {
   LayoutList,
   LayoutGrid,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
 import { useUserSettings } from '@/context/UserSettingsContext';
@@ -65,7 +65,7 @@ export const ViewStaffDirectory: React.FC = () => {
   const isCompact = preferences.compact_mode;
   const cellPy = isCompact ? 'py-2' : 'py-3.5';
 
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
@@ -112,14 +112,11 @@ export const ViewStaffDirectory: React.FC = () => {
       {/* View Header & Controls */}
       <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm transition-colors duration-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
-              <span>ทะเบียนประวัติบุคลากร</span>
+          <div className="flex items-center gap-2.5">
+            <Users className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+              ทะเบียนประวัติบุคลากร
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              โรงเรียนชุมชนบ้านตะขบ สพป.นครราชสีมา เขต 3
-            </p>
           </div>
 
           {/* View Switcher */}
@@ -240,9 +237,16 @@ export const ViewStaffDirectory: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {(() => {
-                  let runningSeq = 0;
-                  return groupedTeachers.map((group) => {
+                {filteredTeachers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                      ยังไม่มีข้อมูลบุคลากรในระบบ
+                    </td>
+                  </tr>
+                ) : (
+                  (() => {
+                    let runningSeq = 0;
+                    return groupedTeachers.map((group) => {
                     const isSupport = group.category === 'support';
                     return (
                       <React.Fragment key={group.category}>
@@ -411,10 +415,15 @@ export const ViewStaffDirectory: React.FC = () => {
                       </React.Fragment>
                     );
                   });
-                })()}
+                })()
+              )}
               </tbody>
             </table>
           </div>
+        </div>
+      ) : filteredTeachers.length === 0 ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
+          ยังไม่มีข้อมูลบุคลากรในระบบ
         </div>
       ) : (
         /* Alternative Responsive Cards View */

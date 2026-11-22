@@ -25,8 +25,15 @@ export interface LeaveProgressRingsProps {
   isFirstYear?: boolean;
 }
 
+const getCurrentFiscalYearBE = (): number => {
+  const now = new Date();
+  const year = now.getFullYear();
+  // Thai fiscal year starts in October (month index 9)
+  return (now.getMonth() >= 9 ? year + 1 : year) + 543;
+};
+
 export const LeaveProgressRings: React.FC<LeaveProgressRingsProps> = ({
-  fiscalYear = 2570,
+  fiscalYear,
   sickLeaveUsed = 0,
   sickLeaveMax = 60,
   personalLeaveUsed = 0,
@@ -36,6 +43,7 @@ export const LeaveProgressRings: React.FC<LeaveProgressRingsProps> = ({
   hasVacation = false,
   isFirstYear = false,
 }) => {
+  const activeFiscalYear = fiscalYear ?? getCurrentFiscalYearBE();
   const actualPersonalMax = personalLeaveMax ?? (isFirstYear ? 15 : 45);
 
   const sickPercent = Math.min(100, Math.max(0, (sickLeaveUsed / sickLeaveMax) * 100));
@@ -51,7 +59,7 @@ export const LeaveProgressRings: React.FC<LeaveProgressRingsProps> = ({
           สิทธิวันลาของฉัน
         </h2>
         <span className="text-xs font-mono text-slate-400 dark:text-slate-500 shrink-0">
-          ปีงบฯ {fiscalYear}
+          ปีงบฯ {activeFiscalYear}
         </span>
       </div>
 

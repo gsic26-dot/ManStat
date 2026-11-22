@@ -15,6 +15,8 @@ import { OfficialLeavePrintView, type LeavePrintData } from '@/components/print/
 import { createClient } from '@/lib/supabase/server';
 import { dbGetLeaveRequests, dbGetSchoolInfo } from '@/lib/db/serverDb';
 import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -137,20 +139,20 @@ export default async function LeavePrintPage({ params }: PageProps) {
           documentNo: request.document_no || `DOC-${request.fiscal_year}-${request.id.slice(0, 6).toUpperCase()}`,
           createdAt: request.created_at,
           schoolName: school?.school_name || 'โรงเรียนชุมชนบ้านตะขบ',
-          staffName: staff ? formatStaffName({ prefix: staff.prefix, firstName: staff.first_name, lastName: staff.last_name }) : 'นายข้าราชการ ตัวอย่าง',
-          prefix: staff?.prefix || 'นาย',
-          firstName: staff?.first_name || 'ข้าราชการ',
-          lastName: staff?.last_name || 'ตัวอย่าง',
-          position: staff?.position_name || 'ครู',
-          academicStanding: staff?.academic_standing || 'ชำนาญการ',
-          department: staff?.department || 'กลุ่มสาระการเรียนรู้คณิตศาสตร์',
-          affiliation: `${school?.school_name || 'โรงเรียนชุมชนบ้านตะขบ'} ${school?.affiliation || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3'}`,
+          staffName: staff ? formatStaffName({ prefix: staff.prefix, firstName: staff.first_name, lastName: staff.last_name }) : 'บุคลากรสถานศึกษา',
+          prefix: staff?.prefix || '',
+          firstName: staff?.first_name || 'บุคลากร',
+          lastName: staff?.last_name || 'สถานศึกษา',
+          position: staff?.position_name || 'ครูผู้สอน',
+          academicStanding: staff?.academic_standing || '-',
+          department: staff?.department || '-',
+          affiliation: `${school?.school_name || 'สถานศึกษา'} ${school?.affiliation || ''}`.trim(),
           leaveType: request.leave_type,
           reason: request.reason,
           startDate: request.start_date,
           endDate: request.end_date,
           totalDays: request.total_days,
-          contactAddress: request.contact_address || school?.school_name || 'โรงเรียนชุมชนบ้านตะขบ',
+          contactAddress: request.contact_address || school?.school_name || '-',
           lastLeaveStartDate: null,
           lastLeaveEndDate: null,
           lastLeaveDays: null,
@@ -165,8 +167,8 @@ export default async function LeavePrintPage({ params }: PageProps) {
             maternityCurrent: 0,
           },
           status: request.status,
-          approverName: approverName || 'นายธีรศักดิ์ มโนธรรม',
-          approverPosition: approverPosition || 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
+          approverName: approverName || 'ผู้อำนวยการสถานศึกษา',
+          approverPosition: approverPosition || 'ผู้อำนวยการสถานศึกษา',
           approvedAt: request.approved_at,
           signatureUrl,
           rejectionReason: request.rejection_reason,
@@ -177,47 +179,29 @@ export default async function LeavePrintPage({ params }: PageProps) {
     console.error('[LeavePrintPage Server Error]', err);
   }
 
-  // Fallback demo dataset if id is not found
+  // Clean not found state if record is not found in database
   if (!printData) {
-    printData = {
-      id,
-      documentNo: `DOC-2570-${id.slice(0, 6).toUpperCase() || 'K00201'}`,
-      createdAt: '2026-11-16T08:30:00Z',
-      schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
-      staffName: 'นางสาวกุสุมาลย์กมล พราหมณ์ตะขบ',
-      prefix: 'นางสาว',
-      firstName: 'กุสุมาลย์กมล',
-      lastName: 'พราหมณ์ตะขบ',
-      position: 'ครู',
-      academicStanding: 'ครูชำนาญการพิเศษ',
-      department: 'กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ',
-      affiliation: 'โรงเรียนชุมชนบ้านตะขบ สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
-      leaveType: 'ลาป่วย',
-      reason: 'มีอาการไข้หวัดใหญ่และแพทย์สั่งพักผ่อน',
-      startDate: '2026-11-18',
-      endDate: '2026-11-19',
-      totalDays: 2,
-      contactAddress: 'ม.1 โรงเรียนชุมชนบ้านตะขบ ต.ตะขบ อ.ปักธงชัย จ.นครราชสีมา 30150 โทร. 081-725-9258',
-      lastLeaveStartDate: '2026-10-15',
-      lastLeaveEndDate: '2026-10-15',
-      lastLeaveDays: 1,
-      stats: {
-        sickUsedBefore: 1,
-        sickCurrent: 2,
-        personalUsedBefore: 0,
-        personalCurrent: 0,
-        vacationUsedBefore: 0,
-        vacationCurrent: 0,
-        maternityUsedBefore: 0,
-        maternityCurrent: 0,
-      },
-      status: 'approved',
-      approverName: 'นายธีรศักดิ์ มโนธรรม',
-      approverPosition: 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
-      approvedAt: '2026-11-16T10:00:00Z',
-      signatureUrl: null,
-      rejectionReason: null,
-    };
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#0b1016]">
+        <div className="max-w-md w-full bg-white dark:bg-[#121822] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6 shrink-0" />
+          </div>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-white">ไม่พบข้อมูลคำร้องขอลาในระบบ</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            ไม่พบเอกสารคำร้องขอลาตามรหัสอ้างอิงที่ระบุ หรือเอกสารอาจถูกลบออกจากฐานข้อมูลแล้ว
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors"
+            >
+              กลับสู่หน้าหลัก
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return <OfficialLeavePrintView data={printData} originUrl={process.env.NEXT_PUBLIC_APP_URL || ''} />;

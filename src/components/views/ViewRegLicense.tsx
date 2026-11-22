@@ -22,7 +22,7 @@ import {
   ExternalLink,
   ChevronDown,
 } from 'lucide-react';
-import { INITIAL_TEACHERS, type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import {
   groupAndSortLicenseRegistry,
@@ -31,7 +31,7 @@ import {
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 
 export const ViewRegLicense: React.FC = () => {
-  const [teachersList, setTeachersList] = useState<TeacherRecord[]>(INITIAL_TEACHERS);
+  const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [filterHealth, setFilterHealth] = useState<'ALL' | 'VALID' | 'EXPIRING_SOON' | 'EXPIRED' | 'MISSING'>('ALL');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -78,14 +78,11 @@ export const ViewRegLicense: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
-            <span>ทะเบียนใบอนุญาตประกอบวิชาชีพครูและผู้บริหาร</span>
+        <div className="flex items-center gap-2.5">
+          <Award className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            ทะเบียนใบอนุญาตประกอบวิชาชีพครูและผู้บริหาร
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap">
-            ระบบเฝ้าระวังวันหมดอายุล่วงหน้า 90 วัน ตามข้อบังคับคุรุสภาว่าด้วยใบอนุญาตประกอบวิชาชีพ
-          </p>
         </div>
 
         <a

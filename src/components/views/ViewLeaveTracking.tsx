@@ -92,7 +92,7 @@ export function ViewLeaveTracking() {
       title: 'ผู้อำนวยการสถานศึกษาพิจารณา',
       desc: selectedReq?.directorRemark || 'พิจารณาอนุมัติตามระเบียบสำนักนายกรัฐมนตรี',
       time: selectedReq?.currentStep && selectedReq.currentStep >= 3 ? 'พิจารณาอนุมัติแล้ว' : 'รอการลงนาม',
-      actor: 'นายธีรศักดิ์ มโนธรรม (ผอ.สถานศึกษา)',
+      actor: 'ผู้อำนวยการสถานศึกษา',
       done: (selectedReq?.currentStep || 0) >= 3,
     },
     {
@@ -109,14 +109,10 @@ export function ViewLeaveTracking() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
-        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-xs font-semibold uppercase tracking-wider">
-          <Clock className="w-4 h-4 shrink-0" />
-          <span>Leave Request Workflow Tracker</span>
+        <div className="flex items-center gap-2.5">
+          <Clock className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">ติดตามสถานะคำร้องขอลา</h2>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">ติดตามสถานะคำร้องขอลา</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          ระบบตรวจสอบเส้นทางเอกสารและขั้นตอนการอนุมัติแบบโปร่งใส (Workflow Transparency Engine)
-        </p>
       </div>
 
       {requests.length === 0 ? (
