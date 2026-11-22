@@ -461,6 +461,28 @@ export function ViewSalaryHistory({
       }
     : null;
 
+  // If user clicked to evaluate a teacher, render the Evaluation Workspace as a full-page view completely
+  if (selfEvalTeacher && selectedPeriod) {
+    return (
+      <EvaluationWorkspace
+        staffId={selfEvalTeacher.id}
+        fiscalYear={selectedPeriod.fiscalYearTh}
+        roundNumber={selectedPeriod.roundNo}
+        currentUser={currentUser}
+        roundStatus={roundStatus}
+        onClose={() => setSelfEvalTeacher(null)}
+        onSaved={(updatedStatus) => {
+          setEvalStatusMap((prev) => ({
+            ...prev,
+            [selfEvalTeacher.id]: updatedStatus,
+            [selfEvalTeacher.employeeCode]: updatedStatus,
+          }));
+          showToast?.('บันทึกผลการประเมินเรียบร้อยแล้ว', 'success');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------------ */}
@@ -816,30 +838,7 @@ export function ViewSalaryHistory({
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 5. Modal: แบบประเมินตนเองและผู้บังคับบัญชา (Evaluation Workspace)     */}
-      {/* ------------------------------------------------------------------ */}
-      {selfEvalTeacher && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-[#0f172a] overflow-y-auto">
-          <EvaluationWorkspace
-            staffId={selfEvalTeacher.id}
-            fiscalYear={selectedPeriod?.fiscalYearTh || 2570}
-            roundNumber={selectedPeriod?.roundNo || 1}
-            currentUser={currentUser}
-            onClose={() => setSelfEvalTeacher(null)}
-            onSaved={(updatedStatus) => {
-              setEvalStatusMap((prev) => ({
-                ...prev,
-                [selfEvalTeacher.id]: updatedStatus,
-                [selfEvalTeacher.employeeCode]: updatedStatus,
-              }));
-              showToast?.('บันทึกผลการประเมินเรียบร้อยแล้ว', 'success');
-            }}
-          />
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* 6. Modal: พิมพ์รายงานผลการประเมิน A4                                 */}
+      {/* 5. Modal: พิมพ์รายงานผลการประเมิน A4                                 */}
       {/* ------------------------------------------------------------------ */}
       {printRecordData && selectedPeriod && (
         <EvaluationA4PrintDocument

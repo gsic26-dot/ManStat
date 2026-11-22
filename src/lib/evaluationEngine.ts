@@ -12,7 +12,7 @@ import {
   COMPONENT_3_CONFIG,
 } from '@/data/evaluationTemplates';
 
-export type RatingLevel = 'ดีเด่น' | 'ดีมาก' | 'ดี' | 'พอใช้' | 'ปรับปรุง';
+export type RatingLevel = 'ดีเด่น' | 'ดีมาก' | 'ดี' | 'พอใช้' | 'ปรับปรุง' | 'รอการประเมิน';
 
 export interface EvaluationScores {
   // องค์ประกอบที่ 1 ตอนที่ 1: indicatorId ("1.1", "1.2", ...) -> ระดับคะแนน (1, 2, 3, 4)
@@ -240,7 +240,8 @@ export function calculateComponent3Score(scores: EvaluationScores): Component3Re
  * 5. getRatingLevel:
  * แปลงคะแนนรวมสุทธิ (เต็ม 100) เป็นระดับผลการประเมิน 5 ระดับตามเกณฑ์ ก.ค.ศ.
  */
-export function getRatingLevel(grandTotal: number): RatingLevel {
+export function getRatingLevel(grandTotal: number, hasScores: boolean = true): RatingLevel {
+  if (!hasScores) return 'รอการประเมิน';
   const score = round2Decimals(grandTotal);
   if (score >= 90.0) return 'ดีเด่น';
   if (score >= 80.0) return 'ดีมาก';
@@ -266,8 +267,14 @@ export function calculateEvaluationTotals(
   const c2 = calculateComponent2Score(scores);
   const c3 = calculateComponent3Score(scores);
 
+  const hasScores =
+    c1.rawPart1 > 0 ||
+    c1.rawPart2 > 0 ||
+    c2.level > 0 ||
+    c3.rawSum > 0;
+
   const grandTotal = round2Decimals(c1.totalComponent1 + c2.score + c3.score);
-  const ratingLevel = getRatingLevel(grandTotal);
+  const ratingLevel = hasScores ? getRatingLevel(grandTotal, true) : 'รอการประเมิน';
 
   return {
     templateKey,

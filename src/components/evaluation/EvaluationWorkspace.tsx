@@ -21,6 +21,8 @@ import {
   Info,
   Copy,
   Edit3,
+  ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import {
   EVALUATION_TEMPLATES,
@@ -54,6 +56,7 @@ export interface EvaluationWorkspaceProps {
     department?: string;
     name?: string;
   } | null;
+  roundStatus?: 'closed' | 'open' | 'locked';
   onClose?: () => void;
   onSaved?: (updatedStatus: string, grandTotal: number, rating: string) => void;
 }
@@ -63,6 +66,7 @@ export function EvaluationWorkspace({
   fiscalYear,
   roundNumber,
   currentUser,
+  roundStatus,
   onClose,
   onSaved,
 }: EvaluationWorkspaceProps) {
@@ -81,18 +85,18 @@ export function EvaluationWorkspace({
   const [selfScores, setSelfScores] = useState<EvaluationScores>({
     part1: {},
     part2: {},
-    comp2Level: 5,
+    comp2Level: 0,
     comp3: {},
   });
   const [supervisorScores, setSupervisorScores] = useState<EvaluationScores>({
     part1: {},
     part2: {},
-    comp2Level: 5,
+    comp2Level: 0,
     comp3: {},
   });
   const [supervisorComment, setSupervisorComment] = useState<string>('');
 
-  // Determine User Permissions
+  // Determine User Permissions & Round Lock
   const isManager = useMemo(() => {
     if (!currentUser) return false;
     const r = (currentUser.role || '').toLowerCase();
@@ -116,8 +120,16 @@ export function EvaluationWorkspace({
     );
   }, [currentUser, staffId, teacher]);
 
-  const canEditSelf = isSelf || isManager;
-  const canEditSupervisor = isManager;
+  const isLockedRound = roundStatus === 'locked' || status === 'evaluated' || status === 'acknowledged';
+  const canEditSelf = !isLockedRound && (isSelf || isManager) && (roundStatus === 'open' || isManager);
+  const canEditSupervisor = !isLockedRound && isManager;
+  const canEditAny = !isLockedRound && (canEditSelf || canEditSupervisor);
+
+  const isEvaluateeDirector = useMemo(() => {
+    const pos = teacher?.position || part1Snapshot.position || '';
+    const code = teacher?.employeeCode || '';
+    return pos.includes('ผู้อำนวยการ') || code === 'EXE-001';
+  }, [teacher, part1Snapshot.position]);
 
   // Active Template definition
   const template: EvaluationTemplate = EVALUATION_TEMPLATES[templateKey] || EVALUATION_TEMPLATES.teacher_special_expert;
@@ -142,10 +154,10 @@ export function EvaluationWorkspace({
       setPart1Snapshot(data.part1Snapshot || {});
       setSupervisorComment(data.supervisorComment || '');
 
-      // Initialize self scores
+      // Initialize self scores (default unrated items to 0, not 5)
       const p1Self = data.selfScores?.part1 || {};
       const p2Self = data.selfScores?.part2 || {};
-      const c2Self = data.selfScores?.comp2Level || 5;
+      const c2Self = data.selfScores?.comp2Level ?? 0;
       const c3Self = data.selfScores?.comp3 || {};
 
       setSelfScores({
@@ -155,10 +167,10 @@ export function EvaluationWorkspace({
         comp3: c3Self,
       });
 
-      // Initialize supervisor scores
+      // Initialize supervisor scores (default unrated items to 0, not 5)
       const p1Super = data.supervisorScores?.part1 || {};
       const p2Super = data.supervisorScores?.part2 || {};
-      const c2Super = data.supervisorScores?.comp2Level || 5;
+      const c2Super = data.supervisorScores?.comp2Level ?? 0;
       const c3Super = data.supervisorScores?.comp3 || {};
 
       setSupervisorScores({
@@ -186,6 +198,10 @@ export function EvaluationWorkspace({
   const liveSupervisorCalc = useMemo(() => {
     return calculateEvaluationTotals(templateKey, supervisorScores);
   }, [templateKey, supervisorScores]);
+
+  const activeCalc = useMemo(() => {
+    return canEditSupervisor ? liveSupervisorCalc : liveSelfCalc;
+  }, [canEditSupervisor, liveSupervisorCalc, liveSelfCalc]);
 
   // Handle Score Updates
   const updateSelfScore = (section: 'part1' | 'part2' | 'comp3', id: string, val: number) => {
@@ -216,7 +232,7 @@ export function EvaluationWorkspace({
     setSupervisorScores({
       part1: { ...(selfScores.part1 || {}) },
       part2: { ...(selfScores.part2 || {}) },
-      comp2Level: selfScores.comp2Level || 5,
+      comp2Level: selfScores.comp2Level ?? 0,
       comp3: { ...(selfScores.comp3 || {}) },
     });
     setSuccessMsg('คัดลอกคะแนนจากการประเมินตนเองมายังช่องผู้บังคับบัญชาเรียบร้อยแล้ว');
@@ -309,28 +325,36 @@ export function EvaluationWorkspace({
     }
   };
 
+  const handleQuickSave = () => {
+    if (canEditSupervisor) {
+      handleSave('save_supervisor');
+    } else if (canEditSelf) {
+      handleSave('save_self');
+    }
+  };
+
   const getStatusBadge = (st: string) => {
     switch (st) {
       case 'evaluated':
       case 'acknowledged':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>ผอ.ประเมินแล้ว</span>
+            <span>ผู้บังคับบัญชาประเมินแล้ว</span>
           </span>
         );
       case 'self_submitted':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
             <Send className="w-3.5 h-3.5" />
             <span>ประเมินตนเองแล้ว</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-            <Clock className="w-3.5 h-3.5" />
-            <span>แบบร่าง (ยังไม่ประเมิน)</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>รอการประเมิน</span>
           </span>
         );
     }
@@ -346,8 +370,11 @@ export function EvaluationWorkspace({
         return 'bg-teal-600 text-white';
       case 'พอใช้':
         return 'bg-amber-500 text-white';
-      default:
+      case 'ปรับปรุง':
         return 'bg-rose-500 text-white';
+      case 'รอการประเมิน':
+      default:
+        return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
     }
   };
 
@@ -365,32 +392,57 @@ export function EvaluationWorkspace({
   return (
     <div className="w-full flex flex-col bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-100 min-h-screen">
       {/* ------------------------------------------------------------------ */}
-      {/* 1. TOP HEADER & WORKSPACE TITLE                                   */}
+      {/* 1. SINGLE SLIM TOP HEADER BAR (1 ROW ONLY)                         */}
       {/* ------------------------------------------------------------------ */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#141d27]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#141d27]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 shadow-xs">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
-              <FileCheck className="w-5 h-5 shrink-0" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
-                  {template.title}
-                </h1>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>กลับ</span>
+              </button>
+            )}
+            <div className="min-w-0 flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                {part1Snapshot.evaluateeName || teacher?.name || 'แบบประเมินผลการปฏิบัติงาน'}
+              </span>
+              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300">
+                {part1Snapshot.position || teacher?.position || '-'}
+                {part1Snapshot.academicStanding ? ` (${part1Snapshot.academicStanding})` : ''}
+              </span>
+              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                รอบที่ {roundNumber}/{fiscalYear}
+              </span>
+              <div className="ml-1">
                 {getStatusBadge(status)}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
-                <span>ผู้รับการประเมิน: <strong>{part1Snapshot.evaluateeName || '-'}</strong></span>
-                <span>·</span>
-                <span>ตำแหน่ง: {part1Snapshot.position || '-'} ({part1Snapshot.academicStanding || '-'})</span>
-                <span>·</span>
-                <span>ปีงบประมาณ {fiscalYear} รอบที่ {roundNumber}</span>
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            {!isLockedRound && (canEditSelf || canEditSupervisor) && (
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleQuickSave}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white shadow-xs transition-colors cursor-pointer"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                <span>บันทึก</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setShowPrintModal(true)}
@@ -399,146 +451,106 @@ export function EvaluationWorkspace({
               <Printer className="w-3.5 h-3.5" />
               <span>พิมพ์ A4</span>
             </button>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              >
-                ปิดหน้าต่าง
-              </button>
-            )}
           </div>
         </div>
 
         {/* Alerts */}
         {errorMsg && (
-          <div className="mt-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+          <div className="mt-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
         {successMsg && (
-          <div className="mt-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+          <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
-
-        {/* ------------------------------------------------------------------ */}
-        {/* 2. TAB STEPPER NAVIGATION                                         */}
-        {/* ------------------------------------------------------------------ */}
-        <div className="flex items-center gap-1 mt-3 overflow-x-auto pb-1 text-xs no-scrollbar border-t border-slate-100 dark:border-slate-800/60 pt-2">
-          {[
-            { id: 1, label: '๑. ข้อมูลทั่วไปและวันลา' },
-            { id: 2, label: '๒. องค์ประกอบที่ ๑ (มาตรฐานตำแหน่ง ๘๐)' },
-            { id: 3, label: '๓. องค์ประกอบที่ ๒ (การมีส่วนร่วม ๑๐)' },
-            { id: 4, label: '๔. องค์ประกอบที่ ๓ (วินัย/จรรยาบรรณ ๑๐)' },
-            { id: 5, label: '๕. สรุปผลและการลงนาม' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      </header>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 3. STICKY LIVE SCORE SUMMARY BAR                                  */}
+      {/* 2-COLUMN WORKSPACE BODY                                             */}
       {/* ------------------------------------------------------------------ */}
-      <div className="bg-slate-100 dark:bg-[#182330] border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
-            <div className="flex items-center gap-1.5 font-medium">
-              <span className="text-slate-500 dark:text-slate-400">องค์ประกอบ ๑:</span>
-              <span className="font-mono text-slate-900 dark:text-white">
-                {liveSelfCalc.component1.totalComponent1} / 80
-              </span>
-              {canEditSupervisor && (
-                <span className="font-mono text-sky-600 dark:text-sky-400 text-[11px]">
-                  (ผอ: {liveSupervisorCalc.component1.totalComponent1})
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 font-medium">
-              <span className="text-slate-500 dark:text-slate-400">องค์ประกอบ ๒:</span>
-              <span className="font-mono text-slate-900 dark:text-white">
-                {liveSelfCalc.component2.score} / 10
-              </span>
-              {canEditSupervisor && (
-                <span className="font-mono text-sky-600 dark:text-sky-400 text-[11px]">
-                  (ผอ: {liveSupervisorCalc.component2.score})
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 font-medium">
-              <span className="text-slate-500 dark:text-slate-400">องค์ประกอบ ๓:</span>
-              <span className="font-mono text-slate-900 dark:text-white">
-                {liveSelfCalc.component3.score} / 10
-              </span>
-              {canEditSupervisor && (
-                <span className="font-mono text-sky-600 dark:text-sky-400 text-[11px]">
-                  (ผอ: {liveSupervisorCalc.component3.score})
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">คะแนนรวมสุทธิ:</span>
-              <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                {canEditSupervisor ? liveSupervisorCalc.grandTotal : liveSelfCalc.grandTotal} / 100
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold ${getRatingBadge(
-                  canEditSupervisor ? liveSupervisorCalc.ratingLevel : liveSelfCalc.ratingLevel
-                )}`}
-              >
-                {canEditSupervisor ? liveSupervisorCalc.ratingLevel : liveSelfCalc.ratingLevel}
-              </span>
-            </div>
-
-            {canEditSupervisor && (
-              <div className="hidden sm:flex items-center gap-1.5 pl-3 border-l border-slate-300 dark:border-slate-700">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT STICKY RAIL (3 cols) */}
+          <aside className="lg:col-span-3 space-y-4 lg:sticky lg:top-16">
+            {/* Step navigation */}
+            <nav className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 shadow-xs space-y-1">
+              {[
+                { id: 1, label: '๑. ข้อมูลทั่วไปและวันลา' },
+                { id: 2, label: '๒. องค์ประกอบที่ ๑ (มาตรฐานตำแหน่ง)' },
+                { id: 3, label: '๓. องค์ประกอบที่ ๒ (การมีส่วนร่วม)' },
+                { id: 4, label: '๔. องค์ประกอบที่ ๓ (วินัย/จรรยาบรรณ)' },
+                { id: 5, label: '๕. สรุปผลและการลงนาม' },
+              ].map((tab) => (
                 <button
+                  key={tab.id}
                   type="button"
-                  onClick={handleCopySelfToSupervisor}
-                  className="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] hover:bg-slate-50 flex items-center gap-1"
-                  title="คัดลอกคะแนนประเมินตนเองมายังช่องผู้บังคับบัญชา"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                    activeTab === tab.id
+                      ? 'bg-sky-600 text-white shadow-xs font-semibold'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
                 >
-                  <Copy className="w-3 h-3" />
-                  <span>คัดลอกคะแนนตนเอง</span>
+                  <span className="truncate">{tab.label}</span>
+                  {activeTab === tab.id && <ChevronRight className="w-3.5 h-3.5 shrink-0 ml-1" />}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetAllLevel4('supervisor')}
-                  className="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] hover:bg-slate-50"
-                  title="กำหนดระดับ 4 ทุกข้อ"
+              ))}
+            </nav>
+
+            {/* Compact Live Score Summary Card */}
+            <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">สรุปคะแนนประเมิน</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold ${getRatingBadge(
+                    activeCalc.ratingLevel
+                  )}`}
                 >
-                  เต็ม 4 ทุกข้อ
-                </button>
+                  {activeCalc.ratingLevel}
+                </span>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* 4. MAIN TAB CONTENT AREA                                           */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6 pb-24">
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>องค์ประกอบ ๑</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">
+                    {activeCalc.component1.totalComponent1} / 80
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>องค์ประกอบ ๒</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">
+                    {activeCalc.component2.score} / 10
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>องค์ประกอบ ๓</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">
+                    {activeCalc.component3.score} / 10
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <span className="font-semibold text-slate-900 dark:text-white">คะแนนรวมสุทธิ</span>
+                  <span className="font-mono font-bold text-sm text-sky-600 dark:text-sky-400">
+                    {activeCalc.grandTotal} / 100
+                  </span>
+                </div>
+              </div>
+
+              {canEditSupervisor && (
+                <div className="text-[11px] text-slate-400 pt-1 text-center">
+                  (แสดงผลคะแนนช่องผู้บังคับบัญชา)
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* RIGHT MAIN CONTENT AREA (9 cols) */}
+          <main className="lg:col-span-9 space-y-6">
         {/* ================================================================ */}
         {/* TAB 1: ส่วนที่ ๑ ข้อมูลของผู้ขอรับการประเมิน (AUTO-FILLED)       */}
         {/* ================================================================ */}
@@ -589,9 +601,10 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">ชื่อผู้รับการประเมิน</label>
                 <input
                   type="text"
+                  disabled={!canEditAny}
                   value={part1Snapshot.evaluateeName || ''}
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, evaluateeName: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -599,9 +612,10 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">ตำแหน่ง</label>
                 <input
                   type="text"
+                  disabled={!canEditAny}
                   value={part1Snapshot.position || ''}
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, position: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -609,9 +623,10 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">วิทยฐานะ</label>
                 <input
                   type="text"
+                  disabled={!canEditAny}
                   value={part1Snapshot.academicStanding || ''}
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, academicStanding: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -619,11 +634,12 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">เงินเดือนปัจจุบัน (บาท)</label>
                 <input
                   type="number"
+                  disabled={!canEditAny}
                   value={part1Snapshot.currentSalary || ''}
                   onChange={(e) =>
                     setPart1Snapshot({ ...part1Snapshot, currentSalary: parseFloat(e.target.value) || 0 })
                   }
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 font-mono text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 font-mono text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -631,19 +647,21 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">สถานศึกษา</label>
                 <input
                   type="text"
+                  disabled={!canEditAny}
                   value={part1Snapshot.schoolName || 'โรงเรียนชุมชนบ้านตะขบ'}
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, schoolName: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-2 md:col-span-3">
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">สังกัด</label>
                 <input
                   type="text"
+                  disabled={!canEditAny}
                   value={part1Snapshot.affiliation || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3'}
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, affiliation: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
             </div>
@@ -658,24 +676,30 @@ export function EvaluationWorkspace({
                   <label className="block text-slate-500 mb-1">สอนระดับชั้น</label>
                   <input
                     type="text"
+                    disabled={!canEditAny}
+                    placeholder="เช่น ประถมศึกษาปีที่ 1 - 6"
                     value={part1Snapshot.teachingGrade || ''}
                     onChange={(e) => setPart1Snapshot({ ...part1Snapshot, teachingGrade: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-500 mb-1">รายวิชา</label>
                   <input
                     type="text"
+                    disabled={!canEditAny}
+                    placeholder="เช่น กลุ่มสาระการเรียนรู้ภาษาไทย"
                     value={part1Snapshot.teachingSubject || ''}
                     onChange={(e) => setPart1Snapshot({ ...part1Snapshot, teachingSubject: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-500 mb-1">ชั่วโมงการสอน/สัปดาห์</label>
                   <input
                     type="number"
+                    disabled={!canEditAny}
+                    placeholder="0"
                     value={part1Snapshot.teachingHoursPerWeek || ''}
                     onChange={(e) =>
                       setPart1Snapshot({
@@ -683,7 +707,7 @@ export function EvaluationWorkspace({
                         teachingHoursPerWeek: parseFloat(e.target.value) || 0,
                       })
                     }
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 font-mono text-slate-900 dark:text-white"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 font-mono text-slate-900 dark:text-white disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -735,9 +759,15 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">ชื่อผู้ประเมิน (ผู้บังคับบัญชา)</label>
                 <input
                   type="text"
-                  value={part1Snapshot.evaluatorName || ''}
+                  disabled={!canEditAny}
+                  value={
+                    isEvaluateeDirector && part1Snapshot.evaluatorName?.includes('ผู้อำนวยการสำนักงานเขต')
+                      ? ''
+                      : (part1Snapshot.evaluatorName || '')
+                  }
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, evaluatorName: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  placeholder={isEvaluateeDirector ? 'ระบุชื่อผู้ประเมิน (ผอ.สพป.)' : 'ชื่อ-สกุล ผู้ประเมิน'}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -745,9 +775,20 @@ export function EvaluationWorkspace({
                 <label className="block text-slate-500 dark:text-slate-400 mb-1">ตำแหน่งผู้ประเมิน</label>
                 <input
                   type="text"
-                  value={part1Snapshot.evaluatorPosition || ''}
+                  disabled={!canEditAny}
+                  value={
+                    part1Snapshot.evaluatorPosition ||
+                    (isEvaluateeDirector
+                      ? 'ผู้อำนวยการสำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3'
+                      : 'ผู้อำนวยการสถานศึกษา')
+                  }
                   onChange={(e) => setPart1Snapshot({ ...part1Snapshot, evaluatorPosition: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                  placeholder={
+                    isEvaluateeDirector
+                      ? 'ผู้อำนวยการสำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3'
+                      : 'ผู้อำนวยการสถานศึกษา'
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
             </div>
@@ -784,9 +825,30 @@ export function EvaluationWorkspace({
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500 font-mono">
-                    คะแนนตอนที่ ๑: <strong>{liveSelfCalc.component1.part1Score}</strong> /{' '}
+                    คะแนนตอนที่ ๑: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part1Score : liveSelfCalc.component1.part1Score}</strong> /{' '}
                     {template.component1.part1.maxScore}
                   </span>
+                  {canEditSupervisor && (
+                    <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={handleCopySelfToSupervisor}
+                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        title="คัดลอกคะแนนประเมินตนเองมายังช่องผู้บังคับบัญชา"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>คัดลอกคะแนนตนเอง</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAllLevel4('supervisor')}
+                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors cursor-pointer"
+                        title="กำหนดระดับ 4 ทุกข้อสำหรับผู้บังคับบัญชา"
+                      >
+                        เต็ม 4 ทุกข้อ
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -844,7 +906,7 @@ export function EvaluationWorkspace({
                               <div className="flex flex-col items-center gap-1 pl-3 border-l border-slate-200 dark:border-slate-800">
                                 <span className="text-[10px] font-medium text-sky-600 dark:text-sky-400 flex items-center gap-1">
                                   {!canEditSupervisor && <Lock className="w-2.5 h-2.5" />}
-                                  <span>ผอ. ประเมิน</span>
+                                  <span>ผู้บังคับบัญชาประเมิน</span>
                                 </span>
                                 <div className="flex items-center gap-1">
                                   {[1, 2, 3, 4].map((score) => (
@@ -888,7 +950,7 @@ export function EvaluationWorkspace({
                     </p>
                   </div>
                   <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
-                    คะแนนตอนที่ ๒: <strong>{liveSelfCalc.component1.part2Score}</strong> / 20
+                    คะแนนตอนที่ ๒: <strong>{canEditSupervisor ? liveSupervisorCalc.component1.part2Score : liveSelfCalc.component1.part2Score}</strong> / 20
                   </span>
                 </div>
 
@@ -939,7 +1001,7 @@ export function EvaluationWorkspace({
                           {/* ผู้บังคับบัญชา */}
                           <div className="flex flex-col items-center gap-1 pl-3 border-l border-slate-200 dark:border-slate-800">
                             <span className="text-[10px] text-sky-600 dark:text-sky-400">
-                              ผอ. ({superLvl > 0 ? `${item.levelScores[superLvl as 1 | 2 | 3 | 4]} คะแนน` : '-'})
+                              ผู้บังคับบัญชา ({superLvl > 0 ? `${item.levelScores[superLvl as 1 | 2 | 3 | 4]} คะแนน` : '-'})
                             </span>
                             <div className="flex items-center gap-1">
                               {[1, 2, 3, 4].map((lvl) => (
@@ -994,14 +1056,35 @@ export function EvaluationWorkspace({
         {/* ================================================================ */}
         {activeTab === 3 && (
           <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
-            <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-sky-600" />
-                <span>{COMPONENT_2_CONFIG.title} (๑๐ คะแนน)</span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                พิจารณาจากปริมาณงานที่ได้รับมอบหมายจากผู้บังคับบัญชาแล้วเสร็จ (คะแนนที่ได้ = ระดับการประเมิน × ค่าน้ำหนัก ๒)
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-600" />
+                  <span>{COMPONENT_2_CONFIG.title} (๑๐ คะแนน)</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  พิจารณาจากปริมาณงานที่ได้รับมอบหมายจากผู้บังคับบัญชาแล้วเสร็จ (คะแนนที่ได้ = ระดับการประเมิน × ค่าน้ำหนัก ๒)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
+                  คะแนน: <strong>{canEditSupervisor ? liveSupervisorCalc.component2.score : liveSelfCalc.component2.score}</strong> / 10
+                </span>
+                {canEditSupervisor && (
+                  <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={handleCopySelfToSupervisor}
+                      className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      title="คัดลอกคะแนนประเมินตนเองมายังช่องผู้บังคับบัญชา"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>คัดลอกคะแนนตนเอง</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -1056,7 +1139,7 @@ export function EvaluationWorkspace({
                             }
                             className="accent-emerald-600"
                           />
-                          <span className="text-[11px] text-sky-600 dark:text-sky-400">ผอ.</span>
+                          <span className="text-[11px] text-sky-600 dark:text-sky-400">ผู้บังคับบัญชา</span>
                         </label>
                       </div>
                     </div>
@@ -1103,9 +1186,32 @@ export function EvaluationWorkspace({
                 </p>
               </div>
 
-              <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
-                คะแนนรวม: <strong>{liveSelfCalc.component3.score}</strong> / 10
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
+                  คะแนนรวม: <strong>{canEditSupervisor ? liveSupervisorCalc.component3.score : liveSelfCalc.component3.score}</strong> / 10
+                </span>
+                {canEditSupervisor && (
+                  <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={handleCopySelfToSupervisor}
+                      className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      title="คัดลอกคะแนนประเมินตนเองมายังช่องผู้บังคับบัญชา"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>คัดลอกคะแนนตนเอง</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetAllLevel4('supervisor')}
+                      className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors cursor-pointer"
+                      title="กำหนดระดับ 4 ทุกข้อสำหรับผู้บังคับบัญชา"
+                    >
+                      เต็ม 4 ทุกข้อ
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -1149,7 +1255,7 @@ export function EvaluationWorkspace({
 
                       {/* ผู้บังคับบัญชา */}
                       <div className="flex flex-col items-center gap-1 pl-3 border-l border-slate-200 dark:border-slate-800">
-                        <span className="text-[10px] text-sky-600 dark:text-sky-400">ผอ.</span>
+                        <span className="text-[10px] text-sky-600 dark:text-sky-400">ผู้บังคับบัญชา</span>
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4].map((score) => (
                             <button
@@ -1219,7 +1325,7 @@ export function EvaluationWorkspace({
                     <th className="py-2.5 px-4 font-semibold">องค์ประกอบการประเมิน</th>
                     <th className="py-2.5 px-3 font-semibold text-center w-24">คะแนนเต็ม</th>
                     <th className="py-2.5 px-3 font-semibold text-center w-32">คะแนนประเมินตนเอง</th>
-                    <th className="py-2.5 px-3 font-semibold text-center w-32">คะแนนประเมิน ผอ.</th>
+                    <th className="py-2.5 px-3 font-semibold text-center w-32">คะแนนผู้บังคับบัญชาประเมิน</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1283,25 +1389,28 @@ export function EvaluationWorkspace({
               <div className="space-y-1.5 text-xs">
                 <span className="text-slate-500 block mb-1">ระดับผลการประเมิน (๕ ระดับ):</span>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {[
-                    { label: 'ดีเด่น', range: 'ร้อยละ ๙๐.๐๐ ขึ้นไป', active: liveSupervisorCalc.grandTotal >= 90 },
-                    { label: 'ดีมาก', range: 'ร้อยละ ๘๐.๐๐ – ๘๙.๙๙', active: liveSupervisorCalc.grandTotal >= 80 && liveSupervisorCalc.grandTotal < 90 },
-                    { label: 'ดี', range: 'ร้อยละ ๗๐.๐๐ – ๗๙.๙๙', active: liveSupervisorCalc.grandTotal >= 70 && liveSupervisorCalc.grandTotal < 80 },
-                    { label: 'พอใช้', range: 'ร้อยละ ๖๐.๐๐ – ๖๙.๙๙', active: liveSupervisorCalc.grandTotal >= 60 && liveSupervisorCalc.grandTotal < 70 },
-                    { label: 'ปรับปรุง', range: 'ร้อยละ ๕๙.๙๙ ลงมา', active: liveSupervisorCalc.grandTotal < 60 },
-                  ].map((tier) => (
-                    <div
-                      key={tier.label}
-                      className={`p-2.5 rounded-lg border text-center transition-all ${
-                        tier.active
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-bold shadow-xs'
-                          : 'border-slate-200 dark:border-slate-800 text-slate-400 opacity-60'
-                      }`}
-                    >
-                      <div className="text-xs">{tier.label}</div>
-                      <div className="text-[10px] opacity-80">{tier.range}</div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const hasSuperScores = liveSupervisorCalc.ratingLevel !== 'รอการประเมิน';
+                    return [
+                      { label: 'ดีเด่น', range: 'ร้อยละ ๙๐.๐๐ ขึ้นไป', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 90 },
+                      { label: 'ดีมาก', range: 'ร้อยละ ๘๐.๐๐ – ๘๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 80 && liveSupervisorCalc.grandTotal < 90 },
+                      { label: 'ดี', range: 'ร้อยละ ๗๐.๐๐ – ๗๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 70 && liveSupervisorCalc.grandTotal < 80 },
+                      { label: 'พอใช้', range: 'ร้อยละ ๖๐.๐๐ – ๖๙.๙๙', active: hasSuperScores && liveSupervisorCalc.grandTotal >= 60 && liveSupervisorCalc.grandTotal < 70 },
+                      { label: 'ปรับปรุง', range: 'ร้อยละ ๕๙.๙๙ ลงมา', active: hasSuperScores && liveSupervisorCalc.grandTotal < 60 },
+                    ].map((tier) => (
+                      <div
+                        key={tier.label}
+                        className={`p-2.5 rounded-lg border text-center transition-all ${
+                          tier.active
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-bold shadow-xs'
+                            : 'border-slate-200 dark:border-slate-800 text-slate-400 opacity-60'
+                        }`}
+                      >
+                        <div className="text-xs">{tier.label}</div>
+                        <div className="text-[10px] opacity-80">{tier.range}</div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
 
@@ -1401,7 +1510,7 @@ export function EvaluationWorkspace({
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition-colors"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>บันทึกและอนุมัติผลประเมิน (ผอ.)</span>
+                    <span>บันทึกและอนุมัติผลการประเมิน (ผู้บังคับบัญชา)</span>
                   </button>
                 )}
 
@@ -1431,6 +1540,8 @@ export function EvaluationWorkspace({
             </div>
           </div>
         )}
+          </main>
+        </div>
       </div>
 
       {/* Modal พิมพ์เอกสาร A4 ตามแบบ ก.ค.ศ. */}

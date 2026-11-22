@@ -260,6 +260,22 @@ describe('Official OBEC Performance Evaluation Engine', () => {
       assert.strictEqual(result.grandTotal, 100);
       assert.strictEqual(result.ratingLevel, 'ดีเด่น');
     });
+
+    it('returns 0 grandTotal and "รอการประเมิน" rating on blank/unrated draft (Bug 1 fix)', () => {
+      const emptyScores = {
+        part1: {},
+        part2: {},
+        comp2Level: 0,
+        comp3: {},
+      };
+
+      const result = calculateEvaluationTotals('teacher_special_expert', emptyScores);
+      assert.strictEqual(result.component1.totalComponent1, 0);
+      assert.strictEqual(result.component2.score, 0);
+      assert.strictEqual(result.component3.score, 0);
+      assert.strictEqual(result.grandTotal, 0);
+      assert.strictEqual(result.ratingLevel, 'รอการประเมิน');
+    });
   });
 
   describe('7. Validation Logic', () => {

@@ -168,7 +168,7 @@ export async function GET(request: Request) {
       teacher.position.includes('ผู้อำนวยการ') || teacher.employeeCode === 'EXE-001';
 
     const evaluatorName = isEvaluateeDirector
-      ? 'ผู้อำนวยการสำนักงานเขตพื้นที่การศึกษาประถมศึกษา'
+      ? ''
       : 'นายธีรศักดิ์ มโนธรรม';
     const evaluatorPosition = isEvaluateeDirector
       ? 'ผู้อำนวยการสำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3'
@@ -233,9 +233,9 @@ export async function GET(request: Request) {
       currentSalary,
       schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
       affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
-      teachingGrade: gradesList.length > 0 ? gradesList.join(', ') : 'ประถมศึกษาปีที่ 1 - 6',
-      teachingSubject: subjectsList.length > 0 ? subjectsList.join(', ') : 'กลุ่มสาระการเรียนรู้พื้นฐาน',
-      teachingHoursPerWeek: totalTeachingHours > 0 ? totalTeachingHours : 20,
+      teachingGrade: gradesList.length > 0 ? gradesList.join(', ') : '',
+      teachingSubject: subjectsList.length > 0 ? subjectsList.join(', ') : '',
+      teachingHoursPerWeek: totalTeachingHours > 0 ? totalTeachingHours : '',
       leaveStats: {
         totalDays: totalLeaveDays,
         sickCount: sickLeaveCount,
