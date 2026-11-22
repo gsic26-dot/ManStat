@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   TrendingUp,
   Lock,
@@ -65,6 +65,16 @@ export function ViewSalaryHistory({
   const [loadingSalary, setLoadingSalary] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isMasked, setIsMasked] = useState<boolean>(true);
+  const remaskTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear auto-remasking timer on unmount
+  useEffect(() => {
+    return () => {
+      if (remaskTimerRef.current) {
+        clearTimeout(remaskTimerRef.current);
+      }
+    };
+  }, []);
 
   // Check management authority
   const isAuthorizedManager = useMemo(() => {
@@ -192,12 +202,17 @@ export function ViewSalaryHistory({
     return [];
   }, [civilServants, isAuthorizedManager, currentUser]);
 
-  // Toggle PDPA Masking with audit logging
+  // Toggle PDPA Masking with audit logging and 45-second auto-remasking
   const handleToggleMask = () => {
+    if (remaskTimerRef.current) {
+      clearTimeout(remaskTimerRef.current);
+      remaskTimerRef.current = null;
+    }
+
     const nextState = !isMasked;
     setIsMasked(nextState);
 
-    // Audit logging when unmasking financial data
+    // Audit logging and auto-remasking when unmasking financial data
     if (!nextState) {
       fetch('/api/admin/audit', {
         method: 'POST',
@@ -208,6 +223,11 @@ export function ViewSalaryHistory({
           schoolId: '30030099',
         }),
       }).catch(() => {});
+
+      // Auto-remask after 45 seconds (PDPA safety standard)
+      remaskTimerRef.current = setTimeout(() => {
+        setIsMasked(true);
+      }, 45000);
     }
   };
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbGetAuditLogs, recordAuditLog } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { getSessionUser } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,11 +27,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const adminSession = await verifyAdminSession();
-    if (!adminSession.authorized) {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
       return NextResponse.json(
-        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
-        { status: adminSession.status }
+        { success: false, error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' },
+        { status: 401 }
       );
     }
 
@@ -47,8 +47,8 @@ export async function POST(request: Request) {
 
     const realActorName =
       actorName ||
-      `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
-    const realActorRole = actorRole || adminSession.user?.role || 'hr_admin';
+      `${sessionUser.name || 'ผู้ใช้งาน'} (${sessionUser.position || sessionUser.role || 'User'})`;
+    const realActorRole = actorRole || sessionUser.role || 'teacher';
 
     const newLog = recordAuditLog(
       action,

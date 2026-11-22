@@ -28,6 +28,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
+import { formatPDPAProtectedLeaveReason } from '@/lib/auth/roles';
 
 export interface PendingItemDisplay {
   id: string;
@@ -69,6 +70,16 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
 
   const [remarks, setRemarks] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem('manstat_auth_user');
+        if (storedUser) setCurrentUser(JSON.parse(storedUser));
+      } catch {}
+    }
+  }, []);
 
   // Sync or fetch pending requests
   const loadPendingRequests = async () => {
@@ -210,7 +221,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
 
                 {req.reason && (
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[420px]" title={`สาเหตุ: ${req.reason}`}>
-                    สาเหตุ: <span className="text-slate-700 dark:text-slate-300">{req.reason}</span>
+                    สาเหตุ: <span className="text-slate-700 dark:text-slate-300">{formatPDPAProtectedLeaveReason(req, currentUser, 'director')}</span>
                   </p>
                 )}
 
@@ -341,7 +352,7 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                     {activeModal.request.reason && (
                       <div>
                         <span className="font-medium text-slate-500 dark:text-slate-400">เหตุผล: </span>
-                        <span>{activeModal.request.reason}</span>
+                        <span>{formatPDPAProtectedLeaveReason(activeModal.request, currentUser, 'director')}</span>
                       </div>
                     )}
                   </div>

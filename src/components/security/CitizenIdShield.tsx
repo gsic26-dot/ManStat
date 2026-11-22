@@ -4,23 +4,25 @@
  * ============================================================================
  * ManStat: Citizen ID Shield Component (PDPA Security & Audit Log)
  * ============================================================================
- * - Default: Masked format (e.g. 1-xxxx-xxxxx-12-3)
- * - Reveal: Invokes Supabase RPC 'rpc_reveal_citizen_id' to fetch decrypted ID
- *   and automatically generate an immutable audit log entry.
- * - Auto-Expiry: 15-second visual countdown progress bar; auto-remasks at 0s.
+ * - Default: Masked format (e.g. 1-xxxx-xxxxx-12-3 or 1-3014-*****-**-3)
+ * - Reveal: Calls server route /api/pdpa/reveal which verifies Data Owner (isSelf)
+ *   or Administrative privilege (superuser, director, hr_admin) and records
+ *   an immutable PDPA Audit Log entry.
+ * - Auto-Expiry: 45-second visual countdown progress bar; auto-remasks at 0s.
  * - Memory Safety: Cancels timers and purges plaintext state on unmount.
  * - Standard: Zero emojis, pure Lucide SVG icons, strict 8px gap.
  * ============================================================================
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Eye, EyeOff, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { rpcRevealCitizenId } from '@/lib/supabase/queries';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Eye, EyeOff, ShieldCheck, ShieldAlert, Loader2, Lock } from 'lucide-react';
+import { canViewSensitiveData } from '@/lib/auth/roles';
 
 export interface CitizenIdShieldProps {
   targetStaffId: string;
   initialMaskedId?: string | null;
+  currentUser?: any;
+  currentRole?: string;
   className?: string;
 }
 
@@ -36,14 +38,20 @@ export function maskCitizenId(id?: string | null): string {
   if (cleaned.length === 13) {
     return `${cleaned.slice(0, 1)}-xxxx-xxxxx-${cleaned.slice(10, 12)}-${cleaned.slice(12, 13)}`;
   }
+  // If already formatted with dashes like 3-3014-*****-**-1
+  if (id.includes('*') || id.includes('x')) {
+    return id;
+  }
   return '1-xxxx-xxxxx-12-3';
 }
 
-const TOTAL_COUNTDOWN_SECONDS = 15;
+const TOTAL_COUNTDOWN_SECONDS = 45;
 
 export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
   targetStaffId,
   initialMaskedId,
+  currentUser,
+  currentRole,
   className = '',
 }) => {
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
@@ -53,6 +61,14 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
   const [remainingSeconds, setRemainingSeconds] = useState<number>(TOTAL_COUNTDOWN_SECONDS);
 
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Client-side quick RBAC check
+  const permCheck = useMemo(() => {
+    return canViewSensitiveData(
+      { ...currentUser, role: currentRole || currentUser?.role },
+      { id: targetStaffId, employeeCode: targetStaffId }
+    );
+  }, [currentUser, currentRole, targetStaffId]);
 
   const clearTimerAndMask = useCallback(() => {
     if (countdownIntervalRef.current) {
@@ -64,7 +80,7 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
     setRemainingSeconds(TOTAL_COUNTDOWN_SECONDS);
   }, []);
 
-  // Cleanup immediately on unmount to prevent state/memory retention of sensitive data
+  // Cleanup on unmount or target change to prevent sensitive memory retention
   useEffect(() => {
     return () => {
       if (countdownIntervalRef.current) {
@@ -72,7 +88,7 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
       }
       setRevealedId(null);
     };
-  }, []);
+  }, [targetStaffId]);
 
   const handleToggleReveal = async () => {
     if (isRevealed) {
@@ -80,20 +96,37 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
       return;
     }
 
+    if (!permCheck.allowed) {
+      setErrorMessage(permCheck.reason || 'สงวนสิทธิ์เฉพาะเจ้าของข้อมูลและงานบุคคล');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const supabase = createClient();
-      const realId = await rpcRevealCitizenId(supabase, targetStaffId);
+      const res = await fetch('/api/pdpa/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetStaffId,
+          fieldType: 'citizen_id',
+        }),
+      });
 
-      setRevealedId(formatCitizenId(realId));
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนบุคคลตาม PDPA');
+      }
+
+      setRevealedId(formatCitizenId(json.value));
       setIsRevealed(true);
-      setRemainingSeconds(TOTAL_COUNTDOWN_SECONDS);
+      const countdown = json.expiresInSeconds || TOTAL_COUNTDOWN_SECONDS;
+      setRemainingSeconds(countdown);
 
-      // Start 15s visual countdown interval (updates every 100ms for smooth progress bar)
+      // Start visual countdown interval (updates every 200ms)
       const startTime = Date.now();
-      const endTime = startTime + TOTAL_COUNTDOWN_SECONDS * 1000;
+      const endTime = startTime + countdown * 1000;
 
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
@@ -131,43 +164,57 @@ export const CitizenIdShield: React.FC<CitizenIdShieldProps> = ({
           {isRevealed && revealedId ? revealedId : displayMasked}
         </span>
 
-        <button
-          type="button"
-          onClick={handleToggleReveal}
-          disabled={isLoading}
-          title={isRevealed ? 'ซ่อนเลขประจำตัวประชาชน' : 'แสดงเลขประจำตัวประชาชน (บันทึก Audit Log)'}
-          className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700"
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-sky-500 dark:text-sky-400" />
-          ) : isRevealed ? (
-            <EyeOff className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-          ) : (
-            <Eye className="w-4 h-4" />
-          )}
-        </button>
+        {permCheck.allowed ? (
+          <button
+            type="button"
+            onClick={handleToggleReveal}
+            disabled={isLoading}
+            title={
+              isRevealed
+                ? 'ซ่อนเลขประจำตัวประชาชน'
+                : permCheck.isSelf
+                ? 'แสดงเลขประจำตัวประชาชนของคุณ'
+                : 'แสดงเลขประจำตัวประชาชน (บันทึก Audit Log)'
+            }
+            className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-sky-500 dark:text-sky-400" />
+            ) : isRevealed ? (
+              <EyeOff className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+          </button>
+        ) : (
+          <span
+            title="สงวนสิทธิ์เฉพาะเจ้าของข้อมูลและงานบุคคล"
+            className="ml-1 inline-flex items-center justify-center p-1.5 rounded-md text-slate-300 dark:text-slate-600 cursor-not-allowed"
+          >
+            <Lock className="w-3.5 h-3.5" />
+          </span>
+        )}
       </div>
 
-      {/* 15-second Visual Countdown Progress Bar */}
+      {/* Visual countdown progress bar when revealed */}
       {isRevealed && (
-        <div className="w-full bg-slate-200 dark:bg-[#101822] rounded-full h-1.5 overflow-hidden border border-slate-300 dark:border-slate-700/50">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-500 via-sky-500 to-amber-500 dark:from-emerald-400 dark:via-sky-400 dark:to-amber-400 transition-all duration-200 ease-linear"
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div className="w-full space-y-0.5">
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+            <div
+              className="bg-emerald-500 h-full transition-all duration-200"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono px-0.5">
+            <span>ซ่อนอัตโนมัติ (PDPA)</span>
+            <span>{remainingSeconds}วิ</span>
+          </div>
         </div>
       )}
 
-      {/* Audit & Auto-mask Notice */}
-      {isRevealed && (
-        <span className="text-[11px] text-amber-700 dark:text-amber-300 font-sans flex items-center gap-1">
-          <span>จะซ่อนอัตโนมัติใน {remainingSeconds} วินาที (บันทึก Audit Log แล้ว)</span>
-        </span>
-      )}
-
-      {/* Error Message */}
+      {/* Error message fallback */}
       {errorMessage && (
-        <div className="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400 font-sans mt-0.5">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-rose-500 dark:text-rose-400 mt-0.5">
           <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
           <span>{errorMessage}</span>
         </div>

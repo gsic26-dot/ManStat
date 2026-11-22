@@ -30,6 +30,7 @@ import { BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData'
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { PhoneShield } from '@/components/security/PhoneShield';
 
 const BOARD_POSITIONS_MAP: Record<string, string> = {
   CHAIR: 'ประธานกรรมการ',
@@ -73,6 +74,28 @@ export const ViewSchoolBoard: React.FC = () => {
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        const storedUser = localStorage.getItem('manstat_auth_user');
+        if (storedRole) setCurrentRole(storedRole);
+        if (storedUser) setCurrentUser(JSON.parse(storedUser));
+      } catch {}
+    }
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser(res.user);
+          setCurrentRole(res.user.role || 'teacher');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -279,19 +302,14 @@ export const ViewSchoolBoard: React.FC = () => {
                               </div>
                               <div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                  ช่องทางการติดต่อ
+                                  ช่องทางการติดต่อ (PDPA)
                                 </div>
-                                {member.phone && member.phone !== '-' ? (
-                                  <a
-                                    href={`tel:${member.phone.replace(/[^0-9]/g, '')}`}
-                                    className="inline-flex items-center gap-2 font-mono text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 font-medium"
-                                  >
-                                    <Phone className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{member.phone}</span>
-                                  </a>
-                                ) : (
-                                  <span className="text-slate-400 dark:text-slate-500">-</span>
-                                )}
+                                <PhoneShield
+                                  phone={member.phone}
+                                  targetStaffId={member.id}
+                                  currentUser={currentUser}
+                                  currentRole={currentRole}
+                                />
                               </div>
                               <div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
@@ -357,9 +375,13 @@ export const ViewSchoolBoard: React.FC = () => {
                       <span>{member.occupation}</span>
                     </div>
                     {member.phone && member.phone !== '-' && (
-                      <div className="flex items-center gap-2 font-mono text-sky-600 dark:text-sky-400">
-                        <Phone className="w-3.5 h-3.5 shrink-0" />
-                        <span>{member.phone}</span>
+                      <div className="flex items-center gap-2">
+                        <PhoneShield
+                          phone={member.phone}
+                          targetStaffId={member.id}
+                          currentUser={currentUser}
+                          currentRole={currentRole}
+                        />
                       </div>
                     )}
                   </div>

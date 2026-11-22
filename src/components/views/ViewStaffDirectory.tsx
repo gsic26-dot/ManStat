@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
+import { PhoneShield } from '@/components/security/PhoneShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
 import { useUserSettings } from '@/context/UserSettingsContext';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
@@ -69,6 +70,28 @@ export const ViewStaffDirectory: React.FC = () => {
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        const storedUser = localStorage.getItem('manstat_auth_user');
+        if (storedRole) setCurrentRole(storedRole);
+        if (storedUser) setCurrentUser(JSON.parse(storedUser));
+      } catch {}
+    }
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser(res.user);
+          setCurrentRole(res.user.role || 'teacher');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -354,6 +377,8 @@ export const ViewStaffDirectory: React.FC = () => {
                                         <CitizenIdShield
                                           targetStaffId={teacher.id}
                                           initialMaskedId={teacher.maskedCitizenId}
+                                          currentUser={currentUser}
+                                          currentRole={currentRole}
                                         />
                                       </div>
 
@@ -371,11 +396,13 @@ export const ViewStaffDirectory: React.FC = () => {
 
                                       {/* 3. Contact Info */}
                                       <div>
-                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">ช่องทางการติดต่อ</div>
-                                        <div className="flex items-center gap-1.5 font-mono text-slate-700 dark:text-slate-300">
-                                          <Phone className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" />
-                                          <span>{teacher.phone && teacher.phone !== '-' ? teacher.phone : 'ไม่ได้ระบุ'}</span>
-                                        </div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">ช่องทางการติดต่อ (PDPA)</div>
+                                        <PhoneShield
+                                          phone={teacher.phone}
+                                          targetStaffId={teacher.id}
+                                          currentUser={currentUser}
+                                          currentRole={currentRole}
+                                        />
                                         <div className="flex items-center gap-1.5 font-mono text-slate-500 dark:text-slate-400 text-[11px] mt-1">
                                           <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                                           <span className="truncate max-w-[160px]">{teacher.email && teacher.email !== '-' ? teacher.email : 'ไม่ได้ระบุ'}</span>
@@ -461,6 +488,8 @@ export const ViewStaffDirectory: React.FC = () => {
                     <CitizenIdShield
                       targetStaffId={teacher.id}
                       initialMaskedId={teacher.maskedCitizenId}
+                      currentUser={currentUser}
+                      currentRole={currentRole}
                     />
                   </div>
 
@@ -474,8 +503,12 @@ export const ViewStaffDirectory: React.FC = () => {
                     </div>
                     {teacher.phone && teacher.phone !== '-' && (
                       <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
-                        <span className="font-mono text-slate-700 dark:text-slate-300">{teacher.phone}</span>
+                        <PhoneShield
+                          phone={teacher.phone}
+                          targetStaffId={teacher.id}
+                          currentUser={currentUser}
+                          currentRole={currentRole}
+                        />
                       </div>
                     )}
                     {teacher.email && teacher.email !== '-' && (
@@ -542,6 +575,24 @@ export const ViewStaffDirectory: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">วันที่เริ่มรับราชการ:</span>
                   <span className="font-mono text-slate-700 dark:text-slate-200">{formatThaiDateDisplay(selectedTeacher.startDate)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400">เลขประจำตัว ปชช. (PDPA):</span>
+                  <CitizenIdShield
+                    targetStaffId={selectedTeacher.id}
+                    initialMaskedId={selectedTeacher.maskedCitizenId}
+                    currentUser={currentUser}
+                    currentRole={currentRole}
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">เบอร์โทรศัพท์ (PDPA):</span>
+                  <PhoneShield
+                    phone={selectedTeacher.phone}
+                    targetStaffId={selectedTeacher.id}
+                    currentUser={currentUser}
+                    currentRole={currentRole}
+                  />
                 </div>
               </div>
 

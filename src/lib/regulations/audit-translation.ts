@@ -27,6 +27,9 @@ const ACTION_MAP: Record<string, { title: string; category: AuditCategory }> = {
   REVEAL_CITIZEN_ID: { title: 'เปิดดูเลขประจำตัวประชาชน', category: 'sensitive' },
   VIEW_SENSITIVE_DATA: { title: 'เข้าถึงข้อมูลอ่อนไหว', category: 'sensitive' },
   ACCESS_SENSITIVE_DATA: { title: 'เข้าถึงข้อมูลอ่อนไหว', category: 'sensitive' },
+  PDPA_UNMASK_SELF: { title: 'เปิดดูข้อมูลส่วนบุคคลตนเอง', category: 'sensitive' },
+  PDPA_UNMASK_OTHER: { title: 'เปิดดูข้อมูลส่วนบุคคลผู้อื่น (งานบุคคล)', category: 'sensitive' },
+  VIEW_FINANCIAL_SALARY_DATA: { title: 'เปิดดูข้อมูลเงินเดือน (PDPA)', category: 'sensitive' },
 
   // Delete Actions
   DELETE_ACADEMIC_YEAR: { title: 'ลบปีการศึกษา', category: 'delete' },

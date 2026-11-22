@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { LeaveRequestRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { formatPDPAProtectedLeaveReason } from '@/lib/auth/roles';
 
 interface ViewLeaveRequestsProps {
   onOpenSubmitModal?: () => void;
@@ -44,6 +45,28 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'sick' | 'personal' | 'vacation'>('ALL');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        const storedUser = localStorage.getItem('manstat_auth_user');
+        if (storedRole) setCurrentRole(storedRole);
+        if (storedUser) setCurrentUser(JSON.parse(storedUser));
+      } catch {}
+    }
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser(res.user);
+          setCurrentRole(res.user.role || 'teacher');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -396,7 +419,9 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                             {req.reason && (
                               <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-800/60 text-xs">
                                 <span className="text-[11px] text-slate-400">เหตุผลความจำเป็น: </span>
-                                <span className="text-slate-800 dark:text-slate-200">{req.reason}</span>
+                                <span className="text-slate-800 dark:text-slate-200">
+                                  {formatPDPAProtectedLeaveReason(req, currentUser, currentRole)}
+                                </span>
                               </div>
                             )}
                           </td>
@@ -454,7 +479,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               <div>
                 <span className="text-slate-500 block mb-1">เหตุผลและความจำเป็น:</span>
                 <p className="bg-slate-50 dark:bg-[#0e141c] p-3 rounded-lg border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200">
-                  {selectedRequest.reason}
+                  {formatPDPAProtectedLeaveReason(selectedRequest, currentUser, currentRole)}
                 </p>
               </div>
 

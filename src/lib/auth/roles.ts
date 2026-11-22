@@ -189,3 +189,128 @@ export function isCivilServantForSalary(staff: TeacherRecord): boolean {
 
   return branch === 'management' || branch === 'teaching';
 }
+
+/**
+ * Evaluates whether a user can unmask sensitive personal data (Citizen ID, phone number, salary, etc.)
+ * based on PDPA rules:
+ * - Data Owner (isSelf): Always allowed (can view own data)
+ * - Authorized Roles: 'superuser', 'director', 'hr_admin' are allowed to unmask any staff
+ * - Other Users: Blocked from unmasking other people's data
+ */
+export function canViewSensitiveData(
+  currentUser?: { id?: string; employeeCode?: string; email?: string; role?: string; accessLevel?: string; position?: string; department?: string } | null,
+  targetStaff?: { id?: string; employeeCode?: string; email?: string } | null
+): { allowed: boolean; isSelf: boolean; reason?: string } {
+  if (!currentUser) {
+    return { allowed: false, isSelf: false, reason: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' };
+  }
+
+  // 1. Check self-ownership bypass (Data Owner)
+  const currentId = (currentUser.id || '').trim();
+  const currentCode = (currentUser.employeeCode || '').trim();
+  const currentEmail = (currentUser.email || '').trim().toLowerCase();
+
+  const targetId = (targetStaff?.id || '').trim();
+  const targetCode = (targetStaff?.employeeCode || '').trim();
+  const targetEmail = (targetStaff?.email || '').trim().toLowerCase();
+
+  const isSelf = Boolean(
+    (targetId && (currentId === targetId || currentCode === targetId)) ||
+    (targetCode && (currentCode === targetCode || currentId === targetCode)) ||
+    (targetEmail && currentEmail && currentEmail === targetEmail)
+  );
+
+  if (isSelf) {
+    return { allowed: true, isSelf: true };
+  }
+
+  // 2. Check authorized administrative roles (Case-insensitive)
+  const cleanRole = (currentUser.role || currentUser.accessLevel || '').toLowerCase().trim();
+  const isAuthorizedRole =
+    cleanRole === 'superuser' ||
+    cleanRole === 'director' ||
+    cleanRole === 'hr_admin' ||
+    cleanRole === 'admin' ||
+    cleanRole === 'root';
+
+  // Check HR department personnel
+  const pos = (currentUser.position || '').toLowerCase();
+  const dept = (currentUser.department || '').toLowerCase();
+  const isHrPersonnel =
+    (dept.includes('บริหารงานบุคคล') || pos.includes('บริหารงานบุคคล')) &&
+    !pos.includes('ธุรการ') && !pos.includes('ภารโรง') && !pos.includes('พี่เลี้ยง');
+
+  if (isAuthorizedRole || isHrPersonnel) {
+    return { allowed: true, isSelf: false };
+  }
+
+  return {
+    allowed: false,
+    isSelf: false,
+    reason: 'สงวนสิทธิ์เฉพาะเจ้าของข้อมูลและงานบุคคล',
+  };
+}
+
+/**
+ * Masks a personal phone number for PDPA protection (e.g. 099-***-2233)
+ */
+export function maskPhoneNumber(phone?: string | null): string {
+  if (!phone || phone.trim() === '' || phone === '-') return '-';
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 10) {
+    return `${clean.slice(0, 3)}-***-${clean.slice(6)}`;
+  }
+  if (clean.length === 9) {
+    return `${clean.slice(0, 2)}-***-${clean.slice(5)}`;
+  }
+  if (clean.length >= 6) {
+    return `${clean.slice(0, 3)}-***-${clean.slice(-3)}`;
+  }
+  return '0xx-***-xxxx';
+}
+
+/**
+ * Protects sensitive medical / health data in leave requests (PDPA Section 26).
+ * Sick leave reasons are masked as "ข้อมูลส่วนบุคคล (PDPA)" unless viewed by
+ * the Data Owner, Approver (Director), or HR Admin.
+ */
+export function formatPDPAProtectedLeaveReason(
+  req: { teacherId?: string; staffId?: string; leaveType?: string; leave_type?: string; reason?: string },
+  currentUser?: { id?: string; employeeCode?: string; email?: string; role?: string; accessLevel?: string } | null,
+  currentRole?: string
+): string {
+  if (!req.reason || req.reason.trim() === '') return '-';
+
+  const leaveTypeStr = req.leaveType || req.leave_type || '';
+  const isSickLeave =
+    leaveTypeStr.includes('ป่วย') ||
+    leaveTypeStr.toLowerCase().includes('sick');
+
+  if (!isSickLeave) {
+    return req.reason;
+  }
+
+  // Check Owner
+  const currentId = currentUser?.id || '';
+  const currentCode = currentUser?.employeeCode || '';
+  const targetId = req.teacherId || req.staffId || '';
+  const isOwner = Boolean(
+    targetId &&
+    (currentId === targetId || currentCode === targetId)
+  );
+
+  if (isOwner) {
+    return req.reason;
+  }
+
+  // Check Approver / HR Admin
+  const role = (currentRole || currentUser?.role || currentUser?.accessLevel || '').toLowerCase().trim();
+  const isApproverOrAdmin =
+    role === 'superuser' || role === 'director' || role === 'hr_admin' || role === 'admin' || role === 'root';
+
+  if (isApproverOrAdmin) {
+    return req.reason;
+  }
+
+  return 'ข้อมูลส่วนบุคคล (PDPA)';
+}
