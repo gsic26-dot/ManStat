@@ -276,7 +276,7 @@ export function EvaluationA4PrintDocument({
                 ตำแหน่ง <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.position || '................................................'}</span>
               </div>
               <div>
-                เงินเดือน <span className="font-bold underline decoration-dotted underline-offset-4">{formatThaiNumber(part1Snapshot.currentSalary || 0)}</span> บาท
+                เงินเดือน <span className="font-bold underline decoration-dotted underline-offset-4">{part1Snapshot.currentSalary > 0 ? `${formatThaiNumber(part1Snapshot.currentSalary)} บาท` : '.................................. บาท'}</span>
               </div>
             </div>
 
@@ -1096,7 +1096,7 @@ export function EvaluationA4PrintDocument({
         {/* ================================================================ */}
         {/* COMPONENT 3: แบบประเมินองค์ประกอบที่ ๓                             */}
         {/* ================================================================ */}
-        <div className="a4-sheet bg-white text-black w-[210mm] min-h-[297mm] p-[15mm_15mm_15mm_18mm] shadow-xl print:shadow-none mb-8 print:mb-0 print:p-0 page-break-after">
+        <div className="a4-sheet bg-white text-black w-[210mm] min-h-[297mm] p-[15mm_15mm_15mm_18mm] shadow-xl print:shadow-none mb-8 print:mb-0 print:p-0 print:break-after-avoid">
           <div className="text-center font-bold text-[13.5pt] leading-relaxed mb-3">
             <div>แบบประเมินองค์ประกอบที่ ๓</div>
             <div>การประเมินการปฏิบัติตนในการรักษาวินัย คุณธรรม จริยธรรม และจรรยาบรรณวิชาชีพ</div>

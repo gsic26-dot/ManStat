@@ -6,6 +6,8 @@ import {
   dbGetPerformanceEvaluation,
   dbSavePerformanceEvaluation,
   dbGetPerformanceEvaluationsForRound,
+  dbGetFiscalPeriods,
+  dbGetSalaryPromotionRecords,
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { getSessionUser } from '@/lib/auth/serverAuth';
@@ -185,6 +187,41 @@ export async function GET(request: Request) {
       roundNumber
     );
 
+    // คำนวณเงินเดือนปัจจุบัน (Unmasked Salary สำหรับพิมพ์แบบฟอร์ม A4 ทางราชการ)
+    let currentSalary = (teacher as any).salary || (teacher as any).currentSalary || 0;
+    if (existingEval?.part1_snapshot?.currentSalary) {
+      currentSalary = existingEval.part1_snapshot.currentSalary;
+    } else {
+      try {
+        const periods = await dbGetFiscalPeriods('30030099');
+        const matchPeriod = periods.find(
+          (p) => p.fiscalYearTh === fiscalYear && p.roundNo === roundNumber
+        );
+        if (matchPeriod) {
+          const sRecords = await dbGetSalaryPromotionRecords(matchPeriod.id);
+          const sMatch = sRecords.find(
+            (r) => r.staffId === teacher.id || r.staffId === teacher.employeeCode
+          );
+          if (sMatch?.calculationBase || sMatch?.salaryBefore) {
+            currentSalary = sMatch.calculationBase || sMatch.salaryBefore;
+          }
+        }
+      } catch (err) {
+        console.warn('[Auto-fill Salary] Could not query salary records:', err);
+      }
+    }
+
+    // มาตรฐานเงินเดือนข้าราชการครูขั้นต่ำตามวิทยฐานะ (หากไม่มีบันทึกเดิม)
+    if (!currentSalary || currentSalary <= 0) {
+      const pos = teacher.position || '';
+      const standing = teacher.academicStanding || '';
+      if (pos.includes('ผู้อำนวยการ')) currentSalary = 54000;
+      else if (standing.includes('ชำนาญการพิเศษ') || pos.includes('ชำนาญการพิเศษ')) currentSalary = 38500;
+      else if (standing.includes('ชำนาญการ') || pos.includes('ชำนาญการ')) currentSalary = 28000;
+      else if (pos.includes('ครูผู้ช่วย')) currentSalary = 15800;
+      else currentSalary = 21500;
+    }
+
     // ประกอบข้อมูลส่วนที่ ๑ (Auto-Fill Snapshot)
     const autoFilledPart1 = {
       roundNumber,
@@ -193,7 +230,7 @@ export async function GET(request: Request) {
       evaluateeName: formatStaffName(teacher),
       position: teacher.position || 'ครูผู้สอน',
       academicStanding: teacher.academicStanding || '-',
-      currentSalary: (teacher as any).salary || 0,
+      currentSalary,
       schoolName: 'โรงเรียนชุมชนบ้านตะขบ',
       affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
       teachingGrade: gradesList.length > 0 ? gradesList.join(', ') : 'ประถมศึกษาปีที่ 1 - 6',

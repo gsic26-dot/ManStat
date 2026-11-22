@@ -402,6 +402,31 @@ export function ViewSalaryHistory({
       }
     : null;
 
+  if (!isAuthorizedManager && !isUserCivilServant) {
+    return (
+      <div className="p-8 text-center bg-white dark:bg-[#141b24] rounded-2xl border border-slate-200 dark:border-slate-800 max-w-lg mx-auto my-12 shadow-sm space-y-4">
+        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+          สงวนสิทธิ์การเข้าถึงข้อมูลการเลื่อนเงินเดือน
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          โมดูลนี้สำหรับข้าราชการครูและบุคลากรทางการศึกษาตามพระราชบัญญัติระเบียบข้าราชการครูฯ และผู้บริหาร/งานบุคคลเท่านั้น
+        </p>
+        {onBackToDashboard && (
+          <button
+            type="button"
+            onClick={onBackToDashboard}
+            className="px-4 py-2 text-xs font-medium rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+          >
+            กลับสู่หน้าหลัก
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------------ */}
@@ -898,9 +923,9 @@ function SalaryPromotionMasterRow({
         </td>
 
         {/* 4. Evaluation Status Badge */}
-        <td className="py-2.5 px-3 text-center">
+        <td className="py-2.5 px-3 text-center whitespace-nowrap">
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${evalBadge.className}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap shrink-0 ${evalBadge.className}`}
           >
             <span>{evalBadge.label}</span>
           </span>
@@ -908,14 +933,14 @@ function SalaryPromotionMasterRow({
 
         {/* 5. Action Buttons (Self-Evaluation + Print A4) */}
         <td
-          className="py-2.5 px-3 text-right"
+          className="py-2.5 px-3 text-right whitespace-nowrap"
           onClick={(e) => e.stopPropagation()} // Prevent row expand toggle when clicking buttons
         >
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap shrink-0">
             <button
               type="button"
               onClick={onOpenSelfEval}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 transition-colors whitespace-nowrap cursor-pointer"
               title="เปิดแบบประเมินตนเองตามเกณฑ์ ว 15/2561"
             >
               <FileEdit className="w-3.5 h-3.5 shrink-0" />
@@ -924,14 +949,9 @@ function SalaryPromotionMasterRow({
 
             <button
               type="button"
-              disabled={!hasEvaluation}
               onClick={onPrintA4}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                hasEvaluation
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
-                  : 'opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-200/50 dark:border-slate-800'
-              }`}
-              title={hasEvaluation ? 'พิมพ์แบบรายงานผลการประเมิน A4' : 'พิมพ์ได้เมื่อมีผลการประเมินแล้ว'}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 whitespace-nowrap cursor-pointer"
+              title="พิมพ์แบบรายงานผลการประเมิน A4"
             >
               <Printer className="w-3.5 h-3.5 shrink-0" />
               <span>พิมพ์ A4</span>

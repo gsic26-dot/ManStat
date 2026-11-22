@@ -271,4 +271,141 @@ describe('Official OBEC Performance Evaluation Engine', () => {
       assert.ok(validation.missingFields.length > 0);
     });
   });
+
+  describe('8. Phase 5 QA Audit: Edge-Case & Floating-Point Precision Hardening', () => {
+    it('calculates ครูผู้ช่วย all-1 minimum edge case correctly', () => {
+      const template = EVALUATION_TEMPLATES['teacher_assistant'];
+      const part1: Record<string, number> = {};
+      template.component1.part1.domains.forEach((d) => {
+        d.indicators.forEach((ind) => {
+          part1[ind.id] = 1;
+        });
+      });
+      const comp3: Record<string, number> = {};
+      COMPONENT_3_CONFIG.items.forEach((item) => {
+        comp3[item.id] = 1;
+      });
+
+      const result = calculateEvaluationTotals('teacher_assistant', {
+        part1,
+        comp2Level: 1,
+        comp3,
+      });
+
+      assert.strictEqual(result.component1.rawPart1, 14);
+      assert.strictEqual(result.component1.part1Score, 20.0);
+      assert.strictEqual(result.component1.totalComponent1, 20.0);
+      assert.strictEqual(result.component2.score, 2.0);
+      assert.strictEqual(result.component3.score, 2.5);
+      assert.strictEqual(result.grandTotal, 24.5);
+      assert.strictEqual(result.ratingLevel, 'ปรับปรุง');
+    });
+
+    it('calculates ครู คศ.1-3 all-1 minimum edge case correctly', () => {
+      const template = EVALUATION_TEMPLATES['teacher_expert'];
+      const part1: Record<string, number> = {};
+      template.component1.part1.domains.forEach((d) => {
+        d.indicators.forEach((ind) => {
+          part1[ind.id] = 1;
+        });
+      });
+      const part2 = {
+        challenge_method: 1,
+        challenge_quantity: 1,
+        challenge_quality: 1,
+      };
+      const comp3: Record<string, number> = {};
+      COMPONENT_3_CONFIG.items.forEach((item) => {
+        comp3[item.id] = 1;
+      });
+
+      const result = calculateEvaluationTotals('teacher_expert', {
+        part1,
+        part2,
+        comp2Level: 1,
+        comp3,
+      });
+
+      assert.strictEqual(result.component1.rawPart1, 15);
+      assert.strictEqual(result.component1.part1Score, 15);
+      assert.strictEqual(result.component1.rawPart2, 10);
+      assert.strictEqual(result.component1.part2Score, 5.0);
+      assert.strictEqual(result.component1.totalComponent1, 20.0);
+      assert.strictEqual(result.component2.score, 2.0);
+      assert.strictEqual(result.component3.score, 2.5);
+      assert.strictEqual(result.grandTotal, 24.5);
+      assert.strictEqual(result.ratingLevel, 'ปรับปรุง');
+    });
+
+    it('calculates ผู้บริหารสถานศึกษา all-1 minimum edge case correctly', () => {
+      const template = EVALUATION_TEMPLATES['director_special_expert'];
+      const part1: Record<string, number> = {};
+      template.component1.part1.domains.forEach((d) => {
+        d.indicators.forEach((ind) => {
+          part1[ind.id] = 1;
+        });
+      });
+      const part2 = {
+        challenge_method: 1,
+        challenge_quantity: 1,
+        challenge_quality: 1,
+      };
+      const comp3: Record<string, number> = {};
+      COMPONENT_3_CONFIG.items.forEach((item) => {
+        comp3[item.id] = 1;
+      });
+
+      const result = calculateEvaluationTotals('director_special_expert', {
+        part1,
+        part2,
+        comp2Level: 1,
+        comp3,
+      });
+
+      assert.strictEqual(result.component1.rawPart1, 15);
+      assert.strictEqual(result.component1.totalComponent1, 20.0);
+      assert.strictEqual(result.grandTotal, 24.5);
+      assert.strictEqual(result.ratingLevel, 'ปรับปรุง');
+    });
+
+    it('strictly evaluates boundary ratings without floating-point artifacts', () => {
+      assert.strictEqual(getRatingLevel(90.0), 'ดีเด่น');
+      assert.strictEqual(getRatingLevel(89.999), 'ดีเด่น');
+      assert.strictEqual(getRatingLevel(89.994), 'ดีมาก');
+      assert.strictEqual(getRatingLevel(80.0), 'ดีมาก');
+      assert.strictEqual(getRatingLevel(79.994), 'ดี');
+      assert.strictEqual(getRatingLevel(70.0), 'ดี');
+      assert.strictEqual(getRatingLevel(69.994), 'พอใช้');
+      assert.strictEqual(getRatingLevel(60.0), 'พอใช้');
+      assert.strictEqual(getRatingLevel(59.994), 'ปรับปรุง');
+      assert.strictEqual(getRatingLevel(0.0), 'ปรับปรุง');
+    });
+
+    it('safely clamps scores when out-of-range values are passed', () => {
+      const template = EVALUATION_TEMPLATES['teacher_assistant'];
+      const part1: Record<string, number> = {};
+      template.component1.part1.domains.forEach((d) => {
+        d.indicators.forEach((ind) => {
+          part1[ind.id] = 99; // Excess value
+        });
+      });
+      const comp3: Record<string, number> = {};
+      COMPONENT_3_CONFIG.items.forEach((item) => {
+        comp3[item.id] = 99; // Excess value
+      });
+
+      const result = calculateEvaluationTotals('teacher_assistant', {
+        part1,
+        comp2Level: 99, // Excess value
+        comp3,
+      });
+
+      // Clamped to max allowed
+      assert.strictEqual(result.component1.totalComponent1, 80);
+      assert.strictEqual(result.component2.score, 10);
+      assert.strictEqual(result.component3.score, 10);
+      assert.strictEqual(result.grandTotal, 100);
+      assert.strictEqual(result.ratingLevel, 'ดีเด่น');
+    });
+  });
 });
