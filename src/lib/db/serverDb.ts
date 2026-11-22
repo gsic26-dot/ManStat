@@ -44,6 +44,7 @@ import {
   type EmploymentType,
 } from '@/lib/data/schoolData';
 import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
+import type { PerformanceEvaluationRecord } from '@/types/database.types';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
 
@@ -2813,4 +2814,157 @@ export async function dbSnapshotStaffForFiscalPeriod(
   }
   return records;
 }
+
+// ============================================================================
+// 12. PERFORMANCE EVALUATIONS (แบบประเมินผลการปฏิบัติงาน ก.ค.ศ. สพฐ.)
+// ============================================================================
+
+let inMemoryPerformanceEvaluations: PerformanceEvaluationRecord[] = [];
+
+/**
+ * ดึงข้อมูลแบบประเมินผลการปฏิบัติงานของบุคลากรรายบุคคล ในปีงบประมาณและรอบที่ระบุ
+ */
+export async function dbGetPerformanceEvaluation(
+  staffId: string,
+  fiscalYear: number,
+  roundNumber: number
+): Promise<PerformanceEvaluationRecord | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('performance_evaluations')
+        .select('*')
+        .eq('staff_id', staffId)
+        .eq('fiscal_year', fiscalYear)
+        .eq('round_number', roundNumber)
+        .maybeSingle();
+
+      if (!error && data) {
+        return data as PerformanceEvaluationRecord;
+      }
+    } catch (err) {
+      console.warn('[dbGetPerformanceEvaluation] Fallback to in-memory:', err);
+    }
+  }
+
+  const found = inMemoryPerformanceEvaluations.find(
+    (e) =>
+      e.staff_id === staffId &&
+      e.fiscal_year === fiscalYear &&
+      e.round_number === roundNumber
+  );
+  return found || null;
+}
+
+/**
+ * ดึงข้อมูลแบบประเมินทั้งหมดในรอบปีงบประมาณที่ระบุ
+ */
+export async function dbGetPerformanceEvaluationsForRound(
+  fiscalYear: number,
+  roundNumber: number
+): Promise<PerformanceEvaluationRecord[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('performance_evaluations')
+        .select('*')
+        .eq('fiscal_year', fiscalYear)
+        .eq('round_number', roundNumber);
+
+      if (!error && Array.isArray(data)) {
+        return data as PerformanceEvaluationRecord[];
+      }
+    } catch (err) {
+      console.warn('[dbGetPerformanceEvaluationsForRound] Fallback to in-memory:', err);
+    }
+  }
+
+  return inMemoryPerformanceEvaluations.filter(
+    (e) => e.fiscal_year === fiscalYear && e.round_number === roundNumber
+  );
+}
+
+/**
+ * บันทึกหรืออัปเดตแบบประเมินผลการปฏิบัติงาน (Upsert)
+ */
+export async function dbSavePerformanceEvaluation(
+  evaluation: Partial<PerformanceEvaluationRecord> & {
+    staff_id: string;
+    fiscal_year: number;
+    round_number: number;
+    template_key: string;
+  }
+): Promise<PerformanceEvaluationRecord> {
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const payload = {
+        ...evaluation,
+        updated_at: now,
+      };
+
+      const { data, error } = await supabase
+        .from('performance_evaluations')
+        .upsert(payload, {
+          onConflict: 'staff_id,fiscal_year,round_number',
+        })
+        .select('*')
+        .single();
+
+      if (!error && data) {
+        return data as PerformanceEvaluationRecord;
+      }
+      console.warn('[dbSavePerformanceEvaluation] Supabase upsert error, falling back:', error);
+    } catch (err) {
+      console.warn('[dbSavePerformanceEvaluation] Supabase exception, falling back:', err);
+    }
+  }
+
+  // In-memory fallback
+  const existingIdx = inMemoryPerformanceEvaluations.findIndex(
+    (e) =>
+      e.staff_id === evaluation.staff_id &&
+      e.fiscal_year === evaluation.fiscal_year &&
+      e.round_number === evaluation.round_number
+  );
+
+  if (existingIdx !== -1) {
+    const updated: PerformanceEvaluationRecord = {
+      ...inMemoryPerformanceEvaluations[existingIdx],
+      ...evaluation,
+      updated_at: now,
+    } as PerformanceEvaluationRecord;
+    inMemoryPerformanceEvaluations[existingIdx] = updated;
+    return updated;
+  }
+
+  const created: PerformanceEvaluationRecord = {
+    id: evaluation.id || `eval-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    staff_id: evaluation.staff_id,
+    fiscal_year: evaluation.fiscal_year,
+    round_number: evaluation.round_number,
+    template_key: evaluation.template_key,
+    part1_snapshot: evaluation.part1_snapshot || {},
+    self_scores: evaluation.self_scores || {},
+    supervisor_scores: evaluation.supervisor_scores || {},
+    self_total: evaluation.self_total ?? null,
+    supervisor_total: evaluation.supervisor_total ?? null,
+    rating_level: evaluation.rating_level ?? null,
+    supervisor_comment: evaluation.supervisor_comment ?? null,
+    status: evaluation.status || 'draft',
+    self_signed_at: evaluation.self_signed_at ?? null,
+    supervisor_signed_at: evaluation.supervisor_signed_at ?? null,
+    acknowledged_at: evaluation.acknowledged_at ?? null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  inMemoryPerformanceEvaluations.push(created);
+  return created;
+}
+
 

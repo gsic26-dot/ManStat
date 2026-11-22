@@ -53,6 +53,7 @@ import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { EvaluationWorkspace } from '@/components/evaluation/EvaluationWorkspace';
 
 interface ViewSalaryHistoryProps {
   currentUser?: any;
@@ -78,6 +79,7 @@ export function ViewSalaryHistory({
   const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [selfEvalTeacher, setSelfEvalTeacher] = useState<TeacherRecord | null>(null);
   const [printRecordData, setPrintRecordData] = useState<{ teacher: TeacherRecord; record: any } | null>(null);
+  const [evalStatusMap, setEvalStatusMap] = useState<Record<string, string>>({});
 
   const remaskTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -196,11 +198,31 @@ export function ViewSalaryHistory({
     }
   }, []);
 
+  // Fetch evaluation statuses for selected period
+  const fetchEvaluations = useCallback(async (yearTh: number, roundNum: number) => {
+    try {
+      const res = await fetch(`/api/admin/evaluations?year=${yearTh}&round=${roundNum}`, {
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const map: Record<string, string> = {};
+        json.data.forEach((e: any) => {
+          map[e.staff_id] = e.status;
+        });
+        setEvalStatusMap(map);
+      }
+    } catch (err) {
+      console.warn('[fetchEvaluations] error:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (selectedPeriod?.id) {
       fetchSalaryRecords(selectedPeriod.id);
+      fetchEvaluations(selectedPeriod.fiscalYearTh, selectedPeriod.roundNo);
     }
-  }, [selectedPeriod?.id, fetchSalaryRecords]);
+  }, [selectedPeriod?.id, selectedPeriod?.fiscalYearTh, selectedPeriod?.roundNo, fetchSalaryRecords, fetchEvaluations]);
 
   // Filter civil servants strictly: 12 eligible members
   const civilServants = useMemo(() => {
@@ -658,6 +680,7 @@ export function ViewSalaryHistory({
                       onSave={handleSaveRecord}
                       onOpenSelfEval={() => setSelfEvalTeacher(teacher)}
                       onPrintA4={() => setPrintRecordData({ teacher, record })}
+                      evaluationStatus={evalStatusMap[teacher.id] || evalStatusMap[teacher.employeeCode]}
                     />
                   );
                 })}
@@ -668,88 +691,25 @@ export function ViewSalaryHistory({
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 5. Modal: แบบประเมินตนเอง (Self-Evaluation Modal)                    */}
+      {/* 5. Modal: แบบประเมินตนเองและผู้บังคับบัญชา (Evaluation Workspace)     */}
       {/* ------------------------------------------------------------------ */}
       {selfEvalTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 text-xs my-8 text-slate-800 dark:text-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
-                  <FileEdit className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    แบบประเมินตนเองผลการปฏิบัติงาน (ว 15/2561)
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    {formatStaffName(selfEvalTeacher)} ({selfEvalTeacher.employeeCode})
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelfEvalTeacher(null)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 py-1">
-              <div className="p-3 bg-slate-50 dark:bg-[#101822] rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
-                <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-                  องค์ประกอบการประเมินประสิทธิภาพและประสิทธิผล
-                </span>
-                <div className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                  <div className="flex justify-between">
-                    <span>1. ด้านการจัดการเรียนรู้และการจัดการชั้นเรียน (คะแนนเต็ม 60)</span>
-                    <span className="font-mono font-medium text-slate-800 dark:text-slate-200">56/60</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>2. ด้านการพัฒนาตนเองและวิชาชีพ (คะแนนเต็ม 20)</span>
-                    <span className="font-mono font-medium text-slate-800 dark:text-slate-200">19/20</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>3. การมีวินัย คุณธรรม จริยธรรม และจรรยาบรรณวิชาชีพ (คะแนนเต็ม 20)</span>
-                    <span className="font-mono font-medium text-slate-800 dark:text-slate-200">20/20</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between">
-                <div>
-                  <div className="font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>สรุปผลการประเมินตนเอง: 95.00 คะแนน (ระดับดีเด่น)</span>
-                  </div>
-                  <p className="text-[11px] opacity-80 mt-0.5">
-                    พร้อมส่งต่อผู้บังคับบัญชาชั้นต้นและผู้อำนวยการเพื่อพิจารณาเลื่อนขั้นเงินเดือน
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSelfEvalTeacher(null)}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium"
-              >
-                ปิดหน้าต่าง
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  showToast?.('บันทึกและยืนยันการประเมินตนเองเรียบร้อยแล้ว', 'success');
-                  setSelfEvalTeacher(null);
-                }}
-                className="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium"
-              >
-                ยืนยันการประเมินตนเอง
-              </button>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-[#0f172a] overflow-y-auto">
+          <EvaluationWorkspace
+            staffId={selfEvalTeacher.id}
+            fiscalYear={selectedPeriod?.fiscalYearTh || 2570}
+            roundNumber={selectedPeriod?.roundNo || 1}
+            currentUser={currentUser}
+            onClose={() => setSelfEvalTeacher(null)}
+            onSaved={(updatedStatus) => {
+              setEvalStatusMap((prev) => ({
+                ...prev,
+                [selfEvalTeacher.id]: updatedStatus,
+                [selfEvalTeacher.employeeCode]: updatedStatus,
+              }));
+              showToast?.('บันทึกผลการประเมินเรียบร้อยแล้ว', 'success');
+            }}
+          />
         </div>
       )}
 
@@ -839,6 +799,7 @@ interface SalaryPromotionMasterRowProps {
   onSave: (record: Partial<SalaryPromotionRecord> & { staffId: string }) => void;
   onOpenSelfEval: () => void;
   onPrintA4: () => void;
+  evaluationStatus?: string;
 }
 
 function SalaryPromotionMasterRow({
@@ -853,6 +814,7 @@ function SalaryPromotionMasterRow({
   onSave,
   onOpenSelfEval,
   onPrintA4,
+  evaluationStatus,
 }: SalaryPromotionMasterRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
@@ -880,6 +842,19 @@ function SalaryPromotionMasterRow({
 
   // Status Badge Evaluation
   const evalBadge = useMemo(() => {
+    const currentStatus = evaluationStatus || (record as any).evalStatus;
+    if (currentStatus === 'evaluated' || currentStatus === 'acknowledged') {
+      return {
+        label: 'ผอ.ประเมินแล้ว',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+      };
+    }
+    if (currentStatus === 'self_submitted') {
+      return {
+        label: 'ประเมินตนเองแล้ว',
+        className: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
+      };
+    }
     const pct = Number(record.promotionPercent || 0);
     const hasOrder = Boolean(record.orderNo && record.orderNo.trim() !== '');
     if (pct > 0 || hasOrder) {
@@ -888,17 +863,11 @@ function SalaryPromotionMasterRow({
         className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
       };
     }
-    if ((record as any).evalStatus === 'self_evaluated') {
-      return {
-        label: 'ประเมินตนเองแล้ว',
-        className: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
-      };
-    }
     return {
       label: 'ยังไม่ประเมิน',
       className: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
     };
-  }, [record]);
+  }, [record, evaluationStatus]);
 
   // Computed financial figures
   const currentBase = Number(record.calculationBase || (teacher as any).salary || 0);
