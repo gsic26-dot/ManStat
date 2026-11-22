@@ -20,7 +20,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
-import { isAdminRole, canManageSalaryPromotions } from '@/lib/auth/roles';
+import { isAdminRole, canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import type { UserRole } from '@/types/database.types';
 import {
   INITIAL_SCHOOL_INFO,
@@ -59,6 +59,8 @@ import {
   Menu,
   Scale,
   Sliders,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 
@@ -538,23 +540,46 @@ export default function DashboardPage() {
                     </div>
                   </button>
 
-                  {canManageSalaryPromotions(currentRole, currentUser?.position, currentUser?.department) && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectView('salary_history')}
-                      className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
-                        activeView === 'salary_history'
-                          ? 'bg-sky-50 text-sky-900 border-l-2 border-sky-600 font-semibold dark:bg-slate-800/70 dark:text-white dark:border-sky-500'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30'
-                      }`}
-                      title="ประวัติการเลื่อนเงินเดือน"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
-                        <span className="truncate">ประวัติการเลื่อนเงินเดือน</span>
-                      </div>
-                    </button>
-                  )}
+                  {/* เมนูการเลื่อนเงินเดือน */}
+                  {(() => {
+                    const isManager = canManageSalaryPromotions(currentRole, currentUser?.position, currentUser?.department);
+                    const isCivil = currentUser ? isCivilServantForSalary(currentUser) : false;
+                    const canAccess = isManager || isCivil;
+
+                    if (!canAccess) {
+                      return (
+                        <div
+                          className="w-full flex items-center justify-between py-2 px-3 text-sm rounded-md opacity-50 cursor-not-allowed text-slate-400 dark:text-slate-500"
+                          title="สงวนสิทธิ์เฉพาะข้าราชการและงานบุคคล"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <TrendingUp className="w-4 h-4 shrink-0 text-slate-400" />
+                            <span className="truncate">การเลื่อนเงินเดือน</span>
+                          </div>
+                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectView('salary_history')}
+                        className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                          activeView === 'salary_history'
+                            ? 'bg-sky-50 text-sky-900 border-l-2 border-sky-600 font-semibold dark:bg-slate-800/70 dark:text-white dark:border-sky-500'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30'
+                        }`}
+                        title="การเลื่อนเงินเดือน"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                          <span className="truncate">การเลื่อนเงินเดือน</span>
+                        </div>
+                        <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -822,21 +847,46 @@ export default function DashboardPage() {
                       <span className="truncate">ทะเบียนวุฒิลูกเสือ</span>
                     </button>
 
-                    {canManageSalaryPromotions(currentRole, currentUser?.position, currentUser?.department) && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectView('salary_history')}
-                        className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
-                          activeView === 'salary_history'
-                            ? 'bg-sky-50 text-sky-900 font-semibold dark:bg-slate-800 dark:text-white'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
-                        title="ประวัติการเลื่อนเงินเดือน"
-                      >
-                        <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
-                        <span className="truncate">ประวัติการเลื่อนเงินเดือน</span>
-                      </button>
-                    )}
+                    {/* เมนูการเลื่อนเงินเดือน (Mobile Drawer) */}
+                    {(() => {
+                      const isManager = canManageSalaryPromotions(currentRole, currentUser?.position, currentUser?.department);
+                      const isCivil = currentUser ? isCivilServantForSalary(currentUser) : false;
+                      const canAccess = isManager || isCivil;
+
+                      if (!canAccess) {
+                        return (
+                          <div
+                            className="w-full px-3 py-2 rounded-md flex items-center justify-between opacity-50 cursor-not-allowed text-slate-400 dark:text-slate-500 text-sm"
+                            title="สงวนสิทธิ์เฉพาะข้าราชการและงานบุคคล"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <TrendingUp className="w-4 h-4 text-slate-400 shrink-0" />
+                              <span className="truncate">การเลื่อนเงินเดือน</span>
+                            </div>
+                            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectView('salary_history')}
+                          className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${
+                            activeView === 'salary_history'
+                              ? 'bg-sky-50 text-sky-900 font-semibold dark:bg-slate-800 dark:text-white'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200'
+                          }`}
+                          title="การเลื่อนเงินเดือน"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                            <span className="truncate">การเลื่อนเงินเดือน</span>
+                          </div>
+                          <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 

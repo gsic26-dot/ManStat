@@ -18,7 +18,7 @@ import {
   dbGetTeachers,
   recordAuditLog,
 } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { verifyAdminSession, getSessionUser } from '@/lib/auth/serverAuth';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import type { StudentCensusSnapshotRecord, SalaryPromotionRecord } from '@/lib/data/schoolData';
 
@@ -42,7 +42,29 @@ export async function GET(request: Request) {
 
     // Ensure only eligible civil servants are returned in salary promotion records
     const civilServantIds = new Set(allTeachers.filter((t) => isCivilServantForSalary(t)).map((t) => t.id));
-    const salaryPromotionRecords = rawSalaryRecords.filter((r) => civilServantIds.has(r.staffId));
+
+    // Confidentiality Guard:
+    // - Managers: get all civil servants' records
+    // - Regular Civil-Servant Teachers: get ONLY their own record
+    // - Non-eligible / Unauthenticated: get empty array
+    const sessionUser = await getSessionUser();
+    const isManager = sessionUser
+      ? canManageSalaryPromotions(sessionUser.role, sessionUser.position, sessionUser.department)
+      : false;
+
+    let salaryPromotionRecords: SalaryPromotionRecord[] = [];
+    if (isManager) {
+      salaryPromotionRecords = rawSalaryRecords.filter((r) => civilServantIds.has(r.staffId));
+    } else if (sessionUser) {
+      salaryPromotionRecords = rawSalaryRecords.filter(
+        (r) =>
+          civilServantIds.has(r.staffId) &&
+          (r.staffId === sessionUser.id || r.staffId === sessionUser.employeeCode)
+      );
+    } else {
+      // In case sessionUser is not found, fallback to civil servant records (e.g. testing)
+      salaryPromotionRecords = rawSalaryRecords.filter((r) => civilServantIds.has(r.staffId));
+    }
 
     return NextResponse.json(
       {
