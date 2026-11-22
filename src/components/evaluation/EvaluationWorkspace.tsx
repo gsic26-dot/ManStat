@@ -40,6 +40,7 @@ import {
   type RatingLevel,
 } from '@/lib/evaluationEngine';
 import type { TeacherRecord } from '@/lib/data/schoolData';
+import { EvaluationA4PrintDocument } from './EvaluationA4PrintDocument';
 
 export interface EvaluationWorkspaceProps {
   staffId: string;
@@ -68,6 +69,7 @@ export function EvaluationWorkspace({
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -389,6 +391,14 @@ export function EvaluationWorkspace({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>พิมพ์ A4</span>
+            </button>
             {onClose && (
               <button
                 type="button"
@@ -1407,11 +1417,31 @@ export function EvaluationWorkspace({
                     <span>ลงนามรับทราบผลการประเมิน</span>
                   </button>
                 )}
+
+                {/* พิมพ์รายงาน A4 */}
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>พิมพ์รายงาน A4 (Print)</span>
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Modal พิมพ์เอกสาร A4 ตามแบบ ก.ค.ศ. */}
+      {showPrintModal && (
+        <EvaluationA4PrintDocument
+          staffId={staffId}
+          fiscalYear={fiscalYear}
+          roundNumber={roundNumber}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
     </div>
   );
 }

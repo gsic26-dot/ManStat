@@ -54,6 +54,7 @@ import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/r
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { EvaluationWorkspace } from '@/components/evaluation/EvaluationWorkspace';
+import { EvaluationA4PrintDocument } from '@/components/evaluation/EvaluationA4PrintDocument';
 
 interface ViewSalaryHistoryProps {
   currentUser?: any;
@@ -716,69 +717,13 @@ export function ViewSalaryHistory({
       {/* ------------------------------------------------------------------ */}
       {/* 6. Modal: พิมพ์รายงานผลการประเมิน A4                                 */}
       {/* ------------------------------------------------------------------ */}
-      {printRecordData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 text-xs my-8 text-slate-800 dark:text-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
-                  <Printer className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    พิมพ์แบบรายงานการพิจารณาเลื่อนเงินเดือน (ขนาด A4)
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    {formatStaffName(printRecordData.teacher)} · {roundDetails?.label || ''}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPrintRecordData(null)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 bg-slate-50 dark:bg-[#101822] rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 font-mono text-xs">
-              <div className="text-center font-bold text-sm text-slate-900 dark:text-white font-sans">
-                แบบรายงานผลการประเมินการปฏิบัติงานและคำสั่งเลื่อนเงินเดือน
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700 dark:text-slate-300">
-                <div>ชื่อ-สกุล: <span className="font-bold">{formatStaffName(printRecordData.teacher)}</span></div>
-                <div>ตำแหน่ง: <span>{printRecordData.record.positionSnapshot || printRecordData.teacher.position}</span></div>
-                <div>วิทยฐานะ: <span>{printRecordData.record.standingSnapshot || printRecordData.teacher.academicStanding}</span></div>
-                <div>เลขที่คำสั่ง: <span>{printRecordData.record.orderNo || 'ศธ 04123/2570'}</span></div>
-                <div>ฐานคำนวณ: <span>{Number(printRecordData.record.calculationBase).toLocaleString()} บาท</span></div>
-                <div>ร้อยละที่ได้เลื่อน: <span>{Number(printRecordData.record.promotionPercent).toFixed(2)}%</span></div>
-                <div>เงินเดือนใหม่: <span className="font-bold text-emerald-600 dark:text-emerald-400">{Number(printRecordData.record.salaryAfter).toLocaleString()} บาท</span></div>
-                <div>วันที่มีผล: <span>{roundDetails?.effectiveDate || '-'}</span></div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setPrintRecordData(null)}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  window.print();
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>พิมพ์เอกสาร A4</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {printRecordData && selectedPeriod && (
+        <EvaluationA4PrintDocument
+          staffId={printRecordData.teacher.id}
+          fiscalYear={selectedPeriod.fiscalYearTh}
+          roundNumber={selectedPeriod.roundNo}
+          onClose={() => setPrintRecordData(null)}
+        />
       )}
     </div>
   );

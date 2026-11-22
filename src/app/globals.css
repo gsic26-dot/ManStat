@@ -148,3 +148,61 @@ input::-ms-clear {
   display: none;
 }
 
+/* ==========================================================================
+   Official Civil Service Evaluation A4 Print Stylesheet (ก.ค.ศ. / สพฐ.)
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 18mm;
+  }
+
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
+  }
+
+  /* Force hide all screen chrome */
+  .print\:hidden,
+  header,
+  nav,
+  aside,
+  button:not(.print-keep) {
+    display: none !important;
+  }
+
+  /* Clean page containers */
+  .a4-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: visible !important;
+  }
+
+  .a4-sheet:last-of-type {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Prevent awkward table row splitting across printed sheets */
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Ensure table borders remain dark & crisp */
+  table, th, td {
+    border-color: #000000 !important;
+  }
+}
+
+
