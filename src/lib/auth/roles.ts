@@ -172,27 +172,31 @@ export function canManageSalaryPromotions(
  * Excludes support, contract, and non-civil servant staff (เจ้าหน้าที่ธุรการ, นักการภารโรง, พี่เลี้ยงเด็กพิการ, ลูกจ้าง).
  */
 export function isCivilServantForSalary(staff: TeacherRecord): boolean {
-  // 1. Strict schema-level check if employment_type or employmentType is specified
+  // 1. Explicit exclusion: Support, service, and contract positions are never civil servants
+  const pos = staff.position || '';
+  if (
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('ลูกจ้าง') ||
+    pos.includes('จ้างเหมา') ||
+    pos.includes('คนครัว') ||
+    pos.includes('ยาม') ||
+    pos.includes('ขับรถ')
+  ) {
+    return false;
+  }
+
+  // 2. Strict schema-level check if employment_type or employmentType is specified
   const empType = staff.employment_type || (staff as any).employmentType;
   if (empType) {
     return empType === 'civil_servant';
   }
 
-  // 2. Fallback heuristic for legacy records without employment_type
+  // 3. Fallback heuristic for legacy records without employment_type
   const branch = getStaffBranch(staff);
   if (branch === 'support') return false;
-
-  const pos = staff.position || '';
-  if (
-    pos.includes('ธุรการ') ||
-    pos.includes('นักการ') ||
-    pos.includes('ภารโรง') ||
-    pos.includes('พี่เลี้ยง') ||
-    pos.includes('ลูกจ้าง') ||
-    pos.includes('จ้างเหมา')
-  ) {
-    return false;
-  }
 
   return branch === 'management' || branch === 'teaching';
 }

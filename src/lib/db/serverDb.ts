@@ -2202,6 +2202,7 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
         refCensusSnapshotId: r.ref_census_snapshot_id,
         isActive: Boolean(r.is_active),
         isLocked: Boolean(r.is_locked),
+        evaluationStatus: (r.evaluation_status as any) || (Boolean(r.is_locked) ? 'locked' : Boolean(r.is_active) ? 'open' : 'closed'),
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       }));
@@ -2221,6 +2222,7 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
       refCensusSnapshotId: 'census-2569-jun',
       isActive: true,
       isLocked: false,
+      evaluationStatus: 'closed',
     },
     {
       id: 'fp-2570-r2',
@@ -2232,6 +2234,7 @@ export async function dbGetFiscalPeriods(schoolId: string = '30030099'): Promise
       refCensusSnapshotId: 'census-2569-jun',
       isActive: false,
       isLocked: false,
+      evaluationStatus: 'closed',
     },
   ];
 }
@@ -2617,13 +2620,35 @@ export async function dbUpdateFiscalPeriod(
     if (updates.isLocked !== undefined) {
       dbUpdate.is_locked = updates.isLocked;
     }
+    if (updates.evaluationStatus !== undefined) {
+      dbUpdate.evaluation_status = updates.evaluationStatus;
+      if (updates.evaluationStatus === 'locked') {
+        dbUpdate.is_locked = true;
+      } else if (updates.isLocked === undefined) {
+        dbUpdate.is_locked = false;
+      }
+    }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('fiscal_periods')
       .update(dbUpdate)
       .eq('id', periodId)
       .select()
       .single();
+
+    // If updating evaluation_status failed due to missing column (before migration 008 is applied), retry without it
+    if (error && dbUpdate.evaluation_status !== undefined) {
+      console.warn('[dbUpdateFiscalPeriod] evaluation_status column might be missing, retrying without it:', error.message);
+      delete dbUpdate.evaluation_status;
+      const retryResult = await supabase
+        .from('fiscal_periods')
+        .update(dbUpdate)
+        .eq('id', periodId)
+        .select()
+        .single();
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('[dbUpdateFiscalPeriod] Supabase update error:', error);
@@ -2639,6 +2664,7 @@ export async function dbUpdateFiscalPeriod(
       refCensusSnapshotId: data.ref_census_snapshot_id,
       isActive: Boolean(data.is_active),
       isLocked: Boolean(data.is_locked),
+      evaluationStatus: (data.evaluation_status as any) || updates.evaluationStatus || (Boolean(data.is_locked) ? 'locked' : Boolean(data.is_active) ? 'open' : 'closed'),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

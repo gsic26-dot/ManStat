@@ -43,11 +43,13 @@ import {
   Pencil,
   X,
   CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import type {
   FiscalPeriodRecord,
   SalaryPromotionRecord,
   TeacherRecord,
+  EvaluationRoundStatus,
 } from '@/lib/data/schoolData';
 import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
@@ -346,6 +348,63 @@ export function ViewSalaryHistory({
     }
   };
 
+  // 3-State Round Status evaluation
+  const roundStatus: EvaluationRoundStatus = useMemo(() => {
+    if (!selectedPeriod) return 'closed';
+    if (selectedPeriod.evaluationStatus) return selectedPeriod.evaluationStatus;
+    if (selectedPeriod.isLocked) return 'locked';
+    if (selectedPeriod.isActive) return 'open';
+    return 'closed';
+  }, [selectedPeriod]);
+
+  // Handle 3-state round control toggle by Manager
+  const handleUpdateRoundStatus = async (newStatus: EvaluationRoundStatus) => {
+    if (!selectedPeriod) return;
+    try {
+      setIsSaving(true);
+      const isLocked = newStatus === 'locked';
+      const res = await fetch('/api/admin/academic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_FISCAL_PERIOD',
+          periodId: selectedPeriod.id,
+          updates: {
+            evaluationStatus: newStatus,
+            isLocked,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFiscalPeriods((prev) =>
+          prev.map((p) =>
+            p.id === selectedPeriod.id
+              ? { ...p, evaluationStatus: newStatus, isLocked }
+              : p
+          )
+        );
+        showToast?.(
+          `เปลี่ยนสถานะรอบเป็น "${
+            newStatus === 'closed'
+              ? 'ปิดรับการประเมิน'
+              : newStatus === 'open'
+              ? 'เปิดให้ประเมินตนเอง'
+              : 'ปิดรอบถาวร'
+          }" เรียบร้อยแล้ว`,
+          'success'
+        );
+      } else {
+        showToast?.(json.error || 'เกิดข้อผิดพลาดในการอัปเดตสถานะรอบ', 'error');
+      }
+    } catch (err: any) {
+      console.error('[handleUpdateRoundStatus Error]', err);
+      showToast?.(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const toggleExpandStaff = (staffId: string) => {
     setExpandedStaffId((prev) => (prev === staffId ? null : staffId));
   };
@@ -402,31 +461,6 @@ export function ViewSalaryHistory({
       }
     : null;
 
-  if (!isAuthorizedManager && !isUserCivilServant) {
-    return (
-      <div className="p-8 text-center bg-white dark:bg-[#141b24] rounded-2xl border border-slate-200 dark:border-slate-800 max-w-lg mx-auto my-12 shadow-sm space-y-4">
-        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
-          <Lock className="w-6 h-6" />
-        </div>
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-          สงวนสิทธิ์การเข้าถึงข้อมูลการเลื่อนเงินเดือน
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-          โมดูลนี้สำหรับข้าราชการครูและบุคลากรทางการศึกษาตามพระราชบัญญัติระเบียบข้าราชการครูฯ และผู้บริหาร/งานบุคคลเท่านั้น
-        </p>
-        {onBackToDashboard && (
-          <button
-            type="button"
-            onClick={onBackToDashboard}
-            className="px-4 py-2 text-xs font-medium rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-          >
-            กลับสู่หน้าหลัก
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------------ */}
@@ -459,8 +493,62 @@ export function ViewSalaryHistory({
           </div>
         </div>
 
-        {/* PDPA Masking Button */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right side controls: 3-State Round Control + PDPA Masking */}
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap shrink-0">
+          {/* 3-State Evaluation Round Control */}
+          {isAuthorizedManager ? (
+            <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+              <button
+                type="button"
+                disabled={isSaving || !selectedPeriod}
+                onClick={() => handleUpdateRoundStatus('closed')}
+                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
+                  roundStatus === 'closed'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="ปิดรับการประเมิน (ครูยังประเมินไม่ได้)"
+              >
+                ปิดรับการประเมิน
+              </button>
+              <button
+                type="button"
+                disabled={isSaving || !selectedPeriod}
+                onClick={() => handleUpdateRoundStatus('open')}
+                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
+                  roundStatus === 'open'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
+                }`}
+                title="เปิดให้ประเมินตนเอง (ครูสามารถเข้าประเมินตนเองได้)"
+              >
+                เปิดให้ประเมินตนเอง
+              </button>
+              <button
+                type="button"
+                disabled={isSaving || !selectedPeriod}
+                onClick={() => handleUpdateRoundStatus('locked')}
+                className={`px-2.5 py-1 rounded-md transition-all font-medium ${
+                  roundStatus === 'locked'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400'
+                }`}
+                title="ปิดรอบถาวร (อ่านอย่างเดียว)"
+              >
+                ปิดรอบถาวร
+              </button>
+            </div>
+          ) : (
+            <span className="text-xs px-2.5 py-1 rounded-md font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              {roundStatus === 'open'
+                ? 'เปิดให้ประเมินตนเอง'
+                : roundStatus === 'locked'
+                ? 'ปิดรอบแล้ว'
+                : 'รอเปิดรอบประเมิน'}
+            </span>
+          )}
+
+          {/* PDPA Masking Button */}
           <button
             type="button"
             onClick={handleToggleMask}
@@ -612,18 +700,28 @@ export function ViewSalaryHistory({
 
         <div className="bg-white dark:bg-[#111822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-1">
-            <span className="text-[11px] font-medium">สถานะข้อมูลรอบ</span>
-            {selectedPeriod?.isLocked ? (
+            <span className="text-[11px] font-medium">สถานะรอบประเมิน</span>
+            {roundStatus === 'locked' ? (
               <Lock className="w-4 h-4 text-amber-500" />
-            ) : (
+            ) : roundStatus === 'open' ? (
               <Unlock className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <Lock className="w-4 h-4 text-slate-400" />
             )}
           </div>
           <div className="text-sm font-semibold text-slate-900 dark:text-white">
-            {selectedPeriod?.isLocked ? 'ล็อกแล้ว (สิ้นสุดรอบ)' : 'เปิดบันทึก/แก้ไขได้'}
+            {roundStatus === 'open'
+              ? 'เปิดให้ประเมินตนเอง'
+              : roundStatus === 'locked'
+              ? 'ปิดรอบถาวร'
+              : 'ปิดรับการประเมิน'}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            {selectedPeriod?.isLocked ? 'ประวัติศาสตร์แบบอ่านอย่างเดียว' : 'ผู้ดูแลระบบสามารถปรับปรุงได้'}
+            {roundStatus === 'open'
+              ? 'ครูสามารถบันทึกแบบประเมินตนเองได้'
+              : roundStatus === 'locked'
+              ? 'ประวัติศาสตร์แบบอ่านอย่างเดียว'
+              : 'รอผู้บริหารเปิดรอบประเมิน'}
           </p>
         </div>
       </div>
@@ -667,11 +765,11 @@ export function ViewSalaryHistory({
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
                 <tr>
-                  <th className="py-2.5 px-3 font-semibold w-14 text-center">ลำดับ</th>
-                  <th className="py-2.5 px-3 font-semibold min-w-[220px]">ชื่อ - สกุล & รหัสบุคลากร</th>
-                  <th className="py-2.5 px-3 font-semibold min-w-[180px]">ตำแหน่ง & วิทยฐานะ ณ รอบนี้</th>
-                  <th className="py-2.5 px-3 font-semibold text-center w-36">สถานะแบบประเมิน</th>
-                  <th className="py-2.5 px-3 font-semibold text-right w-56">ดำเนินการ</th>
+                  <th className="py-2.5 px-3 font-semibold w-12 text-center">ลำดับ</th>
+                  <th className="py-2.5 px-3 font-semibold min-w-[200px]">ชื่อ - สกุล</th>
+                  <th className="py-2.5 px-3 font-semibold min-w-[200px]">ตำแหน่ง / วิทยฐานะ</th>
+                  <th className="py-2.5 px-3 font-semibold text-center w-28">สถานะ</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-44">ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
@@ -702,6 +800,7 @@ export function ViewSalaryHistory({
                       isMasked={isMasked}
                       isLocked={Boolean(selectedPeriod?.isLocked)}
                       canEdit={isAuthorizedManager}
+                      roundStatus={roundStatus}
                       onToggleExpand={() => toggleExpandStaff(teacher.id)}
                       onSave={handleSaveRecord}
                       onOpenSelfEval={() => setSelfEvalTeacher(teacher)}
@@ -765,6 +864,7 @@ interface SalaryPromotionMasterRowProps {
   isMasked: boolean;
   isLocked: boolean;
   canEdit: boolean;
+  roundStatus: EvaluationRoundStatus;
   onToggleExpand: () => void;
   onSave: (record: Partial<SalaryPromotionRecord> & { staffId: string }) => void;
   onOpenSelfEval: () => void;
@@ -780,6 +880,7 @@ function SalaryPromotionMasterRow({
   isMasked,
   isLocked,
   canEdit,
+  roundStatus,
   onToggleExpand,
   onSave,
   onOpenSelfEval,
@@ -808,43 +909,35 @@ function SalaryPromotionMasterRow({
   }, [record, teacher]);
 
   const displayName = formatStaffName(teacher);
-  const branch = getStaffBranch(teacher);
 
-  // Status Badge Evaluation
-  const evalBadge = useMemo(() => {
-    const currentStatus = evaluationStatus || (record as any).evalStatus;
-    if (currentStatus === 'evaluated' || currentStatus === 'acknowledged') {
-      return {
-        label: 'ผอ.ประเมินแล้ว',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-      };
-    }
-    if (currentStatus === 'self_submitted') {
-      return {
-        label: 'ประเมินตนเองแล้ว',
-        className: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
-      };
-    }
-    const pct = Number(record.promotionPercent || 0);
-    const hasOrder = Boolean(record.orderNo && record.orderNo.trim() !== '');
-    if (pct > 0 || hasOrder) {
-      return {
-        label: 'ผอ.ประเมินแล้ว',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-      };
-    }
-    return {
-      label: 'ยังไม่ประเมิน',
-      className: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-    };
-  }, [record, evaluationStatus]);
+  // Status Check
+  const pct = Number(record.promotionPercent || 0);
+  const hasOrder = Boolean(record.orderNo && record.orderNo.trim() !== '');
+  const currentStatus = evaluationStatus || (record as any).evalStatus;
+  const isEvaluated =
+    currentStatus === 'evaluated' ||
+    currentStatus === 'acknowledged' ||
+    currentStatus === 'self_submitted' ||
+    pct > 0 ||
+    hasOrder;
+
+  // RBAC for Evaluation Button:
+  // - Authorized Managers: Always enabled (preview/evaluate)
+  // - Teachers: Disabled with tooltip when closed or locked
+  const isTeacher = !canEdit;
+  const isEvalDisabled = isTeacher && (roundStatus === 'closed' || roundStatus === 'locked');
+  const evalTooltip =
+    isTeacher && roundStatus === 'closed'
+      ? 'รอผู้บริหารเปิดรอบประเมิน'
+      : isTeacher && roundStatus === 'locked'
+      ? 'ปิดรอบแล้ว'
+      : 'ประเมิน';
 
   // Computed financial figures
   const currentBase = Number(record.calculationBase || (teacher as any).salary || 0);
   const currentPct = Number(record.promotionPercent || 0);
   const currentIncrease = Math.round((currentBase * currentPct) / 100);
   const currentNewSalary = Number(record.salaryAfter || currentBase + currentIncrease);
-  const hasEvaluation = currentPct > 0 || Boolean(record.orderNo);
 
   const handleSaveEdit = () => {
     onSave({
@@ -864,14 +957,14 @@ function SalaryPromotionMasterRow({
   return (
     <>
       {/* ------------------------------------------------------------------ */}
-      {/* MASTER ROW (Always Visible — Single-Line, Zero Wrapping)          */}
+      {/* MASTER ROW (Always Visible — Single-Line, Zero-Clutter)           */}
       {/* ------------------------------------------------------------------ */}
       <tr
         onClick={onToggleExpand}
         className={`cursor-pointer transition-colors ${
           isExpanded
             ? 'bg-sky-50/60 dark:bg-sky-950/20'
-            : 'hover:bg-slate-50/70 dark:hover:bg-slate-850/50'
+            : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/40'
         }`}
       >
         {/* 1. Chevron + Sequence */}
@@ -888,73 +981,84 @@ function SalaryPromotionMasterRow({
           </div>
         </td>
 
-        {/* 2. Full Name & Employee Code & Unlock Badge */}
+        {/* 2. Full Name ONLY (No pills, no floating locks) */}
         <td className="py-2.5 px-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-900 dark:text-white truncate">
-              {displayName}
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800">
-              {teacher.employeeCode}
-            </span>
-            <span title="ข้าราชการมีสิทธิเข้าถึงข้อมูล" className="text-emerald-500 dark:text-emerald-400">
-              <Unlock className="w-3.5 h-3.5" />
-            </span>
-          </div>
-        </td>
-
-        {/* 3. Position & Standing Snapshot */}
-        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">
-          <div className="flex items-center gap-1.5 truncate max-w-md">
-            <span className="truncate">{record.positionSnapshot || teacher.position || '-'}</span>
-            {(record.standingSnapshot || teacher.academicStanding) &&
-              (record.standingSnapshot || teacher.academicStanding) !== '-' && (
-                <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-sans truncate ${
-                    branch === 'management'
-                      ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {record.standingSnapshot || teacher.academicStanding}
-                </span>
-              )}
-          </div>
-        </td>
-
-        {/* 4. Evaluation Status Badge */}
-        <td className="py-2.5 px-3 text-center whitespace-nowrap">
-          <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap shrink-0 ${evalBadge.className}`}
-          >
-            <span>{evalBadge.label}</span>
+          <span className="font-medium text-slate-900 dark:text-white whitespace-nowrap">
+            {displayName}
           </span>
         </td>
 
-        {/* 5. Action Buttons (Self-Evaluation + Print A4) */}
+        {/* 3. Position & Academic Standing (Clean single line, no background pills) */}
+        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 truncate whitespace-nowrap">
+          <span>{record.positionSnapshot || teacher.position || '-'}</span>
+          {(record.standingSnapshot || teacher.academicStanding) &&
+            (record.standingSnapshot || teacher.academicStanding) !== '-' && (
+              <span className="text-slate-400 dark:text-slate-500 ml-1.5">
+                · {record.standingSnapshot || teacher.academicStanding}
+              </span>
+            )}
+        </td>
+
+        {/* 4. Evaluation Status (Icon Only) */}
+        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+          {isEvaluated ? (
+            <span title="ประเมินแล้ว" className="inline-flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </span>
+          ) : (
+            <span title="ยังไม่ประเมิน" className="inline-flex items-center justify-center">
+              <XCircle className="w-4 h-4 text-slate-400/60 dark:text-slate-500/60" />
+            </span>
+          )}
+        </td>
+
+        {/* 5. Action Buttons (Single Right-Aligned Row) */}
         <td
           className="py-2.5 px-3 text-right whitespace-nowrap"
           onClick={(e) => e.stopPropagation()} // Prevent row expand toggle when clicking buttons
         >
-          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap shrink-0">
+          <div className="flex items-center justify-end gap-2 whitespace-nowrap shrink-0">
+            {/* Aligned Lock/Unlock icon */}
+            <span
+              title={
+                isLocked || roundStatus === 'locked'
+                  ? 'ปิดรอบถาวร'
+                  : roundStatus === 'closed'
+                  ? 'ปิดรับการประเมิน'
+                  : 'เปิดให้ประเมินตนเอง'
+              }
+              className="text-slate-400 dark:text-slate-500 shrink-0"
+            >
+              {isLocked || roundStatus === 'locked' || roundStatus === 'closed' ? (
+                <Lock className="w-3.5 h-3.5" />
+              ) : (
+                <Unlock className="w-3.5 h-3.5" />
+              )}
+            </span>
+
+            {/* Compact flat button: "ประเมิน" */}
             <button
               type="button"
+              disabled={isEvalDisabled}
               onClick={onOpenSelfEval}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 transition-colors whitespace-nowrap cursor-pointer"
-              title="เปิดแบบประเมินตนเองตามเกณฑ์ ว 15/2561"
+              title={evalTooltip}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                isEvalDisabled
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+                  : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 cursor-pointer'
+              }`}
             >
-              <FileEdit className="w-3.5 h-3.5 shrink-0" />
-              <span>แบบประเมินตนเอง</span>
+              ประเมิน
             </button>
 
+            {/* Icon-only Print A4 button */}
             <button
               type="button"
               onClick={onPrintA4}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 whitespace-nowrap cursor-pointer"
-              title="พิมพ์แบบรายงานผลการประเมิน A4"
+              title="พิมพ์แบบประเมิน A4"
+              className="p-1.5 rounded-md border transition-colors bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 whitespace-nowrap cursor-pointer shrink-0"
             >
-              <Printer className="w-3.5 h-3.5 shrink-0" />
-              <span>พิมพ์ A4</span>
+              <Printer className="w-4 h-4" />
             </button>
           </div>
         </td>
@@ -967,6 +1071,17 @@ function SalaryPromotionMasterRow({
         <tr className="bg-slate-50/70 dark:bg-slate-900/50 border-b border-slate-200/80 dark:border-slate-800">
           <td colSpan={5} className="p-4 sm:p-5">
             <div className="space-y-4">
+              {/* Detail Header with Staff Code & Info */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    {displayName}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-200/70 dark:bg-slate-800 px-2 py-0.5 rounded">
+                    รหัสบุคลากร: {teacher.employeeCode || teacher.id}
+                  </span>
+                </div>
+              </div>
               {/* Financial & Order 5-Column Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {/* 1. Calculation Base */}

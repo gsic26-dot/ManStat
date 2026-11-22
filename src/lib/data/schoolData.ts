@@ -146,6 +146,8 @@ export interface CensusDiffResult {
   novRound?: StudentCensusSnapshotRecord;
 }
 
+export type EvaluationRoundStatus = 'closed' | 'open' | 'locked';
+
 export interface FiscalPeriodRecord {
   id: string;
   schoolId: string;
@@ -156,6 +158,7 @@ export interface FiscalPeriodRecord {
   refCensusSnapshotId?: string | null;
   isActive: boolean;
   isLocked: boolean;
+  evaluationStatus?: EvaluationRoundStatus;
   createdAt?: string;
   updatedAt?: string;
 }
