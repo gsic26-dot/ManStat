@@ -269,24 +269,24 @@ export const ViewRegLicense: React.FC = () => {
                               </td>
 
                               {/* License Holder */}
-                              <td className="px-4 py-3.5">
-                                <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(person.name)}>
+                              <td className="px-4 py-3.5 whitespace-nowrap">
+                                <div className="font-semibold text-slate-900 dark:text-white text-sm whitespace-nowrap" title={formatStaffName(person.name)}>
                                   {formatStaffName(person.name)}
                                 </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5" title={person.position}>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap" title={person.position}>
                                   {posDisplay}
                                 </div>
                               </td>
 
                               {/* Licenses Held */}
-                              <td className="px-4 py-3.5">
+                              <td className="px-4 py-3.5 whitespace-nowrap">
                                 {person.licensesCount > 0 ? (
                                   <div>
-                                    <div className="text-slate-800 dark:text-slate-200 text-sm font-medium">
+                                    <div className="text-slate-800 dark:text-slate-200 text-sm font-medium whitespace-nowrap">
                                       {person.licensesDisplay}
                                     </div>
                                     {person.licensesCount > 1 && (
-                                      <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                      <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 whitespace-nowrap">
                                         {person.licensesCount} ฉบับ
                                       </div>
                                     )}

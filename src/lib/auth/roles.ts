@@ -174,7 +174,11 @@ export function canManageSalaryPromotions(
 export function isCivilServantForSalary(staff: TeacherRecord): boolean {
   // 1. Explicit exclusion: Support, service, and contract positions are never civil servants
   const pos = staff.position || '';
+  const id = staff.id || staff.employeeCode || '';
   if (
+    id === 'TCH-014' ||
+    id === 'STF-001' ||
+    id === 'STF-002' ||
     pos.includes('พี่เลี้ยง') ||
     pos.includes('ธุรการ') ||
     pos.includes('นักการ') ||

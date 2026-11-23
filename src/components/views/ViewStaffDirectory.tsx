@@ -124,10 +124,7 @@ export const ViewStaffDirectory: React.FC = () => {
   }, [teachersList]);
 
   const civilServantCount = useMemo(() => {
-    return teachersList.filter((t) => {
-      const emp = t.employment_type || (t as any).employmentType;
-      return emp ? emp === 'civil_servant' : isCivilServantForSalary(t);
-    }).length;
+    return teachersList.filter((t) => isCivilServantForSalary(t)).length;
   }, [teachersList]);
 
   const supportCount = useMemo(() => {
@@ -137,15 +134,9 @@ export const ViewStaffDirectory: React.FC = () => {
   const filteredTeachers = useMemo(() => {
     let result = teachersList;
     if (selectedEmploymentType === 'civil_servant') {
-      result = result.filter((t) => {
-        const emp = t.employment_type || (t as any).employmentType;
-        return emp ? emp === 'civil_servant' : isCivilServantForSalary(t);
-      });
+      result = result.filter((t) => isCivilServantForSalary(t));
     } else if (selectedEmploymentType === 'temporary_employee') {
-      result = result.filter((t) => {
-        const emp = t.employment_type || (t as any).employmentType;
-        return emp ? emp !== 'civil_servant' : !isCivilServantForSalary(t);
-      });
+      result = result.filter((t) => !isCivilServantForSalary(t));
     }
     if (selectedDept !== 'ALL') {
       result = result.filter((t) => t.department === selectedDept);
@@ -202,17 +193,17 @@ export const ViewStaffDirectory: React.FC = () => {
           </div>
         </div>
 
-        {/* Employment Type Filter Pills (ข้าราชการ vs ลูกจ้าง/สายสนับสนุน) */}
+        {/* Employment Type Filter Pills (ข้าราชการ vs ลูกจ้าง/สายสนับสนุน - Equal-Width Tabs) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200/90 dark:border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
               ประเภทบุคลากร:
             </span>
-            <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl gap-1">
+            <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl gap-1 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setSelectedEmploymentType('ALL')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                className={`flex-1 min-w-[120px] sm:min-w-[160px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                   selectedEmploymentType === 'ALL'
                     ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -226,7 +217,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedEmploymentType('civil_servant')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                className={`flex-1 min-w-[120px] sm:min-w-[160px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                   selectedEmploymentType === 'civil_servant'
                     ? 'bg-sky-600 text-white shadow-sm font-semibold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -244,7 +235,7 @@ export const ViewStaffDirectory: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedEmploymentType('temporary_employee')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                className={`flex-1 min-w-[120px] sm:min-w-[160px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                   selectedEmploymentType === 'temporary_employee'
                     ? 'bg-amber-600 text-white shadow-sm font-semibold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -261,16 +252,16 @@ export const ViewStaffDirectory: React.FC = () => {
               </button>
             </div>
           </div>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
             แสดง {filteredTeachers.length} จาก {teachersList.length} ท่าน
           </span>
         </div>
 
-        {/* Quick Filter Segmented Pills for Department - Uniform Grid */}
+        {/* Quick Filter Segmented Pills for Department - Scalable Flex Wrap Layout */}
         <div className="pt-2 border-t border-slate-200/90 dark:border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
-              กลุ่มสาระ / ฝ่าย:
+              กลุ่มสาระ
             </span>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-xs">
               {selectedDept === 'ALL' ? 'แสดงบุคลากรทั้งหมด' : selectedDept}
@@ -278,12 +269,12 @@ export const ViewStaffDirectory: React.FC = () => {
           </div>
 
           <div className="p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-xl">
-            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 w-full">
+            <div className="flex flex-wrap items-center gap-1.5 w-full">
               {/* ปุ่มทั้งหมด */}
               <button
                 type="button"
                 onClick={() => setSelectedDept('ALL')}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                   selectedDept === 'ALL'
                     ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -310,7 +301,7 @@ export const ViewStaffDirectory: React.FC = () => {
                     key={dept}
                     type="button"
                     onClick={() => setSelectedDept(dept)}
-                    className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                       isSelected
                         ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
@@ -407,11 +398,11 @@ export const ViewStaffDirectory: React.FC = () => {
                                 </td>
 
                                 {/* Staff Name */}
-                                <td className={`px-4 ${cellPy}`}>
-                                  <div className="font-bold text-slate-900 dark:text-white text-sm" title={formatStaffName(teacher)}>
+                                <td className={`px-4 ${cellPy} whitespace-nowrap`}>
+                                  <div className="font-bold text-slate-900 dark:text-white text-sm whitespace-nowrap" title={formatStaffName(teacher)}>
                                     {formatStaffName(teacher)}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5" title={`รหัส: ${teacher.employeeCode}`}>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 whitespace-nowrap" title={`รหัส: ${teacher.employeeCode}`}>
                                     รหัส: {teacher.employeeCode}
                                   </div>
                                 </td>

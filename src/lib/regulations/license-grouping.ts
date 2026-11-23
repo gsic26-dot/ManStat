@@ -109,15 +109,38 @@ export function formatLicenseShortName(type: string): string {
 /**
  * Determines whether a staff member belongs to the teaching license monitoring base.
  * - Management & Teaching staff are always included (even with 0 licenses).
- * - Support staff are included ONLY IF they actually have a recorded license.
+ * - Support staff: specifically includes เจ้าหน้าที่ธุรการ and พี่เลี้ยงเด็กพิการ.
+ * - Strictly excludes นักการภารโรง (janitor).
+ * - Other support staff are included only if they actually have a recorded license.
  */
 export function isEligibleForLicenseRegistry(teacher: TeacherRecord): boolean {
-  const branch = getStaffBranch(teacher);
-  const hasLicenses = Array.isArray(teacher.licenses) && teacher.licenses.length > 0;
-  if (branch === 'support' && !hasLicenses) {
+  const pos = teacher.position || '';
+  const code = teacher.employeeCode || teacher.id || '';
+
+  // Strictly exclude janitor / นักการภารโรง
+  if (code === 'STF-002' || pos.includes('นักการ') || pos.includes('ภารโรง')) {
     return false;
   }
-  return true;
+
+  const branch = getStaffBranch(teacher);
+  // Management & Teaching staff are always included
+  if (branch === 'management' || branch === 'teaching') {
+    return true;
+  }
+
+  // Support staff: Specifically include เจ้าหน้าที่ธุรการ and พี่เลี้ยงเด็กพิการ
+  if (
+    code === 'STF-001' ||
+    code === 'TCH-014' ||
+    pos.includes('ธุรการ') ||
+    pos.includes('พี่เลี้ยง')
+  ) {
+    return true;
+  }
+
+  // Any other support staff only if they have recorded licenses
+  const hasLicenses = Array.isArray(teacher.licenses) && teacher.licenses.length > 0;
+  return hasLicenses;
 }
 
 /**

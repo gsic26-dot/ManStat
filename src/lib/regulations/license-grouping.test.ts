@@ -145,16 +145,21 @@ describe('License Grouping & Registry Engine (Khurusapha Standards)', () => {
     });
   });
 
-  describe('Case 3: Support Staff Exclusion', () => {
-    it('excludes support staff with 0 licenses from the registry', () => {
+  describe('Case 3: Support Staff Inclusion & Exclusion', () => {
+    it('includes eligible support staff (clerk and special-needs aide) and strictly excludes janitor', () => {
       const stf001 = INITIAL_TEACHERS.find((t) => t.id === 'STF-001');
       assert.ok(stf001, 'STF-001 (ธุรการ) must exist');
+      // STF-001 is included in the registry for education license tracking
+      assert.equal(isEligibleForLicenseRegistry(stf001), true);
 
-      // STF-001 has licenses: [] -> must NOT be eligible
-      assert.equal(isEligibleForLicenseRegistry(stf001), false);
+      const tch014 = INITIAL_TEACHERS.find((t) => t.id === 'TCH-014');
+      assert.ok(tch014, 'TCH-014 (พี่เลี้ยงเด็กพิการ) must exist');
+      // TCH-014 is included in the registry for education license tracking
+      assert.equal(isEligibleForLicenseRegistry(tch014), true);
 
       const stf002 = INITIAL_TEACHERS.find((t) => t.id === 'STF-002');
       assert.ok(stf002, 'STF-002 (ภารโรง) must exist');
+      // STF-002 (ภารโรง) is strictly excluded from education license registry
       assert.equal(isEligibleForLicenseRegistry(stf002), false);
     });
 
@@ -166,7 +171,7 @@ describe('License Grouping & Registry Engine (Khurusapha Standards)', () => {
         prefix: 'นาย',
         firstName: 'สมบัติ',
         lastName: 'ใจดี',
-        position: 'เจ้าหน้าที่ธุรการ',
+        position: 'พนักงานขับรถ',
         academicStanding: '-',
         department: 'สายงานบริหารและสนับสนุนการศึกษา',
         division: 'สนับสนุน',
@@ -208,12 +213,11 @@ describe('License Grouping & Registry Engine (Khurusapha Standards)', () => {
       assert.equal(stats.expiringSoonLicenses, 0);
       assert.equal(stats.expiredLicenses, 0);
 
-      // Teaching + Management staff with 0 licenses:
-      // Total INITIAL_TEACHERS = 14 (1 EXE, 11 TCH, 2 STF)
-      // Eligible = 1 EXE + 11 TCH = 12 persons.
-      // EXE has 2 licenses, 11 TCH have 0 licenses.
-      assert.equal(stats.missingStaffCount, 11);
-      assert.equal(allEligiblePersons.length, 12);
+      // Total INITIAL_TEACHERS = 15 (1 EXE, 11 Teaching, 3 Support)
+      // Eligible = 1 EXE + 11 Teaching + 2 Support (STF-001, TCH-014) = 14 persons (STF-002 janitor excluded).
+      // EXE has 2 licenses, remaining 13 have 0 licenses in seed.
+      assert.equal(allEligiblePersons.length, 14);
+      assert.equal(stats.missingStaffCount, 13);
     });
 
     it('filters records properly using matchesHealthFilter', () => {

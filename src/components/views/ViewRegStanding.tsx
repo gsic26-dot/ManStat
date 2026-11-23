@@ -55,15 +55,11 @@ export const ViewRegStanding: React.FC = () => {
 
   // Filter strictly by civil servants: exact 12 members (Khurusapha & Civil Service Standards)
   const civilServants = useMemo(() => {
-    return teachersList.filter((t) => {
-      const empType = t.employment_type || (t as any).employmentType;
-      if (empType) return empType === 'civil_servant';
-      return isCivilServantForSalary(t);
-    });
+    return teachersList.filter((t) => isCivilServantForSalary(t));
   }, [teachersList]);
 
   const groupedTeachers = useMemo(() => {
-    return groupAndSortTeachers(civilServants);
+    return groupAndSortTeachers(civilServants).filter((g) => g.category !== 'support');
   }, [civilServants]);
 
   const sortedTeachers = useMemo(() => {
@@ -194,18 +190,18 @@ export const ViewRegStanding: React.FC = () => {
                                 </td>
 
                                 {/* Full Name */}
-                                <td className="px-4 py-3.5">
-                                  <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(teacher)}>
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                  <div className="font-semibold text-slate-900 dark:text-white text-sm whitespace-nowrap" title={formatStaffName(teacher)}>
                                     {formatStaffName(teacher)}
                                   </div>
-                                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                  <div className="text-xs text-slate-400 font-mono mt-0.5 whitespace-nowrap">
                                     {teacher.employeeCode}
                                   </div>
                                 </td>
 
                                 {/* Position */}
-                                <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                                  <div title={teacher.position}>{posDisplay}</div>
+                                <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                  <div title={teacher.position} className="whitespace-nowrap">{posDisplay}</div>
                                 </td>
 
                                 {/* Standing (Clean text + subtle rank dot) */}

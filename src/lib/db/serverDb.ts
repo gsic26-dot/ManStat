@@ -511,12 +511,12 @@ export function schoolInfoFromDb(row: any): SchoolInfoRecord {
 // Employment Type Helper (Separates Civil Servants vs. Contract/Support Staff)
 // ----------------------------------------------------------------------------
 export function deriveEmploymentType(staff: any): EmploymentType {
-  const raw = staff?.employment_type || staff?.employmentType;
-  if (raw && ['civil_servant', 'government_employee', 'temporary_employee'].includes(raw)) {
-    return raw as EmploymentType;
-  }
   const pos = (staff?.position || staff?.role || staff?.position_name || '').toLowerCase();
+  const id = staff?.id || staff?.employeeCode || staff?.employee_code || '';
   if (
+    id === 'TCH-014' ||
+    id === 'STF-001' ||
+    id === 'STF-002' ||
     pos.includes('ธุรการ') ||
     pos.includes('นักการ') ||
     pos.includes('ภารโรง') ||
@@ -525,6 +525,10 @@ export function deriveEmploymentType(staff: any): EmploymentType {
     pos.includes('จ้างเหมา')
   ) {
     return 'temporary_employee';
+  }
+  const raw = staff?.employment_type || staff?.employmentType;
+  if (raw && ['civil_servant', 'government_employee', 'temporary_employee'].includes(raw)) {
+    return raw as EmploymentType;
   }
   if (pos.includes('พนักงานราชการ')) {
     return 'government_employee';
@@ -649,8 +653,8 @@ export function teacherFromDb(row: any): TeacherRecord {
     lastName,
     position,
     academicStanding: row.academic_standing || '-',
-    employment_type: row.employment_type || row.employmentType || deriveEmploymentType(row),
-    employmentType: row.employment_type || row.employmentType || deriveEmploymentType(row),
+    employment_type: deriveEmploymentType(row),
+    employmentType: deriveEmploymentType(row),
     department: row.department || '',
     division: row.division || '',
     classLevel: row.class_level || '-',
