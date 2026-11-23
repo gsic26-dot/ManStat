@@ -99,8 +99,9 @@ export function getTeachingRank(teacher: TeacherRecord): number {
 export function getSupportRank(teacher: TeacherRecord): number {
   const pos = teacher.position || '';
   if (pos.includes('ธุรการ')) return 1;
-  if (pos.includes('นักการ') || pos.includes('ภารโรง')) return 2;
-  return 3;
+  if (pos.includes('พี่เลี้ยง')) return 2;
+  if (pos.includes('นักการ') || pos.includes('ภารโรง')) return 3;
+  return 4;
 }
 
 /**

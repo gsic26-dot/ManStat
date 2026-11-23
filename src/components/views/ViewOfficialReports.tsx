@@ -5,10 +5,18 @@
  * ManStat: ViewOfficialReports (สรุปวันลาและรายงาน สพฐ. มาตรฐาน)
  * ============================================================================
  * - Official OBEC Summary Table of personnel leaves
- * - Salary promotion eligibility checks (ว15/2561)
- * - Single-click 4-sheet Excel export (.xlsx) via ExcelExportButton
- * - Filter by period: Round 1 (Oct-Mar), Round 2 (Apr-Sep), Full Year
- * - Print-Ready: Dedicated A4 Landscape Official Sheet with Zero-Overflow
+ * - Strict 2-Group Hierarchy:
+ *   * Group 1: ข้าราชการครูและบุคลากรทางการศึกษา (12 ท่าน)
+ *     1. ผู้อำนวยการสถานศึกษา
+ *     2. ครูชำนาญการพิเศษ
+ *     3. ครูชำนาญการ
+ *     4. ครู คศ. 1
+ *     5. ครูผู้ช่วย
+ *   * Group 2: ลูกจ้างชั่วคราว / สายสนับสนุน (3 ท่าน)
+ *     - เจ้าหน้าที่ธุรการ, พี่เลี้ยงเด็กพิการฯ, นักการภารโรง
+ * - Frequency (ครั้ง) + Duration (วัน) for legal threshold audit (ว 15/2561)
+ * - Single-click Excel export (.xlsx) via ExcelExportButton
+ * - Official A4 Landscape Print View (100% Pure White, Thai Numerals ๐-๙, Dynamic Signatures)
  * - Zero Emojis, Pure Lucide SVG Icons, 8px Standard Spacing
  * ============================================================================
  */
@@ -21,11 +29,15 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord, type LeaveRequestRecord } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
+import { getStaffBranch, groupAndSortTeachers } from '@/lib/regulations/staff-sorting';
+import { toThaiDigits } from '@/lib/evaluationPrintUtils';
 
 export function ViewOfficialReports() {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roundFilter, setRoundFilter] = useState<'FULL' | 'ROUND_1' | 'ROUND_2'>('FULL');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -40,29 +52,150 @@ export function ViewOfficialReports() {
         }
       })
       .catch(() => {});
+
+    fetch('/api/admin/leave', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          setLeaveRequests(data.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/school', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && data.data) {
+          setSchoolInfo(data.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const departments = useMemo(
-    () => Array.from(new Set(teachersList.map((t) => t.department))),
-    [teachersList]
-  );
+  // Compute leave stats per teacher for the selected round
+  const getTeacherLeaveStats = useMemo(() => {
+    return (teacher: TeacherRecord) => {
+      const id = teacher.id;
+      const code = teacher.employeeCode;
 
-  const filteredTeachers = useMemo(
-    () =>
-      teachersList.filter((t) => {
-        const matchesSearch =
-          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.position.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesDept = deptFilter === 'ALL' || t.department === deptFilter;
-        return matchesSearch && matchesDept;
-      }),
-    [teachersList, searchQuery, deptFilter]
-  );
+      // Filter leave requests for this teacher
+      const reqs = leaveRequests.filter((r) => {
+        const matchStaff = r.teacherId === id || r.teacherId === code || (r as any).staffId === id;
+        if (!matchStaff) return false;
+        if (!r.startDate) return true;
 
-  const roundTitles: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
+        const parts = r.startDate.split('-');
+        const month = parts[1];
+        if (roundFilter === 'ROUND_1') {
+          // Round 1: Oct (10) - Mar (03)
+          return ['10', '11', '12', '01', '02', '03'].includes(month);
+        }
+        if (roundFilter === 'ROUND_2') {
+          // Round 2: Apr (04) - Sep (09)
+          return ['04', '05', '06', '07', '08', '09'].includes(month);
+        }
+        return true;
+      });
+
+      const sickReqs = reqs.filter((r) => r.leaveType === 'sick' || r.leaveType?.includes('ป่วย'));
+      const personalReqs = reqs.filter((r) => r.leaveType === 'personal' || r.leaveType?.includes('กิจ'));
+      const vacationReqs = reqs.filter((r) => r.leaveType === 'vacation' || r.leaveType?.includes('พักผ่อน'));
+      const ordinationReqs = reqs.filter((r) => r.leaveType === 'ordination' || r.leaveType?.includes('อุปสมบท'));
+      const maternityReqs = reqs.filter((r) => r.leaveType === 'maternity' || r.leaveType?.includes('คลอด'));
+      const studyReqs = reqs.filter((r) => r.leaveType === 'study' || r.leaveType?.includes('ศึกษา'));
+
+      const sickCount = sickReqs.length > 0 ? sickReqs.length : (roundFilter === 'FULL' && teacher.sickUsed > 0 ? 1 : 0);
+      const sickDays = sickReqs.length > 0
+        ? sickReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
+        : (roundFilter === 'FULL' ? (teacher.sickUsed || 0) : 0);
+
+      const personalCount = personalReqs.length > 0 ? personalReqs.length : (roundFilter === 'FULL' && teacher.personalUsed > 0 ? 1 : 0);
+      const personalDays = personalReqs.length > 0
+        ? personalReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
+        : (roundFilter === 'FULL' ? (teacher.personalUsed || 0) : 0);
+
+      const vacationCount = vacationReqs.length > 0 ? vacationReqs.length : (roundFilter === 'FULL' && teacher.vacationUsed > 0 ? 1 : 0);
+      const vacationDays = vacationReqs.length > 0
+        ? vacationReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
+        : (roundFilter === 'FULL' ? (teacher.vacationUsed || 0) : 0);
+
+      const ordinationDays = ordinationReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
+      const maternityDays = maternityReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
+      const studyDays = studyReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
+
+      // ว 15/2561 Frequency criteria counts sick + personal instances
+      const totalCount = sickCount + personalCount;
+      const totalDays = sickDays + personalDays + vacationDays + ordinationDays + maternityDays + studyDays;
+
+      // Threshold: ไม่เกิน 6 ครั้ง หรือ 23 วันทำการต่อรอบ
+      const isEligible = totalCount <= 6 && totalDays <= 23;
+
+      return {
+        sickCount,
+        sickDays,
+        personalCount,
+        personalDays,
+        vacationCount,
+        vacationDays,
+        ordinationDays,
+        maternityDays,
+        studyDays,
+        totalCount,
+        totalDays,
+        isEligible,
+      };
+    };
+  }, [leaveRequests, roundFilter]);
+
+  // Strict hierarchical ordering: 12 civil servants (management + teaching) then 3 support staff
+  const sortedTeachers = useMemo(() => {
+    const groups = groupAndSortTeachers(teachersList);
+    const civilServants = [
+      ...(groups.find((g) => g.category === 'management')?.members || []),
+      ...(groups.find((g) => g.category === 'teaching')?.members || []),
+    ];
+    const supportStaff = groups.find((g) => g.category === 'support')?.members || [];
+    return { civilServants, supportStaff, all: [...civilServants, ...supportStaff] };
+  }, [teachersList]);
+
+  // Teaching departments for filter dropdown
+  const departments = useMemo(() => {
+    const depts = teachersList
+      .filter((t) => getStaffBranch(t) !== 'support')
+      .map((t) => t.department)
+      .filter(Boolean);
+    return Array.from(new Set(depts));
+  }, [teachersList]);
+
+  // Filtered lists per group
+  const filteredCivilServants = useMemo(() => {
+    return sortedTeachers.civilServants.filter((t) => {
+      const matchesSearch =
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.position.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDept = deptFilter === 'ALL' || t.department === deptFilter;
+      return matchesSearch && matchesDept;
+    });
+  }, [sortedTeachers.civilServants, searchQuery, deptFilter]);
+
+  const filteredSupportStaff = useMemo(() => {
+    return sortedTeachers.supportStaff.filter((t) => {
+      const matchesSearch =
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.position.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDept = deptFilter === 'ALL';
+      return matchesSearch && matchesDept;
+    });
+  }, [sortedTeachers.supportStaff, searchQuery, deptFilter]);
+
+  const totalFilteredCount = filteredCivilServants.length + filteredSupportStaff.length;
+
+  // Titles for Web View (Arabic Numerals)
+  const roundTitlesWeb: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
     FULL: {
       title: 'ทั้งปีงบประมาณ 2570',
       subtitle: '( 1 ตุลาคม 2569 – 30 กันยายน 2570 )',
@@ -77,6 +210,38 @@ export function ViewOfficialReports() {
     },
   };
 
+  // Titles for Print View (Strict Thai Numerals ๐-๙)
+  const roundTitlesThai: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
+    FULL: {
+      title: 'ทั้งปีงบประมาณ ๒๕๗๐',
+      subtitle: '( ๑ ตุลาคม ๒๕๖๙ – ๓๐ กันยายน ๒๕๗๐ )',
+    },
+    ROUND_1: {
+      title: 'รอบที่ ๑ ปีงบประมาณ ๒๕๗๐',
+      subtitle: '( ๑ ตุลาคม ๒๕๖๙ – ๓๑ มีนาคม ๒๕๗๐ )',
+    },
+    ROUND_2: {
+      title: 'รอบที่ ๒ ปีงบประมาณ ๒๕๗๐',
+      subtitle: '( ๑ เมษายน ๒๕๗๐ – ๓๐ กันยายน ๒๕๗๐ )',
+    },
+  };
+
+  // Dynamic names for signatures
+  const schoolName = schoolInfo?.schoolName || 'โรงเรียนชุมชนบ้านตะขบ';
+  const director = teachersList.find(
+    (t) => getStaffBranch(t) === 'management' || t.employeeCode === 'EXE-001'
+  );
+  const directorName = schoolInfo?.directorName || director?.name || 'นายธีรศักดิ์ มโนธรรม';
+  const directorTitle = schoolInfo?.directorPosition || director?.position || 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ';
+
+  const hrHead = teachersList.find(
+    (t) => t.division?.includes('บริหารงานบุคคล') || t.department?.includes('บุคคล') || t.role === 'hr_admin'
+  );
+  const hrHeadName = hrHead?.name || 'นางสาวทัชชกร ช่วยจังหรีด';
+  const hrHeadTitle = hrHead?.division || 'หัวหน้าฝ่ายบริหารงานบุคคล';
+
+  const fiscalYearBE = Number(schoolInfo?.fiscalYear) || 2570;
+
   return (
     <div className="space-y-6">
       {/* ================================================================= */}
@@ -84,21 +249,29 @@ export function ViewOfficialReports() {
       {/* ================================================================= */}
       <div className="space-y-6 print:hidden">
         {/* Header & Export Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-2.5">
-            <FileSpreadsheet className="w-5 h-5 text-sky-500 shrink-0" />
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">สรุปวันลาและรายงาน สพฐ.</h2>
+            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60 shrink-0">
+              <FileSpreadsheet className="w-5 h-5 shrink-0" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                สรุปวันลาและรายงาน สพฐ.
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {roundTitlesWeb[roundFilter].title} {roundTitlesWeb[roundFilter].subtitle}
+              </p>
+            </div>
           </div>
 
           {/* Action Buttons: Excel Export & Print */}
-          <div className="flex items-center gap-3">
-            <ExcelExportButton
-              fiscalYear={2570}
-            />
+          <div className="flex items-center gap-2.5">
+            <ExcelExportButton fiscalYear={fiscalYearBE} />
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-xs transition-colors duration-200 cursor-pointer"
+              title="พิมพ์แบบสรุปวันลา A4 แนวนอน"
             >
               <Printer className="w-4 h-4 shrink-0" />
               <span>พิมพ์รายงาน A4</span>
@@ -112,7 +285,7 @@ export function ViewOfficialReports() {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
             <input
               type="text"
-              placeholder="ค้นหาชื่อครู หรือตำแหน่ง..."
+              placeholder="ค้นหาชื่อบุคลากร หรือตำแหน่ง..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 bg-white dark:bg-[#111822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
@@ -125,9 +298,15 @@ export function ViewOfficialReports() {
               onChange={(e) => setRoundFilter(e.target.value as 'FULL' | 'ROUND_1' | 'ROUND_2')}
               className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <option value="FULL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบการประเมิน: ทั้งปีงบประมาณ 2570</option>
-              <option value="ROUND_1" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบที่ 1: 1 ต.ค. 2569 - 31 มี.ค. 2570</option>
-              <option value="ROUND_2" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">รอบที่ 2: 1 เม.ย. 2570 - 30 ก.ย. 2570</option>
+              <option value="FULL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
+                รอบการประเมิน: ทั้งปีงบประมาณ 2570
+              </option>
+              <option value="ROUND_1" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
+                รอบที่ 1: 1 ต.ค. 2569 – 31 มี.ค. 2570
+              </option>
+              <option value="ROUND_2" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
+                รอบที่ 2: 1 เม.ย. 2570 – 30 ก.ย. 2570
+              </option>
             </select>
           </div>
 
@@ -137,7 +316,9 @@ export function ViewOfficialReports() {
               onChange={(e) => setDeptFilter(e.target.value)}
               className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">กลุ่มสาระ / ฝ่ายงานทั้งหมด</option>
+              <option value="ALL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
+                กลุ่มสาระ / ฝ่ายงานทั้งหมด
+              </option>
               {departments.map((d) => (
                 <option key={d} value={d} className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
                   {d}
@@ -148,13 +329,16 @@ export function ViewOfficialReports() {
         </div>
 
         {/* Web Summary Table */}
-        <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-sm">
-          <div className="p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-[#111822] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-[#16202c] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="text-xs text-slate-700 dark:text-slate-300">
-              แสดงข้อมูลบุคลากร <span className="font-bold text-slate-900 dark:text-white">{filteredTeachers.length}</span> ท่าน
+              แสดงข้อมูลบุคลากร <span className="font-bold text-slate-900 dark:text-white font-mono">{totalFilteredCount}</span> ท่าน
+              <span className="text-slate-400 ml-1">
+                (ข้าราชการครู {filteredCivilServants.length} · สนับสนุน {filteredSupportStaff.length})
+              </span>
             </div>
-            <span className="text-[11px] text-sky-400 font-mono">
-              เกณฑ์ ว15/2561: ลาไม่เกิน 6 ครั้ง หรือ 23 วันทำการ
+            <span className="text-[11px] text-sky-600 dark:text-sky-400 font-mono">
+              เกณฑ์ ว 15/2561: ลาไม่เกิน 6 ครั้ง หรือ 23 วันทำการต่อรอบ
             </span>
           </div>
 
@@ -163,69 +347,137 @@ export function ViewOfficialReports() {
               <thead className="bg-slate-100/80 dark:bg-[#131b25] text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="px-4 py-3 text-center min-w-[50px] shrink-0">ลำดับ</th>
-                  <th className="px-4 py-3 min-w-[200px]">ชื่อ - นามสกุล</th>
-                  <th className="px-4 py-3 min-w-[190px]">ตำแหน่ง / สังกัด</th>
-                  <th className="px-4 py-3 text-center text-rose-600 dark:text-rose-400 min-w-[110px]">ลาป่วย (วัน)</th>
-                  <th className="px-4 py-3 text-center text-amber-600 dark:text-amber-400 min-w-[110px]">ลากิจ (วัน)</th>
-                  <th className="px-4 py-3 text-center text-emerald-600 dark:text-emerald-400 min-w-[110px]">พักผ่อน (วัน)</th>
-                  <th className="px-4 py-3 text-center text-sky-600 dark:text-sky-400 font-bold min-w-[110px]">รวมวันลา</th>
+                  <th className="px-4 py-3 min-w-[240px]">ชื่อ - นามสกุล</th>
+                  <th className="px-4 py-3 min-w-[200px]">ตำแหน่ง / กลุ่มสาระ</th>
+                  <th className="px-4 py-3 text-center text-rose-600 dark:text-rose-400 min-w-[125px]">ลาป่วย (ครั้ง / วัน)</th>
+                  <th className="px-4 py-3 text-center text-amber-600 dark:text-amber-400 min-w-[125px]">ลากิจ (ครั้ง / วัน)</th>
+                  <th className="px-4 py-3 text-center text-emerald-600 dark:text-emerald-400 min-w-[90px]">พักผ่อน (วัน)</th>
+                  <th className="px-4 py-3 text-center text-sky-600 dark:text-sky-400 font-bold min-w-[130px]">รวมวันลา (ครั้ง / วัน)</th>
                   <th className="px-4 py-3 text-center min-w-[125px]">สิทธิ์เลื่อนเงินเดือน</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-sans">
-                {filteredTeachers.length === 0 ? (
+                {totalFilteredCount === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                       ไม่พบข้อมูลบุคลากรในรอบการประเมินนี้
                     </td>
                   </tr>
                 ) : (
-                  filteredTeachers.map((t, idx) => {
-                  const total = t.sickUsed + t.personalUsed + t.vacationUsed;
-                  const isEligible = total <= 23;
-                  const posDisplay = t.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
-                  const deptDisplay = t.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                  <>
+                    {/* Group 1 Header: ข้าราชการครูและบุคลากรทางการศึกษา */}
+                    {filteredCivilServants.length > 0 && (
+                      <tr className="bg-slate-100/60 dark:bg-slate-800/50">
+                        <td colSpan={8} className="px-4 py-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                          ๑. ข้าราชการครูและบุคลากรทางการศึกษา ({filteredCivilServants.length} ท่าน)
+                        </td>
+                      </tr>
+                    )}
+                    {filteredCivilServants.map((t, idx) => {
+                      const stats = getTeacherLeaveStats(t);
+                      return (
+                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors">
+                          <td className="px-4 py-3 text-center font-mono text-slate-500 whitespace-nowrap">
+                            {idx + 1}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                            <div>{t.name}</div>
+                            <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-normal mt-0.5">
+                              {t.employeeCode}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                            <div>{t.position}</div>
+                            <div className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+                              {t.department || 'สายงานบริหารและสนับสนุนการศึกษา'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-rose-600 dark:text-rose-400 font-medium whitespace-nowrap">
+                            {stats.sickCount} ครั้ง / {stats.sickDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                            {stats.personalCount} ครั้ง / {stats.personalDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                            {stats.vacationDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                            {stats.totalCount} ครั้ง / {stats.totalDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
+                            {stats.isEligible ? (
+                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                <span>ผ่านเกณฑ์</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 min-w-[95px]">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                <span>เกินเกณฑ์</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
 
-                  return (
-                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors">
-                      <td className="px-4 py-3 text-center font-mono text-slate-500 whitespace-nowrap">{idx + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
-                        <div className="truncate max-w-[180px]" title={t.name}>{t.name}</div>
-                        <div className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[180px]" title={`รหัส: ${t.employeeCode}`}>{t.employeeCode}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-800 dark:text-slate-200">
-                        <div className="truncate max-w-[180px]" title={t.position}>{posDisplay}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px]" title={t.department}>{deptDisplay}</div>
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono text-rose-600 dark:text-rose-300 font-medium whitespace-nowrap">
-                        {t.sickUsed}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono text-amber-600 dark:text-amber-300 font-medium whitespace-nowrap">
-                        {t.personalUsed}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono text-emerald-600 dark:text-emerald-300 font-medium whitespace-nowrap">
-                        {t.vacationUsed}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
-                        {total}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
-                        {isEligible ? (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                            <span>ผ่านเกณฑ์</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 min-w-[95px]">
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            <span>เกินเกณฑ์</span>
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                    {/* Group 2 Header: ลูกจ้างชั่วคราว / สายสนับสนุน */}
+                    {filteredSupportStaff.length > 0 && (
+                      <tr className="bg-slate-100/60 dark:bg-slate-800/50">
+                        <td colSpan={8} className="px-4 py-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                          ๒. ลูกจ้างชั่วคราว / บุคลากรสายสนับสนุน ({filteredSupportStaff.length} ท่าน)
+                        </td>
+                      </tr>
+                    )}
+                    {filteredSupportStaff.map((t, idx) => {
+                      const stats = getTeacherLeaveStats(t);
+                      return (
+                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-[#162231]/50 transition-colors">
+                          <td className="px-4 py-3 text-center font-mono text-slate-500 whitespace-nowrap">
+                            {filteredCivilServants.length + idx + 1}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                            <div>{t.name}</div>
+                            <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-normal mt-0.5">
+                              {t.employeeCode}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                            <div>{t.position}</div>
+                            <div className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+                              สายสนับสนุน
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-rose-600 dark:text-rose-400 font-medium whitespace-nowrap">
+                            {stats.sickCount} ครั้ง / {stats.sickDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                            {stats.personalCount} ครั้ง / {stats.personalDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                            {stats.vacationDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                            {stats.totalCount} ครั้ง / {stats.totalDays} วัน
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
+                            {stats.isEligible ? (
+                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                <span>ผ่านเกณฑ์</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 min-w-[95px]">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                <span>เกินเกณฑ์</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -234,97 +486,157 @@ export function ViewOfficialReports() {
 
       {/* ================================================================= */}
       {/* PRINT-ONLY A4 LANDSCAPE OFFICIAL SUMMARY SHEET                    */}
-      {/* Guarantee: Strict 1-Page A4 Landscape (No Overflow)               */}
+      {/* Guarantee: Strict 1-Page A4 Landscape (100% Pure White Canvas)    */}
       {/* ================================================================= */}
-      <div className="hidden print:block text-black font-sarabun bg-white w-[287mm] h-[200mm] max-h-[200mm] box-border overflow-hidden mx-auto my-0">
-        <style dangerouslySetInnerHTML={{ __html: `
-          @page { size: landscape; margin: 4mm 5mm; }
+      <div
+        id="print-leave-summary"
+        className="hidden print:block text-black font-sarabun bg-white w-full mx-auto my-0"
+      >
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          @page {
+            size: A4 landscape;
+            margin: 14mm 16mm 14mm 16mm;
+          }
           @media print {
+            *, *::before, *::after {
+              box-shadow: none !important;
+              text-shadow: none !important;
+            }
             html, body {
-              width: 297mm !important;
-              height: 210mm !important;
-              max-height: 210mm !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              width: 100% !important;
+              height: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
-              overflow: hidden !important;
-              background: #fff !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+              overflow: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print\\:hidden, nav, header, aside {
+              display: none !important;
+            }
+            #print-leave-summary {
+              display: block !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
             }
           }
-        ` }} />
+        `,
+          }}
+        />
 
-        <div className="flex flex-col justify-between h-full w-full">
+        <div className="flex flex-col justify-between w-full">
           <div>
-            {/* Header */}
-            <div className="text-center mb-1 leading-tight">
-              <div className="text-[14px] font-bold">โรงเรียนชุมชนบ้านตะขบ</div>
-              <div className="text-[13px] font-bold">แบบสรุปวันลาข้าราชการครูและบุคลากรทางการศึกษา</div>
-              <div className="text-[11.5px] font-bold text-slate-800">
-                {roundTitles[roundFilter].title} {roundTitles[roundFilter].subtitle}
+            {/* Document Header (Thai Numerals) */}
+            <div className="text-center mb-2 leading-tight">
+              <div className="text-[14pt] font-bold text-black">{schoolName}</div>
+              <div className="text-[12pt] font-bold text-black">แบบสรุปวันลาข้าราชการครูและบุคลากรทางการศึกษา</div>
+              <div className="text-[10pt] font-medium text-black">
+                {roundTitlesThai[roundFilter].title} {roundTitlesThai[roundFilter].subtitle}
               </div>
             </div>
 
             {/* Official 15-Column Table */}
-            <table className="w-full border-collapse border border-black text-center text-[9.5px] leading-tight">
+            <table className="w-full border-collapse border border-black text-center text-[9.5pt] leading-tight text-black">
               <thead>
-                <tr className="bg-slate-100 font-bold">
-                  <th rowSpan={2} className="border border-black p-0.5 w-[3%]">ที่</th>
-                  <th rowSpan={2} className="border border-black p-0.5 w-[25%] text-left pl-1.5">ชื่อ - ชื่อสกุล</th>
-                  <th colSpan={2} className="border border-black p-0.5 w-[10%]">ลาป่วย</th>
-                  <th colSpan={2} className="border border-black p-0.5 w-[10%]">ลากิจ</th>
-                  <th colSpan={2} className="border border-black p-0.5 w-[9%]">มาสาย</th>
-                  <th colSpan={2} className="border border-black p-0.5 w-[9%]">ขาดราชการ</th>
-                  <th className="border border-black p-0.5 w-[6%]">ลาศึกษา</th>
-                  <th className="border border-black p-0.5 w-[6%]">ลาคลอด</th>
-                  <th className="border border-black p-0.5 w-[7%]">อุปสมบท</th>
-                  <th colSpan={2} className="border border-black p-0.5 w-[14%]">รวมวันลา</th>
+                <tr className="bg-gray-100 font-bold">
+                  <th rowSpan={2} className="border border-black py-1 px-0.5 w-[3%]">ที่</th>
+                  <th rowSpan={2} className="border border-black py-1 px-1.5 w-[25%] text-left">ชื่อ - ชื่อสกุล</th>
+                  <th colSpan={2} className="border border-black py-1 px-0.5 w-[10%]">ลาป่วย</th>
+                  <th colSpan={2} className="border border-black py-1 px-0.5 w-[10%]">ลากิจ</th>
+                  <th colSpan={2} className="border border-black py-1 px-0.5 w-[9%]">มาสาย</th>
+                  <th colSpan={2} className="border border-black py-1 px-0.5 w-[9%]">ขาดราชการ</th>
+                  <th className="border border-black py-1 px-0.5 w-[6%]">ลาศึกษา</th>
+                  <th className="border border-black py-1 px-0.5 w-[6%]">ลาคลอด</th>
+                  <th className="border border-black py-1 px-0.5 w-[7%]">อุปสมบท</th>
+                  <th colSpan={2} className="border border-black py-1 px-0.5 w-[14%]">รวมวันลา</th>
                 </tr>
-                <tr className="bg-slate-100 font-bold">
-                  <th className="border border-black p-0.5">ครั้ง</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">ครั้ง</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">ครั้ง</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">ครั้ง</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">วัน</th>
-                  <th className="border border-black p-0.5">ครั้ง</th>
-                  <th className="border border-black p-0.5">วัน</th>
+                <tr className="bg-gray-100 font-bold text-[9pt]">
+                  <th className="border border-black py-0.5 px-0.5">ครั้ง</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">ครั้ง</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">ครั้ง</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">ครั้ง</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
+                  <th className="border border-black py-0.5 px-0.5">ครั้ง</th>
+                  <th className="border border-black py-0.5 px-0.5">วัน</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="bg-slate-200 font-bold text-left">
-                  <td colSpan={15} className="border border-black px-1.5 py-0.5 text-[10px]">
-                    ข้าราชการครูและบุคลากรทางการศึกษา
+                {/* Section 1: ข้าราชการครูและบุคลากรทางการศึกษา */}
+                <tr className="bg-gray-100 font-bold text-left">
+                  <td colSpan={15} className="border border-black px-2 py-0.5 text-[10pt]">
+                    ๑. ข้าราชการครูและบุคลากรทางการศึกษา
                   </td>
                 </tr>
-                {filteredTeachers.map((t, idx) => {
-                  const totalDays = t.sickUsed + t.personalUsed + t.vacationUsed;
-                  const totalCount = (t.sickUsed > 0 ? 1 : 0) + (t.personalUsed > 0 ? 1 : 0);
-
+                {sortedTeachers.civilServants.map((t, idx) => {
+                  const stats = getTeacherLeaveStats(t);
                   return (
                     <tr key={t.id} className="border-b border-black">
-                      <td className="border border-black p-0.5 text-center">{idx + 1}</td>
-                      <td className="border border-black p-0.5 text-left pl-1.5 font-medium whitespace-nowrap">
+                      <td className="border border-black py-0.5 px-0.5 text-center font-normal">{toThaiDigits(idx + 1)}</td>
+                      <td className="border border-black py-0.5 px-1.5 text-left font-medium whitespace-nowrap">
                         {t.name} ({t.position})
                       </td>
-                      <td className="border border-black p-0.5">{t.sickUsed > 0 ? '1' : '-'}</td>
-                      <td className="border border-black p-0.5">{t.sickUsed > 0 ? t.sickUsed : '-'}</td>
-                      <td className="border border-black p-0.5">{t.personalUsed > 0 ? '1' : '-'}</td>
-                      <td className="border border-black p-0.5">{t.personalUsed > 0 ? t.personalUsed : '-'}</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">-</td>
-                      <td className="border border-black p-0.5">{totalCount > 0 ? totalCount : '-'}</td>
-                      <td className="border border-black p-0.5 font-bold">{totalDays > 0 ? totalDays : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.sickCount > 0 ? toThaiDigits(stats.sickCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.sickDays > 0 ? toThaiDigits(stats.sickDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.personalCount > 0 ? toThaiDigits(stats.personalCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.personalDays > 0 ? toThaiDigits(stats.personalDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.studyDays > 0 ? toThaiDigits(stats.studyDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.maternityDays > 0 ? toThaiDigits(stats.maternityDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.ordinationDays > 0 ? toThaiDigits(stats.ordinationDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.totalCount > 0 ? toThaiDigits(stats.totalCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5 font-bold">{stats.totalDays > 0 ? toThaiDigits(stats.totalDays) : '-'}</td>
+                    </tr>
+                  );
+                })}
+
+                {/* Section 2: ลูกจ้างชั่วคราว / บุคลากรสายสนับสนุน */}
+                <tr className="bg-gray-100 font-bold text-left">
+                  <td colSpan={15} className="border border-black px-2 py-0.5 text-[10pt]">
+                    ๒. ลูกจ้างชั่วคราว / บุคลากรสายสนับสนุน
+                  </td>
+                </tr>
+                {sortedTeachers.supportStaff.map((t, idx) => {
+                  const stats = getTeacherLeaveStats(t);
+                  return (
+                    <tr key={t.id} className="border-b border-black">
+                      <td className="border border-black py-0.5 px-0.5 text-center font-normal">
+                        {toThaiDigits(sortedTeachers.civilServants.length + idx + 1)}
+                      </td>
+                      <td className="border border-black py-0.5 px-1.5 text-left font-medium whitespace-nowrap">
+                        {t.name} ({t.position})
+                      </td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.sickCount > 0 ? toThaiDigits(stats.sickCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.sickDays > 0 ? toThaiDigits(stats.sickDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.personalCount > 0 ? toThaiDigits(stats.personalCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.personalDays > 0 ? toThaiDigits(stats.personalDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">-</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.studyDays > 0 ? toThaiDigits(stats.studyDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.maternityDays > 0 ? toThaiDigits(stats.maternityDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.ordinationDays > 0 ? toThaiDigits(stats.ordinationDays) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5">{stats.totalCount > 0 ? toThaiDigits(stats.totalCount) : '-'}</td>
+                      <td className="border border-black py-0.5 px-0.5 font-bold">{stats.totalDays > 0 ? toThaiDigits(stats.totalDays) : '-'}</td>
                     </tr>
                   );
                 })}
@@ -332,19 +644,19 @@ export function ViewOfficialReports() {
             </table>
           </div>
 
-          {/* Signatures at the bottom */}
-          <div className="flex justify-between items-center text-center text-[11px] leading-tight pt-1">
+          {/* Dynamic Signatures with mt-6 and Proper Breathing Room */}
+          <div className="flex justify-between items-start text-center text-[10.5pt] leading-relaxed mt-6 pb-2 text-black">
             <div className="w-[45%]">
               <div>ลงชื่อ............................................................ผู้สรุป</div>
-              <div className="mt-0.5">(นางสาวทัชชกร ช่วยจังหรีด)</div>
-              <div>หัวหน้างานกลุ่มบริหารงานบุคคล</div>
-              <div>วันที่ .......... เดือน ........................ พ.ศ. 2570</div>
+              <div className="mt-1 font-semibold">({hrHeadName})</div>
+              <div className="mt-0.5">{hrHeadTitle}</div>
+              <div className="mt-1">วันที่ .......... เดือน ........................ พ.ศ. {toThaiDigits(fiscalYearBE)}</div>
             </div>
             <div className="w-[45%]">
               <div>ลงชื่อ............................................................ผู้อำนวยการสถานศึกษา</div>
-              <div className="mt-0.5">(นายธีรศักดิ์ มโนธรรม)</div>
-              <div>ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ</div>
-              <div>วันที่ .......... เดือน ........................ พ.ศ. 2570</div>
+              <div className="mt-1 font-semibold">({directorName})</div>
+              <div className="mt-0.5">{directorTitle}</div>
+              <div className="mt-1">วันที่ .......... เดือน ........................ พ.ศ. {toThaiDigits(fiscalYearBE)}</div>
             </div>
           </div>
         </div>

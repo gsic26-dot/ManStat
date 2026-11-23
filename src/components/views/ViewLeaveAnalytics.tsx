@@ -218,9 +218,11 @@ export function ViewLeaveAnalytics() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-rose-400">{totalSickDays}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">วัน / 60 วัน</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน</span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">ไม่มีผู้มีสถิติเสี่ยงเกินเกณฑ์</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            {totalSickDays === 0 ? 'ไม่มีประวัติการลาป่วยในรอบนี้' : 'สถิติการลาป่วยรวมทั้งสถานศึกษา'}
+          </p>
         </div>
 
         <div className="bg-white dark:bg-[#111822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800">
@@ -232,9 +234,11 @@ export function ViewLeaveAnalytics() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-amber-400">{totalPersonalDays}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">วัน / 45 วัน</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">วัน</span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">ส่งมอบงานสอนแทนเรียบร้อย 100%</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            {totalPersonalDays === 0 ? 'ไม่มีประวัติการลากิจส่วนตัวในรอบนี้' : 'สถิติการลากิจรวมทั้งสถานศึกษา'}
+          </p>
         </div>
       </div>
 
@@ -255,20 +259,27 @@ export function ViewLeaveAnalytics() {
             </div>
           </div>
 
-          <div className="h-56 flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b border-slate-200/90 dark:border-slate-800">
-            {monthlyData.map((m) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                <span className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {m.days}
-                </span>
-                <div
-                  className="w-full bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-md hover:brightness-125 transition-all"
-                  style={{ height: `${m.percent}%` }}
-                />
-                <span className="text-[11px] text-slate-400 font-medium">{m.month}</span>
-              </div>
-            ))}
-          </div>
+          {monthlyData.every((m) => m.days === 0) ? (
+            <div className="h-56 flex flex-col items-center justify-center border-b border-slate-200/90 dark:border-slate-800 text-slate-400 dark:text-slate-500 space-y-2">
+              <Calendar className="w-8 h-8 opacity-40 text-slate-400" />
+              <p className="text-xs">ยังไม่มีข้อมูลการลาในรอบปีงบประมาณนี้</p>
+            </div>
+          ) : (
+            <div className="h-56 flex items-end justify-between gap-2 pt-6 pb-2 px-2 border-b border-slate-200/90 dark:border-slate-800">
+              {monthlyData.map((m) => (
+                <div key={m.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                  <span className="text-[10px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {m.days}
+                  </span>
+                  <div
+                    className="w-full bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-md hover:brightness-125 transition-all"
+                    style={{ height: `${m.percent}%` }}
+                  />
+                  <span className="text-[11px] text-slate-400 font-medium">{m.month}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 px-1">
             <span>เริ่มต้นปีงบประมาณ: 1 ตุลาคม</span>
             <span>สิ้นสุดปีงบประมาณ: 30 กันยายน</span>
@@ -329,8 +340,9 @@ export function ViewLeaveAnalytics() {
             </div>
           </div>
 
-          <div className="mt-6 p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-[#151e2b] border-l-4 border-l-[#0284C7] border border-sky-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
-            <span className="font-semibold text-sky-700 dark:text-sky-400">ข้อควรทราบ:</span> การลาเกิน 6 ครั้งในรอบครึ่งปีงบประมาณ หรือลาเกิน 23 วันทำการ อาจมีผลต่อการประเมินการเลื่อนขั้นเงินเดือน ว15/2561
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">เกณฑ์ ว 15/2561:</span>
+            <span>ลาไม่เกิน 6 ครั้ง หรือ 23 วันทำการต่อรอบ</span>
           </div>
         </div>
       </div>

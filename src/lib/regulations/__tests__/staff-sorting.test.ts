@@ -65,9 +65,9 @@ describe('Staff Sorting & Branch Hierarchy (สายบริหาร -> ส�
     assert.ok(teachingIds.indexOf('TCH-003') < teachingIds.indexOf('TCH-008'));
     assert.ok(teachingIds.indexOf('TCH-008') < teachingIds.indexOf('TCH-013'));
 
-    // Support has STF-001 (clerk) first, STF-002 (janitor) second, TCH-014 (aide) third
+    // Support has STF-001 (clerk) first, TCH-014 (aide) second, STF-002 (janitor) third
     const supportIds = groups[2].members.map((m) => m.id);
-    assert.deepEqual(supportIds, ['STF-001', 'STF-002', 'TCH-014']);
+    assert.deepEqual(supportIds, ['STF-001', 'TCH-014', 'STF-002']);
 
     // Flat sorted list verification
     const flatSorted = sortTeachersByBranch(INITIAL_TEACHERS);
