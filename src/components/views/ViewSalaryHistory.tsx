@@ -90,6 +90,7 @@ export function ViewSalaryHistory({
   const [selfEvalTeacher, setSelfEvalTeacher] = useState<TeacherRecord | null>(null);
   const [printRecordData, setPrintRecordData] = useState<{ teacher: TeacherRecord; record: any } | null>(null);
   const [evalStatusMap, setEvalStatusMap] = useState<Record<string, string>>({});
+  const [pendingStatusChange, setPendingStatusChange] = useState<EvaluationRoundStatus | null>(null);
 
   const remaskTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -160,7 +161,7 @@ export function ViewSalaryHistory({
       if (json.success && Array.isArray(json.data.fiscalPeriods)) {
         const sorted = [...json.data.fiscalPeriods].sort((a, b) => {
           if (b.fiscalYearTh !== a.fiscalYearTh) return b.fiscalYearTh - a.fiscalYearTh;
-          return b.roundNo - a.roundNo;
+          return a.roundNo - b.roundNo;
         });
         setFiscalPeriods(sorted);
 
@@ -432,6 +433,31 @@ export function ViewSalaryHistory({
     }
   };
 
+  // Close confirmation modal on Escape key
+  useEffect(() => {
+    if (!pendingStatusChange) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPendingStatusChange(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingStatusChange]);
+
+  // Intercept clicks on the 3-state control — do nothing if already active, otherwise open confirmation modal
+  const handleInitiateRoundStatusChange = (newStatus: EvaluationRoundStatus) => {
+    if (newStatus === roundStatus) return;
+    setPendingStatusChange(newStatus);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!pendingStatusChange) return;
+    const targetStatus = pendingStatusChange;
+    setPendingStatusChange(null);
+    await handleUpdateRoundStatus(targetStatus);
+  };
+
   // Handle toggling per-user manual unlock override
   const handleToggleUserLock = async (teacherId: string, teacherName: string) => {
     if (!selectedPeriod || !isAuthorizedManager) return;
@@ -467,8 +493,8 @@ export function ViewSalaryHistory({
         );
         showToast?.(
           isAlreadyUnlocked
-            ? `ยกเลิกการปลดล็อกเฉพาะบุคคลของ ${teacherName} แล้ว`
-            : `ปลดล็อกการประเมินตนเองให้ ${teacherName} เรียบร้อยแล้ว`,
+            ? `ล็อกการประเมินของ ${teacherName} แล้ว`
+            : `ปลดล็อกการประเมินให้ ${teacherName} แล้ว`,
           'success'
         );
       } else {
@@ -566,30 +592,20 @@ export function ViewSalaryHistory({
       {/* ------------------------------------------------------------------ */}
       {/* 1. Header & Controls                                               */}
       {/* ------------------------------------------------------------------ */}
-      <div className="bg-white dark:bg-[#141b24] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-              <TrendingUp className="w-5 h-5 shrink-0" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                  การเลื่อนเงินเดือน
-                </h2>
-                <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  ข้าราชการครู {civilServants.length} ท่าน
-                </span>
-                {!isAuthorizedManager && (
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                    โหมดดูข้อมูลเฉพาะตนเอง
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                การประเมินผลการปฏิบัติงานและเลื่อนเงินเดือนข้าราชการครูและบุคลากรทางการศึกษา ตามหลักเกณฑ์ ว 15/2561
-              </p>
-            </div>
+      <div className="bg-white dark:bg-[#141b24] p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-colors duration-200">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
+            <TrendingUp className="w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white whitespace-nowrap">
+              การเลื่อนเงินเดือน
+            </h2>
+            {!isAuthorizedManager && (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                โหมดดูข้อมูลเฉพาะตนเอง
+              </span>
+            )}
           </div>
         </div>
 
@@ -601,7 +617,7 @@ export function ViewSalaryHistory({
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
-                onClick={() => handleUpdateRoundStatus('auto')}
+                onClick={() => handleInitiateRoundStatusChange('auto')}
                 className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
                   roundStatus === 'auto'
                     ? 'bg-sky-600 text-white shadow-xs font-semibold'
@@ -614,7 +630,7 @@ export function ViewSalaryHistory({
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
-                onClick={() => handleUpdateRoundStatus('open')}
+                onClick={() => handleInitiateRoundStatusChange('open')}
                 className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
                   roundStatus === 'open'
                     ? 'bg-emerald-600 text-white shadow-xs font-semibold'
@@ -627,11 +643,11 @@ export function ViewSalaryHistory({
               <button
                 type="button"
                 disabled={isSaving || !selectedPeriod}
-                onClick={() => handleUpdateRoundStatus('locked')}
+                onClick={() => handleInitiateRoundStatusChange('locked')}
                 className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
                   roundStatus === 'locked'
-                    ? 'bg-amber-600 text-white shadow-xs font-semibold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400'
+                    ? 'bg-rose-600 text-white shadow-xs font-semibold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
                 }`}
                 title="ปิดรอบถาวร (ล็อกข้อมูลทั้งหมด)"
               >
@@ -866,7 +882,7 @@ export function ViewSalaryHistory({
                 <tr>
                   <th className="py-2.5 px-3 font-semibold w-12 text-center">ลำดับ</th>
                   <th className="py-2.5 px-3 font-semibold min-w-[200px]">ชื่อ - สกุล</th>
-                  <th className="py-2.5 px-3 font-semibold min-w-[200px]">ตำแหน่ง / วิทยฐานะ</th>
+                  <th className="py-2.5 px-3 font-semibold min-w-[200px]">ตำแหน่ง</th>
                   <th className="py-2.5 px-3 font-semibold text-center w-28">สถานะ</th>
                   <th className="py-2.5 px-3 font-semibold text-right w-44">ดำเนินการ</th>
                 </tr>
@@ -915,6 +931,89 @@ export function ViewSalaryHistory({
           </div>
         )}
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Modal: ยืนยันการเปลี่ยนสถานะรอบประเมิน (3-Mode Confirmation)           */}
+      {/* ------------------------------------------------------------------ */}
+      {pendingStatusChange && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-150 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPendingStatusChange(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-[#141b24] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl p-6 space-y-5 text-left transition-all transform scale-100 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with Icon & Title */}
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`p-2.5 rounded-xl border shrink-0 ${
+                  pendingStatusChange === 'open'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60'
+                    : pendingStatusChange === 'locked'
+                    ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60'
+                    : 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60'
+                }`}
+              >
+                {pendingStatusChange === 'open' ? (
+                  <Unlock className="w-5 h-5" />
+                ) : pendingStatusChange === 'locked' ? (
+                  <Lock className="w-5 h-5" />
+                ) : (
+                  <Clock className="w-5 h-5" />
+                )}
+              </div>
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {pendingStatusChange === 'open'
+                    ? 'ยืนยันปลดล็อกทั้งหมด'
+                    : pendingStatusChange === 'locked'
+                    ? 'ยืนยันปิดรอบถาวร'
+                    : 'ยืนยันเปลี่ยนเป็นโหมดอัตโนมัติ'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {pendingStatusChange === 'open'
+                    ? `ข้าราชการครูทั้ง ${civilServants.length} ท่านจะสามารถเข้าประเมินตนเองในรอบนี้ได้ทันที`
+                    : pendingStatusChange === 'locked'
+                    ? 'ข้อมูลการประเมินและผลการเลื่อนเงินเดือนในรอบนี้จะถูกล็อกไม่ให้แก้ไข (ยังสามารถพิมพ์แบบประเมิน A4 ได้)'
+                    : `ระบบจะเปิดให้ข้าราชการครูประเมินตนเองโดยอัตโนมัติในวันที่ ${formattedAutoUnlockDate} (ก่อนสิ้นรอบ ${autoUnlockDays} วัน)`}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPendingStatusChange(null)}
+                className="px-4 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmStatusChange}
+                disabled={isSaving}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${
+                  pendingStatusChange === 'open'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : pendingStatusChange === 'locked'
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                    : 'bg-sky-600 hover:bg-sky-700 text-white'
+                }`}
+              >
+                {pendingStatusChange === 'open'
+                  ? 'ปลดล็อกทั้งหมด'
+                  : pendingStatusChange === 'locked'
+                  ? 'ปิดรอบถาวร'
+                  : 'ยืนยัน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* 5. Modal: พิมพ์รายงานผลการประเมิน A4                                 */}
@@ -1070,15 +1169,9 @@ function SalaryPromotionMasterRow({
           </span>
         </td>
 
-        {/* 3. Position & Academic Standing (Clean single line, no background pills) */}
+        {/* 3. Position (Clean single line, no background pills) */}
         <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 truncate whitespace-nowrap">
           <span>{record.positionSnapshot || teacher.position || '-'}</span>
-          {(record.standingSnapshot || teacher.academicStanding) &&
-            (record.standingSnapshot || teacher.academicStanding) !== '-' && (
-              <span className="text-slate-400 dark:text-slate-500 ml-1.5">
-                · {record.standingSnapshot || teacher.academicStanding}
-              </span>
-            )}
         </td>
 
         {/* 4. Evaluation Status (Icon Only) */}
@@ -1106,16 +1199,14 @@ function SalaryPromotionMasterRow({
                 type="button"
                 onClick={() => onToggleUserLock?.(teacher.id, displayName)}
                 title={
-                  isStaffManuallyUnlocked(teacher.id, selectedPeriod?.unlockedStaffIds)
-                    ? 'ปลดล็อกเฉพาะบุคคลแล้ว (คลิกเพื่อยกเลิก)'
-                    : access.isUnlocked
-                    ? 'เปิดระบบอยู่ (คลิกเพื่อปลดล็อกเฉพาะบุคคลกรณีพิเศษ)'
-                    : 'ล็อกอยู่ (คลิกเพื่อปลดล็อกเฉพาะบุคคล)'
+                  access.isUnlocked
+                    ? 'ปลดล็อกแล้ว — คลิกเพื่อล็อกกลับ'
+                    : 'ล็อกอยู่ — คลิกเพื่อปลดล็อกเฉพาะบุคคลนี้'
                 }
                 className={`p-1 rounded-md transition-colors cursor-pointer shrink-0 ${
                   access.isUnlocked
-                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+                    : 'text-rose-500 dark:text-rose-400 hover:bg-rose-500/10'
                 }`}
               >
                 {access.isUnlocked ? (
@@ -1126,11 +1217,15 @@ function SalaryPromotionMasterRow({
               </button>
             ) : (
               <span
-                title={access.tooltip}
-                className={`shrink-0 ${
+                title={
+                  access.isUnlocked
+                    ? 'ปลดล็อกแล้ว — คลิกเพื่อล็อกกลับ'
+                    : 'ล็อกอยู่ — คลิกเพื่อปลดล็อกเฉพาะบุคคลนี้'
+                }
+                className={`p-1 shrink-0 ${
                   access.isUnlocked
                     ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-slate-400 dark:text-slate-500'
+                    : 'text-rose-500 dark:text-rose-400'
                 }`}
               >
                 {access.isUnlocked ? (
