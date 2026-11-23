@@ -322,16 +322,17 @@ export default function DashboardPage() {
               type="button"
               onClick={() => handleSelectView('dashboard')}
               className="flex items-center gap-3 text-left focus:outline-none group"
+              title={`${schoolInfo.schoolName}${schoolInfo.affiliation ? ` · ${schoolInfo.affiliation}` : ''}`}
             >
               <AppLogoIcon size={38} className="shrink-0 transition-transform group-hover:scale-105" />
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">ManStat</span>
-                  <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-semibold rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">
-                    สพป.นม. 3
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{schoolInfo.schoolName}</p>
+                <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white block leading-tight">ManStat</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-lg mt-0.5">
+                  <span>{schoolInfo.schoolName}</span>
+                  {schoolInfo.affiliation && (
+                    <span className="hidden md:inline text-slate-400 dark:text-slate-500 font-normal"> · {schoolInfo.affiliation}</span>
+                  )}
+                </p>
               </div>
             </button>
           </div>
