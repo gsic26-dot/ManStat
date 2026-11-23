@@ -536,6 +536,40 @@ export function deriveEmploymentType(staff: any): EmploymentType {
   return 'civil_servant';
 }
 
+/**
+ * Normalizes staff department to prevent support staff from inheriting irrelevant academic teaching subjects
+ */
+export function deriveDepartment(staff: any): string {
+  const pos = (staff?.position || staff?.role || staff?.position_name || '').toLowerCase();
+  const id = staff?.id || staff?.employeeCode || staff?.employee_code || '';
+  if (
+    id === 'TCH-014' ||
+    id === 'STF-001' ||
+    id === 'STF-002' ||
+    pos.includes('ธุรการ') ||
+    pos.includes('นักการ') ||
+    pos.includes('ภารโรง') ||
+    pos.includes('พี่เลี้ยง') ||
+    pos.includes('จ้างเหมา') ||
+    pos.includes('ลูกจ้าง')
+  ) {
+    const dept = staff?.department || '';
+    if (
+      !dept ||
+      dept === 'ภาษาไทย' ||
+      dept.includes('สังคมศึกษา') ||
+      dept.includes('คณิตศาสตร์') ||
+      dept.includes('วิทยาศาสตร์') ||
+      dept.includes('ศิลปะ') ||
+      dept.includes('ภาษาต่างประเทศ') ||
+      dept.includes('การศึกษาปฐมวัย')
+    ) {
+      return 'สายงานบริหารและสนับสนุนการศึกษา';
+    }
+  }
+  return staff?.department || '';
+}
+
 // 2. teachers (PK: id)
 export function teacherToDb(t: TeacherRecord) {
   const accessLevel =
@@ -576,7 +610,7 @@ export function teacherToDb(t: TeacherRecord) {
     position: positionTitle,
     academic_standing: t.academicStanding || '-',
     employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
-    department: t.department || '',
+    department: deriveDepartment(t),
     division: t.division || '',
     class_level: t.classLevel || '-',
     duty_day: t.dutyDay || '-',
@@ -655,7 +689,7 @@ export function teacherFromDb(row: any): TeacherRecord {
     academicStanding: row.academic_standing || '-',
     employment_type: deriveEmploymentType(row),
     employmentType: deriveEmploymentType(row),
-    department: row.department || '',
+    department: deriveDepartment(row),
     division: row.division || '',
     classLevel: row.class_level || '-',
     dutyDay: row.duty_day || '-',
