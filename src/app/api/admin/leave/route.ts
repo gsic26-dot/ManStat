@@ -6,6 +6,7 @@ import {
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
+import { isAdminRole, sanitizeLeaveForViewer } from '@/lib/auth/roles';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || undefined;
 
-    const list = await dbGetLeaveRequests(status);
+    const [list, sessionUser] = await Promise.all([
+      dbGetLeaveRequests(status),
+      getSessionUser(),
+    ]);
+
+    // Server-Side PDPA Section 26 Sanitization: Mask sick leave medical reasons for third parties
+    const sanitizedList = list.map((req) => sanitizeLeaveForViewer(req, sessionUser));
 
     return NextResponse.json(
-      { success: true, data: list },
+      { success: true, data: sanitizedList },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -37,6 +44,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json(
+        { success: false, error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' },
+        { status: 401 }
+      );
+    }
+
+    const isUserAdmin = isAdminRole(sessionUser.role);
     const body = await request.json();
     const { id } = body;
 
@@ -49,9 +65,35 @@ export async function POST(request: Request) {
     if (existingIndex >= 0) {
       // Update existing request
       const existing = currentRequests[existingIndex];
+      const isApprovingOrRejecting =
+        (body.status === 'approved' && existing.status !== 'approved') ||
+        (body.status === 'rejected' && existing.status !== 'rejected') ||
+        (body.status === 'supervisor_approved' && existing.status !== 'supervisor_approved');
+
+      // RBAC Guard: Only Admin/Director/Superuser can approve or reject leave requests
+      if (isApprovingOrRejecting && !isUserAdmin) {
+        return NextResponse.json(
+          { success: false, error: 'สงวนสิทธิ์เฉพาะผู้บริหารและผู้ดูแลระบบในการอนุมัติหรือไม่อนุมัติใบลา' },
+          { status: 403 }
+        );
+      }
+
+      // RBAC Guard: Regular teachers can only edit their own pending leave requests
+      const isOwner =
+        existing.teacherId === sessionUser.id ||
+        existing.teacherId === sessionUser.employeeCode;
+      if (!isUserAdmin && (!isOwner || existing.status !== 'pending')) {
+        return NextResponse.json(
+          { success: false, error: 'ไม่มีสิทธิ์แก้ไขใบลาของผู้อื่น หรือใบลาที่อนุมัติแล้ว' },
+          { status: 403 }
+        );
+      }
+
       savedRequest = {
         ...existing,
         ...body,
+        // Prevent non-admin from escalating status
+        status: isUserAdmin ? (body.status || existing.status) : existing.status,
       };
 
       if (body.status === 'approved' && existing.status !== 'approved') {
@@ -63,15 +105,36 @@ export async function POST(request: Request) {
       }
     } else {
       // Create new request
+      // RBAC Guard: Only Admin/HR can directly create an already-approved leave (e.g. retroactive leave) or create for another staff member
+      const targetTeacherId = body.teacherId || sessionUser.id || 'TCH-001';
+      const isSelfRequest =
+        targetTeacherId === sessionUser.id ||
+        targetTeacherId === sessionUser.employeeCode;
+
+      if (!isUserAdmin && !isSelfRequest) {
+        return NextResponse.json(
+          { success: false, error: 'ไม่สามารถยื่นใบลาแทนบุคลากรท่านอื่นได้' },
+          { status: 403 }
+        );
+      }
+
+      const requestedStatus = body.status || 'pending';
+      if (!isUserAdmin && requestedStatus !== 'pending') {
+        return NextResponse.json(
+          { success: false, error: 'การยื่นใบลาปกติจะต้องเริ่มต้นด้วยสถานะรอพิจารณา (pending) เท่านั้น' },
+          { status: 403 }
+        );
+      }
+
       const newId =
         id || `LEV-${new Date().getFullYear() + 543}-${String(currentRequests.length + 1).padStart(3, '0')}`;
       savedRequest = {
         id: newId,
         docNo: body.docNo || `ศธ 04052.12/${String(currentRequests.length + 50).padStart(3, '0')}`,
-        teacherId: body.teacherId || 'TCH-001',
-        teacherName: body.teacherName || 'ไม่ระบุชื่อ',
-        position: body.position || 'ครู',
-        department: body.department || 'ทั่วไป',
+        teacherId: targetTeacherId,
+        teacherName: body.teacherName || sessionUser.name || 'ไม่ระบุชื่อ',
+        position: body.position || sessionUser.position || 'ครู',
+        department: body.department || sessionUser.department || 'ทั่วไป',
         leaveType: body.leaveType || 'sick',
         leaveTypeName: body.leaveTypeName || (body.leaveType === 'personal' ? 'ลากิจส่วนตัว' : 'ลาป่วย'),
         startDate: body.startDate || new Date().toISOString().split('T')[0],
@@ -84,7 +147,7 @@ export async function POST(request: Request) {
         reason: body.reason || '',
         substituteTeacherName: body.substituteTeacherName || 'ไม่ระบุ',
         workloadJson: body.workloadJson || body.workloads || [],
-        status: body.status || 'pending',
+        status: isUserAdmin ? requestedStatus : 'pending',
         submittedAt: body.submittedAt || new Date().toISOString(),
         supervisorRemark: body.supervisorRemark || '',
         directorRemark: body.directorRemark || '',
@@ -94,11 +157,8 @@ export async function POST(request: Request) {
 
     const saved = await dbUpsertLeaveRequest(savedRequest);
 
-    const sessionUser = await getSessionUser();
-    const actorName = sessionUser
-      ? `${sessionUser.name} (${sessionUser.position})`
-      : 'นายธีรศักดิ์ มโนธรรม (ผู้อำนวยการสถานศึกษา)';
-    const actorRole = sessionUser?.role || 'superuser';
+    const actorName = `${sessionUser.name} (${sessionUser.position})`;
+    const actorRole = sessionUser.role;
 
     recordAuditLog(
       actionType,

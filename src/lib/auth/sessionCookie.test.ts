@@ -140,4 +140,54 @@ describe('Authentication Persistence & Session Cookie Engine', () => {
       assert.equal(sessionOptions.maxAge, undefined);
     });
   });
+
+  describe('Case 7: Cryptographic HMAC-SHA256 Token Signature Verification & Anti-Forgery', () => {
+    it('strictly rejects unsigned forged Base64 tokens attempting privilege escalation', () => {
+      const forgedPayload = {
+        v: 1,
+        uid: 'EXE-001',
+        role: 'superuser',
+        rem: true,
+        iat: Date.now(),
+        exp: Date.now() + 3600000,
+      };
+      const base64 = Buffer.from(JSON.stringify(forgedPayload)).toString('base64url');
+      const unsignedToken = `mst.${base64}`;
+
+      const result = verifySessionToken(unsignedToken);
+      assert.equal(result.valid, false);
+      assert.equal(result.error, 'Missing session token signature');
+    });
+
+    it('strictly rejects signed tokens when payload is tampered with (e.g. changing teacher to superuser)', () => {
+      const validTeacherToken = createSessionToken('TCH-005', 'teacher', true);
+      const parts = validTeacherToken.split('.');
+      assert.equal(parts.length, 3);
+
+      // Attacker modifies payload to superuser but keeps original signature
+      const tamperedPayload = {
+        v: 1,
+        uid: 'EXE-001',
+        role: 'superuser',
+        rem: true,
+        iat: Date.now(),
+        exp: Date.now() + 3600000,
+      };
+      const tamperedBase64 = Buffer.from(JSON.stringify(tamperedPayload)).toString('base64url');
+      const tamperedToken = `mst.${tamperedBase64}.${parts[2]}`;
+
+      const result = verifySessionToken(tamperedToken);
+      assert.equal(result.valid, false);
+      assert.equal(result.error, 'Invalid session token signature');
+    });
+
+    it('strictly rejects tokens with corrupted or forged signatures', () => {
+      const validToken = createSessionToken('TCH-003', 'hr_admin', false);
+      const corruptedToken = `${validToken}tampered`;
+
+      const result = verifySessionToken(corruptedToken);
+      assert.equal(result.valid, false);
+      assert.equal(result.error, 'Invalid session token signature');
+    });
+  });
 });

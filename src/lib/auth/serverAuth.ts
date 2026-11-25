@@ -50,7 +50,8 @@ export async function getSessionUser(): Promise<AuthenticatedUser | null> {
       return null;
     }
 
-    const userId = cookieUserId || verification.payload?.uid;
+    // SECURITY: Always prioritize cryptographically verified payload.uid over plaintext cookie
+    const userId = verification.payload?.uid || cookieUserId;
     const teachers = await dbGetTeachers();
 
     // 1. Lookup staff in database by userId as highest priority

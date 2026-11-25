@@ -62,8 +62,8 @@ export async function GET(request: Request) {
           (r.staffId === sessionUser.id || r.staffId === sessionUser.employeeCode)
       );
     } else {
-      // In case sessionUser is not found, fallback to civil servant records (e.g. testing)
-      salaryPromotionRecords = rawSalaryRecords.filter((r) => civilServantIds.has(r.staffId));
+      // Unauthenticated requests NEVER receive confidential salary promotion records
+      salaryPromotionRecords = [];
     }
 
     return NextResponse.json(

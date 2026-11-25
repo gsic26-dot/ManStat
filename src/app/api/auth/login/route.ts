@@ -1,10 +1,50 @@
 import { NextResponse } from 'next/server';
-import { dbGetTeachers } from '@/lib/db/serverDb';
+import { dbGetTeachers, recordAuditLog } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import { createSessionToken, getAuthCookieOptions } from '@/lib/auth/sessionCookie';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+// Brute-Force Rate Limiter (Max 8 failed attempts within 15 minutes per IP + Identifier)
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILED_ATTEMPTS = 8;
+const failedLoginAttempts = new Map<string, { count: number; firstAttemptAt: number }>();
+
+export function checkLoginRateLimit(key: string, now: number = Date.now()): {
+  allowed: boolean;
+  retryAfterSeconds: number;
+} {
+  const entry = failedLoginAttempts.get(key);
+  if (!entry) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (now - entry.firstAttemptAt > RATE_LIMIT_WINDOW_MS) {
+    failedLoginAttempts.delete(key);
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (entry.count >= MAX_FAILED_ATTEMPTS) {
+    const remainingMs = RATE_LIMIT_WINDOW_MS - (now - entry.firstAttemptAt);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil(remainingMs / 1000)),
+    };
+  }
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+export function recordFailedLoginAttempt(key: string, now: number = Date.now()): void {
+  const entry = failedLoginAttempts.get(key);
+  if (!entry || now - entry.firstAttemptAt > RATE_LIMIT_WINDOW_MS) {
+    failedLoginAttempts.set(key, { count: 1, firstAttemptAt: now });
+  } else {
+    entry.count += 1;
+  }
+}
+
+export function clearFailedLoginAttempts(key: string): void {
+  failedLoginAttempts.delete(key);
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +58,26 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: 'กรุณากรอกชื่อผู้ใช้ หรืออีเมล' },
         { status: 400 }
+      );
+    }
+
+    const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const rateLimitKey = `${clientIp}:${identifier}`;
+    const rateCheck = checkLoginRateLimit(rateLimitKey);
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `พยายามเข้าสู่ระบบผิดพลาดเกินจำนวนครั้งที่กำหนด กรุณารอ ${Math.ceil(rateCheck.retryAfterSeconds / 60)} นาทีแล้วลองใหม่`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateCheck.retryAfterSeconds) },
+        }
       );
     }
 
@@ -70,6 +130,7 @@ export async function POST(request: Request) {
       });
 
       if (!matchedStaff) {
+        recordFailedLoginAttempt(rateLimitKey);
         return NextResponse.json(
           { success: false, error: 'ไม่พบบัญชีผู้ใช้ในระบบ หรือรหัสผ่านไม่ถูกต้อง' },
           { status: 401 }
@@ -90,6 +151,14 @@ export async function POST(request: Request) {
       const isPasswordValid = pwd.length > 0 && (validPasswords.includes(pwd) || pwd === 'password');
 
       if (!isPasswordValid) {
+        recordFailedLoginAttempt(rateLimitKey);
+        recordAuditLog(
+          'LOGIN_FAILED',
+          matchedStaff.name || identifier,
+          'teacher',
+          'ระบบยืนยันตัวตน',
+          `พยายามเข้าสู่ระบบไม่สำเร็จ (รหัสผ่านไม่ถูกต้อง) สำหรับผู้ใช้ ${identifier}`
+        );
         return NextResponse.json(
           { success: false, error: 'รหัสผ่านไม่ถูกต้อง' },
           { status: 401 }
@@ -99,6 +168,8 @@ export async function POST(request: Request) {
       // Map real accessLevel from database to Role
       userRole = mapAccessLevelToRole(matchedStaff.accessLevel);
     }
+
+    clearFailedLoginAttempts(rateLimitKey);
 
     const isRememberMe = Boolean(rememberMe);
     const userId = matchedStaff.id || matchedStaff.employeeCode || '';

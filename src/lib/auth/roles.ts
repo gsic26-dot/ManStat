@@ -329,3 +329,65 @@ export function formatPDPAProtectedLeaveReason(
 
   return 'ข้อมูลส่วนบุคคล (PDPA)';
 }
+
+/**
+ * Server-Side PDPA Sanitizer for TeacherRecord (DTO Filtering).
+ * Strips raw 13-digit Citizen ID (idCard, memberId), masks personal phone number,
+ * and removes salary fields when viewed by unauthorized third parties.
+ */
+export function sanitizeStaffForViewer<T extends Partial<TeacherRecord>>(
+  staff: T,
+  viewer?: {
+    id?: string;
+    employeeCode?: string;
+    email?: string;
+    role?: string;
+    accessLevel?: string;
+    position?: string;
+    department?: string;
+  } | null
+): T {
+  const check = canViewSensitiveData(viewer, staff);
+  if (check.allowed) {
+    return staff;
+  }
+
+  const sanitized: any = {
+    ...staff,
+    idCard: '',
+    memberId: '',
+    phone: maskPhoneNumber(staff.phone),
+  };
+
+  if ('salary' in sanitized) {
+    delete sanitized.salary;
+  }
+  if ('currentSalary' in sanitized) {
+    delete sanitized.currentSalary;
+  }
+
+  return sanitized as T;
+}
+
+/**
+ * Server-Side PDPA Sanitizer for LeaveRequestRecord (Section 26 Medical Data Protection).
+ * Masks sick leave reasons as "ข้อมูลส่วนบุคคล (PDPA)" before sending over the network
+ * if the viewer is neither the Data Owner nor an authorized Approver/HR Admin.
+ */
+export function sanitizeLeaveForViewer<
+  T extends { teacherId?: string; staffId?: string; leaveType?: string; leave_type?: string; reason?: string }
+>(
+  leave: T,
+  viewer?: {
+    id?: string;
+    employeeCode?: string;
+    email?: string;
+    role?: string;
+    accessLevel?: string;
+  } | null
+): T {
+  return {
+    ...leave,
+    reason: formatPDPAProtectedLeaveReason(leave, viewer, viewer?.role),
+  };
+}

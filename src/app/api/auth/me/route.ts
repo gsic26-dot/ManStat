@@ -39,7 +39,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const userId = cookieUserId || verification.payload?.uid;
+    // SECURITY: Always prioritize cryptographically verified payload.uid over plaintext cookie
+    const userId = verification.payload?.uid || cookieUserId;
     const teachers = await dbGetTeachers();
 
     // 1. Lookup user from database by userId as top priority

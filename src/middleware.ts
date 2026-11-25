@@ -13,10 +13,19 @@ import type { Database, UserRole } from '@/types/database.types';
 import { isAdminRole } from '@/lib/auth/roles';
 import { verifySessionToken } from '@/lib/auth/sessionCookie';
 
+function applySecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  return res;
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request,
   });
+  applySecurityHeaders(response);
 
   const pathname = request.nextUrl.pathname;
 
@@ -96,11 +105,11 @@ export async function middleware(request: NextRequest) {
 
   // 7. Strict Role-Based Access Control (RBAC) for /admin/*
   if (pathname.startsWith('/admin')) {
-    // Resolve user role with safe default 'teacher' (NEVER fallback to superuser)
+    // Resolve user role with safe default 'teacher' (NEVER fallback to superuser, NEVER trust unsigned cookie if token is invalid)
     const userRole: UserRole =
       (user?.user_metadata?.role as UserRole) ||
-      (sessionVerification.payload?.role as UserRole) ||
-      authRoleCookie ||
+      (sessionVerification.valid ? (sessionVerification.payload?.role as UserRole) : undefined) ||
+      (user ? authRoleCookie : undefined) ||
       'teacher';
 
     const hasAdminAccess = isAdminRole(userRole);
@@ -108,11 +117,11 @@ export async function middleware(request: NextRequest) {
     if (!hasAdminAccess) {
       const dashboardUrl = new URL('/', request.url);
       dashboardUrl.searchParams.set('error', 'unauthorized_role');
-      return NextResponse.redirect(dashboardUrl);
+      return applySecurityHeaders(NextResponse.redirect(dashboardUrl));
     }
   }
 
-  return response;
+  return applySecurityHeaders(response);
 }
 
 export const config = {

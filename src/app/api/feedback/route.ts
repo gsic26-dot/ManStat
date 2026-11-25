@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbGetFeedbacks, dbCreateFeedback, dbUpdateFeedback, recordAuditLog } from '@/lib/db/serverDb';
-import { getSessionUser } from '@/lib/auth/serverAuth';
+import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 import type { FeedbackItem } from '@/lib/data/schoolData';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +85,14 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
     const body = await request.json();
     const feedback: FeedbackItem = body;
 

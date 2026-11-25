@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbGetTeachers, dbUpsertTeacher, dbDeleteTeacher, recordAuditLog } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
-import { mapAccessLevelToRole } from '@/lib/auth/roles';
+import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
+import { mapAccessLevelToRole, sanitizeStaffForViewer } from '@/lib/auth/roles';
 import type { TeacherRecord } from '@/lib/data/schoolData';
 
 export const dynamic = 'force-dynamic';
@@ -9,9 +9,16 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const teachers = await dbGetTeachers();
+    const [teachers, sessionUser] = await Promise.all([
+      dbGetTeachers(),
+      getSessionUser(),
+    ]);
+
+    // Server-Side PDPA Sanitization: Strip raw 13-digit idCard & mask phone for unauthorized viewers
+    const sanitizedTeachers = teachers.map((t) => sanitizeStaffForViewer(t, sessionUser));
+
     return NextResponse.json(
-      { success: true, data: teachers },
+      { success: true, data: sanitizedTeachers },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
