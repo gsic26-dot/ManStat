@@ -30,7 +30,8 @@ import {
   Search,
   Loader2,
 } from 'lucide-react';
-import { type TeacherRecord } from '@/lib/data/schoolData';
+import { type TeacherRecord, type WorkloadItem } from '@/lib/data/schoolData';
+import { getStaffDivisions } from '@/lib/staffDivisions';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { PhoneShield } from '@/components/security/PhoneShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
@@ -68,6 +69,7 @@ export const ViewStaffDirectory: React.FC = () => {
   const cellPy = isCompact ? 'py-2' : 'py-3.5';
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [workloadsList, setWorkloadsList] = useState<WorkloadItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
@@ -108,14 +110,23 @@ export const ViewStaffDirectory: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/admin/staff', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && Array.isArray(json.data) && isMounted) {
-          setTeachersList(json.data);
+    Promise.all([
+      fetch('/api/admin/staff', { cache: 'no-store' })
+        .then((res) => res.json())
+        .catch(() => ({ success: false, data: [] })),
+      fetch('/api/admin/workload', { cache: 'no-store' })
+        .then((res) => res.json())
+        .catch(() => ({ success: false, data: [] })),
+    ])
+      .then(([staffJson, workloadJson]) => {
+        if (!isMounted) return;
+        if (staffJson?.success && Array.isArray(staffJson.data)) {
+          setTeachersList(staffJson.data);
+        }
+        if (workloadJson?.success && Array.isArray(workloadJson.data)) {
+          setWorkloadsList(workloadJson.data);
         }
       })
-      .catch(() => {})
       .finally(() => {
         if (isMounted) setIsLoading(false);
       });
@@ -743,6 +754,25 @@ export const ViewStaffDirectory: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">สังกัดกลุ่มสาระ:</span>
                   <span className="text-slate-700 dark:text-slate-200">{selectedTeacher.department}</span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400 shrink-0">สังกัดฝ่ายงาน:</span>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {(() => {
+                      const derivedDivisions = getStaffDivisions(selectedTeacher, workloadsList);
+                      if (derivedDivisions.length === 0) {
+                        return <span className="text-slate-400 dark:text-slate-500">-</span>;
+                      }
+                      return derivedDivisions.map((divName) => (
+                        <span
+                          key={divName}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/70"
+                        >
+                          {divName}
+                        </span>
+                      ));
+                    })()}
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">วิชาเอก:</span>

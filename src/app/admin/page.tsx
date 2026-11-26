@@ -18,11 +18,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
-import {
-  STANDARD_APPOINTMENT_MAJORS,
-  CUSTOM_MAJOR_OPTION,
-  isStandardMajor,
-} from '@/lib/constants/majors';
+import { isStandardMajor } from '@/lib/constants/majors';
+import { StaffEditModal, type StaffModalTabKey } from '@/components/admin/StaffEditModal';
+import type { WorkloadItem } from '@/lib/data/schoolData';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -206,16 +204,16 @@ export default function AdminPage() {
 
   // Staff State
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
+  const [workloads, setWorkloads] = useState<WorkloadItem[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
   const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [expandedBoardId, setExpandedBoardId] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<TeacherRecord | null>(null);
+  const [initialStaffSnapshot, setInitialStaffSnapshot] = useState<TeacherRecord | null>(null);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isCustomMajor, setIsCustomMajor] = useState(false);
-  const [staffModalTab, setStaffModalTab] = useState<
-    'profile' | 'licenses' | 'workload' | 'history'
-  >('profile');
+  const [staffModalTab, setStaffModalTab] = useState<StaffModalTabKey>('personal');
   const [isNewStaff, setIsNewStaff] = useState(false);
 
   // Sub-items for Staff Modal
@@ -320,12 +318,13 @@ export default function AdminPage() {
     async function loadAllAdminData() {
       setIsLoading(true);
       try {
-        const [staffRes, boardRes, schoolRes, holRes, auditRes] = await Promise.all([
+        const [staffRes, boardRes, schoolRes, holRes, auditRes, workloadRes] = await Promise.all([
           fetch('/api/admin/staff', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
           fetch('/api/admin/board', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
           fetch('/api/admin/school', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
           fetch('/api/admin/holidays', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
           fetch('/api/admin/audit', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/workload', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
         ]);
 
         if (isMounted) {
@@ -366,6 +365,9 @@ export default function AdminPage() {
           }
           if (auditRes?.success && Array.isArray(auditRes.data)) {
             setAuditLogs(auditRes.data);
+          }
+          if (workloadRes?.success && Array.isArray(workloadRes.data)) {
+            setWorkloads(workloadRes.data);
           }
         }
       } finally {
@@ -524,7 +526,7 @@ export default function AdminPage() {
     });
     const maxNum = existingNums.length > 0 ? Math.max(...existingNums, 0) : 0;
     const nextCode = `TCH-${String(maxNum + 1).padStart(3, '0')}`;
-    setSelectedStaff({
+    const nextStaff: TeacherRecord = {
       id: nextCode,
       employeeCode: nextCode,
       name: '',
@@ -558,9 +560,11 @@ export default function AdminPage() {
       licenses: [],
       standings: [],
       educations: [],
-    });
+    };
+    setSelectedStaff(nextStaff);
+    setInitialStaffSnapshot(nextStaff);
     setIsCustomMajor(false);
-    setStaffModalTab('profile');
+    setStaffModalTab('personal');
     setIsStaffModalOpen(true);
   };
 
@@ -577,7 +581,7 @@ export default function AdminPage() {
       if (!lastName) lastName = parsed.lastName;
     }
 
-    setSelectedStaff({
+    const hydrated: TeacherRecord = {
       ...t,
       name: formatted,
       prefix: prefix || 'นาย',
@@ -596,10 +600,74 @@ export default function AdminPage() {
       scoutCertNo: t.scoutCertNo || '',
       positionNo: t.positionNo || '',
       memberId: t.memberId || '',
-    });
+    };
+    setSelectedStaff(hydrated);
+    setInitialStaffSnapshot(hydrated);
     setIsCustomMajor(Boolean(t.major && !isStandardMajor(t.major)));
-    setStaffModalTab('profile');
+    setStaffModalTab('personal');
     setIsStaffModalOpen(true);
+  };
+
+  // Dirty-tab indicators comparing current edited staff against initial loaded snapshot
+  const staffTabDirty = useMemo(() => {
+    if (!selectedStaff || !initialStaffSnapshot) {
+      return { personal: false, position: false, education: false, account: false };
+    }
+    const personal =
+      (selectedStaff.prefix || '') !== (initialStaffSnapshot.prefix || '') ||
+      (selectedStaff.firstName || '') !== (initialStaffSnapshot.firstName || '') ||
+      (selectedStaff.lastName || '') !== (initialStaffSnapshot.lastName || '') ||
+      (selectedStaff.phone || '') !== (initialStaffSnapshot.phone || '') ||
+      (selectedStaff.email || '') !== (initialStaffSnapshot.email || '');
+
+    const position =
+      (selectedStaff.employment_type || '') !== (initialStaffSnapshot.employment_type || '') ||
+      (selectedStaff.position || '') !== (initialStaffSnapshot.position || '') ||
+      (selectedStaff.department || '') !== (initialStaffSnapshot.department || '') ||
+      (selectedStaff.classLevel || '-') !== (initialStaffSnapshot.classLevel || '-') ||
+      (selectedStaff.dutyDay || '-') !== (initialStaffSnapshot.dutyDay || '-') ||
+      (selectedStaff.startDate || '') !== (initialStaffSnapshot.startDate || '') ||
+      (selectedStaff.currentPositionDate || '') !== (initialStaffSnapshot.currentPositionDate || '');
+
+    const education =
+      (selectedStaff.major || '') !== (initialStaffSnapshot.major || '') ||
+      JSON.stringify(selectedStaff.educations || []) !==
+        JSON.stringify(initialStaffSnapshot.educations || []);
+
+    const account =
+      (selectedStaff.employeeCode || '') !== (initialStaffSnapshot.employeeCode || '') ||
+      (selectedStaff.positionNo || '') !== (initialStaffSnapshot.positionNo || '') ||
+      (selectedStaff.memberId || '') !== (initialStaffSnapshot.memberId || '') ||
+      (selectedStaff.idCard || '') !== (initialStaffSnapshot.idCard || '') ||
+      (selectedStaff.accessLevel || 'User') !== (initialStaffSnapshot.accessLevel || 'User');
+
+    return { personal, position, education, account };
+  }, [selectedStaff, initialStaffSnapshot]);
+
+  const hasStaffUnsavedChanges =
+    staffTabDirty.personal ||
+    staffTabDirty.position ||
+    staffTabDirty.education ||
+    staffTabDirty.account;
+
+  const handleNavigateToWorkload = () => {
+    const go = () => {
+      window.location.href = '/?view=workload';
+    };
+    if (!hasStaffUnsavedChanges) {
+      go();
+      return;
+    }
+    setConfirmDialog({
+      title: 'ยังไม่ได้บันทึกการเปลี่ยนแปลง',
+      description:
+        'คุณมีการแก้ไขข้อมูลบุคลากรที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้เพื่อไปจัดการสังกัดฝ่ายงานในเมนูตารางสอนและภาระงานใช่หรือไม่?',
+      confirmLabel: 'ไปที่ตารางสอนและภาระงาน',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        go();
+      },
+    });
   };
 
   const handleSaveStaff = async () => {
@@ -2359,1143 +2427,28 @@ export default function AdminPage() {
         {activeTab === 'preferences' && <SystemSettingsTab />}
       </main>
 
-      {/* Staff Master Modal (Feature-complete legacy GAS restoration) */}
-      {isStaffModalOpen && selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 text-xs my-8 max-h-[90vh] flex flex-col text-slate-800 dark:text-slate-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-sky-500/15 text-sky-400">
-                  <UserCheck className="w-5 h-5 shrink-0" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                    {isNewStaff ? 'เพิ่มข้อมูลบุคลากรใหม่' : `ตั้งค่าและแก้ไขบุคลากร: ${formatStaffName(selectedStaff) || 'ไม่ระบุชื่อ'}`}
-                  </h3>
-                  <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                    รหัสประจำตัว: {selectedStaff.employeeCode} {selectedStaff.positionNo ? `| เลขที่ตำแหน่ง: ${selectedStaff.positionNo}` : ''}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsStaffModalOpen(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Sub-Tabs Navigation (Google Segmented Control style) */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-[#0d141d] rounded-lg border border-slate-200/80 dark:border-slate-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => setStaffModalTab('profile')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
-                  staffModalTab === 'profile'
-                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span>ข้อมูลผู้ใช้ & ตำแหน่ง</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStaffModalTab('licenses')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
-                  staffModalTab === 'licenses'
-                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                }`}
-              >
-                <Award className="w-3.5 h-3.5 shrink-0" />
-                <span>ใบอนุญาต & วุฒิลูกเสือ</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-200 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono">
-                  {(selectedStaff.licenses || []).length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStaffModalTab('workload')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
-                  staffModalTab === 'workload'
-                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                <span>ภาระงานสอน & TA</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStaffModalTab('history')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors duration-200 inline-flex items-center justify-center gap-2 ${
-                  staffModalTab === 'history'
-                    ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/30'
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-                <span>วิทยฐานะ & วุฒิการศึกษา</span>
-              </button>
-            </div>
-
-            {/* Modal Body - Tab Panes */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-              {/* TAB 1: ข้อมูลผู้ใช้ & ตำแหน่ง */}
-              {staffModalTab === 'profile' && (
-                <div className="space-y-4">
-                  {/* Identification Card */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 shrink-0" />
-                      <span>ข้อมูลระบุตัวตนและเลขทะเบียนทางราชการ</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">รหัสบุคลากร</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.employeeCode}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, employeeCode: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">เลขที่ตำแหน่ง</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.positionNo || ''}
-                          placeholder="เช่น 75362"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, positionNo: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">สมาชิกประเภทสามัญ เลขที่</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.memberId || ''}
-                          placeholder="เลขสมาชิกสามัญ"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, memberId: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">เลขประจำตัว ปชช. (13 หลัก)</label>
-                        <input
-                          type="text"
-                          maxLength={13}
-                          value={selectedStaff.idCard || ''}
-                          placeholder="เลขบัตร 13 หลัก"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, idCard: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Name and Official Placement */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4 shrink-0" />
-                      <span>ข้อมูลชื่อ ตำแหน่ง และสังกัดฝ่ายงาน</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">คำนำหน้า</label>
-                        <select
-                          value={selectedStaff.prefix || 'นาย'}
-                          onChange={(e) => {
-                            const newPrefix = e.target.value;
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              prefix: newPrefix,
-                              name: formatStaffName({
-                                id: selectedStaff.id,
-                                employeeCode: selectedStaff.employeeCode,
-                                prefix: newPrefix,
-                                firstName: selectedStaff.firstName,
-                                lastName: selectedStaff.lastName,
-                              }),
-                            });
-                          }}
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        >
-                          <option value="นาย">นาย</option>
-                          <option value="นาง">นาง</option>
-                          <option value="นางสาว">นางสาว</option>
-                          <option value="ว่าที่ ร.ต.">ว่าที่ ร.ต.</option>
-                          <option value="ดร.">ดร.</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">ชื่อจริง</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.firstName || ''}
-                          placeholder="ชื่อจริง"
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              firstName: e.target.value,
-                              name: formatStaffName({
-                                id: selectedStaff.id,
-                                employeeCode: selectedStaff.employeeCode,
-                                prefix: selectedStaff.prefix,
-                                firstName: e.target.value,
-                                lastName: selectedStaff.lastName,
-                              }),
-                            })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">นามสกุล</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.lastName || ''}
-                          placeholder="นามสกุล"
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              lastName: e.target.value,
-                              name: formatStaffName({
-                                id: selectedStaff.id,
-                                employeeCode: selectedStaff.employeeCode,
-                                prefix: selectedStaff.prefix,
-                                firstName: selectedStaff.firstName,
-                                lastName: e.target.value,
-                              }),
-                            })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-                      <div className="sm:col-span-2">
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
-                          ประเภทบุคลากร <span className="text-sky-500 font-semibold">*</span>
-                        </label>
-                        <select
-                          value={selectedStaff.employment_type || deriveEmploymentType(selectedStaff)}
-                          onChange={(e) => {
-                            const newType = e.target.value as 'civil_servant' | 'government_employee' | 'temporary_employee';
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              employment_type: newType,
-                              academicStanding: newType === 'temporary_employee' ? '-' : selectedStaff.academicStanding,
-                            });
-                          }}
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white font-medium"
-                        >
-                          <option value="civil_servant">ข้าราชการครูและบุคลากรทางการศึกษา</option>
-                          <option value="government_employee">พนักงานราชการ</option>
-                          <option value="temporary_employee">ลูกจ้างชั่วคราว / จ้างเหมาบริการ</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">ตำแหน่งมาตรฐาน สพฐ.</label>
-                        <select
-                          value={selectedStaff.position}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, position: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-900 dark:text-white"
-                        >
-                          {TEACHER_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-slate-600 dark:text-slate-400">
-                            วิทยฐานะ
-                            {selectedStaff.employment_type === 'temporary_employee' && (
-                              <span className="text-[10px] text-amber-500 ml-1">(เฉพาะข้าราชการ)</span>
-                            )}
-                          </label>
-                          {selectedStaff.employment_type !== 'temporary_employee' && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedStaff({ ...selectedStaff, academicStanding: '-' })}
-                              className="text-[10px] text-sky-500 hover:text-sky-400 font-medium underline"
-                              title="ตั้งค่าเป็นไม่มีวิทยฐานะ (-)"
-                            >
-                              ไม่มีวิทยฐานะ
-                            </button>
-                          )}
-                        </div>
-                        {selectedStaff.employment_type === 'temporary_employee' ? (
-                          <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-slate-400 text-xs italic">
-                            - ไม่ใช้วิทยฐานะ (ลูกจ้างชั่วคราว/จ้างเหมา) -
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            <select
-                              value={
-                                STANDARD_STANDINGS.includes(selectedStaff.academicStanding)
-                                  ? selectedStaff.academicStanding
-                                  : selectedStaff.academicStanding === ''
-                                  ? '-'
-                                  : 'custom'
-                              }
-                              onChange={(e) => {
-                                if (e.target.value !== 'custom') {
-                                  setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value });
-                                }
-                              }}
-                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                            >
-                              <option value="-">- ไม่มีวิทยฐานะ -</option>
-                              <option value="ครูชำนาญการ (คศ. 2)">ครูชำนาญการ (คศ. 2)</option>
-                              <option value="ครูชำนาญการพิเศษ (คศ. 3)">ครูชำนาญการพิเศษ (คศ. 3)</option>
-                              <option value="ครูเชี่ยวชาญ (คศ. 4)">ครูเชี่ยวชาญ (คศ. 4)</option>
-                              <option value="ครูเชี่ยวชาญพิเศษ (คศ. 5)">ครูเชี่ยวชาญพิเศษ (คศ. 5)</option>
-                              <option value="ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)">ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)</option>
-                              <option value="ผู้อำนวยการเชี่ยวชาญ (คศ. 4)">ผู้อำนวยการเชี่ยวชาญ (คศ. 4)</option>
-                              <option value="ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)">ผู้อำนวยการเชี่ยวชาญพิเศษ (คศ. 5)</option>
-                              <option value="custom">ระบุเอง...</option>
-                            </select>
-                            {(!STANDARD_STANDINGS.includes(selectedStaff.academicStanding) || selectedStaff.academicStanding === 'custom') && (
-                              <input
-                                type="text"
-                                value={selectedStaff.academicStanding === 'custom' ? '' : selectedStaff.academicStanding}
-                                placeholder="ระบุวิทยฐานะ หรือพิมพ์ -"
-                                onChange={(e) =>
-                                  setSelectedStaff({ ...selectedStaff, academicStanding: e.target.value })
-                                }
-                                className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">กลุ่มสาระการเรียนรู้</label>
-                        <select
-                          value={selectedStaff.department}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, department: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        >
-                          {DEPARTMENTS.map((dept) => (
-                            <option key={dept} value={dept}>
-                              {dept}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">ฝ่ายงาน / หน้าที่รับผิดชอบ</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.division}
-                          placeholder="เช่น หัวหน้าฝ่ายบริหารงานวิชาการ, ครูประจำชั้น"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, division: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">วิชาเอก</label>
-                        <div className="space-y-1.5">
-                          <select
-                            value={
-                              isCustomMajor
-                                ? CUSTOM_MAJOR_OPTION
-                                : selectedStaff.major && isStandardMajor(selectedStaff.major)
-                                ? selectedStaff.major
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === CUSTOM_MAJOR_OPTION) {
-                                setIsCustomMajor(true);
-                                if (isStandardMajor(selectedStaff.major)) {
-                                  setSelectedStaff({ ...selectedStaff, major: '' });
-                                }
-                              } else {
-                                setIsCustomMajor(false);
-                                setSelectedStaff({ ...selectedStaff, major: val });
-                              }
-                            }}
-                            className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                          >
-                            <option value="">- ไม่ระบุวิชาเอก -</option>
-                            {STANDARD_APPOINTMENT_MAJORS.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                            <option value={CUSTOM_MAJOR_OPTION}>{CUSTOM_MAJOR_OPTION}</option>
-                          </select>
-                          {isCustomMajor && (
-                            <input
-                              type="text"
-                              value={selectedStaff.major || ''}
-                              placeholder="ระบุวิชาเอกเพิ่มเติม..."
-                              onChange={(e) =>
-                                setSelectedStaff({ ...selectedStaff, major: e.target.value })
-                              }
-                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
-                            />
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">ชั้นที่ปรึกษา / ประจำชั้น</label>
-                        <select
-                          value={selectedStaff.classLevel || '-'}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, classLevel: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        >
-                          <option value="-">- ไม่ระบุ / ไม่มี -</option>
-                          {ACTIVE_CLASSES.map((cls) => (
-                            <option key={cls} value={cls}>
-                              {cls}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">เวรประจำวัน</label>
-                        <select
-                          value={selectedStaff.dutyDay || '-'}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, dutyDay: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                        >
-                          <option value="-">- ไม่ระบุ -</option>
-                          <option value="จันทร์">วันจันทร์</option>
-                          <option value="อังคาร">วันอังคาร</option>
-                          <option value="พุธ">วันพุธ</option>
-                          <option value="พฤหัสบดี">วันพฤหัสบดี</option>
-                          <option value="ศุกร์">วันศุกร์</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
-                          วันที่บรรจุรับราชการ
-                        </label>
-                        <ThaiDatePicker
-                          value={selectedStaff.startDate || ''}
-                          onChange={(dateStr) =>
-                            setSelectedStaff({ ...selectedStaff, startDate: dateStr })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
-                          วันที่ดำรงตำแหน่งปัจจุบัน
-                        </label>
-                        <ThaiDatePicker
-                          value={selectedStaff.currentPositionDate || ''}
-                          onChange={(dateStr) =>
-                            setSelectedStaff({ ...selectedStaff, currentPositionDate: dateStr })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contact & Access Card */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                      <Lock className="w-4 h-4 shrink-0" />
-                      <span>สิทธิ์การใช้งานระบบ และการติดต่อ</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">ระดับสิทธิ์</label>
-                        <select
-                          value={selectedStaff.accessLevel || 'User'}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, accessLevel: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-semibold"
-                        >
-                          <option value="Superuser">Superuser (สูงสุด)</option>
-                          <option value="Admin">Admin (ฝ่ายบริหาร/งานบุคคล)</option>
-                          <option value="User">User (ครูและบุคลากรทั่วไป)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">เบอร์โทรศัพท์</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.phone || ''}
-                          placeholder="เช่น 081-xxx-xxxx"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, phone: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">อีเมลติดต่อ</label>
-                        <input
-                          type="email"
-                          value={selectedStaff.email || ''}
-                          placeholder="name@school.ac.th"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, email: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: ใบอนุญาตประกอบวิชาชีพ & วุฒิลูกเสือ */}
-              {staffModalTab === 'licenses' && (
-                <div className="space-y-4">
-                  {/* Khurusapha Licenses Section */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                        <Award className="w-4 h-4 shrink-0" />
-                        <span>ทะเบียนใบอนุญาตประกอบวิชาชีพ</span>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        มีทั้งหมด {(selectedStaff.licenses || []).length} ฉบับ
-                      </span>
-                    </div>
-
-                    {/* Current Licenses List */}
-                    <div className="space-y-2">
-                      {(!selectedStaff.licenses || selectedStaff.licenses.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
-                          ยังไม่มีข้อมูลใบอนุญาตประกอบวิชาชีพ
-                        </div>
-                      ) : (
-                        selectedStaff.licenses.map((lic, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 flex items-center justify-between gap-3"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 dark:text-white text-xs">{lic.type}</span>
-                                <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                                  {lic.category}
-                                </span>
-                              </div>
-                              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                                <span>เลขที่: <b className="text-sky-600 dark:text-sky-300">{lic.number}</b></span>
-                                <span>ออกให้: {lic.issueDate}</span>
-                                <span>หมดอายุ: <b className="text-amber-600 dark:text-amber-300">{lic.expiryDate}</b></span>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLicenseFromStaff(idx)}
-                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                              title="ลบใบอนุญาตฉบับนี้"
-                            >
-                              <Trash2 className="w-4 h-4 shrink-0" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Add New License Form */}
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                        <span>เพิ่มใบอนุญาตประกอบวิชาชีพใหม่</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ประเภทใบอนุญาต</label>
-                          <select
-                            value={newLicType}
-                            onChange={(e) => {
-                              setNewLicType(e.target.value);
-                              const match = LICENSE_TYPES.find((lt) => lt.type === e.target.value);
-                              if (match) setNewLicCategory(match.category);
-                            }}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          >
-                            {LICENSE_TYPES.map((lt) => (
-                              <option key={lt.type} value={lt.type}>
-                                {lt.type}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่ใบอนุญาต</label>
-                          <input
-                            type="text"
-                            value={newLicNumber}
-                            placeholder="เช่น 6520112000000"
-                            onChange={(e) => setNewLicNumber(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่ออกเอกสาร</label>
-                          <ThaiDatePicker
-                            value={newLicIssue}
-                            onChange={(dateStr) => setNewLicIssue(dateStr)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันหมดอายุ</label>
-                          <ThaiDatePicker
-                            value={newLicExpiry}
-                            onChange={(dateStr) => setNewLicExpiry(dateStr)}
-                          />
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <button
-                          type="button"
-                          onClick={handleAddLicenseToStaff}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
-                        >
-                          <Plus className="w-3.5 h-3.5 shrink-0" />
-                          <span>เพิ่มใบอนุญาตลงทะเบียน</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Scout Qualifications Section */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
-                      <Compass className="w-4 h-4 shrink-0" />
-                      <span>วุฒิทางลูกเสือ</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">วุฒิทางลูกเสือสูงสุด</label>
-                        <select
-                          value={selectedStaff.highestScout || 'ไม่มีวุฒิลูกเสือ'}
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, highestScout: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-semibold"
-                        >
-                          {SCOUT_QUALIFICATIONS.map((scout) => (
-                            <option key={scout} value={scout}>
-                              {scout}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">เลขที่วุฒิบัตรลูกเสือ</label>
-                        <input
-                          type="text"
-                          value={selectedStaff.scoutCertNo || ''}
-                          placeholder="เช่น สพฐ. 142/2565 หรือ -"
-                          onChange={(e) =>
-                            setSelectedStaff({ ...selectedStaff, scoutCertNo: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: ภาระงานสอน & TA */}
-              {staffModalTab === 'workload' && (
-                <div className="space-y-4">
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-4">
-                    <div className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-2">
-                      <Briefcase className="w-4 h-4 shrink-0" />
-                      <span>กำหนดภาระงานสอนและผู้ช่วยสอน (ก.ค.ศ. ว9/2564 & ว21/2564)</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 space-y-2">
-                        <label className="block font-semibold text-sky-700 dark:text-sky-300">
-                          ภาระงานสอนตามตาราง (ชั่วโมง/สัปดาห์)
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={50}
-                          value={selectedStaff.teachingHours ?? 18}
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              teachingHours: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white text-lg font-mono font-bold focus:outline-none focus:border-sky-500"
-                        />
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                          ตามเกณฑ์ ก.ค.ศ. ต้องมีชั่วโมงสอนตามตารางไม่น้อยกว่า 12 ชั่วโมง/สัปดาห์
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 space-y-2">
-                        <label className="block font-semibold text-amber-700 dark:text-amber-300">
-                          ชั่วโมงผู้ช่วยสอน TA (ชั่วโมง/สัปดาห์)
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={30}
-                          value={selectedStaff.taHours ?? 0}
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              taHours: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white text-lg font-mono font-bold focus:outline-none focus:border-amber-500"
-                        />
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                          ชั่วโมงสนับสนุนการจัดการเรียนรู้ / ผู้ช่วยสอนในห้องเรียน
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Live Evaluation Card */}
-                    {(() => {
-                      const total = (selectedStaff.teachingHours ?? 0) + (selectedStaff.taHours ?? 0);
-                      const isTeacher = selectedStaff.position.includes('ครู');
-                      const passCriteria = isTeacher
-                        ? total >= 20 && (selectedStaff.teachingHours ?? 0) >= 12
-                        : total >= 15;
-
-                      return (
-                        <div
-                          className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
-                            passCriteria
-                              ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
-                              : 'bg-amber-950/20 border-amber-500/30 text-amber-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="font-bold text-sm flex items-center gap-1.5">
-                              <CheckCircle2 className="w-4 h-4 shrink-0" />
-                              <span>
-                                รวมภาระงานปฏิบัติการสอน: {total} ชั่วโมง/สัปดาห์
-                              </span>
-                            </div>
-                            <div className="text-[11px] opacity-80 mt-1">
-                              {passCriteria
-                                ? 'ผ่านเกณฑ์ภาระงานขั้นต่ำตามมาตรฐานวิชาชีพ ก.ค.ศ. พร้อมประเมิน PA'
-                                : 'ภาระงานสอนต่ำกว่าเกณฑ์ขั้นต่ำ 20 ชม./สัปดาห์ โปรดตรวจสอบการจัดชั่วโมงสอน'}
-                            </div>
-                          </div>
-                          <span
-                            className={`px-3 py-1 rounded-xl text-xs font-bold shrink-0 border ${
-                              passCriteria
-                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
-                                : 'bg-amber-500/20 border-amber-500/40 text-amber-200'
-                            }`}
-                          >
-                            {passCriteria ? 'ผ่านเกณฑ์ PA' : 'ต้องปรับปรุง'}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: วิทยฐานะ & วุฒิการศึกษา */}
-              {staffModalTab === 'history' && (
-                <div className="space-y-4">
-                  {/* Standings Section */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
-                        <Award className="w-4 h-4 shrink-0" />
-                        <span>ประวัติการบรรจุ การดำรงตำแหน่ง และวิทยฐานะ</span>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {(selectedStaff.standings || []).length} รายการ
-                      </span>
-                    </div>
-
-                    {selectedStaff.employment_type === 'temporary_employee' ? (
-                      <div className="p-4 rounded-xl bg-slate-100 dark:bg-[#16212e] border border-slate-200 dark:border-slate-800 text-center space-y-1">
-                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5">
-                          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                          <span>ไม่ใช้วิทยฐานะสำหรับลูกจ้างชั่วคราวและจ้างเหมาบริการ</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          วิทยฐานะและการเลื่อนวิทยฐานะสงวนสิทธิ์เฉพาะตำแหน่งข้าราชการครูและบุคลากรทางการศึกษาเท่านั้น
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-2">
-                          {(!selectedStaff.standings || selectedStaff.standings.length === 0) ? (
-                            <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
-                              ยังไม่มีข้อมูลประวัติวิทยฐานะ
-                            </div>
-                          ) : (
-                            selectedStaff.standings.map((std, idx) => (
-                              <div
-                                key={idx}
-                                className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
-                                  editingStandingIndex === idx
-                                    ? 'border-sky-500 ring-1 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20'
-                                    : 'border-slate-200/90 dark:border-slate-700'
-                                }`}
-                              >
-                                <div>
-                                  <div className="font-bold text-slate-900 dark:text-white text-xs">{std.level}</div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                                    วันที่มีผล: {std.effectiveDate} | คำสั่ง: {std.orderNumber}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditStanding(idx)}
-                                    className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                    title="แก้ไขรายการนี้"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5 shrink-0" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteStandingFromStaff(idx)}
-                                    className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                                    title="ลบรายการนี้"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                          <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              {editingStandingIndex !== null ? (
-                                <>
-                                  <Pencil className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                                  <span>แก้ไขประวัติการดำรงตำแหน่ง/วิทยฐานะ (รายการที่ {editingStandingIndex + 1})</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                                  <span>เพิ่มประวัติการดำรงตำแหน่ง/วิทยฐานะ</span>
-                                </>
-                              )}
-                            </div>
-                            {editingStandingIndex !== null && (
-                              <button
-                                type="button"
-                                onClick={handleCancelEditStanding}
-                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
-                              >
-                                ยกเลิกการแก้ไข
-                              </button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div className="sm:col-span-1">
-                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ตำแหน่ง/วิทยฐานะ</label>
-                              <input
-                                type="text"
-                                value={newStdLevel}
-                                onChange={(e) => setNewStdLevel(e.target.value)}
-                                className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วันที่มีผล</label>
-                              <ThaiDatePicker
-                                value={newStdDate}
-                                onChange={(dateStr) => setNewStdDate(dateStr)}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">เลขที่คำสั่ง</label>
-                              <input
-                                type="text"
-                                value={newStdOrder}
-                                placeholder="เช่น ศธ 04123/2565"
-                                onChange={(e) => setNewStdOrder(e.target.value)}
-                                className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-end gap-2">
-                            {editingStandingIndex !== null && (
-                              <button
-                                type="button"
-                                onClick={handleCancelEditStanding}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
-                              >
-                                <X className="w-3.5 h-3.5 shrink-0" />
-                                <span>ยกเลิก</span>
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={handleSaveStanding}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
-                            >
-                              {editingStandingIndex !== null ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 shrink-0" />
-                                  <span>บันทึกการแก้ไข</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="w-3.5 h-3.5 shrink-0" />
-                                  <span>เพิ่มรายการวิทยฐานะ</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Education History Section */}
-                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                        <GraduationCap className="w-4 h-4 shrink-0" />
-                        <span>วุฒิการศึกษา (Degrees & Majors)</span>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {(selectedStaff.educations || []).length} รายการ
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {(!selectedStaff.educations || selectedStaff.educations.length === 0) ? (
-                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-[#16212e] text-slate-500 dark:text-slate-400 text-center">
-                          ยังไม่มีข้อมูลวุฒิการศึกษา
-                        </div>
-                      ) : (
-                        selectedStaff.educations.map((edu, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
-                              editingEducationIndex === idx
-                                ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'
-                                : 'border-slate-200/90 dark:border-slate-700'
-                            }`}
-                          >
-                            <div>
-                              <div className="font-bold text-slate-900 dark:text-white text-xs">
-                                {edu.degree} สาขา {edu.major}
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                {edu.institute} (พ.ศ. {edu.gradYear})
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleEditEducation(idx)}
-                                className="p-1.5 rounded-md text-slate-400 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
-                                title="แก้ไขวุฒินี้"
-                              >
-                                <Pencil className="w-3.5 h-3.5 shrink-0" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteEducationFromStaff(idx)}
-                                className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors duration-200"
-                                title="ลบวุฒินี้"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                      <div className="font-semibold text-slate-700 dark:text-slate-200 text-[11px] flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          {editingEducationIndex !== null ? (
-                            <>
-                              <Pencil className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                              <span>แก้ไขวุฒิการศึกษา (รายการที่ {editingEducationIndex + 1})</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                              <span>เพิ่มวุฒิการศึกษา</span>
-                            </>
-                          )}
-                        </div>
-                        {editingEducationIndex !== null && (
-                          <button
-                            type="button"
-                            onClick={handleCancelEditEducation}
-                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] underline"
-                          >
-                            ยกเลิกการแก้ไข
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">วุฒิ (อักษรย่อ)</label>
-                          <input
-                            type="text"
-                            value={newEduDegree}
-                            placeholder="เช่น ค.บ., ศศ.บ."
-                            onChange={(e) => setNewEduDegree(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สาขาวิชาเอก</label>
-                          <input
-                            type="text"
-                            value={newEduMajor}
-                            placeholder="เช่น ภาษาไทย, คณิตศาสตร์"
-                            onChange={(e) => setNewEduMajor(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">สถาบันการศึกษา</label>
-                          <input
-                            type="text"
-                            value={newEduInst}
-                            placeholder="ชื่อมหาวิทยาลัย"
-                            onChange={(e) => setNewEduInst(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">ปี พ.ศ. ที่จบ</label>
-                          <input
-                            type="text"
-                            value={newEduYear}
-                            placeholder="เช่น 2565"
-                            onChange={(e) => setNewEduYear(e.target.value)}
-                            className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
-                        {editingEducationIndex !== null && (
-                          <button
-                            type="button"
-                            onClick={handleCancelEditEducation}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors duration-200"
-                          >
-                            <X className="w-3.5 h-3.5 shrink-0" />
-                            <span>ยกเลิก</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleSaveEducation}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs border border-transparent transition-colors duration-200"
-                        >
-                          {editingEducationIndex !== null ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 shrink-0" />
-                              <span>บันทึกการแก้ไข</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5 shrink-0" />
-                              <span>เพิ่มวุฒิการศึกษา</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Actions Footer */}
-            <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800 shrink-0">
-              {!isNewStaff ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteStaff(selectedStaff.id)}
-                  className="px-4 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs inline-flex items-center gap-2 transition-colors duration-200"
-                >
-                  <Trash2 className="w-4 h-4 shrink-0" />
-                  <span>ลบข้อมูลบุคลากรนี้</span>
-                </button>
-              ) : (
-                <div />
-              )}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsStaffModalOpen(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 disabled:opacity-50"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveStaff}
-                  disabled={isSaving}
-                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent inline-flex items-center gap-2 transition-colors duration-200 disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 shrink-0" />
-                  )}
-                  <span>{isSaving ? 'กำลังบันทึกลงฐานข้อมูล...' : isNewStaff ? 'บันทึกเพิ่มบุคลากรใหม่' : 'บันทึกการเปลี่ยนแปลง'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Staff Edit Modal (Clean 2x2 Core Tabs — Single Source of Truth) */}
+      <StaffEditModal
+        isOpen={isStaffModalOpen}
+        isNewStaff={isNewStaff}
+        isSaving={isSaving}
+        staff={selectedStaff}
+        workloads={workloads}
+        activeTab={staffModalTab}
+        dirtyTabs={staffTabDirty}
+        isCustomMajor={isCustomMajor}
+        teacherRoles={TEACHER_ROLES}
+        departments={DEPARTMENTS}
+        activeClasses={ACTIVE_CLASSES}
+        deriveEmploymentType={deriveEmploymentType}
+        onTabChange={setStaffModalTab}
+        onChangeStaff={setSelectedStaff}
+        onChangeCustomMajor={setIsCustomMajor}
+        onNavigateToWorkload={handleNavigateToWorkload}
+        onDeleteStaff={handleDeleteStaff}
+        onSave={handleSaveStaff}
+        onClose={() => setIsStaffModalOpen(false)}
+      />
 
       {/* School Board Modal (Feature-complete legacy GAS restoration) */}
       {isBoardModalOpen && selectedBoardMember && (

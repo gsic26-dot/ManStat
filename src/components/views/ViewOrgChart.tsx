@@ -40,13 +40,15 @@ import {
   BoardMemberRecord,
   SchoolInfoRecord,
   TeacherRecord,
+  WorkloadItem,
 } from '@/lib/data/schoolData';
 import {
   findDivisionHead,
   getDirectorInfo,
   type DivisionKey,
 } from '@/lib/regulations/org-chart';
-import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { getDivisionMembers } from '@/lib/staffDivisions';
+import { formatStaffName, formatOfficialPosition } from '@/lib/regulations/staff-formatting';
 
 interface DivisionCardConfig {
   id: DivisionKey;
@@ -187,10 +189,12 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
 export interface ActiveDivisionModalData extends DivisionCardConfig {
   headName: string;
   headPositionFormatted: string;
+  members: TeacherRecord[];
 }
 
 export const ViewOrgChart: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [workloadsList, setWorkloadsList] = useState<WorkloadItem[]>([]);
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -205,6 +209,14 @@ export const ViewOrgChart: React.FC = () => {
         .then((res) => {
           if (res.success && Array.isArray(res.data) && isMounted) {
             setTeachersList(res.data);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/workload', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data) && isMounted) {
+            setWorkloadsList(res.data);
           }
         })
         .catch(() => {}),
@@ -266,17 +278,19 @@ export const ViewOrgChart: React.FC = () => {
 
   const totalBoardMembers = boardList.length;
 
-  // 3. Bind real division heads dynamically to 4 divisions
+  // 3. Bind real division heads & multi-division members dynamically from Workload Category 2
   const divisions = useMemo(() => {
     return STATIC_DIVISIONS.map((div) => {
       const head = findDivisionHead(teachersList, div.id);
+      const members = getDivisionMembers(teachersList, workloadsList, div.id);
       return {
         ...div,
         headName: head.name,
         headPositionFormatted: head.positionFormatted,
+        members,
       };
     });
-  }, [teachersList]);
+  }, [teachersList, workloadsList]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -451,8 +465,13 @@ export const ViewOrgChart: React.FC = () => {
 
                   {/* Core Scopes Preview (Fixed 3 items) */}
                   <div className="mt-3.5 space-y-1.5 flex-1">
-                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      ขอบข่ายภารกิจ · {div.duties.length} งาน
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                      <span>ขอบข่ายภารกิจ · {div.duties.length} งาน</span>
+                      {div.members.length > 0 && (
+                        <span className="font-mono text-slate-500 dark:text-slate-400">
+                          {div.members.length} ท่าน
+                        </span>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       {div.duties.slice(0, 3).map((duty, idx) => (
@@ -543,6 +562,26 @@ export const ViewOrgChart: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Division Members (Auto-derived from Workload Category 2 + legacy fallback) */}
+            {activeModalDivision.members.length > 0 && (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  บุคลากรที่ปฏิบัติงานในกลุ่มงานนี้ ({activeModalDivision.members.length} ท่าน)
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeModalDivision.members.map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 text-xs text-slate-800 dark:text-slate-200"
+                    >
+                      <span className="font-medium">{formatStaffName(m)}</span>
+                      <span className="text-[10px] text-slate-400">({formatOfficialPosition(m)})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Modal Subtitle / Count */}
             <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">

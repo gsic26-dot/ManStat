@@ -116,6 +116,21 @@ export type ActiveView =
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+
+  // Support deep-linking from /admin via /?view=workload (or other valid views)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const viewParam = new URLSearchParams(window.location.search).get('view');
+    const validViews: ActiveView[] = [
+      'dashboard', 'leave', 'tracking_requests', 'requests', 'tracking',
+      'retro_leave', 'leave_reports', 'analytics', 'official_reports',
+      'org_chart', 'school_board', 'workload', 'staff_directory',
+      'dir_standing', 'dir_scout', 'dir_license', 'salary_history', 'feedback',
+    ];
+    if (viewParam && (validViews as string[]).includes(viewParam)) {
+      setActiveView(viewParam as ActiveView);
+    }
+  }, []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
