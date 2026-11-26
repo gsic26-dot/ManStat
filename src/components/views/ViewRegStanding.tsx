@@ -29,7 +29,11 @@ import {
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { groupAndSortTeachers } from '@/lib/regulations/staff-sorting';
-import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import {
+  formatStaffName,
+  formatOfficialPosition,
+  formatShortStanding,
+} from '@/lib/regulations/staff-formatting';
 import { isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
 import { useUserSettings } from '@/context/UserSettingsContext';
 
@@ -99,13 +103,18 @@ export const ViewRegStanding: React.FC = () => {
   const filteredCivilServants = useMemo(() => {
     if (!searchQuery.trim()) return civilServants;
     const q = searchQuery.toLowerCase().trim();
-    return civilServants.filter(
-      (t) =>
+    return civilServants.filter((t) => {
+      const officialPos = formatOfficialPosition(t).toLowerCase();
+      const shortStanding = formatShortStanding(t.academicStanding).toLowerCase();
+      return (
         formatStaffName(t).toLowerCase().includes(q) ||
         (t.employeeCode || '').toLowerCase().includes(q) ||
+        officialPos.includes(q) ||
+        shortStanding.includes(q) ||
         (t.academicStanding || '').toLowerCase().includes(q) ||
         (t.position || '').toLowerCase().includes(q)
-    );
+      );
+    });
   }, [civilServants, searchQuery]);
 
   const groupedTeachers = useMemo(() => {
@@ -239,14 +248,11 @@ export const ViewRegStanding: React.FC = () => {
                         {group.members.map((teacher) => {
                           runningSeq++;
                           const seq = runningSeq;
-                          const hasStanding =
-                            teacher.academicStanding &&
-                            teacher.academicStanding !== '-' &&
-                            teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
-                          const standingDisplay = hasStanding ? teacher.academicStanding : '-';
+                          const posDisplay = formatOfficialPosition(teacher);
+                          const standingDisplay = formatShortStanding(teacher.academicStanding);
+                          const hasStanding = standingDisplay !== 'ไม่มีวิทยฐานะ';
                           const orderedStandings = sortStandingsDesc(teacher.standings);
                           const latestOrder = orderedStandings[0];
-                          const posDisplay = (teacher.position || '-').replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                           const deptDisplay = (teacher.department || '-').replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
                           const isExpanded = expandedId === teacher.id;
 
@@ -275,10 +281,10 @@ export const ViewRegStanding: React.FC = () => {
 
                                 {/* Position */}
                                 <td className="px-4 py-3.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                  <div title={teacher.position} className="whitespace-nowrap">{posDisplay}</div>
+                                  <div title={posDisplay} className="whitespace-nowrap">{posDisplay}</div>
                                 </td>
 
-                                {/* Standing (Clean text + subtle rank dot) */}
+                                {/* Standing (Clean text + subtle rank dot; muted text without dot when none) */}
                                 <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                   {hasStanding ? (
                                     <div className="inline-flex items-center gap-1.5">
@@ -288,8 +294,8 @@ export const ViewRegStanding: React.FC = () => {
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">
-                                      -
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                                      ไม่มีวิทยฐานะ
                                     </span>
                                   )}
                                 </td>
@@ -382,11 +388,9 @@ export const ViewRegStanding: React.FC = () => {
         /* Grid of Standings */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedTeachers.map((teacher) => {
-            const hasStanding =
-              teacher.academicStanding &&
-              teacher.academicStanding !== '-' &&
-              teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
-            const standingDisplay = hasStanding ? teacher.academicStanding : '-';
+            const posDisplay = formatOfficialPosition(teacher);
+            const standingDisplay = formatShortStanding(teacher.academicStanding);
+            const hasStanding = standingDisplay !== 'ไม่มีวิทยฐานะ';
             const latestOrder = sortStandingsDesc(teacher.standings)[0];
 
             return (
@@ -395,22 +399,29 @@ export const ViewRegStanding: React.FC = () => {
                 className="bg-white dark:bg-[#111823]/90 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
                     {hasStanding ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        <Medal className="w-3.5 h-3.5 shrink-0" />
+                      <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                         <span>{standingDisplay}</span>
-                      </span>
+                      </div>
                     ) : (
-                      <span className="inline-block px-3 py-1 rounded-xl text-xs sm:text-sm font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">
                         ไม่มีวิทยฐานะ
                       </span>
                     )}
-                    <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                    <Award
+                      className={`w-4 h-4 shrink-0 ${
+                        hasStanding
+                          ? 'text-amber-500 dark:text-amber-400'
+                          : 'text-slate-300 dark:text-slate-600'
+                      }`}
+                    />
                   </div>
 
                   <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{formatStaffName(teacher)}</div>
-                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">{teacher.department}</div>
+                  <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">{posDisplay}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3">{teacher.department}</div>
 
                   <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-200/90 dark:border-slate-800">
                     <div className="flex items-center gap-2">

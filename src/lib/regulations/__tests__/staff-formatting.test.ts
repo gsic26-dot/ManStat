@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   formatStaffName,
+  formatOfficialPosition,
+  formatShortStanding,
   parseThaiName,
   extractThaiPrefix,
   KNOWN_MALE_STAFF_CODES,
@@ -163,6 +165,50 @@ describe('Staff Name Formatting Engine (Single Source of Truth)', () => {
       assert.equal(parsed.firstName, 'ธีรศักดิ์');
       assert.equal(parsed.lastName, 'มโนธรรม');
       assert.equal(parsed.fullName, 'นายธีรศักดิ์ มโนธรรม');
+    });
+  });
+
+  describe('Helper: formatOfficialPosition (ก.ค.ศ. Official Position Titles)', () => {
+    it('normalizes Director variants to ผู้อำนวยการสถานศึกษา', () => {
+      assert.equal(formatOfficialPosition({ position: 'ผอ.สถานศึกษา' }), 'ผู้อำนวยการสถานศึกษา');
+      assert.equal(formatOfficialPosition({ position: 'ผู้อำนวยการสถานศึกษา' }), 'ผู้อำนวยการสถานศึกษา');
+      assert.equal(formatOfficialPosition({ position: 'ผู้อำนวยการชำนาญการพิเศษ' }), 'ผู้อำนวยการสถานศึกษา');
+    });
+
+    it('normalizes Deputy Director variants to รองผู้อำนวยการสถานศึกษา', () => {
+      assert.equal(formatOfficialPosition({ position: 'รองผู้อำนวยการโรงเรียน' }), 'รองผู้อำนวยการสถานศึกษา');
+      assert.equal(formatOfficialPosition({ position: 'รอง ผอ.สถานศึกษา' }), 'รองผู้อำนวยการสถานศึกษา');
+    });
+
+    it('preserves ครูผู้ช่วย and normalizes all regular teacher ranks to ครู', () => {
+      assert.equal(formatOfficialPosition({ position: 'ครูผู้ช่วย' }), 'ครูผู้ช่วย');
+      assert.equal(formatOfficialPosition({ position: 'ครู คศ. 1' }), 'ครู');
+      assert.equal(formatOfficialPosition({ position: 'ครูชำนาญการ' }), 'ครู');
+      assert.equal(formatOfficialPosition({ position: 'ครูชำนาญการพิเศษ' }), 'ครู');
+      assert.equal(formatOfficialPosition({ position: 'ครูเชี่ยวชาญ' }), 'ครู');
+      assert.equal(formatOfficialPosition({ position: 'ครูเชี่ยวชาญพิเศษ' }), 'ครู');
+    });
+  });
+
+  describe('Helper: formatShortStanding (Concise Standing without คศ. Suffix)', () => {
+    it('strips position prefixes and parenthesized คศ. salary grades', () => {
+      assert.equal(formatShortStanding('ผู้อำนวยการชำนาญการพิเศษ (คศ. 3)'), 'ชำนาญการพิเศษ');
+      assert.equal(formatShortStanding('ครูชำนาญการพิเศษ (คศ. 3)'), 'ชำนาญการพิเศษ');
+      assert.equal(formatShortStanding('ครูชำนาญการ (คศ. 2)'), 'ชำนาญการ');
+      assert.equal(formatShortStanding('ครูเชี่ยวชาญ (คศ. 4)'), 'เชี่ยวชาญ');
+      assert.equal(formatShortStanding('ครูเชี่ยวชาญพิเศษ (คศ. 5)'), 'เชี่ยวชาญพิเศษ');
+    });
+
+    it('returns ไม่มีวิทยฐานะ for staff without an academic standing yet', () => {
+      assert.equal(formatShortStanding('ครู คศ. 1'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding('ครู คศ.1'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding('ครูผู้ช่วย'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding('ยังไม่มีวิทยฐานะ'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding('ไม่มีวิทยฐานะ'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding('-'), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding(''), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding(null), 'ไม่มีวิทยฐานะ');
+      assert.equal(formatShortStanding(undefined), 'ไม่มีวิทยฐานะ');
     });
   });
 });

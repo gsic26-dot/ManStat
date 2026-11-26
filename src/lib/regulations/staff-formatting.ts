@@ -283,3 +283,89 @@ export function formatStaffName(
 
   return '';
 }
+
+/**
+ * Normalizes a Thai civil service educator's position title to the official ก.ค.ศ.
+ * display title without appending academic standing or abbreviating Director.
+ * Display-only helper — does not mutate underlying salary/DB records.
+ */
+export function formatOfficialPosition(
+  staffOrPosition?:
+    | string
+    | null
+    | {
+        position?: string | null;
+        academicStanding?: string | null;
+      }
+): string {
+  const raw = (
+    typeof staffOrPosition === 'string'
+      ? staffOrPosition
+      : staffOrPosition?.position || ''
+  ).trim();
+
+  if (!raw) return '-';
+
+  if (
+    raw.includes('รองผู้อำนวยการ') ||
+    raw.includes('รอง ผอ.') ||
+    raw.includes('รองผอ.')
+  ) {
+    return 'รองผู้อำนวยการสถานศึกษา';
+  }
+
+  if (raw.includes('ผู้อำนวยการ') || raw.includes('ผอ.')) {
+    return 'ผู้อำนวยการสถานศึกษา';
+  }
+
+  if (raw.includes('ครูผู้ช่วย')) {
+    return 'ครูผู้ช่วย';
+  }
+
+  if (raw.includes('ครู')) {
+    return 'ครู';
+  }
+
+  return raw;
+}
+
+/**
+ * Formats an academic standing string to its concise ก.ค.ศ. tier label only,
+ * stripping position prefixes (ผู้อำนวยการ/รองผู้อำนวยการ/ครู) and salary-grade
+ * suffixes such as (คศ. 1) - (คศ. 5).
+ * Returns "ไม่มีวิทยฐานะ" when the staff member does not yet hold a standing.
+ */
+export function formatShortStanding(standing?: string | null): string {
+  if (!standing) return 'ไม่มีวิทยฐานะ';
+
+  const trimmed = standing.trim();
+  if (!trimmed || trimmed === '-') return 'ไม่มีวิทยฐานะ';
+
+  // Explicit "no standing" phrases or entry-level ranks without academic standing
+  if (
+    trimmed.includes('ไม่มีวิทยฐานะ') ||
+    trimmed === 'ไม่มี' ||
+    trimmed.includes('ครูผู้ช่วย')
+  ) {
+    return 'ไม่มีวิทยฐานะ';
+  }
+
+  // Match canonical ก.ค.ศ. academic standing tiers (longest match first)
+  if (trimmed.includes('เชี่ยวชาญพิเศษ')) return 'เชี่ยวชาญพิเศษ';
+  if (trimmed.includes('เชี่ยวชาญ')) return 'เชี่ยวชาญ';
+  if (trimmed.includes('ชำนาญการพิเศษ')) return 'ชำนาญการพิเศษ';
+  if (trimmed.includes('ชำนาญการ')) return 'ชำนาญการ';
+
+  // Strip parenthesized or bare salary levels (คศ. 1-5) and position prefixes
+  const cleaned = trimmed
+    .replace(/\(\s*คศ\.?\s*[1-5๑-๕]?\s*\)/g, '')
+    .replace(/คศ\.?\s*[1-5๑-๕]/g, '')
+    .replace(/^(รองผู้อำนวยการสถานศึกษา|รองผู้อำนวยการ|ผู้อำนวยการสถานศึกษา|ผู้อำนวยการ|ผอ\.สถานศึกษา|ผอ\.|ครู)/, '')
+    .trim();
+
+  if (!cleaned || cleaned === '-') {
+    return 'ไม่มีวิทยฐานะ';
+  }
+
+  return cleaned;
+}
