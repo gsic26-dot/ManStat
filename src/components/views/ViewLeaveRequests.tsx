@@ -32,13 +32,14 @@ import {
 } from 'lucide-react';
 import { LeaveRequestRecord, TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
-import { formatPDPAProtectedLeaveReason, isCivilServantForSalary } from '@/lib/auth/roles';
+import { formatPDPAProtectedLeaveReason, isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
 
 interface ViewLeaveRequestsProps {
   onOpenSubmitModal?: () => void;
+  onLeaveMutated?: () => void;
 }
 
-export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps) {
+export function ViewLeaveRequests({ onOpenSubmitModal, onLeaveMutated }: ViewLeaveRequestsProps) {
   const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +50,12 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentRole, setCurrentRole] = useState<string>('teacher');
+  const [rejectModalReq, setRejectModalReq] = useState<LeaveRequestRecord | null>(null);
+  const [rejectRemarkInput, setRejectRemarkInput] = useState('');
+  const [deleteModalReq, setDeleteModalReq] = useState<LeaveRequestRecord | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const canManage = isAdminRole(currentRole);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -100,10 +107,11 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   };
 
   const filteredRequests = requests.filter((req) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      req.teacherName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.docNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.reason.toLowerCase().includes(searchQuery.toLowerCase());
+      (req.teacherName || '').toLowerCase().includes(q) ||
+      (req.docNo || '').toLowerCase().includes(q) ||
+      (req.reason || '').toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
     const matchesType = typeFilter === 'ALL' || req.leaveType === typeFilter;
 
@@ -120,8 +128,10 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
   });
 
   const handleApprove = async (id: string) => {
+    if (!canManage) return;
+    setIsActionLoading(true);
     try {
-      await fetch('/api/admin/leave', {
+      const res = await fetch('/api/admin/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,39 +141,48 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           directorRemark: 'อนุมัติผ่านระบบ ManStat',
         }),
       });
-    } catch {}
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'approved',
-              currentStep: 3,
-              directorRemark: 'อนุมัติผ่านระบบ ManStat',
-            }
-          : r
-      )
-    );
-    if (selectedRequest?.id === id) {
-      setSelectedRequest((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: 'approved',
-              currentStep: 3,
-              directorRemark: 'อนุมัติผ่านระบบ ManStat',
-            }
-          : null
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) return;
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: 'approved',
+                currentStep: 3,
+                directorRemark: 'อนุมัติผ่านระบบ ManStat',
+              }
+            : r
+        )
       );
+      if (selectedRequest?.id === id) {
+        setSelectedRequest((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'approved',
+                currentStep: 3,
+                directorRemark: 'อนุมัติผ่านระบบ ManStat',
+              }
+            : null
+        );
+      }
+      onLeaveMutated?.();
+    } catch {
+      // ignore
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
-  const handleReject = async (id: string) => {
-    const reason = prompt('กรุณาระบุเหตุผลการไม่อนุมัติ:');
-    if (reason === null) return;
-    const remark = `ไม่อนุมัติ: ${reason || 'ภาระงานไม่เอื้ออำนวย'}`;
+  const handleConfirmReject = async () => {
+    if (!canManage || !rejectModalReq) return;
+    const id = rejectModalReq.id;
+    const remark = `ไม่อนุมัติ: ${rejectRemarkInput.trim() || 'ภาระงานไม่เอื้ออำนวย'}`;
+    setIsActionLoading(true);
     try {
-      await fetch('/api/admin/leave', {
+      const res = await fetch('/api/admin/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -173,42 +192,64 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
           directorRemark: remark,
         }),
       });
-    } catch {}
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'rejected',
-              directorRemark: remark,
-            }
-          : r
-      )
-    );
-    if (selectedRequest?.id === id) {
-      setSelectedRequest((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: 'rejected',
-              directorRemark: remark,
-            }
-          : null
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) return;
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: 'rejected',
+                currentStep: 3,
+                directorRemark: remark,
+              }
+            : r
+        )
       );
+      if (selectedRequest?.id === id) {
+        setSelectedRequest((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'rejected',
+                currentStep: 3,
+                directorRemark: remark,
+              }
+            : null
+        );
+      }
+      setRejectModalReq(null);
+      setRejectRemarkInput('');
+      onLeaveMutated?.();
+    } catch {
+      // ignore
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
-  const handleDelete = async (id: string, docNo: string) => {
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${docNo} ออกจากระบบฐานข้อมูล?`)) {
-      try {
-        await fetch(`/api/admin/leave?id=${id}`, {
-          method: 'DELETE',
-        });
-      } catch {}
+  const handleConfirmDelete = async () => {
+    if (!canManage || !deleteModalReq) return;
+    const id = deleteModalReq.id;
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/leave?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) return;
+
       setRequests((prev) => prev.filter((r) => r.id !== id));
       if (selectedRequest?.id === id) {
         setSelectedRequest(null);
       }
+      setDeleteModalReq(null);
+      onLeaveMutated?.();
+    } catch {
+      // ignore
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -302,7 +343,7 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
               ) : (
                 filteredRequests.map((req) => {
                   const isExpanded = expandedId === req.id;
-                  const posDisplay = req.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                  const posDisplay = (req.position || '-').replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                   return (
                     <React.Fragment key={req.id}>
                       <tr
@@ -391,14 +432,16 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                             >
                               <Printer className="w-4 h-4 shrink-0" />
                             </Link>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(req.id, req.docNo)}
-                              title="ลบคำร้อง"
-                              className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200"
-                            >
-                              <Trash2 className="w-4 h-4 shrink-0" />
-                            </button>
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteModalReq(req)}
+                                title="ลบคำร้อง"
+                                className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors duration-200 cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4 shrink-0" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -546,30 +589,37 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                   <Printer className="w-3.5 h-3.5 shrink-0" />
                   <span>พิมพ์ใบลา A4</span>
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(selectedRequest.id, selectedRequest.docNo)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>ลบคำร้อง</span>
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalReq(selectedRequest)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>ลบคำร้อง</span>
+                  </button>
+                )}
               </div>
 
-              {selectedRequest.status === 'pending' ? (
+              {canManage && selectedRequest.status === 'pending' ? (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleReject(selectedRequest.id)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
+                    disabled={isActionLoading}
+                    onClick={() => {
+                      setRejectModalReq(selectedRequest);
+                      setRejectRemarkInput('');
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50"
                   >
                     <XCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>ไม่อนุมัติ</span>
                   </button>
                   <button
                     type="button"
+                    disabled={isActionLoading}
                     onClick={() => handleApprove(selectedRequest.id)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white border border-transparent text-xs font-medium transition-colors duration-200"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white border border-transparent text-xs font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>อนุมัติคำร้อง</span>
@@ -579,11 +629,97 @@ export function ViewLeaveRequests({ onOpenSubmitModal }: ViewLeaveRequestsProps)
                 <button
                   type="button"
                   onClick={() => setSelectedRequest(null)}
-                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 cursor-pointer"
                 >
                   ปิดหน้าต่าง
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason Modal (Admin Only) */}
+      {rejectModalReq && canManage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => !isActionLoading && setRejectModalReq(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+              <XCircle className="w-5 h-5 shrink-0" />
+              <span>ระบุเหตุผลการไม่อนุมัติ ({rejectModalReq.docNo})</span>
+            </div>
+            <textarea
+              rows={3}
+              value={rejectRemarkInput}
+              onChange={(e) => setRejectRemarkInput(e.target.value)}
+              placeholder="กรุณาระบุเหตุผลการไม่อนุมัติ..."
+              className="w-full bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={() => setRejectModalReq(null)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={handleConfirmReject}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium disabled:opacity-50 cursor-pointer"
+              >
+                {isActionLoading ? 'กำลังบันทึก...' : 'ยืนยันไม่อนุมัติ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (Admin Only) */}
+      {deleteModalReq && canManage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => !isActionLoading && setDeleteModalReq(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>ยืนยันการลบคำร้องขอลา</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ <span className="font-mono font-semibold text-slate-900 dark:text-white">{deleteModalReq.docNo}</span> ออกจากระบบฐานข้อมูล?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={() => setDeleteModalReq(null)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium disabled:opacity-50 cursor-pointer"
+              >
+                {isActionLoading ? 'กำลังลบ...' : 'ลบคำร้อง'}
+              </button>
             </div>
           </div>
         </div>

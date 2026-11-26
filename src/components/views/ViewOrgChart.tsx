@@ -33,6 +33,7 @@ import {
   UserCheck,
   ChevronRight,
   X,
+  Loader2,
 } from 'lucide-react';
 import {
   INITIAL_SCHOOL_INFO,
@@ -53,7 +54,6 @@ interface DivisionCardConfig {
   title: string;
   icon: React.ElementType;
   accentBg: string;
-  accentBorder: string;
   accentText: string;
   bulletColor: string;
   duties: string[];
@@ -66,7 +66,6 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
     title: 'กลุ่มบริหารงานวิชาการ',
     icon: BookOpen,
     accentBg: 'bg-sky-50 dark:bg-sky-500/10',
-    accentBorder: 'border-sky-500/30',
     accentText: 'text-sky-600 dark:text-sky-400',
     bulletColor: 'bg-sky-500',
     duties: [
@@ -95,7 +94,6 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
     title: 'กลุ่มบริหารงานงบประมาณ',
     icon: DollarSign,
     accentBg: 'bg-emerald-50 dark:bg-emerald-500/10',
-    accentBorder: 'border-emerald-500/30',
     accentText: 'text-emerald-600 dark:text-emerald-400',
     bulletColor: 'bg-emerald-500',
     duties: [
@@ -129,7 +127,6 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
     title: 'กลุ่มบริหารงานบุคคล',
     icon: Users,
     accentBg: 'bg-amber-50 dark:bg-amber-500/10',
-    accentBorder: 'border-amber-500/30',
     accentText: 'text-amber-600 dark:text-amber-400',
     bulletColor: 'bg-amber-500',
     duties: [
@@ -159,7 +156,6 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
     title: 'กลุ่มบริหารงานทั่วไป',
     icon: Shield,
     accentBg: 'bg-indigo-50 dark:bg-indigo-500/10',
-    accentBorder: 'border-indigo-500/30',
     accentText: 'text-indigo-600 dark:text-indigo-400',
     bulletColor: 'bg-indigo-500',
     duties: [
@@ -197,55 +193,76 @@ export const ViewOrgChart: React.FC = () => {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeModalDivision, setActiveModalDivision] = useState<ActiveDivisionModalData | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Load real staff data
-    fetch('/api/admin/staff', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && Array.isArray(res.data) && isMounted) {
-          setTeachersList(res.data);
-        }
-      })
-      .catch(() => {});
-
-    // Load real school board data
-    fetch('/api/admin/board', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && Array.isArray(res.data) && isMounted) {
-          setBoardList(res.data);
-        }
-      })
-      .catch(() => {});
-
-    // Load school metadata
-    fetch('/api/admin/school', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && res.data && isMounted) {
-          setSchool(res.data);
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/admin/staff', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data) && isMounted) {
+            setTeachersList(res.data);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/board', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data) && isMounted) {
+            setBoardList(res.data);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/school', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data && isMounted) {
+            setSchool(res.data);
+          }
+        })
+        .catch(() => {}),
+    ]).finally(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, []);
 
+  // Close mission scope modal with Escape key
+  useEffect(() => {
+    if (!activeModalDivision) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveModalDivision(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModalDivision]);
+
   // 1. Resolve Director info from real staff database
   const directorInfo = useMemo(() => {
     return getDirectorInfo(teachersList, school.directorName, school.directorPosition);
   }, [teachersList, school.directorName, school.directorPosition]);
 
-  // 2. Resolve Board Chair & Total Members
+  // 2. Resolve Board Chair & Total Members dynamically
   const boardChair = useMemo(() => {
-    return boardList.find((b) => b.position === 'CHAIR')?.fullName || 'นางเสาวนีย์ ศิริวรรณโยธา';
+    const chair = boardList.find((b: any) => (b.position || b.board_position) === 'CHAIR');
+    if (!chair) return 'ยังไม่ได้ระบุประธานกรรมการ';
+    const rawName = (chair as any).fullName || (chair as any).full_name || '';
+    return rawName ? formatStaffName(rawName) : 'ยังไม่ได้ระบุประธานกรรมการ';
   }, [boardList]);
+
+  const schoolAffiliationShort = useMemo(() => {
+    const raw = school.affiliation || '';
+    if (!raw) return 'สังกัด สพฐ.';
+    return raw.replace('สำนักงานเขตพื้นที่การศึกษาประถมศึกษา', 'สพป.');
+  }, [school.affiliation]);
 
   const totalBoardMembers = boardList.length;
 
@@ -275,6 +292,12 @@ export const ViewOrgChart: React.FC = () => {
 
       {/* 2. Visual Hierarchy Tree Diagram */}
       <div className="bg-slate-50/70 dark:bg-[#0d141e] p-4 sm:p-8 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm relative overflow-hidden transition-colors duration-200">
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 py-2 mb-4 text-xs text-slate-500 dark:text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+            <span>กำลังซิงก์ข้อมูลโครงสร้างองค์กรจากฐานข้อมูล...</span>
+          </div>
+        )}
         
         {/* ================================================================= */}
         {/* LEVEL 1: TOP EXECUTIVE NODE & LATERAL ADVISORY NODE               */}
@@ -304,9 +327,11 @@ export const ViewOrgChart: React.FC = () => {
                 </div>
               </div>
               
-              <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                <span>การบริหารงานสถานศึกษาขั้นพื้นฐาน</span>
-                <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">สพป.นครราชสีมา เขต 3</span>
+              <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="truncate">{school.schoolName || 'การบริหารงานสถานศึกษาขั้นพื้นฐาน'}</span>
+                <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0 truncate max-w-[160px]" title={school.affiliation}>
+                  {schoolAffiliationShort}
+                </span>
               </div>
             </div>
 
@@ -480,6 +505,9 @@ export const ViewOrgChart: React.FC = () => {
       {/* ================================================================= */}
       {activeModalDivision && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="org-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setActiveModalDivision(null)}
         >
@@ -497,7 +525,7 @@ export const ViewOrgChart: React.FC = () => {
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     กลุ่มบริหารงาน
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 id="org-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
                     {activeModalDivision.title}
                   </h3>
                   <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">

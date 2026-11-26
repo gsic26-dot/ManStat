@@ -12,8 +12,20 @@
  */
 
 import React from 'react';
-import { PlusCircle, FileText, ChevronRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { PlusCircle, FileText, ChevronRight, Clock, CheckCircle2, XCircle, Printer } from 'lucide-react';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
+
+function formatShortThaiDateArabic(dateStr?: string | null): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('th-TH-u-nu-latn', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 interface MyRecentLeaveRequestsProps {
   requests: LeaveRequestRecord[];
@@ -103,13 +115,23 @@ export const MyRecentLeaveRequests: React.FC<MyRecentLeaveRequestsProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
-                    {req.startDate} {req.endDate && req.endDate !== req.startDate ? `– ${req.endDate}` : ''}
+                    {formatShortThaiDateArabic(req.startDate)}
+                    {req.endDate && req.endDate !== req.startDate ? ` – ${formatShortThaiDateArabic(req.endDate)}` : ''}
                     {req.reason ? ` · ${req.reason}` : ''}
                   </div>
                 </div>
 
                 <div className="shrink-0 flex items-center gap-2">
                   {getStatusBadge(req.status)}
+                  <Link
+                    href={`/leave/print/${req.id}`}
+                    target="_blank"
+                    title="พิมพ์ใบลา A4"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 dark:bg-slate-800/70 dark:hover:bg-slate-800 dark:text-slate-300 dark:hover:text-white border border-slate-200/80 dark:border-slate-700/70 transition-colors"
+                  >
+                    <Printer className="w-3 h-3 text-sky-500 dark:text-sky-400 shrink-0" />
+                    <span>พิมพ์ A4</span>
+                  </Link>
                 </div>
               </div>
             ))}

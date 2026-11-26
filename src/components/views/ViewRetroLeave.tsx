@@ -37,6 +37,8 @@ import {
 import { LeaveCriteriaModal } from '@/components/leave/LeaveCriteriaModal';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { formatLocalDateBangkok } from '@/lib/regulations/dashboard-helpers';
+import { isAdminRole } from '@/lib/auth/roles';
 import {
   MASTER_LEAVE_TYPES,
   isZeroDayLeaveType,
@@ -46,6 +48,7 @@ import {
 } from '@/lib/regulations/leaveTypes';
 import type { LeaveType } from '@/types/database.types';
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
+import { CheckCircle2 } from 'lucide-react';
 
 interface TeachingWorkloadRow {
   cls: string;
@@ -54,12 +57,17 @@ interface TeachingWorkloadRow {
   sub: string;
 }
 
-export function ViewRetroLeave() {
+interface ViewRetroLeaveProps {
+  onSuccess?: () => void;
+}
+
+export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [leaveType, setLeaveType] = useState<LeaveType>('ลาป่วย');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => formatLocalDateBangkok());
+  const [endDate, setEndDate] = useState(() => formatLocalDateBangkok());
   const [isHalfDay, setIsHalfDay] = useState(false);
   const [totalDays, setTotalDays] = useState('1');
   const [reason, setReason] = useState('');
@@ -67,9 +75,28 @@ export function ViewRetroLeave() {
   const [medicalCertNo, setMedicalCertNo] = useState('');
   const [substituteTeacher, setSubstituteTeacher] = useState('');
   const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
+  const [submitSuccessMsg, setSubmitSuccessMsg] = useState<string | null>(null);
+
+  const canRecordRetro = isAdminRole(currentRole);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        if (storedRole) setCurrentRole(storedRole);
+      } catch {}
+    }
+
     let isMounted = true;
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && data.user?.role) {
+          setCurrentRole(data.user.role);
+        }
+      })
+      .catch(() => {});
+
     fetch('/api/admin/staff', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
@@ -183,14 +210,38 @@ export function ViewRetroLeave() {
       }
     }
 
+    if (!canRecordRetro) {
+      setValidationError('สงวนสิทธิ์เฉพาะเจ้าหน้าที่บริหารงานบุคคล / ผู้อำนวยการสถานศึกษาเท่านั้น');
+      return;
+    }
+
     setIsSubmitted(true);
+    setSubmitSuccessMsg(null);
 
     try {
       const leaveDaysCount = isZeroDays ? 0 : parseFloat(totalDays) || 1;
       const effectiveStartDate = isExit ? startDate : missionMode === 'single_day_time' ? startDate : startDate;
       const effectiveEndDate = isExit ? startDate : missionMode === 'single_day_time' ? startDate : endDate || startDate;
 
-      await fetch('/api/admin/leave', {
+      const canonicalLeaveType: string = isExit
+        ? 'school_exit'
+        : isMission
+        ? 'official_mission'
+        : leaveType === 'ลาป่วย'
+        ? 'sick'
+        : leaveType === 'ลากิจส่วนตัว'
+        ? 'personal'
+        : leaveType === 'ลาพักผ่อน'
+        ? 'vacation'
+        : leaveType === 'ลาคลอดบุตร'
+        ? 'maternity'
+        : leaveType.includes('อุปสมบท')
+        ? 'ordination'
+        : leaveType.includes('ศึกษา')
+        ? 'study'
+        : 'other';
+
+      const res = await fetch('/api/admin/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,7 +249,7 @@ export function ViewRetroLeave() {
           teacherName: formatStaffName(selectedTeacher?.name || 'ไม่ระบุชื่อ'),
           position: selectedTeacher?.position || 'ครู',
           department: selectedTeacher?.department || 'ทั่วไป',
-          leaveType: isExit ? 'school_exit' : isMission ? 'official_mission' : leaveType,
+          leaveType: canonicalLeaveType,
           leaveTypeName: `${leaveType} (บันทึกย้อนหลัง)`,
           startDate: effectiveStartDate,
           endDate: effectiveEndDate,
@@ -217,20 +268,47 @@ export function ViewRetroLeave() {
           submittedAt: new Date().toISOString(),
         }),
       });
-    } catch (err) {
-      console.warn('[ViewRetroLeave] Save error:', err);
-    }
 
-    setTimeout(() => {
-      setIsSubmitted(false);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกข้อมูลการลาย้อนหลังได้');
+      }
+
       setReason('');
       setRetroReason('');
       setMedicalCertNo('');
       setDestination('');
       setOfficialOrderNo('');
-      alert('บันทึกข้อมูลย้อนหลังเข้าสู่ระบบเรียบร้อยแล้ว');
-    }, 1000);
+      setSubmitSuccessMsg('บันทึกข้อมูลการลาย้อนหลังเข้าสู่ระบบเรียบร้อยแล้ว');
+      onSuccess?.();
+      setTimeout(() => setSubmitSuccessMsg(null), 4000);
+    } catch (err: any) {
+      console.warn('[ViewRetroLeave] Save error:', err);
+      setValidationError(err?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsSubmitted(false);
+    }
   };
+
+  if (!canRecordRetro) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 flex items-center gap-2.5">
+          <RotateCcw className="w-5 h-5 text-sky-500 shrink-0" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            บันทึกการลาย้อนหลังและขออนุญาตราชการ
+          </h2>
+        </div>
+        <div className="bg-white dark:bg-[#111822] p-10 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center space-y-2">
+          <ShieldAlert className="w-8 h-8 text-amber-500 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">สงวนสิทธิ์สำหรับเจ้าหน้าที่บริหารงานบุคคล / ผู้บริหาร</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            การบันทึกข้อมูลการลาย้อนหลังต้องดำเนินการผ่านกลุ่มบริหารงานบุคคลหรือผู้มีสิทธิ์ดูแลระบบเท่านั้น
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -251,6 +329,13 @@ export function ViewRetroLeave() {
           <span>เกณฑ์และประเภทการลา</span>
         </button>
       </div>
+
+      {submitSuccessMsg && (
+        <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{submitSuccessMsg}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form Column */}

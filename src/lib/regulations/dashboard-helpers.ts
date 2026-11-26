@@ -145,14 +145,34 @@ export interface HolidayStatus {
 }
 
 /**
+ * แปลงวันที่เป็นรูปแบบ YYYY-MM-DD ตามเวลาท้องถิ่นประเทศไทย (Asia/Bangkok)
+ * ป้องกันบั๊ก UTC shift จากการใช้ toISOString().split('T')[0]
+ */
+export function formatLocalDateBangkok(dateInput: Date | string = new Date()): string {
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
+  }
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(d);
+  } catch {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+/**
  * ตรวจสอบว่าวันที่ระบุเป็นวันเสาร์-อาทิตย์ หรือวันหยุดราชการหรือไม่
  */
 export function isWeekendOrHoliday(
   dateInput: Date | string,
   holidays: HolidayRecord[] = []
 ): HolidayStatus {
-  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  if (isNaN(d.getTime())) {
+  const isoDate = formatLocalDateBangkok(dateInput);
+  if (!isoDate) {
     return {
       isHoliday: false,
       isWeekend: false,
@@ -161,7 +181,8 @@ export function isWeekendOrHoliday(
     };
   }
 
-  const dayOfWeek = d.getDay(); // 0 = Sun, 6 = Sat
+  // Evaluate day of week safely at UTC noon for the Bangkok calendar date
+  const dayOfWeek = new Date(`${isoDate}T12:00:00Z`).getUTCDay(); // 0 = Sun, 6 = Sat
   if (dayOfWeek === 0 || dayOfWeek === 6) {
     return {
       isHoliday: true,
@@ -171,7 +192,6 @@ export function isWeekendOrHoliday(
     };
   }
 
-  const isoDate = d.toISOString().split('T')[0];
   const matchedHoliday = holidays.find((h) => {
     const hDate = h.date?.includes('T') ? h.date.split('T')[0] : h.date;
     return hDate === isoDate;

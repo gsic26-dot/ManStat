@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
 import { isAdminRole, canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
+import { getStaffBranch } from '@/lib/regulations/staff-sorting';
 import type { UserRole } from '@/types/database.types';
 import {
   INITIAL_SCHOOL_INFO,
@@ -80,6 +81,8 @@ import {
   calculateUserRoundLeaveStats,
   calculateUserFiscalLeaveQuota,
   getUserRecentLeaveRequests,
+  formatLocalDateBangkok,
+  isLeaveRequestOfUser,
 } from '@/lib/regulations/dashboard-helpers';
 
 // View Components
@@ -165,6 +168,7 @@ export default function DashboardPage() {
   const { toasts, dismissToast } = useLeaveRealtime({ enableToasts: true });
 
   const [staffList, setStaffList] = useState<TeacherRecord[]>([]);
+  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(true);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
@@ -189,7 +193,10 @@ export default function DashboardPage() {
           setStaffList(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsStaffLoading(false);
+      });
 
     fetch('/api/admin/school', { cache: 'no-store' })
       .then((r) => r.json())
@@ -227,8 +234,8 @@ export default function DashboardPage() {
   const fiscalYearBE = parseInt(schoolInfo.fiscalYear) || getFiscalYearBE(now);
   const currentRound = getEvalRound(now);
 
-  // Live Metrics Calculations
-  const todayISO = now.toISOString().split('T')[0];
+  // Live Metrics Calculations (Asia/Bangkok local date)
+  const todayISO = formatLocalDateBangkok(now);
 
   // 1. Staff on leave today (approved requests whose range covers today; excluding 0-day school exit / official mission)
   const staffOnLeaveToday = leaveList.filter((r) => {
@@ -237,8 +244,12 @@ export default function DashboardPage() {
     return r.startDate <= todayISO && todayISO <= r.endDate;
   });
   const onLeaveCount = staffOnLeaveToday.length;
-  const onDutyCount = Math.max(0, staffList.length - onLeaveCount);
-  const pendingLeaveCount = leaveList.filter((r) => r.status === 'pending').length;
+  const civilStaffCount = staffList.filter((t) => getStaffBranch(t) !== 'support').length;
+  const supportStaffCount = staffList.length - civilStaffCount;
+  const staffSubtitle =
+    staffList.length > 0
+      ? `ข้าราชการครู ${civilStaffCount} · สนับสนุน ${supportStaffCount}`
+      : 'ข้าราชการครูและบุคลากร';
   const onLeaveDetail =
     staffOnLeaveToday.length > 0
       ? staffOnLeaveToday.map((s) => `${s.teacherName} (${s.leaveTypeName})`).join(', ')
@@ -262,6 +273,9 @@ export default function DashboardPage() {
 
   // 3. User resolution and regulatory calculations
   const activeUserIdentity = resolveDashboardUser(currentUser, staffList, fiscalYearBE);
+  const pendingLeaveCount = isAdminRole(currentRole)
+    ? leaveList.filter((r) => r.status === 'pending').length
+    : leaveList.filter((r) => r.status === 'pending' && isLeaveRequestOfUser(r, activeUserIdentity)).length;
   const holidayStatus = isWeekendOrHoliday(now, holidays);
   const dutyMetric = calculateDutyMetric(staffList.length, onLeaveCount, holidayStatus);
 
@@ -1014,8 +1028,10 @@ export default function DashboardPage() {
               {/* 2. Minimalist Metric Strip */}
               <section aria-label="Personnel Summary Statistics">
                 <PersonnelSummaryCards
+                  isLoading={isStaffLoading}
                   stats={{
                     totalStaff: staffList.length,
+                    staffSubtitle,
                     onDutyCount: dutyMetric.value,
                     onLeaveCount,
                     expiringOrRetiringCount: retiringCount,
@@ -1035,6 +1051,7 @@ export default function DashboardPage() {
                     <PendingApprovalQueue
                       requests={leaveList}
                       currentUserId={activeUserIdentity.id}
+                      currentRole={currentRole}
                       onActionComplete={loadLeaveList}
                       onViewAllHistory={() => handleSelectView('tracking_requests')}
                     />
@@ -1158,11 +1175,12 @@ export default function DashboardPage() {
             <ViewLeaveHub
               initialTab={activeView === 'tracking' ? 'tracking' : 'requests'}
               onOpenSubmitModal={() => handleSelectView('leave')}
+              onLeaveMutated={loadLeaveList}
             />
           )}
 
           {/* View: Retroactive Leave Logging */}
-          {activeView === 'retro_leave' && <ViewRetroLeave />}
+          {activeView === 'retro_leave' && <ViewRetroLeave onSuccess={loadLeaveList} />}
 
           {/* View: Combined Leave Reports & Analytics */}
           {(activeView === 'leave_reports' || activeView === 'analytics' || activeView === 'official_reports') && (

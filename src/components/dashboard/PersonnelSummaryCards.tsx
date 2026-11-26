@@ -16,6 +16,7 @@ import React from 'react';
 
 export interface PersonnelSummaryStats {
   totalStaff: number;
+  staffSubtitle?: string;
   onDutyCount: number | string;
   onLeaveCount: number;
   expiringOrRetiringCount: number;
@@ -47,7 +48,7 @@ export const PersonnelSummaryCards: React.FC<PersonnelSummaryCardsProps> = ({
       value: stats.totalStaff,
       unit: 'คน',
       dotColor: 'bg-sky-500',
-      subtext: 'ข้าราชการครูและบุคลากร',
+      subtext: stats.staffSubtitle || 'ข้าราชการครูและบุคลากร',
     },
     {
       label: 'ปฏิบัติหน้าที่วันนี้',

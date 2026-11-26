@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Clock, PlusCircle } from 'lucide-react';
 import { ViewLeaveRequests } from './ViewLeaveRequests';
 import { ViewLeaveTracking } from './ViewLeaveTracking';
@@ -18,31 +18,38 @@ import { ViewLeaveTracking } from './ViewLeaveTracking';
 interface ViewLeaveHubProps {
   initialTab?: 'requests' | 'tracking';
   onOpenSubmitModal?: () => void;
+  onLeaveMutated?: () => void;
   currentUser?: any;
 }
 
 export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
   initialTab = 'requests',
   onOpenSubmitModal,
+  onLeaveMutated,
 }) => {
   const [activeTab, setActiveTab] = useState<'requests' | 'tracking'>(initialTab);
   const [pendingCount, setPendingCount] = useState<number>(0);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadPendingCount = useCallback(() => {
     fetch('/api/admin/leave', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
-        if (isMounted && res.success && Array.isArray(res.data)) {
+        if (res.success && Array.isArray(res.data)) {
           const pending = res.data.filter((r: any) => r.status === 'pending').length;
           setPendingCount(pending);
         }
       })
       .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    loadPendingCount();
+  }, [loadPendingCount]);
+
+  const handleLeaveMutated = useCallback(() => {
+    loadPendingCount();
+    if (onLeaveMutated) onLeaveMutated();
+  }, [loadPendingCount, onLeaveMutated]);
 
   return (
     <div className="space-y-5">
@@ -97,9 +104,9 @@ export const ViewLeaveHub: React.FC<ViewLeaveHubProps> = ({
 
       {/* Tab Contents */}
       {activeTab === 'requests' ? (
-        <ViewLeaveRequests onOpenSubmitModal={onOpenSubmitModal} />
+        <ViewLeaveRequests onOpenSubmitModal={onOpenSubmitModal} onLeaveMutated={handleLeaveMutated} />
       ) : (
-        <ViewLeaveTracking />
+        <ViewLeaveTracking onLeaveMutated={handleLeaveMutated} />
       )}
     </div>
   );

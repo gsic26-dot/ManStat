@@ -16,21 +16,28 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Shield,
   ShieldCheck,
-  Phone,
   Building,
-  CheckCircle2,
   Briefcase,
   LayoutList,
   LayoutGrid,
-  Award,
-  ChevronRight,
   ChevronDown,
+  Loader2,
 } from 'lucide-react';
 import { BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
-import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { PhoneShield } from '@/components/security/PhoneShield';
+
+function formatBoardDate(dateStr?: string | null): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('th-TH-u-nu-latn', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 const BOARD_POSITIONS_MAP: Record<string, string> = {
   CHAIR: 'ประธานกรรมการ',
@@ -67,11 +74,16 @@ const normalizeMember = (b: any): BoardMemberRecord => {
     phone: b.phone || '-',
     status: b.status || 'ดำรงตำแหน่ง',
     termNumber: b.termNumber ?? b.term_number ?? 1,
+    isExOfficio: b.isExOfficio ?? b.is_ex_officio ?? position === 'DIRECTOR_SEC',
+    appointmentDate: b.appointmentDate ?? b.appointment_date ?? undefined,
+    endDate: b.endDate ?? b.end_date ?? undefined,
+    endReason: b.endReason ?? b.end_reason ?? undefined,
   };
 };
 
 export const ViewSchoolBoard: React.FC = () => {
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -106,7 +118,10 @@ export const ViewSchoolBoard: React.FC = () => {
           setBoardList(json.data.map(normalizeMember));
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
     return () => {
       isMounted = false;
     };
@@ -184,9 +199,18 @@ export const ViewSchoolBoard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {sortedMembers.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                      <div className="inline-flex items-center gap-2 text-xs">
+                        <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+                        <span>กำลังโหลดข้อมูลคณะกรรมการสถานศึกษา...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : sortedMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
                       ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา
                     </td>
                   </tr>
@@ -315,10 +339,23 @@ export const ViewSchoolBoard: React.FC = () => {
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
                                   สถานะตามกฎกระทรวง พ.ศ. 2546
                                 </div>
-                                <div className="text-slate-700 dark:text-slate-300">
-                                  {isDirector
-                                    ? 'โดยตำแหน่ง (ผู้อำนวยการสถานศึกษา)'
-                                    : `${member.status} (วาระการดำรงตำแหน่ง 4 ปี)`}
+                                <div className="text-slate-700 dark:text-slate-300 space-y-0.5">
+                                  <div>
+                                    {isDirector || member.isExOfficio
+                                      ? 'โดยตำแหน่ง (ผู้อำนวยการสถานศึกษา)'
+                                      : `${member.status} (วาระที่ ${member.termNumber} · 4 ปี)`}
+                                  </div>
+                                  {member.appointmentDate && (
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                      แต่งตั้ง: {formatBoardDate(member.appointmentDate)}
+                                      {member.endDate ? ` – ครบวาระ: ${formatBoardDate(member.endDate)}` : ''}
+                                    </div>
+                                  )}
+                                  {member.endReason && (
+                                    <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                                      หมายเหตุ: {member.endReason}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -333,6 +370,13 @@ export const ViewSchoolBoard: React.FC = () => {
             </table>
           </div>
         </div>
+      ) : isLoading ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
+          <div className="inline-flex items-center gap-2 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+            <span>กำลังโหลดข้อมูลคณะกรรมการสถานศึกษา...</span>
+          </div>
+        </div>
       ) : sortedMembers.length === 0 ? (
         <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
           ยังไม่มีข้อมูลคณะกรรมการสถานศึกษา
@@ -341,7 +385,7 @@ export const ViewSchoolBoard: React.FC = () => {
         /* Alternative Responsive Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedMembers.map((member) => {
-            const isDirector = member.position === 'DIRECTOR_SEC';
+            const isDirector = member.position === 'DIRECTOR_SEC' || Boolean(member.isExOfficio);
             const isChair = member.position === 'CHAIR';
             return (
               <div
@@ -373,6 +417,23 @@ export const ViewSchoolBoard: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <span>{member.occupation}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {isDirector ? (
+                        <span>
+                          โดยตำแหน่ง
+                          {member.appointmentDate && formatServiceDuration(member.appointmentDate)
+                            ? ` (${formatServiceDuration(member.appointmentDate)})`
+                            : ''}
+                        </span>
+                      ) : (
+                        <span>
+                          วาระที่ {member.termNumber} · {member.status}
+                          {member.appointmentDate
+                            ? ` (${formatBoardDate(member.appointmentDate)}${member.endDate ? ` – ${formatBoardDate(member.endDate)}` : ''})`
+                            : ''}
+                        </span>
+                      )}
                     </div>
                     {member.phone && member.phone !== '-' && (
                       <div className="flex items-center gap-2">

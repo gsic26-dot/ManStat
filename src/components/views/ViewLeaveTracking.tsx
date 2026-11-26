@@ -18,22 +18,50 @@ import {
   Clock,
   Search,
   CheckCircle2,
+  XCircle,
   UserCheck,
   QrCode,
   ShieldCheck,
   Printer,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import { LeaveRequestRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { isAdminRole } from '@/lib/auth/roles';
 
-export function ViewLeaveTracking() {
+interface ViewLeaveTrackingProps {
+  onLeaveMutated?: () => void;
+}
+
+export function ViewLeaveTracking({ onLeaveMutated }: ViewLeaveTrackingProps) {
   const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
   const [searchDoc, setSearchDoc] = useState('');
   const [selectedReq, setSelectedReq] = useState<LeaveRequestRecord | null>(null);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const canManage = isAdminRole(currentRole);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        if (storedRole) setCurrentRole(storedRole);
+      } catch {}
+    }
+
     let isMounted = true;
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (isMounted && res.success && res.user?.role) {
+          setCurrentRole(res.user.role);
+        }
+      })
+      .catch(() => {});
+
     fetch('/api/admin/leave', { cache: 'no-store' })
       .then((r) => r.json())
       .then((res) => {
@@ -56,52 +84,83 @@ export function ViewLeaveTracking() {
     setSelectedReq(req);
   };
 
-  const handleDeleteCurrent = async () => {
-    if (!selectedReq) return;
-    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ ${selectedReq.docNo} ของ ${formatStaffName(selectedReq.teacherName)} ออกจากฐานข้อมูล?`)) {
-      try {
-        await fetch(`/api/admin/leave?id=${selectedReq.id}`, {
-          method: 'DELETE',
-        });
-      } catch {}
+  const handleConfirmDeleteCurrent = async () => {
+    if (!canManage || !selectedReq) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/leave?id=${encodeURIComponent(selectedReq.id)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) return;
+
       const remaining = requests.filter((r) => r.id !== selectedReq.id);
       setRequests(remaining);
       setSelectedReq(remaining.length > 0 ? remaining[0] : null);
+      setIsDeleteModalOpen(false);
+      onLeaveMutated?.();
+    } catch {
+      // ignore
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+  const isRejected = selectedReq?.status === 'rejected';
+  const isApproved = selectedReq?.status === 'approved';
 
   const steps = [
     {
       step: 1,
       title: 'ยื่นคำร้องขอลาเข้าระบบ',
       desc: 'ครูผู้ขอยื่นคำร้องและระบุผู้ปฏิบัติหน้าที่สอนแทน',
-      time: selectedReq ? selectedReq.submittedAt : '',
-      actor: selectedReq ? formatStaffName(selectedReq.teacherName) : '-',
-      done: true,
+      time: selectedReq?.submittedAt
+        ? new Date(selectedReq.submittedAt).toLocaleDateString('th-TH-u-nu-latn', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : '',
+      actor: selectedReq ? formatStaffName(selectedReq.teacherName || '-') : '-',
+      state: 'done' as 'done' | 'rejected' | 'pending',
     },
     {
       step: 2,
       title: 'ผู้บังคับบัญชาชั้นต้นตรวจสอบ',
       desc: selectedReq?.supervisorRemark || 'ตรวจสอบภาระงานสอนและการส่งมอบหมายงาน',
-      time: selectedReq?.currentStep && selectedReq.currentStep >= 2 ? 'ตรวจสอบเรียบร้อยแล้ว' : 'อยู่ระหว่างดำเนินการ',
+      time:
+        (selectedReq?.currentStep || 0) >= 2 || isApproved || isRejected
+          ? 'ตรวจสอบเรียบร้อยแล้ว'
+          : 'อยู่ระหว่างดำเนินการ',
       actor: 'หัวหน้ากลุ่มบริหารงานบุคคล / รองผู้อำนวยการ',
-      done: (selectedReq?.currentStep || 0) >= 2,
+      state:
+        (selectedReq?.currentStep || 0) >= 2 || isApproved || isRejected
+          ? ('done' as const)
+          : ('pending' as const),
     },
     {
       step: 3,
       title: 'ผู้อำนวยการสถานศึกษาพิจารณา',
       desc: selectedReq?.directorRemark || 'พิจารณาอนุมัติตามระเบียบสำนักนายกรัฐมนตรี',
-      time: selectedReq?.currentStep && selectedReq.currentStep >= 3 ? 'พิจารณาอนุมัติแล้ว' : 'รอการลงนาม',
+      time: isRejected
+        ? 'ไม่อนุมัติคำร้อง'
+        : isApproved || (selectedReq?.currentStep || 0) >= 3
+        ? 'พิจารณาอนุมัติแล้ว'
+        : 'รอการลงนาม',
       actor: 'ผู้อำนวยการสถานศึกษา',
-      done: (selectedReq?.currentStep || 0) >= 3,
+      state: isRejected
+        ? ('rejected' as const)
+        : isApproved || (selectedReq?.currentStep || 0) >= 3
+        ? ('done' as const)
+        : ('pending' as const),
     },
     {
       step: 4,
       title: 'บันทึกสารสนเทศและตรวจสอบ QR Code',
       desc: 'ลงทะเบียนสถิติวันลาและออกรหัสยืนยันความถูกต้องทางดิจิทัล',
-      time: selectedReq?.status === 'approved' ? 'มีผลสมบูรณ์' : 'รอดำเนินการ',
+      time: isApproved ? 'มีผลสมบูรณ์' : isRejected ? 'ไม่ได้รับการอนุมัติ' : 'รอดำเนินการ',
       actor: 'ระบบสารสนเทศ ManStat',
-      done: selectedReq?.status === 'approved',
+      state: isApproved ? ('done' as const) : isRejected ? ('rejected' as const) : ('pending' as const),
     },
   ];
 
@@ -146,8 +205,8 @@ export function ViewLeaveTracking() {
             {requests
               .filter(
                 (r) =>
-                  r.docNo.toLowerCase().includes(searchDoc.toLowerCase()) ||
-                  r.teacherName.toLowerCase().includes(searchDoc.toLowerCase())
+                  (r.docNo || '').toLowerCase().includes(searchDoc.toLowerCase()) ||
+                  (r.teacherName || '').toLowerCase().includes(searchDoc.toLowerCase())
               )
               .map((r) => {
                 const isSelected = selectedReq?.id === r.id;
@@ -208,8 +267,8 @@ export function ViewLeaveTracking() {
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1 truncate max-w-[280px]" title={formatStaffName(selectedReq.teacherName)}>{formatStaffName(selectedReq.teacherName)}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[320px]" title={`${selectedReq.position} • ${selectedReq.department}`}>
-                    {selectedReq.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')} • {selectedReq.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[320px]" title={`${selectedReq.position || ''} • ${selectedReq.department || ''}`}>
+                    {(selectedReq.position || '-').replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')} • {(selectedReq.department || '-').replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
                   </p>
                 </div>
 
@@ -223,22 +282,24 @@ export function ViewLeaveTracking() {
                     <span>พิมพ์ใบลา</span>
                   </Link>
                   <Link
-                    href={`/verify/leave/${encodeURIComponent(selectedReq.docNo)}`}
+                    href={`/verify/leave/${encodeURIComponent(selectedReq.docNo || selectedReq.id)}`}
                     target="_blank"
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white border border-transparent text-xs font-medium transition-colors duration-200"
                   >
                     <QrCode className="w-3.5 h-3.5 shrink-0" />
                     <span>สแกน QR</span>
                   </Link>
-                  <button
-                    type="button"
-                    onClick={handleDeleteCurrent}
-                    title="ลบคำร้องนี้"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>ลบคำร้อง</span>
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      title="ลบคำร้องนี้"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-500/20 text-xs font-medium transition-colors duration-200 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>ลบคำร้อง</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -250,7 +311,11 @@ export function ViewLeaveTracking() {
                     {idx < steps.length - 1 && (
                       <div
                         className={`absolute left-4 top-8 bottom-0 w-0.5 ${
-                          s.done ? 'bg-sky-500' : 'bg-slate-200 dark:bg-slate-800'
+                          s.state === 'done'
+                            ? 'bg-sky-500'
+                            : s.state === 'rejected'
+                            ? 'bg-rose-500'
+                            : 'bg-slate-200 dark:bg-slate-800'
                         }`}
                         style={{ height: 'calc(100% + 8px)' }}
                       />
@@ -259,13 +324,17 @@ export function ViewLeaveTracking() {
                     {/* Step Icon */}
                     <div
                       className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
-                        s.done
+                        s.state === 'done'
                           ? 'bg-sky-500 text-white border-sky-400'
+                          : s.state === 'rejected'
+                          ? 'bg-rose-500 text-white border-rose-400'
                           : 'bg-slate-100 dark:bg-[#151c27] text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-700'
                       }`}
                     >
-                      {s.done ? (
+                      {s.state === 'done' ? (
                         <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : s.state === 'rejected' ? (
+                        <XCircle className="w-4 h-4 shrink-0" />
                       ) : (
                         <span className="text-xs font-mono font-bold">{s.step}</span>
                       )}
@@ -273,9 +342,17 @@ export function ViewLeaveTracking() {
 
                     {/* Step Details */}
                     <div className="flex-1 bg-slate-50/90 dark:bg-[#141d28] p-3.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white">{s.title}</h4>
-                        <span className="text-[11px] font-mono text-slate-400">{s.time}</span>
+                        <span
+                          className={`text-[11px] font-mono ${
+                            s.state === 'rejected'
+                              ? 'text-rose-500 dark:text-rose-400 font-semibold'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {s.time}
+                        </span>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{s.desc}</p>
                       <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200/80 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400">
@@ -301,6 +378,47 @@ export function ViewLeaveTracking() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Delete Confirmation Modal (Admin Only) */}
+      {isDeleteModalOpen && selectedReq && canManage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>ยืนยันการลบคำร้องขอลา</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              คุณแน่ใจหรือไม่ว่าต้องการลบคำร้องเลขที่ <span className="font-mono font-semibold text-slate-900 dark:text-white">{selectedReq.docNo}</span> ของ {formatStaffName(selectedReq.teacherName || '-')} ออกจากฐานข้อมูล?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteCurrent}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium disabled:opacity-50 cursor-pointer"
+              >
+                {isDeleting ? 'กำลังลบ...' : 'ลบคำร้อง'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -49,6 +49,7 @@ export interface PendingItemDisplay {
 interface PendingApprovalQueueProps {
   requests?: LeaveRequestRecord[];
   currentUserId?: string;
+  currentRole?: string;
   onActionComplete?: () => void;
   onViewAllHistory?: () => void;
 }
@@ -56,11 +57,13 @@ interface PendingApprovalQueueProps {
 export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
   requests: parentRequests,
   currentUserId = 'director-001',
+  currentRole: propRole,
   onActionComplete,
   onViewAllHistory,
 }) => {
   const [items, setItems] = useState<LeaveRequestRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Modal states
   const [activeModal, setActiveModal] = useState<{
@@ -71,15 +74,31 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
   const [remarks, setRemarks] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [resolvedRole, setResolvedRole] = useState<string>(propRole || 'teacher');
+
+  useEffect(() => {
+    if (propRole) setResolvedRole(propRole);
+  }, [propRole]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const storedUser = localStorage.getItem('manstat_auth_user');
+        const storedRole = localStorage.getItem('manstat_auth_role');
         if (storedUser) setCurrentUser(JSON.parse(storedUser));
+        if (!propRole && storedRole) setResolvedRole(storedRole);
       } catch {}
     }
-  }, []);
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser(res.user);
+          if (!propRole && res.user.role) setResolvedRole(res.user.role);
+        }
+      })
+      .catch(() => {});
+  }, [propRole]);
 
   // Sync or fetch pending requests
   const loadPendingRequests = async () => {
@@ -121,17 +140,19 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
     if (!activeModal) return;
 
     setIsSubmitting(true);
+    setActionError(null);
     const { request, action } = activeModal;
 
     try {
       if (action === 'delete') {
-        const res = await fetch(`/api/admin/leave?id=${request.id}`, {
+        const res = await fetch(`/api/admin/leave?id=${encodeURIComponent(request.id)}`, {
           method: 'DELETE',
         });
-        const data = await res.json();
-        if (data.success) {
-          setItems((prev) => prev.filter((r) => r.id !== request.id));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'ไม่สามารถลบคำขอลาได้');
         }
+        setItems((prev) => prev.filter((r) => r.id !== request.id));
       } else {
         const newStatus = action === 'approve' ? 'approved' : 'rejected';
         const defaultRemark = action === 'approve' ? 'อนุมัติผ่านระบบ ManStat' : 'ไม่อนุมัติตามดุลยพินิจ';
@@ -145,17 +166,18 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
             currentStep: 3,
           }),
         });
-        const data = await res.json();
-        if (data.success) {
-          setItems((prev) => prev.filter((r) => r.id !== request.id));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'ไม่สามารถบันทึกการพิจารณาได้');
         }
+        setItems((prev) => prev.filter((r) => r.id !== request.id));
       }
 
       handleCloseModal();
       if (onActionComplete) onActionComplete();
-    } catch (err) {
+    } catch (err: any) {
       console.error('[PendingApprovalQueue] Action error:', err);
-      handleCloseModal();
+      setActionError(err?.message || 'เกิดข้อผิดพลาดในการดำเนินการ');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,6 +207,15 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
           </button>
         )}
       </div>
+
+      {actionError && (
+        <div className="mx-5 mt-3 px-3.5 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Loading & Empty States */}
       {isLoading ? (
@@ -219,11 +250,14 @@ export const PendingApprovalQueue: React.FC<PendingApprovalQueueProps> = ({
                   </span>
                 </div>
 
-                {req.reason && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[420px]" title={`สาเหตุ: ${req.reason}`}>
-                    สาเหตุ: <span className="text-slate-700 dark:text-slate-300">{formatPDPAProtectedLeaveReason(req, currentUser, 'director')}</span>
-                  </p>
-                )}
+                {req.reason && (() => {
+                  const protectedReason = formatPDPAProtectedLeaveReason(req, currentUser, resolvedRole);
+                  return (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[420px]" title={`สาเหตุ: ${protectedReason}`}>
+                      สาเหตุ: <span className="text-slate-700 dark:text-slate-300">{protectedReason}</span>
+                    </p>
+                  );
+                })()}
 
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
                   <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />

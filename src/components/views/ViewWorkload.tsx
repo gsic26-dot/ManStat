@@ -25,21 +25,21 @@ import {
   Search,
   BookOpen,
   Building,
-  Calendar,
   Shield,
   PlusCircle,
-  ChevronRight,
   ChevronDown,
   Trash2,
+  Pencil,
   X,
   Plus,
-  Clock,
   Layers,
+  Loader2,
 } from 'lucide-react';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { isAdminRole } from '@/lib/auth/roles';
 
 export type WorkloadCategory =
   | 'งานสอนและการจัดการเรียนรู้'
@@ -135,34 +135,59 @@ export const ViewWorkload: React.FC = () => {
   const [tierFilter, setTierFilter] = useState<'ALL' | 'PASSED' | 'FAILED'>('ALL');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [workloads, setWorkloads] = useState<WorkloadItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+  const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const canManage = isAdminRole(currentRole);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        if (storedRole) setCurrentRole(storedRole);
+      } catch {}
+    }
     let isMounted = true;
-    fetch('/api/admin/staff', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setTeachersList(data.data);
-        }
-      })
-      .catch(() => {});
-
-    fetch('/api/admin/workload', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data.success && Array.isArray(data.data)) {
-          setWorkloads(data.data);
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/auth/me', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (isMounted && res.success && res.user?.role) {
+            setCurrentRole(res.user.role);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/staff', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && Array.isArray(data.data)) {
+            setTeachersList(data.data);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/workload', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && Array.isArray(data.data)) {
+            setWorkloads(data.data);
+          }
+        })
+        .catch(() => {}),
+    ]).finally(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Modal State for Workload Assignment Form
+  // Modal State for Workload Assignment / Edit Form
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingWorkloadId, setEditingWorkloadId] = useState<string | null>(null);
+  const [deletingWorkload, setDeletingWorkload] = useState<WorkloadItem | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [formTeacherId, setFormTeacherId] = useState<string>('');
   const [formCategory, setFormCategory] = useState<WorkloadCategory>('งานสอนและการจัดการเรียนรู้');
   const [formSelectedPreset, setFormSelectedPreset] = useState<string>('');
@@ -180,11 +205,18 @@ export const ViewWorkload: React.FC = () => {
     setExpandedTeacherId((prev) => (prev === teacherId ? null : teacherId));
   };
 
-  // Open Modal (Global or for specific teacher/category)
+  const showNotice = (type: 'success' | 'error', text: string) => {
+    setStatusNotice({ type, text });
+    setTimeout(() => setStatusNotice(null), 3500);
+  };
+
+  // Open Modal (Create mode)
   const handleOpenAssignModal = (teacherId?: string, category?: WorkloadCategory) => {
+    if (!canManage) return;
     const targetTeacherId = teacherId || teachersList[0]?.id || '';
     const targetCat = category || 'งานสอนและการจัดการเรียนรู้';
 
+    setEditingWorkloadId(null);
     setFormTeacherId(targetTeacherId);
     setFormCategory(targetCat);
     setFormSelectedPreset('');
@@ -200,14 +232,35 @@ export const ViewWorkload: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // Open Modal (Edit mode)
+  const handleOpenEditModal = (item: WorkloadItem) => {
+    if (!canManage) return;
+    setEditingWorkloadId(item.id);
+    setFormTeacherId(item.teacherId);
+    setFormCategory(item.category);
+    setFormSelectedPreset('');
+    setFormTitle(item.title);
+    setFormSubGroup(item.subGroupOrLevel || '');
+    setFormHours(item.hoursPerWeek);
+    setFormRole(item.roleInTask || 'ผู้รับผิดชอบหลัก');
+    setFormOrderRef(item.orderOrRef || '');
+    setFormStatus(item.status || 'กำลังดำเนินการ');
+    setFormCoEmp(item.coEmp || '');
+    setFormCourseCode(item.courseCode || '');
+    setFormType(item.type || 'MAIN');
+    setIsModalOpen(true);
+  };
+
   // When Category changes in modal, reset preset
   const handleCategoryChange = (newCat: WorkloadCategory) => {
     setFormCategory(newCat);
     setFormSelectedPreset('');
-    setFormTitle('');
-    setFormSubGroup('');
-    setFormRole(newCat === 'งานสอนและการจัดการเรียนรู้' ? 'ผู้สอน' : 'ผู้รับผิดชอบหลัก');
-    setFormHours(2);
+    if (!editingWorkloadId) {
+      setFormTitle('');
+      setFormSubGroup('');
+      setFormRole(newCat === 'งานสอนและการจัดการเรียนรู้' ? 'ผู้สอน' : 'ผู้รับผิดชอบหลัก');
+      setFormHours(2);
+    }
   };
 
   // When Preset changes in modal, autofill
@@ -233,10 +286,10 @@ export const ViewWorkload: React.FC = () => {
 
   const handleSaveWorkload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTeacherId || !formTitle.trim()) return;
+    if (!canManage || !formTeacherId || !formTitle.trim()) return;
 
-    const newEntry: WorkloadItem = {
-      id: `WL-${Date.now().toString().slice(-5)}`,
+    const entry: WorkloadItem = {
+      id: editingWorkloadId || `WL-${Date.now().toString().slice(-5)}`,
       teacherId: formTeacherId,
       category: formCategory,
       title: formTitle.trim(),
@@ -250,42 +303,68 @@ export const ViewWorkload: React.FC = () => {
       type: formCategory === 'งานสอนและการจัดการเรียนรู้' ? formType : undefined,
     };
 
-    setWorkloads((prev) => [...prev, newEntry]);
-    setIsModalOpen(false);
-
+    setIsSaving(true);
     try {
-      await fetch('/api/admin/workload', {
+      const res = await fetch('/api/admin/workload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newEntry),
+        body: JSON.stringify(entry),
       });
-    } catch (err) {
-      console.error('Failed to save workload to DB:', err);
-    }
-  };
-
-  const handleDeleteWorkload = async (workloadId: string) => {
-    if (confirm('คุณต้องการลบรายการภาระงานนี้หรือไม่?')) {
-      setWorkloads((prev) => prev.filter((w) => w.id !== workloadId));
-      try {
-        await fetch(`/api/admin/workload?id=${encodeURIComponent(workloadId)}`, {
-          method: 'DELETE',
-        });
-      } catch (err) {
-        console.error('Failed to delete workload from DB:', err);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกภาระงานได้');
       }
+
+      const savedItem: WorkloadItem = json.data || entry;
+      setWorkloads((prev) =>
+        editingWorkloadId
+          ? prev.map((w) => (w.id === editingWorkloadId ? savedItem : w))
+          : [...prev, savedItem]
+      );
+      setIsModalOpen(false);
+      setEditingWorkloadId(null);
+      showNotice('success', editingWorkloadId ? 'อัปเดตภาระงานเรียบร้อยแล้ว' : 'บันทึกภาระงานเรียบร้อยแล้ว');
+    } catch (err: any) {
+      console.error('Failed to save workload to DB:', err);
+      showNotice('error', err?.message || 'เกิดข้อผิดพลาดในการบันทึกภาระงาน');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Dynamic calculations across all 4 categories per teacher
+  const confirmDeleteWorkload = async () => {
+    if (!canManage || !deletingWorkload) return;
+    const targetId = deletingWorkload.id;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/workload?id=${encodeURIComponent(targetId)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถลบรายการภาระงานได้');
+      }
+      setWorkloads((prev) => prev.filter((w) => w.id !== targetId));
+      setDeletingWorkload(null);
+      showNotice('success', 'ลบรายการภาระงานเรียบร้อยแล้ว');
+    } catch (err: any) {
+      console.error('Failed to delete workload from DB:', err);
+      showNotice('error', err?.message || 'เกิดข้อผิดพลาดในการลบรายการภาระงาน');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Dynamic calculations across all 4 categories per teacher (strictly real DB records, no synthetic hours)
   const sortedTeachers = useMemo(() => {
     return sortTeachersByBranch(teachersList);
   }, [teachersList]);
 
   const workloadData = useMemo(() => {
-    return sortedTeachers.map((teacher, idx) => {
-      const isDirector = teacher.position.includes('ผู้อำนวยการ');
+    return sortedTeachers.map((teacher) => {
+      const isDirector = (teacher.position || '').includes('ผู้อำนวยการ');
       const branch = getStaffBranch(teacher);
+      const isSupport = branch === 'support';
       const teacherWorkloads = workloads.filter((w) => w.teacherId === teacher.id);
 
       const m1Items = teacherWorkloads.filter((w) => w.category === 'งานสอนและการจัดการเรียนรู้');
@@ -293,41 +372,30 @@ export const ViewWorkload: React.FC = () => {
       const m3Items = teacherWorkloads.filter((w) => w.category === 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ');
       const m4Items = teacherWorkloads.filter((w) => w.category === 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่');
 
-      // Calculate actual hours if records exist; otherwise sensible baseline
-      const teachingHours =
-        m1Items.length > 0
-          ? m1Items.reduce((sum, w) => sum + w.hoursPerWeek, 0)
-          : isDirector
-          ? 6
-          : branch === 'support'
-          ? 0
-          : 14 + (idx % 3);
-
-      const supportHours =
-        m2Items.length > 0 ? m2Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : branch === 'support' ? 20 : 4;
-
-      const schoolDevHours =
-        m3Items.length > 0 ? m3Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : 3;
-
-      const policyHours =
-        m4Items.length > 0 ? m4Items.reduce((sum, w) => sum + w.hoursPerWeek, 0) : 2;
-
+      const teachingHours = m1Items.reduce((sum, w) => sum + (Number(w.hoursPerWeek) || 0), 0);
+      const supportHours = m2Items.reduce((sum, w) => sum + (Number(w.hoursPerWeek) || 0), 0);
+      const schoolDevHours = m3Items.reduce((sum, w) => sum + (Number(w.hoursPerWeek) || 0), 0);
+      const policyHours = m4Items.reduce((sum, w) => sum + (Number(w.hoursPerWeek) || 0), 0);
       const totalHours = teachingHours + supportHours + schoolDevHours + policyHours;
 
-      const evalResult = evaluatePAWorkload({
-        teachingHours,
-        supportHours,
-        developmentHours: schoolDevHours,
-        policyHours,
-        isAdministrator: isDirector,
-      });
+      const evalResult = isSupport
+        ? null
+        : evaluatePAWorkload({
+            teachingHours,
+            supportHours,
+            developmentHours: schoolDevHours,
+            policyHours,
+            isAdministrator: isDirector,
+          });
 
       return {
         id: teacher.id,
         branch,
+        isDirector,
+        isSupport,
         name: formatStaffName(teacher),
-        position: teacher.position,
-        department: teacher.department,
+        position: teacher.position || '-',
+        department: teacher.department || '-',
         division: teacher.division,
         classLevel: teacher.classLevel,
         dutyDay: teacher.dutyDay,
@@ -347,19 +415,22 @@ export const ViewWorkload: React.FC = () => {
   }, [workloads, sortedTeachers]);
 
   const filtered = useMemo(() => {
+    const q = searchTerm.toLowerCase();
     return workloadData.filter((w) => {
       const matchesSearch =
-        w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.teacherWorkloads.some((t) => t.title.toLowerCase().includes(searchTerm.toLowerCase()));
+        w.name.toLowerCase().includes(q) ||
+        w.department.toLowerCase().includes(q) ||
+        w.position.toLowerCase().includes(q) ||
+        w.teacherWorkloads.some((t) => (t.title || '').toLowerCase().includes(q));
 
       const matchesTier =
         tierFilter === 'ALL'
           ? true
+          : w.isSupport
+          ? false
           : tierFilter === 'PASSED'
-          ? w.evalResult.isAllPassed
-          : !w.evalResult.isAllPassed;
+          ? Boolean(w.evalResult?.isAllPassed)
+          : !w.evalResult?.isAllPassed;
 
       return matchesSearch && matchesTier;
     });
@@ -379,18 +450,37 @@ export const ViewWorkload: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Global Assign Workload Button */}
-          <button
-            type="button"
-            onClick={() => handleOpenAssignModal()}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
-          >
-            <PlusCircle className="w-4 h-4 shrink-0" />
-            <span>+ มอบหมายภาระงาน</span>
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Global Assign Workload Button */}
+            <button
+              type="button"
+              onClick={() => handleOpenAssignModal()}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 shrink-0" />
+              <span>มอบหมายภาระงาน</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {statusNotice && (
+        <div
+          className={`px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-2 ${
+            statusNotice.type === 'success'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+              : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
+          }`}
+        >
+          {statusNotice.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{statusNotice.text}</span>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -441,18 +531,32 @@ export const ViewWorkload: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-              {filtered.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                    <div className="inline-flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+                      <span>กำลังโหลดข้อมูลตารางสอนและภาระงาน...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     ยังไม่มีข้อมูลตารางสอนและภาระงาน
                   </td>
                 </tr>
               ) : (
                 filtered.map((w, index) => {
                 const isExpanded = expandedTeacherId === w.id;
-                const isSupport = w.branch === 'support';
+                const isSupport = w.isSupport;
                 const posDisplay = w.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
                 const deptDisplay = w.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                const teachingThresholdLabel = isSupport
+                  ? 'ไม่นับเกณฑ์ชั่วโมงสอน'
+                  : w.isDirector
+                  ? 'เกณฑ์ >= 6 ชม.'
+                  : 'เกณฑ์ >= 12 ชม.';
 
                 return (
                   <React.Fragment key={w.id}>
@@ -472,14 +576,18 @@ export const ViewWorkload: React.FC = () => {
                         <div className="font-semibold text-slate-900 dark:text-white text-sm" title={formatStaffName(w.name)}>
                           {formatStaffName(w.name)}
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5" title={`${posDisplay} · ${deptDisplay}`}>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5" title={`${posDisplay} · ${deptDisplay}`}>
                           {posDisplay} · {deptDisplay}
                         </div>
                       </td>
 
                       {/* Teaching Hours */}
                       <td className="px-4 py-3.5 text-center font-mono font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                        {w.teachingHours} ชม.
+                        {isSupport ? (
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">-</span>
+                        ) : (
+                          `${w.teachingHours} ชม.`
+                        )}
                       </td>
 
                       {/* Total Hours */}
@@ -489,7 +597,9 @@ export const ViewWorkload: React.FC = () => {
 
                       {/* PA Status */}
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        {w.evalResult.isAllPassed ? (
+                        {isSupport ? (
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">-</span>
+                        ) : w.evalResult?.isAllPassed ? (
                           <div className="inline-flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                             <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -510,7 +620,7 @@ export const ViewWorkload: React.FC = () => {
                       <td className="w-12 px-3 py-3.5 text-right">
                         <ChevronDown
                           className={`w-4 h-4 ml-auto text-slate-400 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180 text-sky-400' : ''
+                            isExpanded ? 'rotate-180 text-sky-500 dark:text-sky-400' : ''
                           }`}
                         />
                       </td>
@@ -524,42 +634,48 @@ export const ViewWorkload: React.FC = () => {
                             {/* 1. Summary Bar across 4 Aspects */}
                             <div>
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
-                                <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
                                   สรุปภาระงาน 4 ด้านตามเกณฑ์ PA ว9/2564 &amp; ว21/2564 ของ {formatStaffName(w.name)}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenAssignModal(w.id);
-                                  }}
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200 shrink-0 self-start sm:self-auto"
-                                >
-                                  <PlusCircle className="w-3.5 h-3.5 shrink-0" />
-                                  <span>+ มอบหมายภาระงานให้ครูท่านนี้</span>
-                                </button>
+                                {canManage && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenAssignModal(w.id);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200 shrink-0 self-start sm:self-auto cursor-pointer"
+                                  >
+                                    <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>มอบหมายภาระงานให้ครูท่านนี้</span>
+                                  </button>
+                                )}
                               </div>
 
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
-                                  <span className="text-slate-400 text-[11px] block">1. จัดการเรียนรู้ &amp; TA</span>
-                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.teachingHours} ชม./สัปดาห์</span>
-                                  <span className="text-[11px] text-emerald-400 mt-1 block">เกณฑ์ &gt;= 12 ชม.</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">1. จัดการเรียนรู้ &amp; TA</span>
+                                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">
+                                    {isSupport ? '-' : `${w.teachingHours} ชม./สัปดาห์`}
+                                  </span>
+                                  <span className={`text-[11px] mt-1 block ${isSupport ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    {teachingThresholdLabel}
+                                  </span>
                                 </div>
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
-                                  <span className="text-slate-400 text-[11px] block">2. บริหารและงานฝ่าย</span>
-                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.supportHours} ชม./สัปดาห์</span>
-                                  <span className="text-[11px] text-amber-300 mt-1 block">{w.division || 'งานประจำฝ่าย'}</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">2. บริหารและงานฝ่าย</span>
+                                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">{w.supportHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-amber-600 dark:text-amber-300 mt-1 block">{w.division || 'งานประจำฝ่าย'}</span>
                                 </div>
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
-                                  <span className="text-slate-400 text-[11px] block">3. พัฒนาสถานศึกษา</span>
-                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.schoolDevHours} ชม./สัปดาห์</span>
-                                  <span className="text-[11px] text-slate-400 mt-1 block">โครงการตามแผนฯ</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">3. พัฒนาสถานศึกษา</span>
+                                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">{w.schoolDevHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">โครงการตามแผนฯ</span>
                                 </div>
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
-                                  <span className="text-slate-400 text-[11px] block">4. ดูแลนักเรียน &amp; เวร</span>
-                                  <span className="font-mono font-bold text-slate-100 text-sm mt-0.5 block">{w.policyHours} ชม./สัปดาห์</span>
-                                  <span className="text-[11px] text-slate-400 mt-1 block">เวร: {w.dutyDay || '-'} / ที่ปรึกษา: {w.classLevel || '-'}</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">4. ดูแลนักเรียน &amp; เวร</span>
+                                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">{w.policyHours} ชม./สัปดาห์</span>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">เวร: {w.dutyDay || '-'} / ที่ปรึกษา: {w.classLevel || '-'}</span>
                                 </div>
                               </div>
                             </div>
@@ -568,22 +684,24 @@ export const ViewWorkload: React.FC = () => {
                             <div className="space-y-4">
                               {/* หมวดที่ 1: งานสอนและการจัดการเรียนรู้ */}
                               <div className="bg-white dark:bg-[#121924] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-sm">
-                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                  <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs sm:text-sm">
+                                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-2.5">
+                                  <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-semibold text-xs sm:text-sm">
                                     <BookOpen className="w-4 h-4 shrink-0" />
                                     <span>หมวดที่ 1: งานสอนและการจัดการเรียนรู้ ({w.teachingHours} ชม./สัปดาห์)</span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenAssignModal(w.id, 'งานสอนและการจัดการเรียนรู้');
-                                    }}
-                                    className="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-medium transition-colors"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>เพิ่มวิชาสอน / TA</span>
-                                  </button>
+                                  {canManage && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAssignModal(w.id, 'งานสอนและการจัดการเรียนรู้');
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 font-medium transition-colors cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>เพิ่มวิชาสอน / TA</span>
+                                    </button>
+                                  )}
                                 </div>
 
                                 {w.m1Items.length > 0 ? (
@@ -593,66 +711,83 @@ export const ViewWorkload: React.FC = () => {
                                         key={item.id}
                                         className="bg-slate-50 dark:bg-[#16202c] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 flex items-start justify-between gap-2"
                                       >
-                                        <div>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-semibold text-white text-xs">{item.title}</span>
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-slate-900 dark:text-white text-xs">{item.title}</span>
                                             {item.type === 'TA' ? (
-                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30 whitespace-nowrap">
                                                 TA
                                               </span>
                                             ) : (
-                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 whitespace-nowrap">
+                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30 whitespace-nowrap">
                                                 สอนหลัก
                                               </span>
                                             )}
                                           </div>
-                                          <div className="text-[11px] text-slate-400 mt-1">
-                                            ระดับชั้น: <span className="text-slate-200">{item.subGroupOrLevel || '-'}</span>
+                                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                            ระดับชั้น: <span className="text-slate-700 dark:text-slate-200">{item.subGroupOrLevel || '-'}</span>
                                             {item.courseCode && ` • รหัส: ${item.courseCode}`}
                                           </div>
-                                          <div className="text-xs font-mono font-bold text-amber-300 mt-1">
+                                          <div className="text-xs font-mono font-bold text-amber-600 dark:text-amber-300 mt-1">
                                             {item.hoursPerWeek} ชม./สัปดาห์
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteWorkload(item.id);
-                                          }}
-                                          title="ลบภาระงานนี้"
-                                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                        </button>
+                                        {canManage && (
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenEditModal(item);
+                                              }}
+                                              title="แก้ไขภาระงานนี้"
+                                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeletingWorkload(item);
+                                              }}
+                                              title="ลบภาระงานนี้"
+                                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-500 py-1">
-                                    ใช้ชั่วโมงสอนพื้นฐานตามกลุ่มสาระการเรียนรู้ ({w.teachingHours} ชม./สัปดาห์)
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
+                                    ยังไม่มีรายการภาระงานสอนที่บันทึกในระบบ
                                   </div>
                                 )}
                               </div>
 
                               {/* หมวดที่ 2: งานบริหารและงานประจำฝ่าย/กลุ่มงาน */}
                               <div className="bg-white dark:bg-[#121924] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-sm">
-                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs sm:text-sm">
+                                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-2.5">
+                                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold text-xs sm:text-sm">
                                     <Building className="w-4 h-4 shrink-0" />
                                     <span>หมวดที่ 2: งานบริหารและงานประจำฝ่าย/กลุ่มงาน ({w.supportHours} ชม./สัปดาห์)</span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenAssignModal(w.id, 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน');
-                                    }}
-                                    className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>เพิ่มงานฝ่าย</span>
-                                  </button>
+                                  {canManage && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAssignModal(w.id, 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน');
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 font-medium transition-colors cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>เพิ่มงานฝ่าย</span>
+                                    </button>
+                                  )}
                                 </div>
 
                                 {w.m2Items.length > 0 ? (
@@ -662,60 +797,77 @@ export const ViewWorkload: React.FC = () => {
                                         key={item.id}
                                         className="bg-slate-50 dark:bg-[#16202c] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 flex items-start justify-between gap-2"
                                       >
-                                        <div>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-semibold text-white text-xs">{item.title}</span>
-                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap">
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-slate-900 dark:text-white text-xs">{item.title}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 whitespace-nowrap">
                                               {item.roleInTask}
                                             </span>
                                           </div>
-                                          <div className="text-[11px] text-slate-400 mt-1">
-                                            สังกัด: <span className="text-slate-200">{item.subGroupOrLevel || '-'}</span>
+                                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                            สังกัด: <span className="text-slate-700 dark:text-slate-200">{item.subGroupOrLevel || '-'}</span>
                                             {item.orderOrRef && ` • ${item.orderOrRef}`}
                                           </div>
-                                          <div className="text-xs font-mono font-bold text-amber-300 mt-1">
+                                          <div className="text-xs font-mono font-bold text-amber-600 dark:text-amber-300 mt-1">
                                             {item.hoursPerWeek} ชม./สัปดาห์
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteWorkload(item.id);
-                                          }}
-                                          title="ลบภาระงานนี้"
-                                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                        </button>
+                                        {canManage && (
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenEditModal(item);
+                                              }}
+                                              title="แก้ไขภาระงานนี้"
+                                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeletingWorkload(item);
+                                              }}
+                                              title="ลบภาระงานนี้"
+                                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-400 py-1">
-                                    งานฝ่ายตามคำสั่งโรงเรียน: <span className="text-slate-200 font-medium">{w.division || 'งานประจำฝ่าย'}</span> ({w.supportHours} ชม./สัปดาห์)
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
+                                    ยังไม่มีรายการงานฝ่ายที่บันทึกในระบบ (สังกัด: <span className="text-slate-700 dark:text-slate-200 font-medium">{w.division || '-'}</span>)
                                   </div>
                                 )}
                               </div>
 
                               {/* หมวดที่ 3: งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ */}
                               <div className="bg-white dark:bg-[#121924] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-sm">
-                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                  <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs sm:text-sm">
+                                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-2.5">
+                                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs sm:text-sm">
                                     <Layers className="w-4 h-4 shrink-0" />
                                     <span>หมวดที่ 3: งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ ({w.schoolDevHours} ชม./สัปดาห์)</span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenAssignModal(w.id, 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ');
-                                    }}
-                                    className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>เพิ่มงานโครงการ</span>
-                                  </button>
+                                  {canManage && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAssignModal(w.id, 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ');
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>เพิ่มงานโครงการ</span>
+                                    </button>
+                                  )}
                                 </div>
 
                                 {w.m3Items.length > 0 ? (
@@ -725,60 +877,77 @@ export const ViewWorkload: React.FC = () => {
                                         key={item.id}
                                         className="bg-slate-50 dark:bg-[#16202c] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 flex items-start justify-between gap-2"
                                       >
-                                        <div>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-semibold text-white text-xs">{item.title}</span>
-                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-slate-900 dark:text-white text-xs">{item.title}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 whitespace-nowrap">
                                               {item.roleInTask}
                                             </span>
                                           </div>
-                                          <div className="text-[11px] text-slate-400 mt-1">
+                                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                             {item.subGroupOrLevel && `กิจกรรม: ${item.subGroupOrLevel}`}
                                             {item.orderOrRef && ` • คำสั่ง: ${item.orderOrRef}`}
                                           </div>
-                                          <div className="text-xs font-mono font-bold text-emerald-400 mt-1">
+                                          <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-1">
                                             {item.hoursPerWeek} ชม./สัปดาห์
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteWorkload(item.id);
-                                          }}
-                                          title="ลบภาระงานนี้"
-                                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                        </button>
+                                        {canManage && (
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenEditModal(item);
+                                              }}
+                                              title="แก้ไขภาระงานนี้"
+                                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeletingWorkload(item);
+                                              }}
+                                              title="ลบภาระงานนี้"
+                                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-500 py-1">
-                                    งานโครงการและกิจกรรมตามแผนปฏิบัติการประจำปี ({w.schoolDevHours} ชม./สัปดาห์)
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
+                                    ยังไม่มีรายการงานโครงการที่บันทึกในระบบ
                                   </div>
                                 )}
                               </div>
 
                               {/* หมวดที่ 4: งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่ */}
                               <div className="bg-white dark:bg-[#121924] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3 shadow-sm">
-                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                  <div className="flex items-center gap-2 text-purple-400 font-semibold text-xs sm:text-sm">
+                                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-2.5">
+                                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-semibold text-xs sm:text-sm">
                                     <Shield className="w-4 h-4 shrink-0" />
                                     <span>หมวดที่ 4: งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่ ({w.policyHours} ชม./สัปดาห์)</span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenAssignModal(w.id, 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่');
-                                    }}
-                                    className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>เพิ่มงานดูแล/เวร</span>
-                                  </button>
+                                  {canManage && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAssignModal(w.id, 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่');
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>เพิ่มงานดูแล/เวร</span>
+                                    </button>
+                                  )}
                                 </div>
 
                                 {w.m4Items.length > 0 ? (
@@ -788,40 +957,54 @@ export const ViewWorkload: React.FC = () => {
                                         key={item.id}
                                         className="bg-slate-50 dark:bg-[#16202c] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 flex items-start justify-between gap-2"
                                       >
-                                        <div>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-semibold text-white text-xs">{item.title}</span>
-                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-slate-900 dark:text-white text-xs">{item.title}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30 whitespace-nowrap">
                                               {item.roleInTask}
                                             </span>
                                           </div>
-                                          <div className="text-[11px] text-slate-400 mt-1">
+                                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                             {item.subGroupOrLevel && `ระดับชั้น/จุดเวร: ${item.subGroupOrLevel}`}
                                             {item.orderOrRef && ` • คำสั่ง: ${item.orderOrRef}`}
                                           </div>
-                                          <div className="text-xs font-mono font-bold text-purple-300 mt-1">
+                                          <div className="text-xs font-mono font-bold text-purple-600 dark:text-purple-300 mt-1">
                                             {item.hoursPerWeek} ชม./สัปดาห์
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteWorkload(item.id);
-                                          }}
-                                          title="ลบภาระงานนี้"
-                                          className="p-1.5 rounded-md text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                        </button>
+                                        {canManage && (
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenEditModal(item);
+                                              }}
+                                              title="แก้ไขภาระงานนี้"
+                                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeletingWorkload(item);
+                                              }}
+                                              title="ลบภาระงานนี้"
+                                              className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-400 py-1 flex flex-wrap gap-4">
-                                    <span>ชั้นที่ปรึกษา: <b className="text-slate-200">{w.classLevel || '-'}</b></span>
-                                    <span>เวรปฏิบัติหน้าที่: <b className="text-purple-300">{w.dutyDay ? `วัน${w.dutyDay}` : '-'}</b></span>
-                                    <span>({w.policyHours} ชม./สัปดาห์)</span>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 py-1 flex flex-wrap gap-4">
+                                    <span>ชั้นที่ปรึกษา: <b className="text-slate-700 dark:text-slate-200">{w.classLevel || '-'}</b></span>
+                                    <span>เวรปฏิบัติหน้าที่: <b className="text-purple-600 dark:text-purple-300">{w.dutyDay ? `วัน${w.dutyDay}` : '-'}</b></span>
                                   </div>
                                 )}
                               </div>
@@ -848,7 +1031,7 @@ export const ViewWorkload: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold text-sm">
                 <Briefcase className="w-4 h-4 shrink-0" />
-                <span>มอบหมายภาระงานบุคลากร (Staff Workload Assignment)</span>
+                <span>{editingWorkloadId ? 'แก้ไขรายการภาระงานบุคลากร' : 'มอบหมายภาระงานบุคลากร'}</span>
               </div>
               <button
                 type="button"
@@ -1073,12 +1256,54 @@ export const ViewWorkload: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium border border-transparent transition-colors duration-200 disabled:opacity-50 cursor-pointer"
                 >
-                  บันทึกภาระงาน
+                  {isSaving ? 'กำลังบันทึก...' : editingWorkloadId ? 'บันทึกการแก้ไข' : 'บันทึกภาระงาน'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom In-App Delete Confirmation Modal */}
+      {deletingWorkload && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => !isSaving && setDeletingWorkload(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-bold text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>ยืนยันการลบรายการภาระงาน</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              คุณต้องการลบภาระงาน <span className="font-semibold text-slate-900 dark:text-white">&ldquo;{deletingWorkload.title}&rdquo;</span> ({deletingWorkload.hoursPerWeek} ชม./สัปดาห์) ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setDeletingWorkload(null)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium transition-colors cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={confirmDeleteWorkload}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isSaving ? 'กำลังลบ...' : 'ลบรายการ'}
+              </button>
+            </div>
           </div>
         </div>
       )}
