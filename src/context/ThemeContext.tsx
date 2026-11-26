@@ -95,13 +95,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setResolvedTheme(resolved);
     applyThemeToDocument(resolved);
 
-    // Asynchronous background sync to server API (non-blocking)
+    // Asynchronous background sync to server API (only when not on public /login or /verify page)
     try {
-      fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ themeMode: newMode }),
-      }).catch(() => {});
+      if (
+        typeof window !== 'undefined' &&
+        window.location.pathname !== '/login' &&
+        !window.location.pathname.startsWith('/verify')
+      ) {
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ themeMode: newMode }),
+        }).catch(() => {});
+      }
     } catch {
       // ignore network errors
     }

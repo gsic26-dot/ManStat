@@ -21,6 +21,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/context/ThemeContext';
 import type { UserPreferences } from '@/types/database.types';
@@ -52,6 +53,7 @@ function getStorageKey(userId?: string | null): string {
 const UserSettingsContext = createContext<UserSettingsContextType | undefined>(undefined);
 
 export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     // Initial sync with themeMode from ThemeContext
@@ -92,8 +94,13 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, [themeMode]);
 
-  // 2. Fetch authenticated user from Supabase and synchronize remote preferences from server DB ON MOUNT ONLY
+  // 2. Fetch authenticated user from Supabase and synchronize remote preferences from server DB ON PROTECTED ROUTES ONLY
   useEffect(() => {
+    // Do NOT trigger authenticated settings fetch on public routes (/login, /verify)
+    if (pathname === '/login' || pathname?.startsWith('/verify')) {
+      return;
+    }
+
     const supabase = createClient();
     let isMounted = true;
 
@@ -190,7 +197,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [setThemeMode]);
+  }, [pathname, setThemeMode]);
 
   // 3. Update preferences handler (Instant UI update + localStorage + server DB sync)
   const updatePreferences = useCallback(

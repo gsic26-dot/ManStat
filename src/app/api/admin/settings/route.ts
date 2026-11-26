@@ -5,13 +5,26 @@ import {
   recordAuditLog,
   type SystemSettingsRecord,
 } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
   try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json(
+        { success: false, error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' },
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
+    }
+
     const settings = await dbGetSettings();
     return NextResponse.json(
       { success: true, data: settings },

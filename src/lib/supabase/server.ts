@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import type { Database } from '@/types/database.types';
 
 function sanitizeUrl(rawUrl?: string): string {
-  if (!rawUrl) return 'https://qyzmcfcmzlfecaumvfgy.supabase.co';
+  if (!rawUrl) return 'https://placeholder.local';
   let url = rawUrl.trim();
   url = url.replace(/\/rest\/v1\/?$/i, '');
   url = url.replace(/\/+$/, '');
@@ -11,7 +11,7 @@ function sanitizeUrl(rawUrl?: string): string {
 }
 
 const defaultSupabaseUrl = sanitizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-const defaultAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy';
+const defaultAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'missing-anon-key';
 
 export async function createClient() {
   const cookieStore = await cookies();

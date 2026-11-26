@@ -13,11 +13,27 @@ import type { Database, UserRole } from '@/types/database.types';
 import { isAdminRole } from '@/lib/auth/roles';
 import { verifySessionToken } from '@/lib/auth/sessionCookie';
 
+const CSP_HEADER = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob: https://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join('; ');
+
 function applySecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()');
+  res.headers.set('Content-Security-Policy', CSP_HEADER);
   return res;
 }
 
@@ -95,12 +111,12 @@ export async function middleware(request: NextRequest) {
   if (!isAuthenticated && !isLoginPage) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    return applySecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
   // 6. If logged in and visiting /login, redirect to /
   if (isAuthenticated && isLoginPage) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return applySecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
   }
 
   // 7. Strict Role-Based Access Control (RBAC) for /admin/*
