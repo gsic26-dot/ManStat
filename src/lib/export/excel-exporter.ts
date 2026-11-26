@@ -65,7 +65,7 @@ export function buildOBECStandardWorkbook(dataset: FullExportDataset): XLSX.Work
       'จำนวนครั้งที่ลา (ครั้ง)',
       'เกณฑ์วันลา (<= 23 วัน)',
       'เกณฑ์จำนวนครั้ง (<= 6 ครั้ง)',
-      'ผลการประเมินสิทธิ์เลื่อนขั้น',
+      'ผลการประเมินสิทธิ์เลื่อนเงินเดือน',
       'หมายเหตุ',
     ],
   ];
@@ -77,7 +77,7 @@ export function buildOBECStandardWorkbook(dataset: FullExportDataset): XLSX.Work
     const isAtRisk = daysExceeded || timesExceeded;
 
     const evalResult = isAtRisk
-      ? 'เกินเกณฑ์ (เสี่ยงงดเลื่อนขั้น)'
+      ? 'เกินเกณฑ์ (เสี่ยงงดเลื่อนเงินเดือน)'
       : 'อยู่ในเกณฑ์ปกติ';
 
     let remarks = '-';

@@ -228,7 +228,7 @@ export function LeaveCriteriaModal({ isOpen, onClose }: LeaveCriteriaModalProps)
         <div className="p-3.5 sm:p-4 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>อ้างอิงระเบียบการลาฯ พ.ศ. 2555 และหลักเกณฑ์ ก.ค.ศ. ว 15/2561</span>
+            <span>อ้างอิง พ.ร.บ. ระเบียบข้าราชการครูฯ (ฉบับที่ 5) พ.ศ. 2569, ระเบียบการลาฯ พ.ศ. 2555 และหลักเกณฑ์ ก.ค.ศ. ว 15/2561</span>
           </div>
           <button
             type="button"

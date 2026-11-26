@@ -809,7 +809,7 @@ export function ViewSalaryHistory({
             {roundDetails?.effectiveDate || '-'}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            ตามประกาศคำสั่งเลื่อนขั้น
+            ตามประกาศคำสั่งเลื่อนเงินเดือน
           </p>
         </div>
 

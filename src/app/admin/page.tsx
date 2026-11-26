@@ -1718,7 +1718,7 @@ export default function AdminPage() {
 
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    ผู้รักษาการแทนลำดับที่ 1
+                    ผู้รักษาการในตำแหน่งผู้อำนวยการสถานศึกษา (ลำดับที่ 1)
                   </label>
                   <input
                     type="text"
@@ -1732,7 +1732,7 @@ export default function AdminPage() {
 
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    ผู้รักษาการแทนลำดับที่ 2
+                    ผู้รักษาการในตำแหน่งผู้อำนวยการสถานศึกษา (ลำดับที่ 2)
                   </label>
                   <input
                     type="text"

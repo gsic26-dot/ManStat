@@ -1438,7 +1438,7 @@ export function EvaluationWorkspace({
                   onChange={(e) => setSupervisorComment(e.target.value)}
                   placeholder={
                     canEditSupervisor
-                      ? 'ระบุความเห็นและข้อเสนอแนะในการปฏิบัติงานเพื่อประกอบการเลื่อนขั้นเงินเดือน...'
+                      ? 'ระบุความเห็นและข้อเสนอแนะในการปฏิบัติงานเพื่อประกอบการเลื่อนเงินเดือน...'
                       : 'ผู้บังคับบัญชายังไม่ได้ระบุความเห็น'
                   }
                   className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
