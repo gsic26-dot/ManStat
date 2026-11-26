@@ -3046,6 +3046,7 @@ export async function dbSavePerformanceEvaluation(
     self_signed_at: evaluation.self_signed_at ?? null,
     supervisor_signed_at: evaluation.supervisor_signed_at ?? null,
     acknowledged_at: evaluation.acknowledged_at ?? null,
+    terms_accepted_at: evaluation.terms_accepted_at ?? null,
     created_at: now,
     updated_at: now,
   };

@@ -53,12 +53,14 @@ import {
   resolveEvaluationAccess,
   computeAutoUnlockDateStr,
   formatThaiDateArabic,
+  shouldRequireEvaluationAgreement,
 } from '@/lib/regulations/evaluation-access';
 import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { EvaluationWorkspace } from '@/components/evaluation/EvaluationWorkspace';
+import { EvaluationAgreementModal } from '@/components/evaluation/EvaluationAgreementModal';
 import { EvaluationA4PrintDocument } from '@/components/evaluation/EvaluationA4PrintDocument';
 
 interface ViewSalaryHistoryProps {
@@ -86,6 +88,11 @@ export function ViewSalaryHistory({
   const [selfEvalTeacher, setSelfEvalTeacher] = useState<TeacherRecord | null>(null);
   const [printRecordData, setPrintRecordData] = useState<{ teacher: TeacherRecord; record: any } | null>(null);
   const [evalStatusMap, setEvalStatusMap] = useState<Record<string, string>>({});
+  const [evalTermsMap, setEvalTermsMap] = useState<Record<string, string | null>>({});
+  const [agreementTargetTeacher, setAgreementTargetTeacher] = useState<TeacherRecord | null>(null);
+  const [isAcceptingAgreement, setIsAcceptingAgreement] = useState<boolean>(false);
+  const [agreementError, setAgreementError] = useState<string | null>(null);
+  const [checkingAgreementId, setCheckingAgreementId] = useState<string | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<EvaluationRoundStatus | null>(null);
 
   const remaskTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -213,10 +220,15 @@ export function ViewSalaryHistory({
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         const map: Record<string, string> = {};
+        const termsMap: Record<string, string | null> = {};
         json.data.forEach((e: any) => {
           map[e.staff_id] = e.status;
+          termsMap[e.staff_id] = e.terms_accepted_at ?? null;
         });
         setEvalStatusMap(map);
+        setEvalTermsMap(termsMap);
+      } else {
+        setEvalTermsMap({});
       }
     } catch (err) {
       console.warn('[fetchEvaluations] error:', err);
@@ -559,6 +571,133 @@ export function ViewSalaryHistory({
       }
     : null;
 
+  // Smart trigger for Pre-Evaluation Agreement Modal (once per staff per fiscal round)
+  const handleOpenSelfEval = async (teacher: TeacherRecord) => {
+    if (!selectedPeriod) return;
+    if (checkingAgreementId === teacher.id) return;
+
+    const isSelfEvaluation = Boolean(
+      currentUser &&
+        (currentUser.id === teacher.id || currentUser.employeeCode === teacher.employeeCode)
+    );
+
+    const access = resolveEvaluationAccess({
+      staffId: teacher.id,
+      isTeacher: isSelfEvaluation,
+      isAuthorizedManager,
+      period: selectedPeriod,
+    });
+    const isLockedRound = roundStatus === 'locked' && !access.isUnlocked;
+    const canEditSelf =
+      !isLockedRound &&
+      (isSelfEvaluation || isAuthorizedManager) &&
+      (access.isUnlocked || isAuthorizedManager);
+
+    // Bypass immediately for non-self (Director/HR reviewing others) or read-only mode
+    if (!isSelfEvaluation || !canEditSelf) {
+      setSelfEvalTeacher(teacher);
+      return;
+    }
+
+    // Bypass immediately if already accepted in this round (cached)
+    const cachedTerms = evalTermsMap[teacher.id] || evalTermsMap[teacher.employeeCode];
+    if (cachedTerms) {
+      setSelfEvalTeacher(teacher);
+      return;
+    }
+
+    // Check live evaluation record from Supabase for this staff + fiscal round
+    try {
+      setCheckingAgreementId(teacher.id);
+      const res = await fetch(
+        `/api/admin/evaluations?staffId=${encodeURIComponent(teacher.id)}&year=${selectedPeriod.fiscalYearTh}&round=${selectedPeriod.roundNo}`,
+        { cache: 'no-store' }
+      );
+      const json = await res.json();
+      const data = json?.data;
+
+      if (res.ok && json?.success && data) {
+        if (data.termsAcceptedAt) {
+          setEvalTermsMap((prev) => ({
+            ...prev,
+            [teacher.id]: data.termsAcceptedAt,
+            [teacher.employeeCode]: data.termsAcceptedAt,
+          }));
+          setSelfEvalTeacher(teacher);
+          return;
+        }
+
+        const needsConsent = shouldRequireEvaluationAgreement({
+          isSelfEvaluation: true,
+          canEditSelf,
+          status: data.status,
+          termsAcceptedAt: data.termsAcceptedAt,
+        });
+
+        if (needsConsent) {
+          setAgreementError(null);
+          setAgreementTargetTeacher(teacher);
+          return;
+        }
+      }
+
+      setSelfEvalTeacher(teacher);
+    } catch {
+      // Fallback: let EvaluationWorkspace handle the check on load
+      setSelfEvalTeacher(teacher);
+    } finally {
+      setCheckingAgreementId(null);
+    }
+  };
+
+  const handleAcceptAgreement = async () => {
+    if (!agreementTargetTeacher || !selectedPeriod) return;
+
+    try {
+      setIsAcceptingAgreement(true);
+      setAgreementError(null);
+      const acceptedAt = new Date().toISOString();
+
+      const res = await fetch('/api/admin/evaluations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staffId: agreementTargetTeacher.id,
+          fiscalYear: selectedPeriod.fiscalYearTh,
+          roundNumber: selectedPeriod.roundNo,
+          action: 'accept_terms',
+          termsAcceptedAt: acceptedAt,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        const msg = json.error || 'ไม่สามารถบันทึกการยอมรับข้อตกลงได้ กรุณาลองใหม่อีกครั้ง';
+        setAgreementError(msg);
+        showToast?.(msg, 'error');
+        return;
+      }
+
+      const savedTimestamp =
+        json.data?.termsAcceptedAt || json.data?.terms_accepted_at || acceptedAt;
+
+      setEvalTermsMap((prev) => ({
+        ...prev,
+        [agreementTargetTeacher.id]: savedTimestamp,
+        [agreementTargetTeacher.employeeCode]: savedTimestamp,
+      }));
+      const target = agreementTargetTeacher;
+      setAgreementTargetTeacher(null);
+      setSelfEvalTeacher(target);
+    } catch (err: any) {
+      const msg = err?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่อีกครั้ง';
+      setAgreementError(msg);
+      showToast?.(msg, 'error');
+    } finally {
+      setIsAcceptingAgreement(false);
+    }
+  };
+
   // If user clicked to evaluate a teacher, render the Evaluation Workspace as a full-page view completely
   if (selfEvalTeacher && selectedPeriod) {
     return (
@@ -569,6 +708,9 @@ export function ViewSalaryHistory({
         currentUser={currentUser}
         roundStatus={roundStatus}
         selectedPeriod={selectedPeriod}
+        initialTermsAcceptedAt={
+          evalTermsMap[selfEvalTeacher.id] || evalTermsMap[selfEvalTeacher.employeeCode] || null
+        }
         onClose={() => setSelfEvalTeacher(null)}
         onSaved={(updatedStatus) => {
           setEvalStatusMap((prev) => ({
@@ -915,7 +1057,7 @@ export function ViewSalaryHistory({
                       selectedPeriod={selectedPeriod}
                       onToggleExpand={() => toggleExpandStaff(teacher.id)}
                       onSave={handleSaveRecord}
-                      onOpenSelfEval={() => setSelfEvalTeacher(teacher)}
+                      onOpenSelfEval={() => handleOpenSelfEval(teacher)}
                       onPrintA4={() => setPrintRecordData({ teacher, record })}
                       onToggleUserLock={handleToggleUserLock}
                       evaluationStatus={evalStatusMap[teacher.id] || evalStatusMap[teacher.employeeCode]}
@@ -927,6 +1069,27 @@ export function ViewSalaryHistory({
           </div>
         )}
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Modal: ข้อตกลงก่อนเริ่มการประเมินผลการปฏิบัติงาน (First-Time Consent)  */}
+      {/* ------------------------------------------------------------------ */}
+      {agreementTargetTeacher && selectedPeriod && (
+        <EvaluationAgreementModal
+          isOpen={true}
+          fiscalYear={selectedPeriod.fiscalYearTh}
+          roundNumber={selectedPeriod.roundNo}
+          staffName={formatStaffName(agreementTargetTeacher)}
+          isSubmitting={isAcceptingAgreement}
+          errorMessage={agreementError}
+          onAccept={handleAcceptAgreement}
+          onCancel={() => {
+            if (!isAcceptingAgreement) {
+              setAgreementTargetTeacher(null);
+              setAgreementError(null);
+            }
+          }}
+        />
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Modal: ยืนยันการเปลี่ยนสถานะรอบประเมิน (3-Mode Confirmation)           */}

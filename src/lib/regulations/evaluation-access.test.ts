@@ -6,6 +6,7 @@ import {
   getBangkokDateString,
   isStaffManuallyUnlocked,
   resolveEvaluationAccess,
+  shouldRequireEvaluationAgreement,
   type EvaluationAccessPeriod,
 } from './evaluation-access';
 
@@ -222,6 +223,71 @@ describe('Hybrid Evaluation Unlock System (Auto 15-Day Window + Global + Per-Use
 
       assert.strictEqual(res.canEditForm, false, 'Manager form inputs must be read-only when locked');
       assert.strictEqual(res.reason, 'global_locked');
+    });
+  });
+
+  describe('Pre-Evaluation Agreement & Consent Trigger (shouldRequireEvaluationAgreement)', () => {
+    it('shows modal when teacher opens their own editable draft for the first time (termsAcceptedAt is null)', () => {
+      assert.strictEqual(
+        shouldRequireEvaluationAgreement({
+          isSelfEvaluation: true,
+          canEditSelf: true,
+          status: 'draft',
+          termsAcceptedAt: null,
+        }),
+        true
+      );
+    });
+
+    it('bypasses modal when teacher already accepted terms in the same fiscal round', () => {
+      assert.strictEqual(
+        shouldRequireEvaluationAgreement({
+          isSelfEvaluation: true,
+          canEditSelf: true,
+          status: 'draft',
+          termsAcceptedAt: '2026-11-26T10:30:00.000Z',
+        }),
+        false
+      );
+    });
+
+    it('bypasses modal when Director / HR Admin opens another staff member evaluation', () => {
+      assert.strictEqual(
+        shouldRequireEvaluationAgreement({
+          isSelfEvaluation: false,
+          canEditSelf: true,
+          status: 'draft',
+          termsAcceptedAt: null,
+        }),
+        false
+      );
+    });
+
+    it('bypasses modal when opened in read-only / locked round mode', () => {
+      assert.strictEqual(
+        shouldRequireEvaluationAgreement({
+          isSelfEvaluation: true,
+          canEditSelf: false,
+          status: 'draft',
+          termsAcceptedAt: null,
+        }),
+        false
+      );
+    });
+
+    it('bypasses modal when evaluation is already finalized (evaluated / acknowledged / locked)', () => {
+      for (const status of ['evaluated', 'acknowledged', 'locked']) {
+        assert.strictEqual(
+          shouldRequireEvaluationAgreement({
+            isSelfEvaluation: true,
+            canEditSelf: true,
+            status,
+            termsAcceptedAt: null,
+          }),
+          false,
+          `Must bypass modal when status is ${status}`
+        );
+      }
     });
   });
 });

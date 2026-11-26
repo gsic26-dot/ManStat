@@ -233,3 +233,41 @@ export function resolveEvaluationAccess(context: EvaluationAccessContext): Evalu
     autoUnlockDays,
   };
 }
+
+// ============================================================================
+// PRE-EVALUATION AGREEMENT & CONSENT TRIGGER LOGIC
+// ============================================================================
+
+export interface EvaluationAgreementCheckParams {
+  /** True only when the logged-in user is opening their OWN evaluation */
+  isSelfEvaluation: boolean;
+  /** True only when the round is unlocked/editable for this user */
+  canEditSelf: boolean;
+  /** Current evaluation status ('draft' | 'self_submitted' | 'evaluated' | 'acknowledged' | 'locked') */
+  status?: string | null;
+  /** Recorded ISO timestamp from performance_evaluations.terms_accepted_at */
+  termsAcceptedAt?: string | null;
+}
+
+/**
+ * Determines whether the pre-evaluation agreement modal must be shown.
+ * Shows ONLY when:
+ * 1. User is opening their OWN evaluation (never forces Director/HR to accept for others)
+ * 2. User has edit permission for this fiscal round (not read-only / locked)
+ * 3. Evaluation is not already finalized ('evaluated' / 'acknowledged' / 'locked')
+ * 4. terms_accepted_at has not yet been recorded for this fiscal round
+ */
+export function shouldRequireEvaluationAgreement(
+  params: EvaluationAgreementCheckParams
+): boolean {
+  if (!params.isSelfEvaluation) return false;
+  if (!params.canEditSelf) return false;
+  if (
+    params.status === 'evaluated' ||
+    params.status === 'acknowledged' ||
+    params.status === 'locked'
+  ) {
+    return false;
+  }
+  return !params.termsAcceptedAt;
+}

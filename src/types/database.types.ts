@@ -679,6 +679,7 @@ export interface Database {
           self_signed_at: string | null;
           supervisor_signed_at: string | null;
           acknowledged_at: string | null;
+          terms_accepted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -699,6 +700,7 @@ export interface Database {
           self_signed_at?: string | null;
           supervisor_signed_at?: string | null;
           acknowledged_at?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -719,6 +721,7 @@ export interface Database {
           self_signed_at?: string | null;
           supervisor_signed_at?: string | null;
           acknowledged_at?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -273,6 +273,7 @@ export async function GET(request: Request) {
         selfSignedAt: existingEval?.self_signed_at ?? null,
         supervisorSignedAt: existingEval?.supervisor_signed_at ?? null,
         acknowledgedAt: existingEval?.acknowledged_at ?? null,
+        termsAcceptedAt: existingEval?.terms_accepted_at ?? null,
         createdAt: existingEval?.created_at ?? null,
         updatedAt: existingEval?.updated_at ?? null,
       },
@@ -301,26 +302,109 @@ export async function POST(request: Request) {
       staffId,
       fiscalYear = 2570,
       roundNumber = 1,
-      templateKey,
+      templateKey: bodyTemplateKey,
       part1Snapshot = {},
       selfScores = {},
       supervisorScores = {},
       supervisorComment = '',
-      action = 'save_self', // 'save_self' | 'submit_self' | 'save_supervisor' | 'finalize_evaluation' | 'acknowledge'
+      termsAcceptedAt: bodyTermsAcceptedAt,
+      action = 'save_self', // 'accept_terms' | 'save_self' | 'submit_self' | 'save_supervisor' | 'finalize_evaluation' | 'acknowledge'
     } = body;
 
-    if (!staffId || !templateKey) {
+    if (!staffId) {
+      return NextResponse.json(
+        { success: false, error: 'ข้อมูลไม่ครบถ้วน (จำเป็นต้องระบุ staffId)' },
+        { status: 400 }
+      );
+    }
+
+    // Resolve teacher record to normalize staff_id and allow auto-resolving templateKey
+    const allTeachers = await dbGetTeachers();
+    const matchedTeacher = allTeachers.find(
+      (t) => t.id === staffId || t.employeeCode === staffId
+    );
+    const canonicalStaffId = matchedTeacher?.id || staffId;
+
+    const isSelf = Boolean(
+      sessionUser &&
+        (sessionUser.id === staffId ||
+          sessionUser.employeeCode === staffId ||
+          sessionUser.email === staffId ||
+          (matchedTeacher &&
+            (sessionUser.id === matchedTeacher.id ||
+              sessionUser.employeeCode === matchedTeacher.employeeCode)))
+    );
+
+    const existing = await dbGetPerformanceEvaluation(canonicalStaffId, fiscalYear, roundNumber);
+
+    // ------------------------------------------------------------------------
+    // Special Action: accept_terms (บันทึกวันเวลายอมรับข้อตกลงก่อนเริ่มประเมิน)
+    // ------------------------------------------------------------------------
+    if (action === 'accept_terms') {
+      if (!isSelf) {
+        return NextResponse.json(
+          { success: false, error: 'สามารถยืนยันข้อตกลงได้เฉพาะเจ้าตัวผู้รับการประเมินเท่านั้น' },
+          { status: 403 }
+        );
+      }
+
+      const resolvedTemplateKey =
+        existing?.template_key ||
+        bodyTemplateKey ||
+        (matchedTeacher
+          ? resolveEvaluationTemplate(matchedTeacher.position, matchedTeacher.academicStanding)
+          : 'teacher_no_standing');
+
+      const acceptedTimestamp =
+        existing?.terms_accepted_at ||
+        (typeof bodyTermsAcceptedAt === 'string' && bodyTermsAcceptedAt.trim()
+          ? bodyTermsAcceptedAt
+          : new Date().toISOString());
+
+      const savedTermsRecord = await dbSavePerformanceEvaluation({
+        staff_id: canonicalStaffId,
+        fiscal_year: fiscalYear,
+        round_number: roundNumber,
+        template_key: resolvedTemplateKey,
+        part1_snapshot: existing?.part1_snapshot || {},
+        self_scores: existing?.self_scores || {},
+        supervisor_scores: existing?.supervisor_scores || {},
+        self_total: existing?.self_total ?? null,
+        supervisor_total: existing?.supervisor_total ?? null,
+        rating_level: existing?.rating_level ?? null,
+        supervisor_comment: existing?.supervisor_comment ?? null,
+        status: existing?.status || 'draft',
+        self_signed_at: existing?.self_signed_at ?? null,
+        supervisor_signed_at: existing?.supervisor_signed_at ?? null,
+        acknowledged_at: existing?.acknowledged_at ?? null,
+        terms_accepted_at: acceptedTimestamp,
+      });
+
+      recordAuditLog(
+        'ACCEPT_EVALUATION_TERMS',
+        sessionUser?.name || matchedTeacher?.firstName || 'User',
+        sessionUser?.role || 'teacher',
+        canonicalStaffId,
+        `ยอมรับข้อตกลงก่อนเริ่มการประเมิน ปีงบ ${fiscalYear} รอบที่ ${roundNumber} เวลา ${acceptedTimestamp}`
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...savedTermsRecord,
+          termsAcceptedAt: savedTermsRecord.terms_accepted_at || acceptedTimestamp,
+        },
+        message: 'บันทึกการยอมรับข้อตกลงการประเมินเรียบร้อยแล้ว',
+      });
+    }
+
+    const templateKey = bodyTemplateKey || existing?.template_key;
+    if (!templateKey) {
       return NextResponse.json(
         { success: false, error: 'ข้อมูลไม่ครบถ้วน (staffId และ templateKey จำเป็น)' },
         { status: 400 }
       );
     }
-
-    const isSelf =
-      sessionUser &&
-      (sessionUser.id === staffId ||
-        sessionUser.employeeCode === staffId ||
-        sessionUser.email === staffId);
 
     // ตรวจสอบสิทธิ์ตาม Action
     if (['save_supervisor', 'finalize_evaluation'].includes(action)) {
@@ -365,8 +449,8 @@ export async function POST(request: Request) {
     let selfSignedAt: string | null = null;
     let supervisorSignedAt: string | null = null;
     let acknowledgedAt: string | null = null;
+    const termsAcceptedAt: string | null = existing?.terms_accepted_at ?? null;
 
-    const existing = await dbGetPerformanceEvaluation(staffId, fiscalYear, roundNumber);
     if (existing) {
       newStatus = existing.status;
       selfSignedAt = existing.self_signed_at;
@@ -392,7 +476,7 @@ export async function POST(request: Request) {
     }
 
     const savedRecord = await dbSavePerformanceEvaluation({
-      staff_id: staffId,
+      staff_id: canonicalStaffId,
       fiscal_year: fiscalYear,
       round_number: roundNumber,
       template_key: templateKey,
@@ -407,6 +491,7 @@ export async function POST(request: Request) {
       self_signed_at: selfSignedAt,
       supervisor_signed_at: supervisorSignedAt,
       acknowledged_at: acknowledgedAt,
+      terms_accepted_at: termsAcceptedAt,
     });
 
     // บันทึก Audit Log
@@ -432,6 +517,30 @@ export async function POST(request: Request) {
     console.error('[API /api/admin/evaluations POST Error]', err);
     return NextResponse.json(
       { success: false, error: err.message || 'เกิดข้อผิดพลาดในการบันทึกแบบประเมิน' },
+      { status: 500 }
+    );
+  }
+}
+
+// ----------------------------------------------------------------------------
+// PATCH: บันทึกการยอมรับข้อตกลงก่อนเริ่มการประเมิน (terms_accepted_at)
+// ----------------------------------------------------------------------------
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const patchedRequest = new Request(request.url, {
+      method: 'POST',
+      headers: request.headers,
+      body: JSON.stringify({
+        ...body,
+        action: body.action || 'accept_terms',
+      }),
+    });
+    return POST(patchedRequest);
+  } catch (err: any) {
+    console.error('[API /api/admin/evaluations PATCH Error]', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการอัปเดตข้อตกลงการประเมิน' },
       { status: 500 }
     );
   }

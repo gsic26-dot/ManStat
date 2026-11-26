@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FileText,
   User,
@@ -33,7 +34,11 @@ import {
 } from '@/lib/evaluationEngine';
 import type { TeacherRecord, FiscalPeriodRecord, EvaluationRoundStatus } from '@/lib/data/schoolData';
 import { EvaluationA4PrintDocument } from './EvaluationA4PrintDocument';
-import { resolveEvaluationAccess } from '@/lib/regulations/evaluation-access';
+import { EvaluationAgreementModal } from './EvaluationAgreementModal';
+import {
+  resolveEvaluationAccess,
+  shouldRequireEvaluationAgreement,
+} from '@/lib/regulations/evaluation-access';
 
 export interface EvaluationWorkspaceProps {
   staffId: string;
@@ -49,6 +54,7 @@ export interface EvaluationWorkspaceProps {
   } | null;
   roundStatus?: EvaluationRoundStatus;
   selectedPeriod?: FiscalPeriodRecord | null;
+  initialTermsAcceptedAt?: string | null;
   onClose?: () => void;
   onSaved?: (updatedStatus: string, grandTotal: number, rating: string) => void;
 }
@@ -60,15 +66,20 @@ export function EvaluationWorkspace({
   currentUser,
   roundStatus,
   selectedPeriod,
+  initialTermsAcceptedAt = null,
   onClose,
   onSaved,
 }: EvaluationWorkspaceProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(initialTermsAcceptedAt);
+  const [isAcceptingTerms, setIsAcceptingTerms] = useState<boolean>(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
 
   // Template and Form Data
   const [templateKey, setTemplateKey] = useState<EvaluationTemplateKey>('teacher_special_expert');
@@ -162,6 +173,7 @@ export function EvaluationWorkspace({
       setPart1Snapshot(data.part1Snapshot || {});
       setSupervisorComment(data.supervisorComment || '');
       setSelfSignedAt(data.selfSignedAt || data.selfEvaluationDate || null);
+      setTermsAcceptedAt((prev) => data.termsAcceptedAt || prev || null);
       setHasUnsavedChanges(false);
 
       // Initialize self scores (default unrated items to 0, not 5)
@@ -399,6 +411,45 @@ export function EvaluationWorkspace({
     }
   };
 
+  const requiresAgreement =
+    !isLoading &&
+    !errorMsg &&
+    shouldRequireEvaluationAgreement({
+      isSelfEvaluation: isSelf,
+      canEditSelf,
+      status,
+      termsAcceptedAt,
+    });
+
+  const handleAcceptTerms = async () => {
+    try {
+      setIsAcceptingTerms(true);
+      setTermsError(null);
+      const acceptedAt = new Date().toISOString();
+      const res = await fetch('/api/admin/evaluations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staffId,
+          fiscalYear,
+          roundNumber,
+          templateKey,
+          action: 'accept_terms',
+          termsAcceptedAt: acceptedAt,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกการยอมรับข้อตกลงได้ กรุณาลองใหม่อีกครั้ง');
+      }
+      setTermsAcceptedAt(json.data?.termsAcceptedAt || json.data?.terms_accepted_at || acceptedAt);
+    } catch (err: any) {
+      setTermsError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อตกลง กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsAcceptingTerms(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[480px] p-8 text-center space-y-3">
@@ -406,6 +457,29 @@ export function EvaluationWorkspace({
         <p className="text-sm text-slate-600 dark:text-slate-400">
           กำลังเตรียมข้อมูลและเชื่อมโยงสถิติวันลา/ภาระงานสอน...
         </p>
+      </div>
+    );
+  }
+
+  if (requiresAgreement) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a]">
+        <EvaluationAgreementModal
+          isOpen={true}
+          fiscalYear={fiscalYear}
+          roundNumber={roundNumber}
+          staffName={part1Snapshot.evaluateeName || teacher?.name}
+          isSubmitting={isAcceptingTerms}
+          errorMessage={termsError}
+          onAccept={handleAcceptTerms}
+          onCancel={() => {
+            if (onClose) {
+              onClose();
+            } else {
+              router.push('/');
+            }
+          }}
+        />
       </div>
     );
   }
