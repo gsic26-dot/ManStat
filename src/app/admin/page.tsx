@@ -52,6 +52,7 @@ import {
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
 import { SchoolAcademicManager } from '@/components/admin/SchoolAcademicManager';
@@ -180,6 +181,12 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
 
   // Authenticated User & RBAC State
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -420,27 +427,34 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteHoliday = async (id: string) => {
+  const handleDeleteHoliday = (id: string) => {
     const target = holidays.find((h) => h.id === id);
-    if (!confirm(`คุณต้องการลบวันหยุด "${target?.name || id}" ใช่หรือไม่?`)) return;
-    setIsSaving(true);
-    try {
-      const res = await fetch(`/api/admin/holidays?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (data.success) {
-        setHolidays(data.data);
-        showToast('ลบวันหยุดราชการเรียบร้อยแล้ว', 'success');
-        refreshAuditLogs();
-      } else {
-        showToast(data.error || 'ลบไม่สำเร็จ', 'error');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'เกิดข้อผิดพลาดในการลบวันหยุด', 'error');
-    } finally {
-      setIsSaving(false);
-    }
+    setConfirmDialog({
+      title: 'ยืนยันการลบวันหยุดราชการ',
+      description: `คุณต้องการลบวันหยุด "${target?.name || id}" ออกจากปฏิทินวันหยุดราชการใช่หรือไม่?`,
+      confirmLabel: 'ลบวันหยุด',
+      onConfirm: async () => {
+        setIsSaving(true);
+        try {
+          const res = await fetch(`/api/admin/holidays?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (data.success) {
+            setHolidays(data.data);
+            showToast('ลบวันหยุดราชการเรียบร้อยแล้ว', 'success');
+            refreshAuditLogs();
+          } else {
+            showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+          }
+        } catch (err: any) {
+          showToast(err.message || 'เกิดข้อผิดพลาดในการลบวันหยุด', 'error');
+        } finally {
+          setIsSaving(false);
+          setConfirmDialog(null);
+        }
+      },
+    });
   };
 
   // Dynamic holiday years derived from holiday records + active fiscal year
@@ -639,10 +653,12 @@ export default function AdminPage() {
               localStorage.setItem('manstat_auth_role', authMeRes.user.role);
               localStorage.setItem('manstat_auth_user', JSON.stringify(authMeRes.user));
             }
-            // If the current logged-in user was demoted to 'teacher' (User), kick them back to /
+            // If the current logged-in user was demoted to 'teacher' (User), redirect cleanly back to /
             if (!isAdminRole(authMeRes.user.role)) {
-              alert('ระดับสิทธิ์ของท่านถูกปรับเป็นผู้ใช้งานทั่วไป (User) ระบบจะนำท่านกลับสู่หน้าหลัก');
-              window.location.href = '/';
+              showToast('ระดับสิทธิ์ของท่านถูกปรับเป็นผู้ใช้งานทั่วไป ระบบกำลังนำท่านกลับสู่หน้าหลัก', 'info');
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1200);
               return;
             }
           }
@@ -659,37 +675,43 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteStaff = async (staffId: string) => {
+  const handleDeleteStaff = (staffId: string) => {
     const target = teachers.find((t) => t.id === staffId);
     if (!target) return;
-    if (confirm(`คุณต้องการลบข้อมูลบุคลากร "${formatStaffName(target)}" ใช่หรือไม่?`)) {
-      setIsSaving(true);
-      try {
-        const res = await fetch(`/api/admin/staff?id=${encodeURIComponent(staffId)}`, {
-          method: 'DELETE',
-        });
-        const data = await res.json();
-        if (data.success) {
-          setTeachers((prev) => prev.filter((t) => t.id !== staffId));
-          if (selectedStaff?.id === staffId) {
-            setIsStaffModalOpen(false);
+    setConfirmDialog({
+      title: 'ยืนยันการลบข้อมูลบุคลากร',
+      description: `คุณต้องการลบข้อมูลบุคลากร "${formatStaffName(target)}" ออกจากฐานข้อมูลใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`,
+      confirmLabel: 'ลบข้อมูลบุคลากร',
+      onConfirm: async () => {
+        setIsSaving(true);
+        try {
+          const res = await fetch(`/api/admin/staff?id=${encodeURIComponent(staffId)}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (data.success) {
+            setTeachers((prev) => prev.filter((t) => t.id !== staffId));
+            if (selectedStaff?.id === staffId) {
+              setIsStaffModalOpen(false);
+            }
+            showToast(`ลบข้อมูลบุคลากร ${formatStaffName(target)} เรียบร้อยแล้ว`, 'success');
+            refreshAuditLogs();
+          } else {
+            showToast(data.error || 'ลบไม่สำเร็จ', 'error');
           }
-          showToast(`ลบข้อมูลบุคลากร ${formatStaffName(target)} เรียบร้อยแล้ว`, 'success');
-          refreshAuditLogs();
-        } else {
-          showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+        } catch (err: any) {
+          showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+        } finally {
+          setIsSaving(false);
+          setConfirmDialog(null);
         }
-      } catch (err: any) {
-        showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
-      } finally {
-        setIsSaving(false);
-      }
-    }
+      },
+    });
   };
 
   const handleAddLicenseToStaff = () => {
     if (!selectedStaff || !newLicNumber.trim()) {
-      alert('กรุณากรอกเลขที่ใบอนุญาต');
+      showToast('กรุณากรอกเลขที่ใบอนุญาต', 'error');
       return;
     }
     const newLic = {
@@ -959,42 +981,48 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteBoardMember = async (id: string) => {
+  const handleDeleteBoardMember = (id: string) => {
     const target = boardMembers.find((b) => b.id === id);
     if (!target) return;
-    if (confirm(`คุณต้องการลบกรรมการสถานศึกษา "${target.fullName}" ใช่หรือไม่?`)) {
-      setIsSaving(true);
-      try {
-        const res = await fetch(`/api/admin/board?id=${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-        });
-        const data = await res.json();
-        if (data.success) {
-          setBoardMembers((prev) => prev.filter((b) => b.id !== id));
-          if (selectedBoardMember?.id === id) {
-            setIsBoardModalOpen(false);
-          }
-          showToast(`ลบกรรมการสถานศึกษา ${target.fullName} เรียบร้อยแล้ว`, 'success');
-          refreshAuditLogs();
+    setConfirmDialog({
+      title: 'ยืนยันการลบกรรมการสถานศึกษา',
+      description: `คุณต้องการลบกรรมการสถานศึกษา "${target.fullName}" ออกจากระบบใช่หรือไม่?`,
+      confirmLabel: 'ลบกรรมการ',
+      onConfirm: async () => {
+        setIsSaving(true);
+        try {
+          const res = await fetch(`/api/admin/board?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (data.success) {
+            setBoardMembers((prev) => prev.filter((b) => b.id !== id));
+            if (selectedBoardMember?.id === id) {
+              setIsBoardModalOpen(false);
+            }
+            showToast(`ลบกรรมการสถานศึกษา ${target.fullName} เรียบร้อยแล้ว`, 'success');
+            refreshAuditLogs();
 
-          // Immediate re-fetch from server to guarantee 100% database persistence
-          fetch('/api/admin/board', { cache: 'no-store' })
-            .then((r) => r.json())
-            .then((bRes) => {
-              if (bRes?.success && Array.isArray(bRes.data)) {
-                setBoardMembers(bRes.data);
-              }
-            })
-            .catch(() => {});
-        } else {
-          showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+            // Immediate re-fetch from server to guarantee 100% database persistence
+            fetch('/api/admin/board', { cache: 'no-store' })
+              .then((r) => r.json())
+              .then((bRes) => {
+                if (bRes?.success && Array.isArray(bRes.data)) {
+                  setBoardMembers(bRes.data);
+                }
+              })
+              .catch(() => {});
+          } else {
+            showToast(data.error || 'ลบไม่สำเร็จ', 'error');
+          }
+        } catch (err: any) {
+          showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
+        } finally {
+          setIsSaving(false);
+          setConfirmDialog(null);
         }
-      } catch (err: any) {
-        showToast(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
-      } finally {
-        setIsSaving(false);
-      }
-    }
+      },
+    });
   };
 
   const filteredTeachers = teachers.filter(
@@ -3755,6 +3783,17 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      {/* Reusable In-App Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(confirmDialog)}
+        title={confirmDialog?.title || ''}
+        description={confirmDialog?.description || ''}
+        confirmLabel={confirmDialog?.confirmLabel || 'ยืนยัน'}
+        isLoading={isSaving}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
+
       {/* Real-time Toast Notification Overlay */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 bg-white dark:bg-[#121a24] text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FileText,
   User,
-  Calendar,
   CheckCircle2,
   Clock,
   Save,
@@ -13,14 +12,10 @@ import {
   ChevronLeft,
   Award,
   Lock,
-  Unlock,
   Printer,
   FileCheck,
   AlertCircle,
-  HelpCircle,
-  Info,
   Copy,
-  Edit3,
   ArrowLeft,
   Loader2,
 } from 'lucide-react';
@@ -33,11 +28,6 @@ import {
 } from '@/data/evaluationTemplates';
 import {
   calculateEvaluationTotals,
-  calculateComponent1Score,
-  calculateComponent2Score,
-  calculateComponent3Score,
-  getRatingLevel,
-  round2Decimals,
   type EvaluationScores,
   type RatingLevel,
 } from '@/lib/evaluationEngine';

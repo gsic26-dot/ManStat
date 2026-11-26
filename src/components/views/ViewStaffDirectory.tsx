@@ -19,7 +19,6 @@ import {
   Users,
   GraduationCap,
   Calendar,
-  Phone,
   Mail,
   Award,
   BookOpen,
@@ -28,6 +27,8 @@ import {
   X,
   LayoutList,
   LayoutGrid,
+  Search,
+  Loader2,
 } from 'lucide-react';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
@@ -38,7 +39,6 @@ import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import {
   groupAndSortTeachers,
   formatAcademicStandingSubtext,
-  getStaffBranch,
 } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isCivilServantForSalary } from '@/lib/auth/roles';
@@ -68,12 +68,23 @@ export const ViewStaffDirectory: React.FC = () => {
   const cellPy = isCompact ? 'py-2' : 'py-3.5';
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedEmploymentType, setSelectedEmploymentType] = useState<'ALL' | 'civil_servant' | 'temporary_employee'>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentRole, setCurrentRole] = useState<string>('teacher');
+
+  useEffect(() => {
+    if (!selectedTeacher) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedTeacher(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTeacher]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -104,7 +115,10 @@ export const ViewStaffDirectory: React.FC = () => {
           setTeachersList(json.data);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
     return () => {
       isMounted = false;
     };
@@ -114,14 +128,32 @@ export const ViewStaffDirectory: React.FC = () => {
     setExpandedTeacherId((prev) => (prev === id ? null : id));
   };
 
-  // Unique departments for filter pills
+  // Teachers filtered by currently selected employment type (for accurate department pill counts)
+  const employmentScopedTeachers = useMemo(() => {
+    if (selectedEmploymentType === 'civil_servant') {
+      return teachersList.filter((t) => isCivilServantForSalary(t));
+    }
+    if (selectedEmploymentType === 'temporary_employee') {
+      return teachersList.filter((t) => !isCivilServantForSalary(t));
+    }
+    return teachersList;
+  }, [teachersList, selectedEmploymentType]);
+
+  // Unique departments present in the currently selected employment scope
   const departments = useMemo(() => {
     const set = new Set<string>();
-    teachersList.forEach((t) => {
+    employmentScopedTeachers.forEach((t) => {
       if (t.department) set.add(t.department);
     });
     return Array.from(set);
-  }, [teachersList]);
+  }, [employmentScopedTeachers]);
+
+  // Reset selectedDept if it is not available in the new employment scope
+  useEffect(() => {
+    if (selectedDept !== 'ALL' && !departments.includes(selectedDept)) {
+      setSelectedDept('ALL');
+    }
+  }, [departments, selectedDept]);
 
   const civilServantCount = useMemo(() => {
     return teachersList.filter((t) => isCivilServantForSalary(t)).length;
@@ -132,17 +164,22 @@ export const ViewStaffDirectory: React.FC = () => {
   }, [teachersList, civilServantCount]);
 
   const filteredTeachers = useMemo(() => {
-    let result = teachersList;
-    if (selectedEmploymentType === 'civil_servant') {
-      result = result.filter((t) => isCivilServantForSalary(t));
-    } else if (selectedEmploymentType === 'temporary_employee') {
-      result = result.filter((t) => !isCivilServantForSalary(t));
-    }
+    let result = employmentScopedTeachers;
     if (selectedDept !== 'ALL') {
       result = result.filter((t) => t.department === selectedDept);
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (t) =>
+          formatStaffName(t).toLowerCase().includes(q) ||
+          (t.employeeCode || '').toLowerCase().includes(q) ||
+          (t.department || '').toLowerCase().includes(q) ||
+          (t.position || '').toLowerCase().includes(q)
+      );
+    }
     return result;
-  }, [teachersList, selectedEmploymentType, selectedDept]);
+  }, [employmentScopedTeachers, selectedDept, searchQuery]);
 
   const groupedTeachers = useMemo(() => {
     return groupAndSortTeachers(filteredTeachers);
@@ -160,8 +197,19 @@ export const ViewStaffDirectory: React.FC = () => {
             </h2>
           </div>
 
-          {/* View Switcher */}
-          <div className="flex items-center shrink-0">
+          {/* Search & View Switcher */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="relative w-full sm:w-60">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อ, รหัส, กลุ่มสาระ..."
+                className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+              />
+            </div>
+
             <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
               <button
                 type="button"
@@ -287,13 +335,13 @@ export const ViewStaffDirectory: React.FC = () => {
                     ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
                     : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                 }`}>
-                  {teachersList.length}
+                  {employmentScopedTeachers.length}
                 </span>
               </button>
 
               {/* ปุ่มแต่ละกลุ่มสาระ */}
               {departments.map((dept) => {
-                const count = teachersList.filter((t) => t.department === dept).length;
+                const count = employmentScopedTeachers.filter((t) => t.department === dept).length;
                 const isSelected = selectedDept === dept;
                 const shortName = getShortDeptName(dept);
                 return (
@@ -342,10 +390,21 @@ export const ViewStaffDirectory: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {filteredTeachers.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                      <div className="inline-flex items-center gap-2 text-xs">
+                        <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+                        <span>กำลังโหลดทะเบียนประวัติบุคลากร...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredTeachers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                      ยังไม่มีข้อมูลบุคลากรในระบบ
+                      {searchQuery.trim() || selectedDept !== 'ALL' || selectedEmploymentType !== 'ALL'
+                        ? 'ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไข'
+                        : 'ยังไม่มีข้อมูลบุคลากรในระบบ'}
                     </td>
                   </tr>
                 ) : (
@@ -530,86 +589,109 @@ export const ViewStaffDirectory: React.FC = () => {
             </table>
           </div>
         </div>
+      ) : isLoading ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
+          <div className="inline-flex items-center gap-2 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+            <span>กำลังโหลดทะเบียนประวัติบุคลากร...</span>
+          </div>
+        </div>
       ) : filteredTeachers.length === 0 ? (
         <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
-          ยังไม่มีข้อมูลบุคลากรในระบบ
+          {searchQuery.trim() || selectedDept !== 'ALL' || selectedEmploymentType !== 'ALL'
+            ? 'ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไข'
+            : 'ยังไม่มีข้อมูลบุคลากรในระบบ'}
         </div>
       ) : (
-        /* Alternative Responsive Cards View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTeachers.map((teacher) => {
-            const tenure = calculateTenure(teacher.startDate);
+        /* Alternative Responsive Cards View — Grouped by Branch Hierarchy */
+        <div className="space-y-6">
+          {groupedTeachers.map((group) => {
+            const isSupport = group.category === 'support';
             return (
-              <div
-                key={teacher.id}
-                className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-sky-500/40 shadow-sm dark:shadow-none transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-base shrink-0 shadow-sm">
-                      {teacher.firstName ? teacher.firstName[0] : 'ค'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-base font-bold text-slate-900 dark:text-white truncate" title={formatStaffName(teacher)}>
-                        {formatStaffName(teacher)}
-                      </div>
-                      <div className="text-sm text-sky-600 dark:text-sky-300 truncate font-medium" title={teacher.position}>
-                        {teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}
-                      </div>
-                      <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 truncate max-w-full" title={teacher.department}>
-                        {teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Citizen ID Shield */}
-                  <div className="mb-3 pt-2 border-t border-slate-200/90 dark:border-slate-800/80">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                      เลขประจำตัวประชาชน (PDPA Shield):
-                    </span>
-                    <CitizenIdShield
-                      targetStaffId={teacher.id}
-                      initialMaskedId={teacher.maskedCitizenId}
-                      currentUser={currentUser}
-                      currentRole={currentRole}
-                    />
-                  </div>
-
-                  {/* Meta details */}
-                  <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span>
-                        อายุราชการ: <strong className="text-slate-900 dark:text-slate-100">{tenure.years} ปี {tenure.months} เดือน</strong>
-                      </span>
-                    </div>
-                    {teacher.phone && teacher.phone !== '-' && (
-                      <div className="flex items-center gap-2">
-                        <PhoneShield
-                          phone={teacher.phone}
-                          targetStaffId={teacher.id}
-                          currentUser={currentUser}
-                          currentRole={currentRole}
-                        />
-                      </div>
-                    )}
-                    {teacher.email && teacher.email !== '-' && (
-                      <div className="flex items-center gap-2 truncate">
-                        <Mail className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span className="font-mono text-slate-500 dark:text-slate-400 truncate">{teacher.email}</span>
-                      </div>
-                    )}
-                  </div>
+              <div key={group.category} className="space-y-3">
+                <div className="flex items-center gap-2 px-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isSupport ? 'bg-amber-400' : 'bg-sky-400'}`} />
+                  <span>{group.title}</span>
+                  <span className="text-slate-400 dark:text-slate-500 font-mono">({group.members.length})</span>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {group.members.map((teacher) => {
+                    const tenure = calculateTenure(teacher.startDate);
+                    return (
+                      <div
+                        key={teacher.id}
+                        className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 hover:border-sky-500/40 shadow-sm dark:shadow-none transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-base shrink-0 shadow-sm">
+                              {teacher.firstName ? teacher.firstName[0] : 'ค'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-base font-bold text-slate-900 dark:text-white truncate" title={formatStaffName(teacher)}>
+                                {formatStaffName(teacher)}
+                              </div>
+                              <div className="text-sm text-sky-600 dark:text-sky-300 truncate font-medium" title={teacher.position}>
+                                {teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา')}
+                              </div>
+                              <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 truncate max-w-full" title={teacher.department}>
+                                {teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ')}
+                              </span>
+                            </div>
+                          </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedTeacher(teacher)}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs sm:text-sm font-medium transition-colors duration-200"
-                >
-                  <span>ดูประวัติ ก.พ.7 และพัฒนาวิชาชีพ</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                          {/* Citizen ID Shield */}
+                          <div className="mb-3 pt-2 border-t border-slate-200/90 dark:border-slate-800/80">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+                              เลขประจำตัวประชาชน (PDPA Shield):
+                            </span>
+                            <CitizenIdShield
+                              targetStaffId={teacher.id}
+                              initialMaskedId={teacher.maskedCitizenId}
+                              currentUser={currentUser}
+                              currentRole={currentRole}
+                            />
+                          </div>
+
+                          {/* Meta details */}
+                          <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                              <span>
+                                อายุราชการ: <strong className="text-slate-900 dark:text-slate-100">{tenure.years} ปี {tenure.months} เดือน</strong>
+                              </span>
+                            </div>
+                            {teacher.phone && teacher.phone !== '-' && (
+                              <div className="flex items-center gap-2">
+                                <PhoneShield
+                                  phone={teacher.phone}
+                                  targetStaffId={teacher.id}
+                                  currentUser={currentUser}
+                                  currentRole={currentRole}
+                                />
+                              </div>
+                            )}
+                            {teacher.email && teacher.email !== '-' && (
+                              <div className="flex items-center gap-2 truncate">
+                                <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                                <span className="font-mono text-slate-500 dark:text-slate-400 truncate">{teacher.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTeacher(teacher)}
+                          className="mt-4 w-full inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
+                        >
+                          <span>ดูประวัติ ก.พ.7 และพัฒนาวิชาชีพ</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -618,8 +700,16 @@ export const ViewStaffDirectory: React.FC = () => {
 
       {/* Teacher Profile Portfolio Modal */}
       {selectedTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-xl bg-white dark:bg-[#171a21] border border-slate-200 dark:border-[#2a475e] rounded-2xl shadow-2xl p-6 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={() => setSelectedTeacher(null)}
+        >
+          <div
+            className="w-full max-w-xl bg-white dark:bg-[#171a21] border border-slate-200 dark:border-[#2a475e] rounded-2xl shadow-2xl p-6 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-700 mb-4">
               <div className="flex items-center gap-2.5">
                 <GraduationCap className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />

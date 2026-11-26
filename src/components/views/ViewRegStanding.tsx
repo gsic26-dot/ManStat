@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Award,
   Calendar,
@@ -20,30 +21,67 @@ import {
   LayoutList,
   LayoutGrid,
   FileText,
-  ChevronRight,
   ChevronDown,
+  Search,
+  Loader2,
+  Settings,
 } from 'lucide-react';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
-import { groupAndSortTeachers, getStaffBranch } from '@/lib/regulations/staff-sorting';
+import { groupAndSortTeachers } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
-import { isCivilServantForSalary } from '@/lib/auth/roles';
+import { isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
+import { useUserSettings } from '@/context/UserSettingsContext';
+
+function sortStandingsDesc(standings?: TeacherRecord['standings']) {
+  if (!standings || standings.length === 0) return [];
+  return [...standings].sort((a, b) =>
+    String(b.effectiveDate || '').localeCompare(String(a.effectiveDate || ''))
+  );
+}
 
 export const ViewRegStanding: React.FC = () => {
+  const { preferences, updatePreferences } = useUserSettings();
+  const viewMode = preferences.preferred_view;
+  const setViewMode = (mode: 'table' | 'grid') => updatePreferences({ preferred_view: mode });
+
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<string>('teacher');
+
+  const canManage = isAdminRole(currentRole);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRole = localStorage.getItem('manstat_auth_role');
+        if (storedRole) setCurrentRole(storedRole);
+      } catch {}
+    }
+
     let isMounted = true;
-    fetch('/api/admin/staff', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data.success && Array.isArray(data.data)) {
-          setTeachersList(data.data);
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/auth/me', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && data.user?.role) {
+            setCurrentRole(data.user.role);
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/staff', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && Array.isArray(data.data)) {
+            setTeachersList(data.data);
+          }
+        })
+        .catch(() => {}),
+    ]).finally(() => {
+      if (isMounted) setIsLoading(false);
+    });
     return () => {
       isMounted = false;
     };
@@ -53,14 +91,26 @@ export const ViewRegStanding: React.FC = () => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  // Filter strictly by civil servants: exact 12 members (Khurusapha & Civil Service Standards)
+  // Filter strictly by civil servants (Khurusapha & Civil Service Standards)
   const civilServants = useMemo(() => {
     return teachersList.filter((t) => isCivilServantForSalary(t));
   }, [teachersList]);
 
+  const filteredCivilServants = useMemo(() => {
+    if (!searchQuery.trim()) return civilServants;
+    const q = searchQuery.toLowerCase().trim();
+    return civilServants.filter(
+      (t) =>
+        formatStaffName(t).toLowerCase().includes(q) ||
+        (t.employeeCode || '').toLowerCase().includes(q) ||
+        (t.academicStanding || '').toLowerCase().includes(q) ||
+        (t.position || '').toLowerCase().includes(q)
+    );
+  }, [civilServants, searchQuery]);
+
   const groupedTeachers = useMemo(() => {
-    return groupAndSortTeachers(civilServants).filter((g) => g.category !== 'support');
-  }, [civilServants]);
+    return groupAndSortTeachers(filteredCivilServants).filter((g) => g.category !== 'support');
+  }, [filteredCivilServants]);
 
   const sortedTeachers = useMemo(() => {
     return groupedTeachers.flatMap((g) => g.members);
@@ -87,7 +137,28 @@ export const ViewRegStanding: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="relative w-full sm:w-56">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาชื่อ, รหัส, วิทยฐานะ..."
+              className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+            />
+          </div>
+
+          {canManage && (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors whitespace-nowrap"
+            >
+              <Settings className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span>จัดการใน Admin</span>
+            </Link>
+          )}
+
           <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
             <button
               type="button"
@@ -134,28 +205,32 @@ export const ViewRegStanding: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-sans">
-                {sortedTeachers.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                      <div className="inline-flex items-center gap-2 text-xs">
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                        <span>กำลังโหลดทะเบียนวิทยฐานะ...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : sortedTeachers.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                      ยังไม่มีข้อมูลทะเบียนวิทยฐานะ
+                      {searchQuery.trim() ? 'ไม่พบข้อมูลวิทยฐานะที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลทะเบียนวิทยฐานะ'}
                     </td>
                   </tr>
                 ) : (
                   (() => {
                     let runningSeq = 0;
                     return groupedTeachers.map((group) => {
-                    const isSupportGroup = group.category === 'support';
                     return (
                       <React.Fragment key={group.category}>
                         {/* Group Header */}
                         <tr className="bg-slate-50/75 dark:bg-[#15202e] border-y border-slate-200/80 dark:border-slate-800">
                           <td colSpan={5} className="px-4 py-2 font-semibold text-xs text-slate-700 dark:text-slate-300">
                             <div className="flex items-center gap-2">
-                              <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${
-                                  isSupportGroup ? 'bg-amber-400' : 'bg-sky-400'
-                                }`}
-                              />
+                              <span className="w-2 h-2 rounded-full shrink-0 bg-sky-400" />
                               <span>{group.title}</span>
                             </div>
                           </td>
@@ -164,16 +239,15 @@ export const ViewRegStanding: React.FC = () => {
                         {group.members.map((teacher) => {
                           runningSeq++;
                           const seq = runningSeq;
-                          const isSupport = getStaffBranch(teacher) === 'support';
                           const hasStanding =
-                            !isSupport &&
                             teacher.academicStanding &&
                             teacher.academicStanding !== '-' &&
                             teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
                           const standingDisplay = hasStanding ? teacher.academicStanding : '-';
-                          const latestOrder = teacher.standings && teacher.standings[0];
-                          const posDisplay = teacher.position.replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
-                          const deptDisplay = teacher.department.replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
+                          const orderedStandings = sortStandingsDesc(teacher.standings);
+                          const latestOrder = orderedStandings[0];
+                          const posDisplay = (teacher.position || '-').replace('ผู้อำนวยการสถานศึกษา', 'ผอ.สถานศึกษา');
+                          const deptDisplay = (teacher.department || '-').replace('สายงานบริหารและสนับสนุนการศึกษา', 'บริหารและสนับสนุนฯ');
                           const isExpanded = expandedId === teacher.id;
 
                           return (
@@ -181,8 +255,8 @@ export const ViewRegStanding: React.FC = () => {
                               <tr
                                 onClick={() => toggleExpand(teacher.id)}
                                 className={`hover:bg-slate-50 dark:hover:bg-[#182536]/60 transition-colors cursor-pointer ${
-                                  isSupport ? 'border-l-4 border-l-amber-500/60' : ''
-                                } ${isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''}`}
+                                  isExpanded ? 'bg-slate-50/90 dark:bg-[#15202e]' : ''
+                                }`}
                               >
                                 {/* Sequence */}
                                 <td className="w-14 px-3 py-3.5 text-center font-mono tabular-nums text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">
@@ -260,13 +334,13 @@ export const ViewRegStanding: React.FC = () => {
                                       </div>
                                     </div>
 
-                                    {teacher.standings && teacher.standings.length > 1 && (
+                                    {orderedStandings.length > 1 && (
                                       <div className="mt-3 pt-3 border-t border-slate-200/90 dark:border-slate-800/60 text-xs">
                                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
-                                          ประวัติคำสั่งแต่งตั้งทั้งหมด ({teacher.standings.length} รายการ):
+                                          ประวัติคำสั่งแต่งตั้งทั้งหมด ({orderedStandings.length} รายการ):
                                         </div>
                                         <div className="flex flex-wrap gap-2">
-                                          {teacher.standings.map((ord, oIdx) => (
+                                          {orderedStandings.map((ord, oIdx) => (
                                             <span
                                               key={oIdx}
                                               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#101822] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
@@ -293,21 +367,27 @@ export const ViewRegStanding: React.FC = () => {
             </table>
           </div>
         </div>
+      ) : isLoading ? (
+        <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
+          <div className="inline-flex items-center gap-2 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+            <span>กำลังโหลดทะเบียนวิทยฐานะ...</span>
+          </div>
+        </div>
       ) : sortedTeachers.length === 0 ? (
         <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
-          ยังไม่มีข้อมูลทะเบียนวิทยฐานะ
+          {searchQuery.trim() ? 'ไม่พบข้อมูลวิทยฐานะที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลทะเบียนวิทยฐานะ'}
         </div>
       ) : (
         /* Grid of Standings */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedTeachers.map((teacher) => {
-            const isSupport = getStaffBranch(teacher) === 'support';
             const hasStanding =
-              !isSupport &&
               teacher.academicStanding &&
               teacher.academicStanding !== '-' &&
               teacher.academicStanding !== 'ไม่มีวิทยฐานะ';
             const standingDisplay = hasStanding ? teacher.academicStanding : '-';
+            const latestOrder = sortStandingsDesc(teacher.standings)[0];
 
             return (
               <div
@@ -337,11 +417,11 @@ export const ViewRegStanding: React.FC = () => {
                       <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
                       <span>วันบรรจุ: <strong className="text-slate-800 dark:text-slate-200">{formatThaiDateDisplay(teacher.startDate)}</strong></span>
                     </div>
-                    {teacher.standings && teacher.standings.length > 0 && (
+                    {latestOrder && (
                       <div className="mt-2 bg-slate-50 dark:bg-[#101822] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-1.5 text-xs">
                         <span className="text-amber-700 dark:text-amber-300 font-semibold block">คำสั่งแต่งตั้งล่าสุด:</span>
-                        <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {teacher.standings[0].orderNumber}</div>
-                        <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {formatThaiDateDisplay(teacher.standings[0].effectiveDate)}</div>
+                        <div className="text-slate-800 dark:text-slate-200 font-mono">คำสั่งเลขที่: {latestOrder.orderNumber}</div>
+                        <div className="text-slate-500 dark:text-slate-400">มีผลตั้งแต่วันที่: {formatThaiDateDisplay(latestOrder.effectiveDate)}</div>
                       </div>
                     )}
                   </div>

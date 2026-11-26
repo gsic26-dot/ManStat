@@ -3,11 +3,12 @@ import assert from 'node:assert';
 import {
   toThaiDigits,
   formatThaiNumber,
+  formatThaiCurrency,
   formatThaiDateWithDigits,
   getEvaluationPeriodThaiRange,
-} from '../evaluationPrintUtils';
+} from '../regulations/thai-numerals';
 
-describe('evaluationPrintUtils', () => {
+describe('thai-numerals (evaluation print utilities)', () => {
   it('converts Arabic numerals to Thai digits correctly', () => {
     assert.strictEqual(toThaiDigits('0123456789'), '๐๑๒๓๔๕๖๗๘๙');
     assert.strictEqual(toThaiDigits(2570), '๒๕๗๐');
@@ -17,8 +18,10 @@ describe('evaluationPrintUtils', () => {
     assert.strictEqual(toThaiDigits(undefined), '');
   });
 
-  it('formats Thai numbers with decimal precision', () => {
+  it('formats Thai numbers with thousands separators and decimal precision', () => {
     assert.strictEqual(formatThaiNumber(100, 0), '๑๐๐');
+    assert.strictEqual(formatThaiNumber(54000, 0), '๕๔,๐๐๐');
+    assert.strictEqual(formatThaiCurrency(54000, 0), '๕๔,๐๐๐');
     assert.strictEqual(formatThaiNumber(85.75, 2), '๘๕.๗๕');
     assert.strictEqual(formatThaiNumber(90, 2), '๙๐.๐๐');
     assert.strictEqual(formatThaiNumber(null), '-');

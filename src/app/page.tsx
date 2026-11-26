@@ -25,7 +25,6 @@ import { getStaffBranch } from '@/lib/regulations/staff-sorting';
 import type { UserRole } from '@/types/database.types';
 import {
   INITIAL_SCHOOL_INFO,
-  INITIAL_LEAVE_REQUESTS,
   SchoolInfoRecord,
   TeacherRecord,
   LeaveRequestRecord,
@@ -42,7 +41,6 @@ import {
   PlusCircle,
   ShieldCheck,
   Bell,
-  LogOut,
   User,
   Settings,
   X,
@@ -59,7 +57,6 @@ import {
   MessageSquare,
   Menu,
   Scale,
-  Sliders,
   Lock,
   Unlock,
 } from 'lucide-react';
@@ -87,16 +84,12 @@ import {
 
 // View Components
 import { ViewPersonnelHub, type PersonnelTab } from '@/components/views/ViewPersonnelHub';
-import { ViewStaffDirectory } from '@/components/views/ViewStaffDirectory';
-import { ViewRegLicense } from '@/components/views/ViewRegLicense';
-import { ViewRegStanding } from '@/components/views/ViewRegStanding';
 import { ViewOrgChart } from '@/components/views/ViewOrgChart';
 import { ViewSchoolBoard } from '@/components/views/ViewSchoolBoard';
 import { ViewWorkload } from '@/components/views/ViewWorkload';
 import { ViewLeaveHub } from '@/components/views/ViewLeaveHub';
 import { ViewLeaveReportsHub } from '@/components/views/ViewLeaveReportsHub';
 import { ViewRetroLeave } from '@/components/views/ViewRetroLeave';
-import { ViewRegScout } from '@/components/views/ViewRegScout';
 import { ViewFeedback } from '@/components/views/ViewFeedback';
 import { ViewLeaveSubmit } from '@/components/views/ViewLeaveSubmit';
 import { ViewSalaryHistory } from '@/components/views/ViewSalaryHistory';

@@ -30,22 +30,6 @@ import {
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
 import { formatPDPAProtectedLeaveReason } from '@/lib/auth/roles';
 
-export interface PendingItemDisplay {
-  id: string;
-  staffName: string;
-  position: string;
-  employeeCode: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  halfDay?: 'full' | 'morning' | 'afternoon';
-  reason?: string | null;
-  substituteTeacherName?: string | null;
-  attachmentUrl?: string | null;
-  createdAt: string;
-}
-
 interface PendingApprovalQueueProps {
   requests?: LeaveRequestRecord[];
   currentUserId?: string;

@@ -18,7 +18,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   TrendingUp,
   Lock,
@@ -34,12 +34,9 @@ import {
   Users,
   Award,
   FileText,
-  DollarSign,
-  AlertCircle,
   ChevronRight,
   ChevronDown,
   Printer,
-  FileEdit,
   Pencil,
   X,
   CheckCircle2,
@@ -56,7 +53,6 @@ import {
   resolveEvaluationAccess,
   computeAutoUnlockDateStr,
   formatThaiDateArabic,
-  isStaffManuallyUnlocked,
 } from '@/lib/regulations/evaluation-access';
 import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';

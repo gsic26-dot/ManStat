@@ -33,7 +33,7 @@ import { type TeacherRecord, type LeaveRequestRecord } from '@/lib/data/schoolDa
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 import { getStaffBranch, groupAndSortTeachers } from '@/lib/regulations/staff-sorting';
 import { getFiscalYearBE } from '@/lib/regulations/fiscal-and-retirement';
-import { toThaiDigits } from '@/lib/evaluationPrintUtils';
+import { toThaiDigits } from '@/lib/regulations/thai-numerals';
 
 export function ViewOfficialReports() {
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);

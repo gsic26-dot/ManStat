@@ -12,7 +12,6 @@ import {
 import {
   EVALUATION_TEMPLATES,
   EvaluationTemplateKey,
-  EvaluationTemplate,
   COMPONENT_2_CONFIG,
   COMPONENT_3_CONFIG,
 } from '@/data/evaluationTemplates';
@@ -26,7 +25,7 @@ import {
   formatThaiCurrency,
   formatThaiDateWithDigits,
   getEvaluationPeriodThaiRange,
-} from '@/lib/evaluationPrintUtils';
+} from '@/lib/regulations/thai-numerals';
 
 export interface EvaluationA4PrintDocumentProps {
   staffId: string;
@@ -1317,33 +1316,6 @@ function renderLevelCells(level: number | undefined, maxScore: number) {
       <span>{level === 4 ? '✓' : ''}</span>
       <span className="font-bold border-l border-black/40">
         {scoreVal ? formatThaiNumber(scoreVal, 2, false) : '-'}
-      </span>
-    </div>
-  );
-}
-
-function renderCombinedChallengeCells(
-  qtyLevel: number | undefined,
-  qualLevel: number | undefined
-) {
-  const qtyScoreTable: Record<number, number> = { 1: 2.5, 2: 5.0, 3: 7.5, 4: 10.0 };
-  const qualScoreTable: Record<number, number> = { 1: 2.5, 2: 5.0, 3: 7.5, 4: 10.0 };
-
-  const qtyScore = qtyLevel ? qtyScoreTable[qtyLevel] : 0;
-  const qualScore = qualLevel ? qualScoreTable[qualLevel] : 0;
-  const total = (qtyLevel || qualLevel) ? qtyScore + qualScore : null;
-
-  // Primary checkmark uses average or qtyLevel
-  const displayLevel = qtyLevel || qualLevel;
-
-  return (
-    <div className="grid grid-cols-5 text-[9pt]">
-      <span>{displayLevel === 1 ? '✓' : ''}</span>
-      <span>{displayLevel === 2 ? '✓' : ''}</span>
-      <span>{displayLevel === 3 ? '✓' : ''}</span>
-      <span>{displayLevel === 4 ? '✓' : ''}</span>
-      <span className="font-bold border-l border-black/40">
-        {total !== null ? formatThaiNumber(total, 2, false) : '-'}
       </span>
     </div>
   );
