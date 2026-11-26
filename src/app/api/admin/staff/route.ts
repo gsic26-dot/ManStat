@@ -85,6 +85,18 @@ export async function POST(request: Request) {
       id: updatedStaff.id || updatedStaff.employeeCode || `TCH-${Date.now()}`,
       accessLevel: updatedStaff.accessLevel || 'User',
       role: mappedRole,
+      major:
+        updatedStaff.major !== undefined
+          ? updatedStaff.major?.trim() || null
+          : oldStaff?.major || null,
+      currentPositionDate:
+        updatedStaff.currentPositionDate !== undefined
+          ? updatedStaff.currentPositionDate?.trim() || null
+          : oldStaff?.currentPositionDate || null,
+      // Statutory leave balances are derived from approved leave requests; never manually overridden here
+      sickUsed: oldStaff?.sickUsed ?? updatedStaff.sickUsed ?? 0,
+      personalUsed: oldStaff?.personalUsed ?? updatedStaff.personalUsed ?? 0,
+      vacationUsed: oldStaff?.vacationUsed ?? updatedStaff.vacationUsed ?? 0,
       standings: updatedStaff.standings || oldStaff?.standings || [],
       licenses: updatedStaff.licenses || oldStaff?.licenses || [],
       educations: updatedStaff.educations || oldStaff?.educations || [],
@@ -112,6 +124,14 @@ export async function POST(request: Request) {
       }
       if (oldStaff.department !== updatedStaff.department) {
         changes.push(`เปลี่ยนกลุ่มสาระฯ: ${oldStaff.department} -> ${updatedStaff.department}`);
+      }
+      if ((oldStaff.major || '') !== (staffToSave.major || '')) {
+        changes.push(`เปลี่ยนวิชาเอก: ${oldStaff.major || '-'} -> ${staffToSave.major || '-'}`);
+      }
+      if ((oldStaff.currentPositionDate || '') !== (staffToSave.currentPositionDate || '')) {
+        changes.push(
+          `เปลี่ยนวันที่ดำรงตำแหน่งปัจจุบัน: ${oldStaff.currentPositionDate || '-'} -> ${staffToSave.currentPositionDate || '-'}`
+        );
       }
       if (changes.length === 0) {
         changes.push(`แก้ไขข้อมูลทั่วไปของ ${updatedStaff.name}`);
@@ -148,6 +168,10 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(request: Request) {
+  return POST(request);
 }
 
 export async function DELETE(request: Request) {

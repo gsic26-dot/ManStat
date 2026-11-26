@@ -19,6 +19,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
+  STANDARD_APPOINTMENT_MAJORS,
+  CUSTOM_MAJOR_OPTION,
+  isStandardMajor,
+} from '@/lib/constants/majors';
+import {
   ShieldAlert,
   ShieldCheck,
   Users,
@@ -207,6 +212,7 @@ export default function AdminPage() {
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<TeacherRecord | null>(null);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [isCustomMajor, setIsCustomMajor] = useState(false);
   const [staffModalTab, setStaffModalTab] = useState<
     'profile' | 'licenses' | 'workload' | 'history'
   >('profile');
@@ -530,10 +536,12 @@ export default function AdminPage() {
       employment_type: 'civil_servant',
       department: 'ภาษาไทย',
       division: 'ครูผู้สอน',
+      major: '',
       classLevel: '-',
       dutyDay: '-',
       accessLevel: 'User',
       startDate: new Date().toISOString().split('T')[0],
+      currentPositionDate: '',
       email: '',
       phone: '',
       maskedCitizenId: '',
@@ -551,6 +559,7 @@ export default function AdminPage() {
       standings: [],
       educations: [],
     });
+    setIsCustomMajor(false);
     setStaffModalTab('profile');
     setIsStaffModalOpen(true);
   };
@@ -574,6 +583,8 @@ export default function AdminPage() {
       prefix: prefix || 'นาย',
       firstName,
       lastName,
+      major: t.major || '',
+      currentPositionDate: t.currentPositionDate || '',
       employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
       accessLevel: t.accessLevel || (t.role === 'superuser' ? 'Superuser' : t.role === 'hr_admin' ? 'Admin' : 'User'),
       licenses: t.licenses || [],
@@ -586,6 +597,7 @@ export default function AdminPage() {
       positionNo: t.positionNo || '',
       memberId: t.memberId || '',
     });
+    setIsCustomMajor(Boolean(t.major && !isStandardMajor(t.major)));
     setStaffModalTab('profile');
     setIsStaffModalOpen(true);
   };
@@ -2711,7 +2723,53 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-slate-400 mb-1">ชั้นที่ปรึกษา / ประจำชั้น</label>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">วิชาเอก</label>
+                        <div className="space-y-1.5">
+                          <select
+                            value={
+                              isCustomMajor
+                                ? CUSTOM_MAJOR_OPTION
+                                : selectedStaff.major && isStandardMajor(selectedStaff.major)
+                                ? selectedStaff.major
+                                : ''
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === CUSTOM_MAJOR_OPTION) {
+                                setIsCustomMajor(true);
+                                if (isStandardMajor(selectedStaff.major)) {
+                                  setSelectedStaff({ ...selectedStaff, major: '' });
+                                }
+                              } else {
+                                setIsCustomMajor(false);
+                                setSelectedStaff({ ...selectedStaff, major: val });
+                              }
+                            }}
+                            className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                          >
+                            <option value="">- ไม่ระบุวิชาเอก -</option>
+                            {STANDARD_APPOINTMENT_MAJORS.map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                            <option value={CUSTOM_MAJOR_OPTION}>{CUSTOM_MAJOR_OPTION}</option>
+                          </select>
+                          {isCustomMajor && (
+                            <input
+                              type="text"
+                              value={selectedStaff.major || ''}
+                              placeholder="ระบุวิชาเอกเพิ่มเติม..."
+                              onChange={(e) =>
+                                setSelectedStaff({ ...selectedStaff, major: e.target.value })
+                              }
+                              className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white text-xs"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">ชั้นที่ปรึกษา / ประจำชั้น</label>
                         <select
                           value={selectedStaff.classLevel || '-'}
                           onChange={(e) =>
@@ -2728,7 +2786,7 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-slate-400 mb-1">เวรประจำวัน</label>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">เวรประจำวัน</label>
                         <select
                           value={selectedStaff.dutyDay || '-'}
                           onChange={(e) =>
@@ -2744,12 +2802,28 @@ export default function AdminPage() {
                           <option value="ศุกร์">วันศุกร์</option>
                         </select>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div>
-                        <label className="block text-slate-400 mb-1">วันที่บรรจุเข้ารับราชการ</label>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
+                          วันที่บรรจุรับราชการ
+                        </label>
                         <ThaiDatePicker
                           value={selectedStaff.startDate || ''}
                           onChange={(dateStr) =>
                             setSelectedStaff({ ...selectedStaff, startDate: dateStr })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
+                          วันที่ดำรงตำแหน่งปัจจุบัน
+                        </label>
+                        <ThaiDatePicker
+                          value={selectedStaff.currentPositionDate || ''}
+                          onChange={(dateStr) =>
+                            setSelectedStaff({ ...selectedStaff, currentPositionDate: dateStr })
                           }
                         />
                       </div>
@@ -2797,51 +2871,6 @@ export default function AdminPage() {
                           placeholder="name@school.ac.th"
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, email: e.target.value })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-800">
-                      <div>
-                        <label className="block text-slate-400 mb-1">ลาป่วยที่ใช้ (วัน)</label>
-                        <input
-                          type="number"
-                          value={selectedStaff.sickUsed}
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              sickUsed: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">ลากิจที่ใช้ (วัน)</label>
-                        <input
-                          type="number"
-                          value={selectedStaff.personalUsed}
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              personalUsed: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-400 mb-1">พักผ่อนที่ใช้ (วัน)</label>
-                        <input
-                          type="number"
-                          value={selectedStaff.vacationUsed}
-                          onChange={(e) =>
-                            setSelectedStaff({
-                              ...selectedStaff,
-                              vacationUsed: parseFloat(e.target.value) || 0,
-                            })
                           }
                           className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
                         />

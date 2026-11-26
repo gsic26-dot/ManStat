@@ -20,11 +20,13 @@ export interface TeacherRecord {
   employmentType?: EmploymentType;
   department: string;
   division: string;
+  major?: string | null;
   classLevel?: string;
   dutyDay?: string;
   accessLevel?: string;
   role?: string;
   startDate: string;
+  currentPositionDate?: string | null;
   birthDate?: string;
   email: string;
   phone: string;

@@ -745,8 +745,20 @@ export const ViewStaffDirectory: React.FC = () => {
                   <span className="text-slate-700 dark:text-slate-200">{selectedTeacher.department}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-400">วันที่เริ่มรับราชการ:</span>
+                  <span className="text-slate-500 dark:text-slate-400">วิชาเอก:</span>
+                  <span className="text-slate-700 dark:text-slate-200">{selectedTeacher.major || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">วันที่บรรจุรับราชการ:</span>
                   <span className="font-mono text-slate-700 dark:text-slate-200">{formatThaiDateDisplay(selectedTeacher.startDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">วันที่ดำรงตำแหน่งปัจจุบัน:</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-200">
+                    {selectedTeacher.currentPositionDate
+                      ? formatThaiDateDisplay(selectedTeacher.currentPositionDate)
+                      : '-'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200/80 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400">เลขประจำตัว ปชช. (PDPA):</span>

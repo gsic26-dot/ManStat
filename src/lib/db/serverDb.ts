@@ -612,12 +612,17 @@ export function teacherToDb(t: TeacherRecord) {
     employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
     department: deriveDepartment(t),
     division: t.division || '',
+    major: t.major && t.major.trim() !== '' ? t.major.trim() : null,
     class_level: t.classLevel || '-',
     duty_day: t.dutyDay || '-',
     access_level: accessLevel,
     role: positionTitle, // Preserve Thai position title in legacy role column! NEVER overwrite with system roles ('superuser'|'hr_admin'|'teacher')
     system_role: systemRole,
     start_date: t.startDate || '',
+    current_position_date:
+      t.currentPositionDate && t.currentPositionDate.trim() !== ''
+        ? t.currentPositionDate.trim()
+        : null,
     email: t.email || '',
     phone: t.phone || '',
     masked_citizen_id: t.maskedCitizenId || '',
@@ -691,11 +696,13 @@ export function teacherFromDb(row: any): TeacherRecord {
     employmentType: deriveEmploymentType(row),
     department: deriveDepartment(row),
     division: row.division || '',
+    major: row.major || '',
     classLevel: row.class_level || '-',
     dutyDay: row.duty_day || '-',
     accessLevel,
     role: systemRole,
     startDate: row.start_date || '',
+    currentPositionDate: row.current_position_date || '',
     email: row.email || '',
     phone: row.phone || '',
     maskedCitizenId: row.masked_citizen_id || '',
