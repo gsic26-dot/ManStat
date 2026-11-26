@@ -54,6 +54,7 @@ import {
   computeAutoUnlockDateStr,
   formatThaiDateArabic,
   shouldRequireEvaluationAgreement,
+  resolveEvaluationWorkflowDisplay,
 } from '@/lib/regulations/evaluation-access';
 import type { UserRole } from '@/types/database.types';
 import { canManageSalaryPromotions, isCivilServantForSalary } from '@/lib/auth/roles';
@@ -68,6 +69,7 @@ interface ViewSalaryHistoryProps {
   currentRole?: UserRole;
   onBackToDashboard?: () => void;
   showToast?: (msg: string, type: 'success' | 'error') => void;
+  onPendingCountChange?: (count: number) => void;
 }
 
 export function ViewSalaryHistory({
@@ -75,6 +77,7 @@ export function ViewSalaryHistory({
   currentRole = 'teacher',
   onBackToDashboard,
   showToast,
+  onPendingCountChange,
 }: ViewSalaryHistoryProps) {
   const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodRecord[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
@@ -90,9 +93,9 @@ export function ViewSalaryHistory({
   const [evalStatusMap, setEvalStatusMap] = useState<Record<string, string>>({});
   const [evalTermsMap, setEvalTermsMap] = useState<Record<string, string | null>>({});
   const [agreementTargetTeacher, setAgreementTargetTeacher] = useState<TeacherRecord | null>(null);
-  const [isAcceptingAgreement, setIsAcceptingAgreement] = useState<boolean>(false);
-  const [agreementError, setAgreementError] = useState<string | null>(null);
+  const [pendingTermsAcceptedAt, setPendingTermsAcceptedAt] = useState<string | null>(null);
   const [checkingAgreementId, setCheckingAgreementId] = useState<string | null>(null);
+  const [filterPendingReview, setFilterPendingReview] = useState<boolean>(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<EvaluationRoundStatus | null>(null);
 
   const remaskTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -235,12 +238,70 @@ export function ViewSalaryHistory({
     }
   }, []);
 
+  // Also fetch own evaluation status for non-manager teachers (since list endpoint is manager-only)
+  const fetchOwnEvaluationStatus = useCallback(
+    async (staffId: string, employeeCode: string, yearTh: number, roundNum: number) => {
+      try {
+        const res = await fetch(
+          `/api/admin/evaluations?staffId=${encodeURIComponent(staffId)}&year=${yearTh}&round=${roundNum}`,
+          { cache: 'no-store' }
+        );
+        const json = await res.json();
+        if (res.ok && json.success && json.data) {
+          const hasRecord = Boolean(
+            json.data.createdAt ||
+              json.data.updatedAt ||
+              json.data.termsAcceptedAt ||
+              (json.data.status && json.data.status !== 'draft')
+          );
+          if (hasRecord) {
+            setEvalStatusMap((prev) => ({
+              ...prev,
+              [staffId]: json.data.status,
+              [employeeCode]: json.data.status,
+            }));
+          }
+          if (json.data.termsAcceptedAt) {
+            setEvalTermsMap((prev) => ({
+              ...prev,
+              [staffId]: json.data.termsAcceptedAt,
+              [employeeCode]: json.data.termsAcceptedAt,
+            }));
+          }
+        }
+      } catch {}
+    },
+    []
+  );
+
   useEffect(() => {
     if (selectedPeriod?.id) {
+      setEvalStatusMap({});
+      setEvalTermsMap({});
+      setFilterPendingReview(false);
       fetchSalaryRecords(selectedPeriod.id);
-      fetchEvaluations(selectedPeriod.fiscalYearTh, selectedPeriod.roundNo);
+      if (isAuthorizedManager) {
+        fetchEvaluations(selectedPeriod.fiscalYearTh, selectedPeriod.roundNo);
+      } else if (currentUser?.id || currentUser?.employeeCode) {
+        fetchOwnEvaluationStatus(
+          currentUser.id || currentUser.employeeCode,
+          currentUser.employeeCode || currentUser.id,
+          selectedPeriod.fiscalYearTh,
+          selectedPeriod.roundNo
+        );
+      }
     }
-  }, [selectedPeriod?.id, selectedPeriod?.fiscalYearTh, selectedPeriod?.roundNo, fetchSalaryRecords, fetchEvaluations]);
+  }, [
+    selectedPeriod?.id,
+    selectedPeriod?.fiscalYearTh,
+    selectedPeriod?.roundNo,
+    isAuthorizedManager,
+    currentUser?.id,
+    currentUser?.employeeCode,
+    fetchSalaryRecords,
+    fetchEvaluations,
+    fetchOwnEvaluationStatus,
+  ]);
 
   // Filter civil servants strictly: 12 eligible members
   const civilServants = useMemo(() => {
@@ -635,7 +696,6 @@ export function ViewSalaryHistory({
         });
 
         if (needsConsent) {
-          setAgreementError(null);
           setAgreementTargetTeacher(teacher);
           return;
         }
@@ -650,53 +710,47 @@ export function ViewSalaryHistory({
     }
   };
 
-  const handleAcceptAgreement = async () => {
-    if (!agreementTargetTeacher || !selectedPeriod) return;
-
-    try {
-      setIsAcceptingAgreement(true);
-      setAgreementError(null);
-      const acceptedAt = new Date().toISOString();
-
-      const res = await fetch('/api/admin/evaluations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          staffId: agreementTargetTeacher.id,
-          fiscalYear: selectedPeriod.fiscalYearTh,
-          roundNumber: selectedPeriod.roundNo,
-          action: 'accept_terms',
-          termsAcceptedAt: acceptedAt,
-        }),
-      });
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        const msg = json.error || 'ไม่สามารถบันทึกการยอมรับข้อตกลงได้ กรุณาลองใหม่อีกครั้ง';
-        setAgreementError(msg);
-        showToast?.(msg, 'error');
-        return;
-      }
-
-      const savedTimestamp =
-        json.data?.termsAcceptedAt || json.data?.terms_accepted_at || acceptedAt;
-
-      setEvalTermsMap((prev) => ({
-        ...prev,
-        [agreementTargetTeacher.id]: savedTimestamp,
-        [agreementTargetTeacher.employeeCode]: savedTimestamp,
-      }));
-      const target = agreementTargetTeacher;
-      setAgreementTargetTeacher(null);
-      setSelfEvalTeacher(target);
-    } catch (err: any) {
-      const msg = err?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่อีกครั้ง';
-      setAgreementError(msg);
-      showToast?.(msg, 'error');
-    } finally {
-      setIsAcceptingAgreement(false);
-    }
+  // Deferred Agreement Acceptance: store timestamp in client state ONLY (no ghost DB drafts).
+  // Persisted to Supabase only when user clicks Save Draft or Submit inside EvaluationWorkspace.
+  const handleAcceptAgreement = () => {
+    if (!agreementTargetTeacher) return;
+    const acceptedAt = new Date().toISOString();
+    const target = agreementTargetTeacher;
+    setPendingTermsAcceptedAt(acceptedAt);
+    setAgreementTargetTeacher(null);
+    setSelfEvalTeacher(target);
   };
+
+  // Pending Director Review Count (staff in 'self_submitted' status)
+  const pendingReviewCount = useMemo(() => {
+    if (!isAuthorizedManager) return 0;
+    return displayCivilServants.filter((t) => {
+      const st = evalStatusMap[t.id] || evalStatusMap[t.employeeCode];
+      return st === 'self_submitted';
+    }).length;
+  }, [isAuthorizedManager, displayCivilServants, evalStatusMap]);
+
+  // Keep Sidebar badge in sync when active period is selected
+  useEffect(() => {
+    if (isAuthorizedManager && selectedPeriod?.isActive) {
+      onPendingCountChange?.(pendingReviewCount);
+    }
+  }, [isAuthorizedManager, selectedPeriod?.isActive, pendingReviewCount, onPendingCountChange]);
+
+  // Auto-reset quick filter if pending count drops to 0
+  useEffect(() => {
+    if (filterPendingReview && pendingReviewCount === 0) {
+      setFilterPendingReview(false);
+    }
+  }, [filterPendingReview, pendingReviewCount]);
+
+  const visibleCivilServants = useMemo(() => {
+    if (!isAuthorizedManager || !filterPendingReview) return displayCivilServants;
+    return displayCivilServants.filter((t) => {
+      const st = evalStatusMap[t.id] || evalStatusMap[t.employeeCode];
+      return st === 'self_submitted';
+    });
+  }, [isAuthorizedManager, filterPendingReview, displayCivilServants, evalStatusMap]);
 
   // If user clicked to evaluate a teacher, render the Evaluation Workspace as a full-page view completely
   if (selfEvalTeacher && selectedPeriod) {
@@ -711,13 +765,25 @@ export function ViewSalaryHistory({
         initialTermsAcceptedAt={
           evalTermsMap[selfEvalTeacher.id] || evalTermsMap[selfEvalTeacher.employeeCode] || null
         }
-        onClose={() => setSelfEvalTeacher(null)}
-        onSaved={(updatedStatus) => {
+        initialPendingTermsAcceptedAt={pendingTermsAcceptedAt}
+        onClose={() => {
+          setSelfEvalTeacher(null);
+          setPendingTermsAcceptedAt(null);
+        }}
+        onSaved={(updatedStatus, _grandTotal, _rating, persistedTermsAt) => {
           setEvalStatusMap((prev) => ({
             ...prev,
             [selfEvalTeacher.id]: updatedStatus,
             [selfEvalTeacher.employeeCode]: updatedStatus,
           }));
+          if (persistedTermsAt) {
+            setEvalTermsMap((prev) => ({
+              ...prev,
+              [selfEvalTeacher.id]: persistedTermsAt,
+              [selfEvalTeacher.employeeCode]: persistedTermsAt,
+            }));
+            setPendingTermsAcceptedAt(null);
+          }
           showToast?.('บันทึกผลการประเมินเรียบร้อยแล้ว', 'success');
         }}
       />
@@ -983,23 +1049,50 @@ export function ViewSalaryHistory({
       {/* 4. Expandable Master-Detail Salary Promotion Table                  */}
       {/* ------------------------------------------------------------------ */}
       <div className="bg-white dark:bg-[#111822] rounded-xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-slate-500" />
+        <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <FileText className="w-4 h-4 text-slate-500 shrink-0" />
             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
               บัญชีรายชื่อข้าราชการครูและบุคลากรทางการศึกษาที่ได้รับการพิจารณาเลื่อนเงินเดือน
             </span>
-            <span className="text-xs text-slate-400 font-mono">
-              · {displayCivilServants.length} ท่าน
+            <span className="text-xs text-slate-400 font-mono tabular-nums">
+              · {visibleCivilServants.length} ท่าน
             </span>
           </div>
 
-          {selectedPeriod?.isLocked && (
-            <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
-              <Lock className="w-3.5 h-3.5" />
-              <span>รอบนี้สิ้นสุดการประเมินแล้ว ไม่อนุญาตให้แก้ไข</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Compact clickable filter chip for Director/HR when staff are ready for review */}
+            {isAuthorizedManager && pendingReviewCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilterPendingReview((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer tabular-nums ${
+                  filterPendingReview
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                }`}
+                title={
+                  filterPendingReview
+                    ? 'คลิกเพื่อแสดงข้าราชการครูทั้งหมด'
+                    : 'คลิกเพื่อกรองเฉพาะผู้ที่ส่งแบบประเมินแล้วและรอ ผอ. ประเมิน'
+                }
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    filterPendingReview ? 'bg-white' : 'bg-amber-500'
+                  }`}
+                />
+                <span>รอ ผอ. ประเมิน {pendingReviewCount} ท่าน</span>
+              </button>
+            )}
+
+            {selectedPeriod?.isLocked && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+                <Lock className="w-3.5 h-3.5" />
+                <span>รอบนี้สิ้นสุดการประเมินแล้ว ไม่อนุญาตให้แก้ไข</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {loadingSalary ? (
@@ -1007,7 +1100,7 @@ export function ViewSalaryHistory({
             <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
             <span>กำลังโหลดข้อมูลการเลื่อนเงินเดือน...</span>
           </div>
-        ) : displayCivilServants.length === 0 ? (
+        ) : visibleCivilServants.length === 0 ? (
           <div className="p-8 text-center space-y-2">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               ไม่พบรายชื่อข้าราชการครูที่มีสิทธิ์ในมุมมองนี้
@@ -1021,12 +1114,12 @@ export function ViewSalaryHistory({
                   <th className="py-2.5 px-3 font-semibold w-12 text-center">ลำดับ</th>
                   <th className="py-2.5 px-3 font-semibold min-w-[200px]">ชื่อ - สกุล</th>
                   <th className="py-2.5 px-3 font-semibold min-w-[200px]">ตำแหน่ง</th>
-                  <th className="py-2.5 px-3 font-semibold text-center w-28">สถานะ</th>
-                  <th className="py-2.5 px-3 font-semibold text-right w-44">ดำเนินการ</th>
+                  <th className="py-2.5 px-3 font-semibold text-left w-36">สถานะ</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-48">ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-                {displayCivilServants.map((teacher, idx) => {
+                {visibleCivilServants.map((teacher, idx) => {
                   const record = salaryRecords.find(
                     (r) => r.staffId === teacher.id || r.staffId === teacher.employeeCode
                   ) || {
@@ -1042,6 +1135,11 @@ export function ViewSalaryHistory({
                   };
 
                   const isExpanded = expandedStaffId === teacher.id;
+                  const isSelfRow = Boolean(
+                    currentUser &&
+                      (currentUser.id === teacher.id ||
+                        currentUser.employeeCode === teacher.employeeCode)
+                  );
 
                   return (
                     <SalaryPromotionMasterRow
@@ -1053,6 +1151,7 @@ export function ViewSalaryHistory({
                       isMasked={isMasked}
                       isLocked={Boolean(selectedPeriod?.isLocked)}
                       canEdit={isAuthorizedManager}
+                      isSelfRow={isSelfRow}
                       roundStatus={roundStatus}
                       selectedPeriod={selectedPeriod}
                       onToggleExpand={() => toggleExpandStaff(teacher.id)}
@@ -1079,15 +1178,8 @@ export function ViewSalaryHistory({
           fiscalYear={selectedPeriod.fiscalYearTh}
           roundNumber={selectedPeriod.roundNo}
           staffName={formatStaffName(agreementTargetTeacher)}
-          isSubmitting={isAcceptingAgreement}
-          errorMessage={agreementError}
           onAccept={handleAcceptAgreement}
-          onCancel={() => {
-            if (!isAcceptingAgreement) {
-              setAgreementTargetTeacher(null);
-              setAgreementError(null);
-            }
-          }}
+          onCancel={() => setAgreementTargetTeacher(null)}
         />
       )}
 
@@ -1200,6 +1292,7 @@ interface SalaryPromotionMasterRowProps {
   isMasked: boolean;
   isLocked: boolean;
   canEdit: boolean;
+  isSelfRow: boolean;
   roundStatus: EvaluationRoundStatus;
   selectedPeriod?: FiscalPeriodRecord | null;
   onToggleExpand: () => void;
@@ -1218,6 +1311,7 @@ function SalaryPromotionMasterRow({
   isMasked,
   isLocked,
   canEdit,
+  isSelfRow,
   roundStatus,
   selectedPeriod,
   onToggleExpand,
@@ -1250,28 +1344,30 @@ function SalaryPromotionMasterRow({
 
   const displayName = formatStaffName(teacher);
 
-  // Status Check
-  const pct = Number(record.promotionPercent || 0);
-  const hasOrder = Boolean(record.orderNo && record.orderNo.trim() !== '');
-  const currentStatus = evaluationStatus || (record as any).evalStatus;
-  const isEvaluated =
-    currentStatus === 'evaluated' ||
-    currentStatus === 'acknowledged' ||
-    currentStatus === 'self_submitted' ||
-    pct > 0 ||
-    hasOrder;
-
-  // Hybrid Evaluation Access Resolution
-  const isTeacher = !canEdit;
+  // Hybrid Evaluation Access & Sequential Workflow Resolution
+  const currentStatus = evaluationStatus || (record as any).evalStatus || null;
   const access = resolveEvaluationAccess({
     staffId: teacher.id,
-    isTeacher,
+    isTeacher: isSelfRow && !canEdit,
     isAuthorizedManager: canEdit,
     period: selectedPeriod,
   });
 
-  const isEvalDisabled = isTeacher && !access.isUnlocked;
-  const evalTooltip = isTeacher ? access.tooltip : 'ประเมินผลการปฏิบัติงาน';
+  const workflow = resolveEvaluationWorkflowDisplay({
+    rawStatus: currentStatus,
+    isSelfRow,
+    isRoundUnlocked: access.isUnlocked || (canEdit && !isLocked),
+    roundAccessTooltip: access.tooltip,
+  });
+
+  const actionBtnClass =
+    workflow.actionVariant === 'disabled'
+      ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700/80 cursor-not-allowed'
+      : workflow.actionVariant === 'primary'
+      ? 'bg-sky-600 hover:bg-sky-500 text-white border border-transparent shadow-xs cursor-pointer'
+      : workflow.actionVariant === 'acknowledge'
+      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-transparent shadow-xs cursor-pointer'
+      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 cursor-pointer';
 
   // Computed financial figures
   const currentBase = Number(record.calculationBase || (teacher as any).salary || 0);
@@ -1333,17 +1429,14 @@ function SalaryPromotionMasterRow({
           <span>{record.positionSnapshot || teacher.position || '-'}</span>
         </td>
 
-        {/* 4. Evaluation Status (Icon Only) */}
-        <td className="py-2.5 px-3 text-center whitespace-nowrap">
-          {isEvaluated ? (
-            <span title="ประเมินแล้ว" className="inline-flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        {/* 4. Evaluation Status (Minimalist Colored Dot + Concise Label) */}
+        <td className="py-2.5 px-3 text-left whitespace-nowrap">
+          <div className="inline-flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${workflow.dotColorClass}`} />
+            <span className={`text-xs ${workflow.textColorClass}`}>
+              {workflow.statusLabel}
             </span>
-          ) : (
-            <span title="ยังไม่ประเมิน" className="inline-flex items-center justify-center">
-              <XCircle className="w-4 h-4 text-slate-400/60 dark:text-slate-500/60" />
-            </span>
-          )}
+          </div>
         </td>
 
         {/* 5. Action Buttons (Single Right-Aligned Row) */}
@@ -1391,19 +1484,15 @@ function SalaryPromotionMasterRow({
               </span>
             )}
 
-            {/* Compact flat button: "ประเมิน" */}
+            {/* Locked / Unlocked Sequential Action Button */}
             <button
               type="button"
-              disabled={isEvalDisabled}
+              disabled={workflow.isActionDisabled}
               onClick={onOpenSelfEval}
-              title={evalTooltip}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                isEvalDisabled
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
-                  : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 cursor-pointer'
-              }`}
+              title={workflow.actionTooltip}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${actionBtnClass}`}
             >
-              ประเมิน
+              {workflow.actionLabel}
             </button>
 
             {/* Icon-only Print A4 button */}

@@ -165,6 +165,48 @@ export default function DashboardPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
   const [leaveList, setLeaveList] = useState<LeaveRequestRecord[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
+  const [pendingEvalReviewCount, setPendingEvalReviewCount] = useState<number>(0);
+
+  const loadPendingEvalReviewCount = useCallback(async () => {
+    const isManager = canManageSalaryPromotions(
+      currentRole,
+      currentUser?.position,
+      currentUser?.department
+    );
+    if (!isManager) {
+      setPendingEvalReviewCount(0);
+      return;
+    }
+    try {
+      const acRes = await fetch('/api/admin/academic?schoolId=30030099', { cache: 'no-store' });
+      const acJson = await acRes.json();
+      const periods = acJson?.data?.fiscalPeriods;
+      if (!acJson?.success || !Array.isArray(periods) || periods.length === 0) return;
+      const activePeriod = periods.find((p: any) => p.isActive) || periods[0];
+      if (!activePeriod) return;
+
+      const evRes = await fetch(
+        `/api/admin/evaluations?year=${activePeriod.fiscalYearTh}&round=${activePeriod.roundNo}`,
+        { cache: 'no-store' }
+      );
+      const evJson = await evRes.json();
+      if (evJson?.success && Array.isArray(evJson.data)) {
+        const count = evJson.data.filter((e: any) => e.status === 'self_submitted').length;
+        setPendingEvalReviewCount(count);
+      }
+    } catch {}
+  }, [currentRole, currentUser?.position, currentUser?.department]);
+
+  useEffect(() => {
+    loadPendingEvalReviewCount();
+    const handleEvalUpdated = () => {
+      loadPendingEvalReviewCount();
+    };
+    window.addEventListener('manstat:evaluation-updated', handleEvalUpdated);
+    return () => {
+      window.removeEventListener('manstat:evaluation-updated', handleEvalUpdated);
+    };
+  }, [loadPendingEvalReviewCount]);
 
   const loadLeaveList = useCallback(() => {
     fetch('/api/admin/leave', { cache: 'no-store' })
@@ -584,7 +626,13 @@ export default function DashboardPage() {
                           <TrendingUp className="w-4 h-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
                           <span className="truncate">การเลื่อนเงินเดือน</span>
                         </div>
-                        <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                        {isManager && pendingEvalReviewCount > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30 shrink-0 tabular-nums">
+                            {pendingEvalReviewCount}
+                          </span>
+                        ) : (
+                          <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                        )}
                       </button>
                     );
                   })()}
@@ -891,7 +939,13 @@ export default function DashboardPage() {
                             <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
                             <span className="truncate">การเลื่อนเงินเดือน</span>
                           </div>
-                          <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                          {isManager && pendingEvalReviewCount > 0 ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-500/30 shrink-0 tabular-nums">
+                              {pendingEvalReviewCount}
+                            </span>
+                          ) : (
+                            <Unlock className="w-3.5 h-3.5 text-emerald-600/70 dark:text-emerald-400/70 shrink-0" />
+                          )}
                         </button>
                       );
                     })()}
@@ -1211,6 +1265,7 @@ export default function DashboardPage() {
               currentUser={currentUser}
               currentRole={currentRole}
               onBackToDashboard={() => handleSelectView('dashboard')}
+              onPendingCountChange={setPendingEvalReviewCount}
             />
           )}
 

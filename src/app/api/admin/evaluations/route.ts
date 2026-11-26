@@ -406,7 +406,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ตรวจสอบสิทธิ์ตาม Action
+    // ตรวจสอบสิทธิ์และลำดับขั้นตอนตาม Action (Sequential Lock)
     if (['save_supervisor', 'finalize_evaluation'].includes(action)) {
       if (!isManager) {
         return NextResponse.json(
@@ -414,11 +414,56 @@ export async function POST(request: Request) {
           { status: 403 }
         );
       }
-    } else if (['save_self', 'submit_self', 'acknowledge'].includes(action)) {
+      // Enforce sequential lock: supervisor cannot score/finalize before teacher submits
+      if (!existing || !['self_submitted', 'evaluated'].includes(existing.status)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'ไม่สามารถประเมินผลได้ เนื่องจากผู้รับการประเมินยังไม่ได้ส่งแบบประเมินตนเอง',
+          },
+          { status: 409 }
+        );
+      }
+      if (existing.status === 'acknowledged') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'แบบประเมินนี้ได้รับการลงนามรับทราบเสร็จสมบูรณ์แล้ว ไม่สามารถแก้ไขได้',
+          },
+          { status: 409 }
+        );
+      }
+    } else if (['save_self', 'submit_self'].includes(action)) {
       if (!isSelf && !isManager) {
         return NextResponse.json(
           { success: false, error: 'ไม่อนุญาตให้แก้ไขคะแนนประเมินตนเองของผู้อื่น' },
           { status: 403 }
+        );
+      }
+      if (existing && ['evaluated', 'acknowledged'].includes(existing.status)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'ผลการประเมินถูกล็อกหลังผู้บังคับบัญชาพิจารณาแล้ว ไม่สามารถแก้ไขย้อนหลังได้',
+          },
+          { status: 409 }
+        );
+      }
+    } else if (action === 'acknowledge') {
+      if (!isSelf && !isManager) {
+        return NextResponse.json(
+          { success: false, error: 'ไม่อนุญาตให้ลงนามรับทราบผลแทนผู้อื่น' },
+          { status: 403 }
+        );
+      }
+      if (!existing || existing.status !== 'evaluated') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'ยังไม่สามารถลงนามรับทราบผลได้ เนื่องจากผู้บังคับบัญชายังไม่ได้ส่งผลการประเมิน',
+          },
+          { status: 409 }
         );
       }
     }
@@ -449,7 +494,12 @@ export async function POST(request: Request) {
     let selfSignedAt: string | null = null;
     let supervisorSignedAt: string | null = null;
     let acknowledgedAt: string | null = null;
-    const termsAcceptedAt: string | null = existing?.terms_accepted_at ?? null;
+    // Deferred agreement persistence: save terms_accepted_at alongside save_self / submit_self
+    const termsAcceptedAt: string | null =
+      existing?.terms_accepted_at ??
+      (typeof bodyTermsAcceptedAt === 'string' && bodyTermsAcceptedAt.trim()
+        ? bodyTermsAcceptedAt
+        : null);
 
     if (existing) {
       newStatus = existing.status;

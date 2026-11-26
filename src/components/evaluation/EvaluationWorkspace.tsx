@@ -19,6 +19,7 @@ import {
   Copy,
   ArrowLeft,
   Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   EVALUATION_TEMPLATES,
@@ -39,6 +40,7 @@ import {
   resolveEvaluationAccess,
   shouldRequireEvaluationAgreement,
 } from '@/lib/regulations/evaluation-access';
+import { formatStaffName, formatOfficialPosition } from '@/lib/regulations/staff-formatting';
 
 export interface EvaluationWorkspaceProps {
   staffId: string;
@@ -55,8 +57,14 @@ export interface EvaluationWorkspaceProps {
   roundStatus?: EvaluationRoundStatus;
   selectedPeriod?: FiscalPeriodRecord | null;
   initialTermsAcceptedAt?: string | null;
+  initialPendingTermsAcceptedAt?: string | null;
   onClose?: () => void;
-  onSaved?: (updatedStatus: string, grandTotal: number, rating: string) => void;
+  onSaved?: (
+    updatedStatus: string,
+    grandTotal: number,
+    rating: string,
+    persistedTermsAcceptedAt?: string | null
+  ) => void;
 }
 
 export function EvaluationWorkspace({
@@ -67,6 +75,7 @@ export function EvaluationWorkspace({
   roundStatus,
   selectedPeriod,
   initialTermsAcceptedAt = null,
+  initialPendingTermsAcceptedAt = null,
   onClose,
   onSaved,
 }: EvaluationWorkspaceProps) {
@@ -77,9 +86,12 @@ export function EvaluationWorkspace({
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(initialTermsAcceptedAt);
-  const [isAcceptingTerms, setIsAcceptingTerms] = useState<boolean>(false);
-  const [termsError, setTermsError] = useState<string | null>(null);
+  const [persistedTermsAcceptedAt, setPersistedTermsAcceptedAt] = useState<string | null>(
+    initialTermsAcceptedAt
+  );
+  const [pendingTermsAcceptedAt, setPendingTermsAcceptedAt] = useState<string | null>(
+    initialPendingTermsAcceptedAt
+  );
 
   // Template and Form Data
   const [templateKey, setTemplateKey] = useState<EvaluationTemplateKey>('teacher_special_expert');
@@ -140,8 +152,19 @@ export function EvaluationWorkspace({
 
   const isFinalized = status === 'evaluated' || status === 'acknowledged';
   const isLockedRound = roundStatus === 'locked' && !access.isUnlocked;
-  const canEditSelf = !isLockedRound && !isFinalized && (isSelf || isManager) && (access.isUnlocked || isManager);
-  const canEditSupervisor = access.canEditForm && isManager && status !== 'acknowledged';
+  // Self-evaluation fields are editable ONLY by the evaluatee themselves before submission
+  const canEditSelf =
+    isSelf &&
+    !isLockedRound &&
+    !isFinalized &&
+    status !== 'self_submitted' &&
+    (access.isUnlocked || isManager);
+  // Supervisor scoring is unlocked ONLY for managers reviewing another staff member who has submitted
+  const canEditSupervisor =
+    !isSelf &&
+    isManager &&
+    access.canEditForm &&
+    status === 'self_submitted';
   const canEditAny = canEditSelf || canEditSupervisor;
 
   const isEvaluateeDirector = useMemo(() => {
@@ -173,7 +196,7 @@ export function EvaluationWorkspace({
       setPart1Snapshot(data.part1Snapshot || {});
       setSupervisorComment(data.supervisorComment || '');
       setSelfSignedAt(data.selfSignedAt || data.selfEvaluationDate || null);
-      setTermsAcceptedAt((prev) => data.termsAcceptedAt || prev || null);
+      setPersistedTermsAcceptedAt((prev) => data.termsAcceptedAt || prev || null);
       setHasUnsavedChanges(false);
 
       // Initialize self scores (default unrated items to 0, not 5)
@@ -305,11 +328,15 @@ export function EvaluationWorkspace({
   };
 
   // Save / Submit Handlers
-  const handleSave = async (action: 'save_self' | 'submit_self' | 'save_supervisor' | 'finalize_evaluation' | 'acknowledge') => {
+  const handleSave = async (
+    action: 'save_self' | 'submit_self' | 'save_supervisor' | 'finalize_evaluation' | 'acknowledge'
+  ): Promise<boolean> => {
     try {
       setIsSaving(true);
       setErrorMsg(null);
       setSuccessMsg(null);
+
+      const effectiveTermsAt = persistedTermsAcceptedAt || pendingTermsAcceptedAt;
 
       const payload = {
         staffId,
@@ -320,6 +347,8 @@ export function EvaluationWorkspace({
         selfScores,
         supervisorScores,
         supervisorComment,
+        termsAcceptedAt:
+          action === 'save_self' || action === 'submit_self' ? effectiveTermsAt : undefined,
         action,
       };
 
@@ -332,6 +361,16 @@ export function EvaluationWorkspace({
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+
+      const savedTermsAt =
+        json.data?.terms_accepted_at ||
+        json.data?.termsAcceptedAt ||
+        (action === 'save_self' || action === 'submit_self' ? effectiveTermsAt : persistedTermsAcceptedAt);
+
+      if (savedTermsAt) {
+        setPersistedTermsAcceptedAt(savedTermsAt);
+        setPendingTermsAcceptedAt(null);
       }
 
       setStatus(json.data.status);
@@ -347,12 +386,18 @@ export function EvaluationWorkspace({
       const finalRating = json.data.rating_level || liveSupervisorCalc.ratingLevel;
 
       if (onSaved) {
-        onSaved(json.data.status, finalGrand, finalRating);
+        onSaved(json.data.status, finalGrand, finalRating, savedTermsAt || null);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('manstat:evaluation-updated'));
       }
 
       setTimeout(() => setSuccessMsg(null), 4000);
+      return true;
     } catch (err: any) {
       setErrorMsg(err.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -411,6 +456,20 @@ export function EvaluationWorkspace({
     }
   };
 
+  // Escape key dismissal for confirmation modal (disabled while saving)
+  useEffect(() => {
+    if (!pendingAction) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) {
+        setPendingAction(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingAction, isSaving]);
+
+  const effectiveTermsAcceptedAt = persistedTermsAcceptedAt || pendingTermsAcceptedAt;
+
   const requiresAgreement =
     !isLoading &&
     !errorMsg &&
@@ -418,36 +477,13 @@ export function EvaluationWorkspace({
       isSelfEvaluation: isSelf,
       canEditSelf,
       status,
-      termsAcceptedAt,
+      termsAcceptedAt: effectiveTermsAcceptedAt,
     });
 
-  const handleAcceptTerms = async () => {
-    try {
-      setIsAcceptingTerms(true);
-      setTermsError(null);
-      const acceptedAt = new Date().toISOString();
-      const res = await fetch('/api/admin/evaluations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          staffId,
-          fiscalYear,
-          roundNumber,
-          templateKey,
-          action: 'accept_terms',
-          termsAcceptedAt: acceptedAt,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'ไม่สามารถบันทึกการยอมรับข้อตกลงได้ กรุณาลองใหม่อีกครั้ง');
-      }
-      setTermsAcceptedAt(json.data?.termsAcceptedAt || json.data?.terms_accepted_at || acceptedAt);
-    } catch (err: any) {
-      setTermsError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อตกลง กรุณาลองใหม่อีกครั้ง');
-    } finally {
-      setIsAcceptingTerms(false);
-    }
+  // Deferred Agreement Persistence: store timestamp in client state ONLY (no ghost DB drafts).
+  // Persists to Supabase only when user clicks Save Draft or Submit.
+  const handleAcceptTerms = () => {
+    setPendingTermsAcceptedAt(new Date().toISOString());
   };
 
   if (isLoading) {
@@ -469,8 +505,6 @@ export function EvaluationWorkspace({
           fiscalYear={fiscalYear}
           roundNumber={roundNumber}
           staffName={part1Snapshot.evaluateeName || teacher?.name}
-          isSubmitting={isAcceptingTerms}
-          errorMessage={termsError}
           onAccept={handleAcceptTerms}
           onCancel={() => {
             if (onClose) {
@@ -1611,7 +1645,7 @@ export function EvaluationWorkspace({
                   </button>
                 )}
 
-                {/* ผอ./Admin: บันทึกและอนุมัติผลประเมินอย่างเป็นทางการ */}
+                {/* ผอ./Admin: บันทึกและส่งผลการประเมินอย่างเป็นทางการ */}
                 {canEditSupervisor && (
                   <button
                     type="button"
@@ -1620,7 +1654,7 @@ export function EvaluationWorkspace({
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>บันทึกและอนุมัติผลการประเมิน (ผู้บังคับบัญชา)</span>
+                    <span>บันทึกและส่งผลการประเมิน</span>
                   </button>
                 )}
 
@@ -1660,86 +1694,168 @@ export function EvaluationWorkspace({
         </div>
       </div>
 
-      {/* Confirmation Modal for Submit / Finalize / Acknowledge / Unsaved Print */}
+      {/* Confirmation Modal for Submit / Finalize (Supervisor) / Acknowledge / Unsaved Print */}
       {pendingAction && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-xs"
           role="dialog"
           aria-modal="true"
-          onClick={() => setPendingAction(null)}
+          onClick={() => {
+            if (!isSaving) setPendingAction(null);
+          }}
         >
           <div
             className="w-full max-w-md bg-white dark:bg-[#141b24] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl p-6 space-y-4 text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              {pendingAction === 'submit_self'
-                ? 'ยืนยันส่งแบบประเมินตนเอง'
-                : pendingAction === 'finalize_evaluation'
-                ? 'ยืนยันอนุมัติผลการประเมิน'
-                : pendingAction === 'acknowledge'
-                ? 'ยืนยันลงนามรับทราบผลการประเมิน'
-                : 'มีข้อมูลที่ยังไม่ได้บันทึก'}
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {pendingAction === 'submit_self'
-                ? 'ระบบจะบันทึกคะแนนประเมินตนเองและลงวันที่ส่งแบบประเมินเพื่อให้ผู้บังคับบัญชาพิจารณา'
-                : pendingAction === 'finalize_evaluation'
-                ? 'เมื่ออนุมัติผลการประเมินแล้ว ผู้รับการประเมินจะไม่สามารถแก้ไขคะแนนตนเองได้ และสามารถลงนามรับทราบผลได้ทันที'
-                : pendingAction === 'acknowledge'
-                ? 'ยืนยันว่าท่านได้รับทราบผลการประเมินและความเห็นของผู้บังคับบัญชาเรียบร้อยแล้ว'
-                : 'ท่านมีการแก้ไขคะแนนหรือข้อมูลที่ยังไม่ได้บันทึก หากพิมพ์ตอนนี้เอกสาร A4 จะแสดงข้อมูลที่บันทึกล่าสุด ต้องการบันทึกก่อนพิมพ์หรือไม่?'}
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setPendingAction(null)}
-                className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
-              >
-                ยกเลิก
-              </button>
-              {pendingAction === 'print_unsaved' ? (
-                <>
+            {pendingAction === 'finalize_evaluation' ? (
+              <>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/70 shrink-0 mt-0.5">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      ยืนยันส่งผลการประเมิน
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                      รอบการประเมินที่ {roundNumber} ประจำปีงบประมาณ {fiscalYear}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Evaluatee & Score Summary */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0d131c] border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">ผู้รับการประเมิน</span>
+                    <span className="font-semibold text-slate-900 dark:text-white text-right">
+                      {part1Snapshot.evaluateeName || formatStaffName(teacher)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">ตำแหน่ง</span>
+                    <span className="text-slate-700 dark:text-slate-300 text-right">
+                      {formatOfficialPosition(teacher || part1Snapshot.position)}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">คะแนนรวม / ระดับผลประเมิน</span>
+                    <div className="flex items-center gap-2 tabular-nums">
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {liveSupervisorCalc.grandTotal.toFixed(2)} / 100
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${getRatingBadge(
+                          liveSupervisorCalc.ratingLevel
+                        )}`}
+                      >
+                        {liveSupervisorCalc.ratingLevel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supervisor Certification Statement */}
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  ข้าพเจ้ารับรองว่าได้พิจารณาประเมินผลการปฏิบัติงานด้วยความเที่ยงธรรมตามหลักเกณฑ์ ว 15/2561 และ พ.ร.บ. ระเบียบข้าราชการครูและบุคลากรทางการศึกษา (ฉบับที่ 5) พ.ศ. 2569 และรับทราบว่าระบบจะล็อกผลการประเมินเพื่อส่งให้ผู้รับการประเมินลงนามรับทราบ
+                </p>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPendingAction(null);
-                      setShowPrintModal(true);
-                    }}
-                    className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
+                    disabled={isSaving}
+                    onClick={() => setPendingAction(null)}
+                    className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50"
                   >
-                    พิมพ์ข้อมูลเดิม
+                    ยกเลิก
                   </button>
                   <button
                     type="button"
                     disabled={isSaving}
                     onClick={async () => {
-                      setPendingAction(null);
-                      await handleQuickSave();
-                      setHasUnsavedChanges(false);
-                      setShowPrintModal(true);
+                      const ok = await handleSave('finalize_evaluation');
+                      if (ok) {
+                        setPendingAction(null);
+                      }
                     }}
-                    className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50"
                   >
-                    บันทึกแล้วพิมพ์ A4
+                    {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                    <span>{isSaving ? 'กำลังส่งผลการประเมิน...' : 'ยืนยันส่งผลการประเมิน'}</span>
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={async () => {
-                    const actionToRun = pendingAction;
-                    setPendingAction(null);
-                    await handleSave(actionToRun);
-                    setHasUnsavedChanges(false);
-                  }}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer disabled:opacity-50"
-                >
-                  ยืนยัน
-                </button>
-              )}
-            </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {pendingAction === 'submit_self'
+                    ? 'ยืนยันส่งแบบประเมินตนเอง'
+                    : pendingAction === 'acknowledge'
+                    ? 'ยืนยันลงนามรับทราบผลการประเมิน'
+                    : 'มีข้อมูลที่ยังไม่ได้บันทึก'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {pendingAction === 'submit_self'
+                    ? 'ระบบจะบันทึกคะแนนประเมินตนเองและลงวันที่ส่งแบบประเมินเพื่อให้ผู้บังคับบัญชาพิจารณา'
+                    : pendingAction === 'acknowledge'
+                    ? 'ยืนยันว่าท่านได้รับทราบผลการประเมินและความเห็นของผู้บังคับบัญชาเรียบร้อยแล้ว'
+                    : 'ท่านมีการแก้ไขคะแนนหรือข้อมูลที่ยังไม่ได้บันทึก หากพิมพ์ตอนนี้เอกสาร A4 จะแสดงข้อมูลที่บันทึกล่าสุด ต้องการบันทึกก่อนพิมพ์หรือไม่?'}
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => setPendingAction(null)}
+                    className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer disabled:opacity-50"
+                  >
+                    ยกเลิก
+                  </button>
+                  {pendingAction === 'print_unsaved' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingAction(null);
+                          setShowPrintModal(true);
+                        }}
+                        className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
+                      >
+                        พิมพ์ข้อมูลเดิม
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={async () => {
+                          setPendingAction(null);
+                          await handleQuickSave();
+                          setHasUnsavedChanges(false);
+                          setShowPrintModal(true);
+                        }}
+                        className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50"
+                      >
+                        บันทึกแล้วพิมพ์ A4
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={async () => {
+                        const actionToRun = pendingAction;
+                        const ok = await handleSave(actionToRun);
+                        if (ok) {
+                          setPendingAction(null);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer disabled:opacity-50"
+                    >
+                      {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                      <span>{isSaving ? 'กำลังบันทึก...' : 'ยืนยัน'}</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

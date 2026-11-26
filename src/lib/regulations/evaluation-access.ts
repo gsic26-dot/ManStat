@@ -271,3 +271,174 @@ export function shouldRequireEvaluationAgreement(
   }
   return !params.termsAcceptedAt;
 }
+
+// ============================================================================
+// EVALUATION WORKFLOW STATUS & SEQUENTIAL ACTION LOCK RESOLUTION
+// ============================================================================
+
+export type EvaluationWorkflowStatusKey =
+  | 'not_started'
+  | 'draft'
+  | 'self_submitted'
+  | 'evaluated'
+  | 'acknowledged';
+
+export interface EvaluationWorkflowDisplay {
+  statusKey: EvaluationWorkflowStatusKey;
+  statusLabel: string;
+  dotColorClass: string;
+  textColorClass: string;
+  actionLabel: string;
+  actionVariant: 'primary' | 'secondary' | 'acknowledge' | 'disabled';
+  isActionDisabled: boolean;
+  actionTooltip: string;
+}
+
+export interface ResolveWorkflowDisplayParams {
+  rawStatus?: string | null;
+  isSelfRow: boolean;
+  isRoundUnlocked: boolean;
+  roundAccessTooltip?: string;
+}
+
+/**
+ * Resolves the minimalist status indicator (dot + concise label) and
+ * locked sequential action button for both Self rows and Director/HR rows.
+ */
+export function resolveEvaluationWorkflowDisplay(
+  params: ResolveWorkflowDisplayParams
+): EvaluationWorkflowDisplay {
+  const { rawStatus, isSelfRow, isRoundUnlocked, roundAccessTooltip } = params;
+
+  let statusKey: EvaluationWorkflowStatusKey = 'not_started';
+  if (rawStatus === 'acknowledged') statusKey = 'acknowledged';
+  else if (rawStatus === 'evaluated') statusKey = 'evaluated';
+  else if (rawStatus === 'self_submitted') statusKey = 'self_submitted';
+  else if (rawStatus === 'draft') statusKey = 'draft';
+
+  const statusMeta: Record<
+    EvaluationWorkflowStatusKey,
+    { label: string; dot: string; text: string }
+  > = {
+    not_started: {
+      label: 'ยังไม่ส่ง',
+      dot: 'bg-slate-300 dark:bg-slate-600',
+      text: 'text-slate-500 dark:text-slate-400',
+    },
+    draft: {
+      label: 'กำลังร่าง',
+      dot: 'bg-slate-400 dark:bg-slate-500',
+      text: 'text-slate-600 dark:text-slate-300',
+    },
+    self_submitted: {
+      label: 'รอ ผอ. ประเมิน',
+      dot: 'bg-amber-500',
+      text: 'text-amber-700 dark:text-amber-300 font-medium',
+    },
+    evaluated: {
+      label: 'รอครูรับทราบ',
+      dot: 'bg-sky-500',
+      text: 'text-sky-700 dark:text-sky-300 font-medium',
+    },
+    acknowledged: {
+      label: 'เสร็จสมบูรณ์',
+      dot: 'bg-emerald-500',
+      text: 'text-emerald-700 dark:text-emerald-300 font-medium',
+    },
+  };
+
+  const meta = statusMeta[statusKey];
+
+  // 1. User's own row (including Director's own row)
+  if (isSelfRow) {
+    if (statusKey === 'not_started' || statusKey === 'draft') {
+      return {
+        statusKey,
+        statusLabel: meta.label,
+        dotColorClass: meta.dot,
+        textColorClass: meta.text,
+        actionLabel: 'ประเมิน',
+        actionVariant: isRoundUnlocked ? 'primary' : 'disabled',
+        isActionDisabled: !isRoundUnlocked,
+        actionTooltip: isRoundUnlocked
+          ? 'เปิดแบบประเมินผลการปฏิบัติงานตนเอง'
+          : roundAccessTooltip || 'ยังไม่ถึงกำหนดเปิดรอบประเมิน',
+      };
+    }
+
+    if (statusKey === 'self_submitted') {
+      return {
+        statusKey,
+        statusLabel: meta.label,
+        dotColorClass: meta.dot,
+        textColorClass: meta.text,
+        actionLabel: 'ดูผล',
+        actionVariant: 'secondary',
+        isActionDisabled: false,
+        actionTooltip: 'ส่งแบบประเมินตนเองแล้ว — รอผู้อำนวยการประเมิน',
+      };
+    }
+
+    if (statusKey === 'evaluated') {
+      return {
+        statusKey,
+        statusLabel: meta.label,
+        dotColorClass: meta.dot,
+        textColorClass: meta.text,
+        actionLabel: 'รับทราบผล',
+        actionVariant: 'acknowledge',
+        isActionDisabled: false,
+        actionTooltip: 'ตรวจสอบและลงนามรับทราบผลการประเมิน',
+      };
+    }
+
+    return {
+      statusKey,
+      statusLabel: meta.label,
+      dotColorClass: meta.dot,
+      textColorClass: meta.text,
+      actionLabel: 'ดูผล',
+      actionVariant: 'secondary',
+      isActionDisabled: false,
+      actionTooltip: 'ดูผลการประเมินที่เสร็จสมบูรณ์แล้ว',
+    };
+  }
+
+  // 2. Other staff rows (Director / Superuser / HR Admin view)
+  if (statusKey === 'not_started' || statusKey === 'draft') {
+    return {
+      statusKey,
+      statusLabel: meta.label,
+      dotColorClass: meta.dot,
+      textColorClass: meta.text,
+      actionLabel: 'รอครูส่ง',
+      actionVariant: 'disabled',
+      isActionDisabled: true,
+      actionTooltip: 'ล็อกไว้ชั่วคราว — ต้องรอผู้รับการประเมินส่งแบบประเมินตนเองก่อน',
+    };
+  }
+
+  if (statusKey === 'self_submitted') {
+    return {
+      statusKey,
+      statusLabel: meta.label,
+      dotColorClass: meta.dot,
+      textColorClass: meta.text,
+      actionLabel: 'ประเมินผล',
+      actionVariant: 'primary',
+      isActionDisabled: false,
+      actionTooltip: 'ผู้รับการประเมินส่งข้อมูลแล้ว — คลิกเพื่อพิจารณาประเมินผล',
+    };
+  }
+
+  return {
+    statusKey,
+    statusLabel: meta.label,
+    dotColorClass: meta.dot,
+    textColorClass: meta.text,
+    actionLabel: 'ดูผล',
+    actionVariant: 'secondary',
+    isActionDisabled: false,
+    actionTooltip: 'ดูผลการประเมินและรายละเอียดคะแนน',
+  };
+}

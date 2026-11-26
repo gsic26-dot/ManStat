@@ -7,6 +7,7 @@ import {
   isStaffManuallyUnlocked,
   resolveEvaluationAccess,
   shouldRequireEvaluationAgreement,
+  resolveEvaluationWorkflowDisplay,
   type EvaluationAccessPeriod,
 } from './evaluation-access';
 
@@ -288,6 +289,71 @@ describe('Hybrid Evaluation Unlock System (Auto 15-Day Window + Global + Per-Use
           `Must bypass modal when status is ${status}`
         );
       }
+    });
+  });
+
+  describe('Locked Sequential Evaluation Workflow (resolveEvaluationWorkflowDisplay)', () => {
+    it('locks Director action button as disabled "รอครูส่ง" when teacher has not submitted yet', () => {
+      const notStarted = resolveEvaluationWorkflowDisplay({
+        rawStatus: null,
+        isSelfRow: false,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(notStarted.statusLabel, 'ยังไม่ส่ง');
+      assert.strictEqual(notStarted.actionLabel, 'รอครูส่ง');
+      assert.strictEqual(notStarted.isActionDisabled, true);
+
+      const draft = resolveEvaluationWorkflowDisplay({
+        rawStatus: 'draft',
+        isSelfRow: false,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(draft.statusLabel, 'กำลังร่าง');
+      assert.strictEqual(draft.actionLabel, 'รอครูส่ง');
+      assert.strictEqual(draft.isActionDisabled, true);
+    });
+
+    it('unlocks Director primary button "ประเมินผล" with amber "รอ ผอ. ประเมิน" once teacher submits', () => {
+      const submitted = resolveEvaluationWorkflowDisplay({
+        rawStatus: 'self_submitted',
+        isSelfRow: false,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(submitted.statusLabel, 'รอ ผอ. ประเมิน');
+      assert.strictEqual(submitted.actionLabel, 'ประเมินผล');
+      assert.strictEqual(submitted.actionVariant, 'primary');
+      assert.strictEqual(submitted.isActionDisabled, false);
+    });
+
+    it('shows "รอครูรับทราบ" + "รับทราบผล" on teacher own row when Director has evaluated', () => {
+      const teacherRow = resolveEvaluationWorkflowDisplay({
+        rawStatus: 'evaluated',
+        isSelfRow: true,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(teacherRow.statusLabel, 'รอครูรับทราบ');
+      assert.strictEqual(teacherRow.actionLabel, 'รับทราบผล');
+      assert.strictEqual(teacherRow.isActionDisabled, false);
+
+      const directorRow = resolveEvaluationWorkflowDisplay({
+        rawStatus: 'evaluated',
+        isSelfRow: false,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(directorRow.statusLabel, 'รอครูรับทราบ');
+      assert.strictEqual(directorRow.actionLabel, 'ดูผล');
+      assert.strictEqual(directorRow.isActionDisabled, false);
+    });
+
+    it('shows "เสร็จสมบูรณ์" + "ดูผล" when acknowledged', () => {
+      const ack = resolveEvaluationWorkflowDisplay({
+        rawStatus: 'acknowledged',
+        isSelfRow: true,
+        isRoundUnlocked: true,
+      });
+      assert.strictEqual(ack.statusLabel, 'เสร็จสมบูรณ์');
+      assert.strictEqual(ack.actionLabel, 'ดูผล');
+      assert.strictEqual(ack.isActionDisabled, false);
     });
   });
 });
