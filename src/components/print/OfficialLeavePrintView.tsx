@@ -74,6 +74,8 @@ export interface LeavePrintData {
   status: LeaveStatusEnum;
   approverName?: string | null;
   approverPosition?: string | null;
+  inspectorName?: string | null;
+  inspectorPosition?: string | null;
   approvedAt?: string | null;
   signatureUrl?: string | null;
   rejectionReason?: string | null;
@@ -88,7 +90,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
   data,
   originUrl = '',
 }) => {
-  const [useThaiNumerals, setUseThaiNumerals] = useState<boolean>(false);
+  const [useThaiNumerals, setUseThaiNumerals] = useState<boolean>(true);
 
   const formatNum = (val: string | number) => formatNumberText(val, useThaiNumerals);
   const formatDate = (val: string | Date) => formatOfficialThaiDate(val, useThaiNumerals);
@@ -126,6 +128,26 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
 
   return (
     <div className="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 font-sarabun antialiased print:bg-white print:p-0">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 0;
+              }
+              html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          `,
+        }}
+      />
       {/* Top Controls Bar (Hidden during printing) */}
       <div className="print:hidden sticky top-0 z-50 bg-white dark:bg-[#141a24] border-b border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-white px-6 py-3 shadow-sm flex items-center justify-between transition-colors duration-200">
         <div className="flex items-center gap-3">
@@ -559,8 +581,8 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
                         {/* ผู้ตรวจสอบสถิติการลา */}
                         <div className="text-center mt-7 text-[12.5px] leading-[1.5]">
                           <div>ลงชื่อ....................................................... ผู้ตรวจสอบ</div>
-                          <div className="mt-0.5">(นางสาวทัชชกร ช่วยจังหรีด)</div>
-                          <div>ตำแหน่ง ครูชำนาญการพิเศษ</div>
+                          <div className="mt-0.5">({data.inspectorName || 'เจ้าหน้าที่งานบุคคล'})</div>
+                          <div>ตำแหน่ง {data.inspectorPosition || 'เจ้าหน้าที่งานบริหารงานบุคคล'}</div>
                           <div className="mt-0.5">
                             วันที่ .......... เดือน ........................ พ.ศ. .............
                           </div>
@@ -632,16 +654,16 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
                   สแกนเพื่อตรวจสอบความถูกต้องของเอกสารราชการ (Digital Verification)
                 </div>
                 <div className="text-[10px] text-slate-600 font-mono">
-                  รหัสเอกสาร: <b>{data.documentNo}</b> | ตรวจสอบผ่านระบบ ManStat โรงเรียนชุมชนบ้านตะขบ
+                  รหัสเอกสาร: <b>{formatNum(data.documentNo)}</b> | ตรวจสอบผ่านระบบ ManStat {schoolTitle}
                 </div>
                 <div className="text-[9.5px] text-slate-500">
-                  สังกัดสำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3
+                  สังกัด{formatNum(data.affiliation)}
                 </div>
               </div>
             </div>
             <div className="text-right text-[10px] text-slate-500">
               <div>เอกสารต้นฉบับทางราชการ</div>
-              <div className="font-bold text-sky-700">หน้า 1 / 1 (A4)</div>
+              <div className="font-bold text-sky-700">หน้า {formatNum(1)} / {formatNum(1)} (A4)</div>
             </div>
           </div>
         </div>

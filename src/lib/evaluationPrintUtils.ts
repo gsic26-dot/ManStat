@@ -57,6 +57,22 @@ export function formatThaiNumber(
 }
 
 /**
+ * จัดรูปแบบตัวเลขจำนวนเงินพร้อมเครื่องหมายจุลภาค (comma) แล้วแปลงเป็นเลขไทย
+ * เช่น 54000 -> "๕๔,๐๐๐"
+ */
+export function formatThaiCurrency(
+  num: number | null | undefined,
+  decimals: number = 0
+): string {
+  if (num === null || num === undefined || isNaN(num)) return '-';
+  const formatted = num.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return toThaiDigits(formatted);
+}
+
+/**
  * แปลงวันที่ ISO (เช่น 2026-10-01 หรือ Date object) เป็นวันที่ภาษาไทยพร้อมเลขไทย
  * เช่น "๑ ตุลาคม ๒๕๖๙"
  */

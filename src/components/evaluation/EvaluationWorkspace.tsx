@@ -98,6 +98,11 @@ export function EvaluationWorkspace({
     comp3: {},
   });
   const [supervisorComment, setSupervisorComment] = useState<string>('');
+  const [selfSignedAt, setSelfSignedAt] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [pendingAction, setPendingAction] = useState<
+    'submit_self' | 'finalize_evaluation' | 'acknowledge' | 'print_unsaved' | null
+  >(null);
 
   // Determine User Permissions & Round Lock
   const isManager = useMemo(() => {
@@ -132,8 +137,9 @@ export function EvaluationWorkspace({
     });
   }, [staffId, isSelf, isManager, selectedPeriod]);
 
-  const isLockedRound = (roundStatus === 'locked' || status === 'evaluated' || status === 'acknowledged') && !access.isUnlocked;
-  const canEditSelf = !isLockedRound && (isSelf || isManager) && (access.isUnlocked || isManager);
+  const isFinalized = status === 'evaluated' || status === 'acknowledged';
+  const isLockedRound = roundStatus === 'locked' && !access.isUnlocked;
+  const canEditSelf = !isLockedRound && !isFinalized && (isSelf || isManager) && (access.isUnlocked || isManager);
   const canEditSupervisor = access.canEditForm && isManager && status !== 'acknowledged';
   const canEditAny = canEditSelf || canEditSupervisor;
 
@@ -165,6 +171,8 @@ export function EvaluationWorkspace({
       setStatus(data.status || 'draft');
       setPart1Snapshot(data.part1Snapshot || {});
       setSupervisorComment(data.supervisorComment || '');
+      setSelfSignedAt(data.selfSignedAt || data.selfEvaluationDate || null);
+      setHasUnsavedChanges(false);
 
       // Initialize self scores (default unrated items to 0, not 5)
       const p1Self = data.selfScores?.part1 || {};
@@ -218,6 +226,7 @@ export function EvaluationWorkspace({
   // Handle Score Updates
   const updateSelfScore = (section: 'part1' | 'part2' | 'comp3', id: string, val: number) => {
     if (!canEditSelf) return;
+    setHasUnsavedChanges(true);
     setSelfScores((prev) => ({
       ...prev,
       [section]: {
@@ -229,6 +238,7 @@ export function EvaluationWorkspace({
 
   const updateSupervisorScore = (section: 'part1' | 'part2' | 'comp3', id: string, val: number) => {
     if (!canEditSupervisor) return;
+    setHasUnsavedChanges(true);
     setSupervisorScores((prev) => ({
       ...prev,
       [section]: {
@@ -241,6 +251,7 @@ export function EvaluationWorkspace({
   // Quick fill helper for supervisor: copy self scores to supervisor scores
   const handleCopySelfToSupervisor = () => {
     if (!canEditSupervisor) return;
+    setHasUnsavedChanges(true);
     setSupervisorScores({
       part1: { ...(selfScores.part1 || {}) },
       part2: { ...(selfScores.part2 || {}) },
@@ -273,6 +284,7 @@ export function EvaluationWorkspace({
     });
 
     if (target === 'self' && canEditSelf) {
+      setHasUnsavedChanges(true);
       setSelfScores({
         part1: p1,
         part2: p2,
@@ -280,6 +292,7 @@ export function EvaluationWorkspace({
         comp3: c3,
       });
     } else if (target === 'supervisor' && canEditSupervisor) {
+      setHasUnsavedChanges(true);
       setSupervisorScores({
         part1: p1,
         part2: p2,
@@ -320,6 +333,12 @@ export function EvaluationWorkspace({
       }
 
       setStatus(json.data.status);
+      setHasUnsavedChanges(false);
+      if (json.data.selfSignedAt || json.data.selfEvaluationDate) {
+        setSelfSignedAt(json.data.selfSignedAt || json.data.selfEvaluationDate);
+      } else if (action === 'submit_self') {
+        setSelfSignedAt(new Date().toISOString());
+      }
       setSuccessMsg(json.message || 'บันทึกสำเร็จ');
 
       const finalGrand = json.data.supervisor_total || json.data.self_total || liveSupervisorCalc.grandTotal;
@@ -457,7 +476,13 @@ export function EvaluationWorkspace({
 
             <button
               type="button"
-              onClick={() => setShowPrintModal(true)}
+              onClick={() => {
+                if (hasUnsavedChanges && canEditAny) {
+                  setPendingAction('print_unsaved');
+                } else {
+                  setShowPrintModal(true);
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -1457,7 +1482,16 @@ export function EvaluationWorkspace({
                 </p>
                 <div className="pt-2 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
                   <div>ลงชื่อ: <strong>{part1Snapshot.evaluateeName || '-'}</strong> (ผู้รับการประเมิน)</div>
-                  <div>วันที่: {part1Snapshot.selfSignedAt ? new Date(part1Snapshot.selfSignedAt).toLocaleDateString('th-TH') : 'ยังไม่ได้ลงนาม'}</div>
+                  <div>
+                    วันที่:{' '}
+                    {selfSignedAt
+                      ? new Date(selfSignedAt).toLocaleDateString('th-TH-u-nu-latn', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'ยังไม่ได้ลงนาม'}
+                  </div>
                 </div>
               </div>
 
@@ -1505,8 +1539,8 @@ export function EvaluationWorkspace({
                   <button
                     type="button"
                     disabled={isSaving}
-                    onClick={() => handleSave('submit_self')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium shadow-xs transition-colors"
+                    onClick={() => setPendingAction('submit_self')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>{status === 'self_submitted' ? 'อัปเดตและยืนยันส่งประเมินตนเอง' : 'บันทึกและส่งแบบประเมินตนเอง'}</span>
@@ -1518,8 +1552,8 @@ export function EvaluationWorkspace({
                   <button
                     type="button"
                     disabled={isSaving}
-                    onClick={() => handleSave('finalize_evaluation')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition-colors"
+                    onClick={() => setPendingAction('finalize_evaluation')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>บันทึกและอนุมัติผลการประเมิน (ผู้บังคับบัญชา)</span>
@@ -1531,8 +1565,8 @@ export function EvaluationWorkspace({
                   <button
                     type="button"
                     disabled={isSaving}
-                    onClick={() => handleSave('acknowledge')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium shadow-xs transition-colors"
+                    onClick={() => setPendingAction('acknowledge')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>ลงนามรับทราบผลการประเมิน</span>
@@ -1542,7 +1576,13 @@ export function EvaluationWorkspace({
                 {/* พิมพ์รายงาน A4 */}
                 <button
                   type="button"
-                  onClick={() => setShowPrintModal(true)}
+                  onClick={() => {
+                    if (hasUnsavedChanges && canEditAny) {
+                      setPendingAction('print_unsaved');
+                    } else {
+                      setShowPrintModal(true);
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -1555,6 +1595,90 @@ export function EvaluationWorkspace({
           </main>
         </div>
       </div>
+
+      {/* Confirmation Modal for Submit / Finalize / Acknowledge / Unsaved Print */}
+      {pendingAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPendingAction(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-[#141b24] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl p-6 space-y-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              {pendingAction === 'submit_self'
+                ? 'ยืนยันส่งแบบประเมินตนเอง'
+                : pendingAction === 'finalize_evaluation'
+                ? 'ยืนยันอนุมัติผลการประเมิน'
+                : pendingAction === 'acknowledge'
+                ? 'ยืนยันลงนามรับทราบผลการประเมิน'
+                : 'มีข้อมูลที่ยังไม่ได้บันทึก'}
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              {pendingAction === 'submit_self'
+                ? 'ระบบจะบันทึกคะแนนประเมินตนเองและลงวันที่ส่งแบบประเมินเพื่อให้ผู้บังคับบัญชาพิจารณา'
+                : pendingAction === 'finalize_evaluation'
+                ? 'เมื่ออนุมัติผลการประเมินแล้ว ผู้รับการประเมินจะไม่สามารถแก้ไขคะแนนตนเองได้ และสามารถลงนามรับทราบผลได้ทันที'
+                : pendingAction === 'acknowledge'
+                ? 'ยืนยันว่าท่านได้รับทราบผลการประเมินและความเห็นของผู้บังคับบัญชาเรียบร้อยแล้ว'
+                : 'ท่านมีการแก้ไขคะแนนหรือข้อมูลที่ยังไม่ได้บันทึก หากพิมพ์ตอนนี้เอกสาร A4 จะแสดงข้อมูลที่บันทึกล่าสุด ต้องการบันทึกก่อนพิมพ์หรือไม่?'}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPendingAction(null)}
+                className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              {pendingAction === 'print_unsaved' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingAction(null);
+                      setShowPrintModal(true);
+                    }}
+                    className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
+                  >
+                    พิมพ์ข้อมูลเดิม
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={async () => {
+                      setPendingAction(null);
+                      await handleQuickSave();
+                      setHasUnsavedChanges(false);
+                      setShowPrintModal(true);
+                    }}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50"
+                  >
+                    บันทึกแล้วพิมพ์ A4
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={async () => {
+                    const actionToRun = pendingAction;
+                    setPendingAction(null);
+                    await handleSave(actionToRun);
+                    setHasUnsavedChanges(false);
+                  }}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer disabled:opacity-50"
+                >
+                  ยืนยัน
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal พิมพ์เอกสาร A4 ตามแบบ ก.ค.ศ. */}
       {showPrintModal && (

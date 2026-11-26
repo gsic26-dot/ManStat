@@ -32,6 +32,7 @@ import {
 import { type TeacherRecord, type LeaveRequestRecord } from '@/lib/data/schoolData';
 import { ExcelExportButton } from '@/components/export/ExcelExportButton';
 import { getStaffBranch, groupAndSortTeachers } from '@/lib/regulations/staff-sorting';
+import { getFiscalYearBE } from '@/lib/regulations/fiscal-and-retirement';
 import { toThaiDigits } from '@/lib/evaluationPrintUtils';
 
 export function ViewOfficialReports() {
@@ -76,17 +77,22 @@ export function ViewOfficialReports() {
     };
   }, []);
 
-  // Compute leave stats per teacher for the selected round
+  const fiscalYearBE = Number(schoolInfo?.fiscalYear) || 2570;
+  const prevFiscalYearBE = fiscalYearBE - 1;
+
+  // Compute leave stats per teacher for the selected round (approved leaves in selected fiscal year only)
   const getTeacherLeaveStats = useMemo(() => {
     return (teacher: TeacherRecord) => {
       const id = teacher.id;
       const code = teacher.employeeCode;
 
-      // Filter leave requests for this teacher
+      // Filter approved leave requests for this teacher in the active fiscal year
       const reqs = leaveRequests.filter((r) => {
+        if (r.status !== 'approved') return false;
         const matchStaff = r.teacherId === id || r.teacherId === code || (r as any).staffId === id;
         if (!matchStaff) return false;
         if (!r.startDate) return true;
+        if (getFiscalYearBE(r.startDate) !== fiscalYearBE) return false;
 
         const parts = r.startDate.split('-');
         const month = parts[1];
@@ -101,38 +107,32 @@ export function ViewOfficialReports() {
         return true;
       });
 
-      const sickReqs = reqs.filter((r) => r.leaveType === 'sick' || r.leaveType?.includes('ป่วย'));
-      const personalReqs = reqs.filter((r) => r.leaveType === 'personal' || r.leaveType?.includes('กิจ'));
-      const vacationReqs = reqs.filter((r) => r.leaveType === 'vacation' || r.leaveType?.includes('พักผ่อน'));
-      const ordinationReqs = reqs.filter((r) => r.leaveType === 'ordination' || r.leaveType?.includes('อุปสมบท'));
-      const maternityReqs = reqs.filter((r) => r.leaveType === 'maternity' || r.leaveType?.includes('คลอด'));
-      const studyReqs = reqs.filter((r) => r.leaveType === 'study' || r.leaveType?.includes('ศึกษา'));
+      const sickReqs = reqs.filter((r) => r.leaveType === 'sick' || r.leaveType?.includes('ป่วย') || r.leaveTypeName?.includes('ป่วย'));
+      const personalReqs = reqs.filter((r) => r.leaveType === 'personal' || r.leaveType?.includes('กิจ') || r.leaveTypeName?.includes('กิจ'));
+      const vacationReqs = reqs.filter((r) => r.leaveType === 'vacation' || r.leaveType?.includes('พักผ่อน') || r.leaveTypeName?.includes('พักผ่อน'));
+      const ordinationReqs = reqs.filter((r) => r.leaveType === 'ordination' || r.leaveType?.includes('อุปสมบท') || r.leaveTypeName?.includes('อุปสมบท'));
+      const maternityReqs = reqs.filter((r) => r.leaveType === 'maternity' || r.leaveType?.includes('คลอด') || r.leaveTypeName?.includes('คลอด'));
+      const studyReqs = reqs.filter((r) => r.leaveType === 'study' || r.leaveType?.includes('ศึกษา') || r.leaveTypeName?.includes('ศึกษา'));
 
-      const sickCount = sickReqs.length > 0 ? sickReqs.length : (roundFilter === 'FULL' && teacher.sickUsed > 0 ? 1 : 0);
-      const sickDays = sickReqs.length > 0
-        ? sickReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
-        : (roundFilter === 'FULL' ? (teacher.sickUsed || 0) : 0);
+      const sickCount = sickReqs.length;
+      const sickDays = sickReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
 
-      const personalCount = personalReqs.length > 0 ? personalReqs.length : (roundFilter === 'FULL' && teacher.personalUsed > 0 ? 1 : 0);
-      const personalDays = personalReqs.length > 0
-        ? personalReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
-        : (roundFilter === 'FULL' ? (teacher.personalUsed || 0) : 0);
+      const personalCount = personalReqs.length;
+      const personalDays = personalReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
 
-      const vacationCount = vacationReqs.length > 0 ? vacationReqs.length : (roundFilter === 'FULL' && teacher.vacationUsed > 0 ? 1 : 0);
-      const vacationDays = vacationReqs.length > 0
-        ? vacationReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0)
-        : (roundFilter === 'FULL' ? (teacher.vacationUsed || 0) : 0);
+      const vacationCount = vacationReqs.length;
+      const vacationDays = vacationReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
 
       const ordinationDays = ordinationReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
       const maternityDays = maternityReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
       const studyDays = studyReqs.reduce((sum, r) => sum + (Number(r.totalDays) || 0), 0);
 
-      // ว 15/2561 Frequency criteria counts sick + personal instances
+      // ว 15/2561 criteria counts ONLY sick + personal leaves (<= 6 times and <= 23 working days per round)
       const totalCount = sickCount + personalCount;
+      const sickPersonalDays = sickDays + personalDays;
       const totalDays = sickDays + personalDays + vacationDays + ordinationDays + maternityDays + studyDays;
 
-      // Threshold: ไม่เกิน 6 ครั้ง หรือ 23 วันทำการต่อรอบ
-      const isEligible = totalCount <= 6 && totalDays <= 23;
+      const isEligible = totalCount <= 6 && sickPersonalDays <= 23;
 
       return {
         sickCount,
@@ -149,7 +149,7 @@ export function ViewOfficialReports() {
         isEligible,
       };
     };
-  }, [leaveRequests, roundFilter]);
+  }, [leaveRequests, roundFilter, fiscalYearBE]);
 
   // Strict hierarchical ordering: 12 civil servants (management + teaching) then 3 support staff
   const sortedTeachers = useMemo(() => {
@@ -197,32 +197,32 @@ export function ViewOfficialReports() {
   // Titles for Web View (Arabic Numerals)
   const roundTitlesWeb: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
     FULL: {
-      title: 'ทั้งปีงบประมาณ 2570',
-      subtitle: '( 1 ตุลาคม 2569 – 30 กันยายน 2570 )',
+      title: `ทั้งปีงบประมาณ ${fiscalYearBE}`,
+      subtitle: `( 1 ตุลาคม ${prevFiscalYearBE} – 30 กันยายน ${fiscalYearBE} )`,
     },
     ROUND_1: {
-      title: 'รอบที่ 1 ปีงบประมาณ 2570',
-      subtitle: '( 1 ตุลาคม 2569 – 31 มีนาคม 2570 )',
+      title: `รอบที่ 1 ปีงบประมาณ ${fiscalYearBE}`,
+      subtitle: `( 1 ตุลาคม ${prevFiscalYearBE} – 31 มีนาคม ${fiscalYearBE} )`,
     },
     ROUND_2: {
-      title: 'รอบที่ 2 ปีงบประมาณ 2570',
-      subtitle: '( 1 เมษายน 2570 – 30 กันยายน 2570 )',
+      title: `รอบที่ 2 ปีงบประมาณ ${fiscalYearBE}`,
+      subtitle: `( 1 เมษายน ${fiscalYearBE} – 30 กันยายน ${fiscalYearBE} )`,
     },
   };
 
   // Titles for Print View (Strict Thai Numerals ๐-๙)
   const roundTitlesThai: Record<'FULL' | 'ROUND_1' | 'ROUND_2', { title: string; subtitle: string }> = {
     FULL: {
-      title: 'ทั้งปีงบประมาณ ๒๕๗๐',
-      subtitle: '( ๑ ตุลาคม ๒๕๖๙ – ๓๐ กันยายน ๒๕๗๐ )',
+      title: toThaiDigits(`ทั้งปีงบประมาณ ${fiscalYearBE}`),
+      subtitle: toThaiDigits(`( 1 ตุลาคม ${prevFiscalYearBE} – 30 กันยายน ${fiscalYearBE} )`),
     },
     ROUND_1: {
-      title: 'รอบที่ ๑ ปีงบประมาณ ๒๕๗๐',
-      subtitle: '( ๑ ตุลาคม ๒๕๖๙ – ๓๑ มีนาคม ๒๕๗๐ )',
+      title: toThaiDigits(`รอบที่ 1 ปีงบประมาณ ${fiscalYearBE}`),
+      subtitle: toThaiDigits(`( 1 ตุลาคม ${prevFiscalYearBE} – 31 มีนาคม ${fiscalYearBE} )`),
     },
     ROUND_2: {
-      title: 'รอบที่ ๒ ปีงบประมาณ ๒๕๗๐',
-      subtitle: '( ๑ เมษายน ๒๕๗๐ – ๓๐ กันยายน ๒๕๗๐ )',
+      title: toThaiDigits(`รอบที่ 2 ปีงบประมาณ ${fiscalYearBE}`),
+      subtitle: toThaiDigits(`( 1 เมษายน ${fiscalYearBE} – 30 กันยายน ${fiscalYearBE} )`),
     },
   };
 
@@ -239,8 +239,6 @@ export function ViewOfficialReports() {
   );
   const hrHeadName = hrHead?.name || 'นางสาวทัชชกร ช่วยจังหรีด';
   const hrHeadTitle = hrHead?.division || 'หัวหน้าฝ่ายบริหารงานบุคคล';
-
-  const fiscalYearBE = Number(schoolInfo?.fiscalYear) || 2570;
 
   return (
     <div className="space-y-6">
@@ -299,13 +297,13 @@ export function ViewOfficialReports() {
               className="w-full bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
               <option value="FULL" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                รอบการประเมิน: ทั้งปีงบประมาณ 2570
+                รอบการประเมิน: ทั้งปีงบประมาณ {fiscalYearBE}
               </option>
               <option value="ROUND_1" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                รอบที่ 1: 1 ต.ค. 2569 – 31 มี.ค. 2570
+                รอบที่ 1: 1 ต.ค. {prevFiscalYearBE} – 31 มี.ค. {fiscalYearBE}
               </option>
               <option value="ROUND_2" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
-                รอบที่ 2: 1 เม.ย. 2570 – 30 ก.ย. 2570
+                รอบที่ 2: 1 เม.ย. {fiscalYearBE} – 30 ก.ย. {fiscalYearBE}
               </option>
             </select>
           </div>
@@ -369,7 +367,7 @@ export function ViewOfficialReports() {
                     {filteredCivilServants.length > 0 && (
                       <tr className="bg-slate-100/60 dark:bg-slate-800/50">
                         <td colSpan={8} className="px-4 py-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
-                          ๑. ข้าราชการครูและบุคลากรทางการศึกษา ({filteredCivilServants.length} ท่าน)
+                          1. ข้าราชการครูและบุคลากรทางการศึกษา ({filteredCivilServants.length} ท่าน)
                         </td>
                       </tr>
                     )}
@@ -425,7 +423,7 @@ export function ViewOfficialReports() {
                     {filteredSupportStaff.length > 0 && (
                       <tr className="bg-slate-100/60 dark:bg-slate-800/50">
                         <td colSpan={8} className="px-4 py-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
-                          ๒. ลูกจ้างชั่วคราว / บุคลากรสายสนับสนุน ({filteredSupportStaff.length} ท่าน)
+                          2. ลูกจ้างชั่วคราว / บุคลากรสายสนับสนุน ({filteredSupportStaff.length} ท่าน)
                         </td>
                       </tr>
                     )}
@@ -460,18 +458,8 @@ export function ViewOfficialReports() {
                           <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
                             {stats.totalCount} ครั้ง / {stats.totalDays} วัน
                           </td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px]">
-                            {stats.isEligible ? (
-                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30 min-w-[95px]">
-                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                <span>ผ่านเกณฑ์</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 min-w-[95px]">
-                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                <span>เกินเกณฑ์</span>
-                              </span>
-                            )}
+                          <td className="px-4 py-3 text-center whitespace-nowrap min-w-[125px] text-slate-400 dark:text-slate-500 font-mono">
+                            -
                           </td>
                         </tr>
                       );

@@ -13,8 +13,9 @@
 
 import { OfficialLeavePrintView, type LeavePrintData } from '@/components/print/OfficialLeavePrintView';
 import { createClient } from '@/lib/supabase/server';
-import { dbGetLeaveRequests, dbGetSchoolInfo } from '@/lib/db/serverDb';
+import { dbGetLeaveRequests, dbGetSchoolInfo, dbGetTeachers } from '@/lib/db/serverDb';
 import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
+import { getFiscalYearBE } from '@/lib/regulations/fiscal-and-retirement';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,9 +30,10 @@ export default async function LeavePrintPage({ params }: PageProps) {
 
   try {
     // 1. Check server database first
-    const [allLeaveRequests, schoolInfo] = await Promise.all([
+    const [allLeaveRequests, schoolInfo, allTeachers] = await Promise.all([
       dbGetLeaveRequests(),
       dbGetSchoolInfo(),
+      dbGetTeachers(),
     ]);
     const localReq = allLeaveRequests.find(
       (r: any) => r.id === id || r.docNo === id
@@ -40,6 +42,42 @@ export default async function LeavePrintPage({ params }: PageProps) {
     if (localReq) {
       const formattedStaffName = formatStaffName(localReq.teacherName);
       const parsedStaff = parseThaiName(formattedStaffName);
+      const staffRecord = allTeachers.find(
+        (t) => t.id === localReq.teacherId || t.employeeCode === localReq.teacherId
+      );
+      const hrHead = allTeachers.find(
+        (t) =>
+          t.division?.includes('บริหารงานบุคคล') ||
+          t.department?.includes('บุคคล') ||
+          t.role === 'hr_admin'
+      );
+
+      // Compute real prior approved leave statistics in the same fiscal year before this leave
+      const reqFY = localReq.startDate ? getFiscalYearBE(localReq.startDate) : null;
+      const priorApproved = allLeaveRequests.filter((r: any) => {
+        if (r.id === localReq.id) return false;
+        if (r.status !== 'approved') return false;
+        const sameTeacher =
+          r.teacherId === localReq.teacherId ||
+          (staffRecord && (r.teacherId === staffRecord.id || r.teacherId === staffRecord.employeeCode));
+        if (!sameTeacher) return false;
+        if (reqFY && r.startDate && getFiscalYearBE(r.startDate) !== reqFY) return false;
+        if (localReq.startDate && r.startDate && r.startDate >= localReq.startDate) return false;
+        return true;
+      });
+
+      const sumPrior = (matcher: (r: any) => boolean) =>
+        priorApproved.filter(matcher).reduce((acc: number, r: any) => acc + (Number(r.totalDays) || 0), 0);
+
+      const isSickReq = (r: any) => r.leaveType === 'sick' || String(r.leaveTypeName || r.leaveType || '').includes('ป่วย');
+      const isPersonalReq = (r: any) => r.leaveType === 'personal' || String(r.leaveTypeName || r.leaveType || '').includes('กิจ');
+      const isVacationReq = (r: any) => r.leaveType === 'vacation' || String(r.leaveTypeName || r.leaveType || '').includes('พักผ่อน');
+      const isMaternityReq = (r: any) => r.leaveType === 'maternity' || String(r.leaveTypeName || r.leaveType || '').includes('คลอด');
+
+      const sortedPriorSameType = [...priorApproved]
+        .filter((r: any) => (r.leaveTypeName || r.leaveType) === (localReq.leaveTypeName || localReq.leaveType))
+        .sort((a: any, b: any) => String(b.startDate || '').localeCompare(String(a.startDate || '')));
+      const lastLeave = sortedPriorSameType[0] || null;
 
       printData = {
         id: localReq.id,
@@ -50,16 +88,16 @@ export default async function LeavePrintPage({ params }: PageProps) {
         prefix: parsedStaff.prefix || 'นาย',
         firstName: parsedStaff.firstName || formattedStaffName,
         lastName: parsedStaff.lastName || '',
-        position: localReq.position || 'ครู',
-        academicStanding: 'ครูชำนาญการพิเศษ',
-        department: localReq.department || 'งานบุคคล',
+        position: localReq.position || staffRecord?.position || 'ครู',
+        academicStanding: staffRecord?.academicStanding || '-',
+        department: localReq.department || staffRecord?.department || 'งานบุคคล',
         affiliation: schoolInfo.affiliation || 'โรงเรียนชุมชนบ้านตะขบ สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3',
         leaveType: localReq.leaveTypeName || localReq.leaveType,
         reason: localReq.reason || '',
         startDate: localReq.startDate,
         endDate: localReq.endDate,
         totalDays: localReq.totalDays ?? 1,
-        contactAddress: localReq.contactInfo || 'โรงเรียนชุมชนบ้านตะขบ อ.ปักธงชัย จ.นครราชสีมา',
+        contactAddress: localReq.contactInfo || `${schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ'} อ.ปักธงชัย จ.นครราชสีมา`,
         substituteTeacher: formatStaffName(localReq.substituteTeacherName || 'ไม่ระบุ'),
         startTime: localReq.startTime || null,
         endTime: localReq.endTime || null,
@@ -68,18 +106,18 @@ export default async function LeavePrintPage({ params }: PageProps) {
         officialOrderNo: localReq.officialOrderNo || null,
         hasWorkload: localReq.hasWorkload || null,
         workloads: localReq.workloads || null,
-        lastLeaveStartDate: null,
-        lastLeaveEndDate: null,
-        lastLeaveDays: null,
+        lastLeaveStartDate: lastLeave?.startDate || null,
+        lastLeaveEndDate: lastLeave?.endDate || null,
+        lastLeaveDays: lastLeave?.totalDays ?? null,
         stats: {
-          sickUsedBefore: 2,
-          sickCurrent: localReq.leaveType === 'sick' || localReq.leaveTypeName === 'ลาป่วย' ? localReq.totalDays : 0,
-          personalUsedBefore: 1,
-          personalCurrent: localReq.leaveType === 'personal' || localReq.leaveTypeName === 'ลากิจส่วนตัว' ? localReq.totalDays : 0,
-          vacationUsedBefore: 0,
-          vacationCurrent: 0,
-          maternityUsedBefore: 0,
-          maternityCurrent: 0,
+          sickUsedBefore: sumPrior(isSickReq),
+          sickCurrent: isSickReq(localReq) ? (Number(localReq.totalDays) || 0) : 0,
+          personalUsedBefore: sumPrior(isPersonalReq),
+          personalCurrent: isPersonalReq(localReq) ? (Number(localReq.totalDays) || 0) : 0,
+          vacationUsedBefore: sumPrior(isVacationReq),
+          vacationCurrent: isVacationReq(localReq) ? (Number(localReq.totalDays) || 0) : 0,
+          maternityUsedBefore: sumPrior(isMaternityReq),
+          maternityCurrent: isMaternityReq(localReq) ? (Number(localReq.totalDays) || 0) : 0,
         },
         status:
           localReq.status === 'approved'
@@ -89,7 +127,9 @@ export default async function LeavePrintPage({ params }: PageProps) {
             : 'pending',
         approverName: formatStaffName(schoolInfo.directorName || 'นายธีรศักดิ์ มโนธรรม'),
         approverPosition: schoolInfo.directorPosition || 'ผู้อำนวยการโรงเรียนชุมชนบ้านตะขบ',
-        approvedAt: localReq.status === 'approved' ? new Date().toISOString() : null,
+        inspectorName: hrHead ? formatStaffName(hrHead.name) : null,
+        inspectorPosition: hrHead?.academicStanding || hrHead?.position || null,
+        approvedAt: localReq.status === 'approved' ? ((localReq as any).approvedAt || (localReq as any).updatedAt || null) : null,
         signatureUrl: null,
         rejectionReason: localReq.directorRemark || null,
       };
@@ -104,17 +144,18 @@ export default async function LeavePrintPage({ params }: PageProps) {
         .single();
 
       if (request && !reqError) {
-        const { data: staff } = await supabase
-          .from('staff')
-          .select('*')
-          .eq('id', request.staff_id)
-          .single();
-
-        const { data: school } = await supabase
-          .from('school_settings')
-          .select('*')
-          .limit(1)
-          .single();
+        const [{ data: staff }, { data: school }, { data: priorRows }] = await Promise.all([
+          supabase.from('staff').select('*').eq('id', request.staff_id).single(),
+          supabase.from('school_settings').select('*').limit(1).single(),
+          supabase
+            .from('leave_requests')
+            .select('id, leave_type, start_date, end_date, total_days')
+            .eq('staff_id', request.staff_id)
+            .eq('fiscal_year', request.fiscal_year)
+            .eq('status', 'approved')
+            .neq('id', request.id)
+            .lt('start_date', request.start_date),
+        ]);
 
         let approverName: string | null = null;
         let approverPosition: string | null = null;
@@ -133,6 +174,23 @@ export default async function LeavePrintPage({ params }: PageProps) {
             signatureUrl = approver.signature_url;
           }
         }
+
+        const safePrior = Array.isArray(priorRows) ? priorRows : [];
+        const sumSupPrior = (keyword: string) =>
+          safePrior
+            .filter((r: any) => String(r.leave_type || '').includes(keyword))
+            .reduce((acc: number, r: any) => acc + (Number(r.total_days) || 0), 0);
+
+        const lastSame = [...safePrior]
+          .filter((r: any) => r.leave_type === request.leave_type)
+          .sort((a: any, b: any) => String(b.start_date || '').localeCompare(String(a.start_date || '')))[0];
+
+        const hrHead = allTeachers.find(
+          (t) =>
+            t.division?.includes('บริหารงานบุคคล') ||
+            t.department?.includes('บุคคล') ||
+            t.role === 'hr_admin'
+        );
 
         printData = {
           id: request.id,
@@ -153,22 +211,24 @@ export default async function LeavePrintPage({ params }: PageProps) {
           endDate: request.end_date,
           totalDays: request.total_days,
           contactAddress: request.contact_address || school?.school_name || '-',
-          lastLeaveStartDate: null,
-          lastLeaveEndDate: null,
-          lastLeaveDays: null,
+          lastLeaveStartDate: lastSame?.start_date || null,
+          lastLeaveEndDate: lastSame?.end_date || null,
+          lastLeaveDays: lastSame?.total_days ?? null,
           stats: {
-            sickUsedBefore: request.leave_type === 'ลาป่วย' ? 2 : 2,
-            sickCurrent: request.leave_type === 'ลาป่วย' ? request.total_days : 0,
-            personalUsedBefore: request.leave_type === 'ลากิจส่วนตัว' ? 1 : 1,
-            personalCurrent: request.leave_type === 'ลากิจส่วนตัว' ? request.total_days : 0,
-            vacationUsedBefore: 0,
-            vacationCurrent: 0,
-            maternityUsedBefore: 0,
-            maternityCurrent: 0,
+            sickUsedBefore: sumSupPrior('ป่วย'),
+            sickCurrent: String(request.leave_type || '').includes('ป่วย') ? (Number(request.total_days) || 0) : 0,
+            personalUsedBefore: sumSupPrior('กิจ'),
+            personalCurrent: String(request.leave_type || '').includes('กิจ') ? (Number(request.total_days) || 0) : 0,
+            vacationUsedBefore: sumSupPrior('พักผ่อน'),
+            vacationCurrent: String(request.leave_type || '').includes('พักผ่อน') ? (Number(request.total_days) || 0) : 0,
+            maternityUsedBefore: sumSupPrior('คลอด'),
+            maternityCurrent: String(request.leave_type || '').includes('คลอด') ? (Number(request.total_days) || 0) : 0,
           },
           status: request.status,
           approverName: approverName || 'ผู้อำนวยการสถานศึกษา',
           approverPosition: approverPosition || 'ผู้อำนวยการสถานศึกษา',
+          inspectorName: hrHead ? formatStaffName(hrHead.name) : null,
+          inspectorPosition: hrHead?.academicStanding || hrHead?.position || null,
           approvedAt: request.approved_at,
           signatureUrl,
           rejectionReason: request.rejection_reason,

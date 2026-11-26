@@ -150,7 +150,7 @@ export function ViewSalaryHistory({
     };
   }, []);
 
-  // Fetch fiscal periods
+  // Fetch fiscal periods (only on mount — never reset selectedPeriodId when user switches rounds)
   const fetchPeriods = useCallback(async () => {
     try {
       setLoading(true);
@@ -165,20 +165,19 @@ export function ViewSalaryHistory({
         });
         setFiscalPeriods(sorted);
 
-        // Auto select active or most recent
+        // Auto select active or most recent only if none is currently selected
         const active = sorted.find((p) => p.isActive);
-        if (active) {
-          setSelectedPeriodId(active.id);
-        } else if (sorted.length > 0 && !selectedPeriodId) {
-          setSelectedPeriodId(sorted[0].id);
-        }
+        setSelectedPeriodId((prev) => {
+          if (prev && sorted.some((p) => p.id === prev)) return prev;
+          return active?.id || sorted[0]?.id || null;
+        });
       }
     } catch (err: any) {
       console.error('[ViewSalaryHistory fetchPeriods Error]', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedPeriodId]);
+  }, []);
 
   useEffect(() => {
     fetchPeriods();
@@ -335,7 +334,7 @@ export function ViewSalaryHistory({
             staffId: record.staffId,
             positionSnapshot: record.positionSnapshot,
             standingSnapshot: record.standingSnapshot,
-            salaryBefore: record.calculationBase,
+            salaryBefore: record.salaryBefore ?? record.calculationBase,
             calculationBase: record.calculationBase,
             promotionPercent: record.promotionPercent,
             salaryAfter: record.salaryAfter,
@@ -783,7 +782,8 @@ export function ViewSalaryHistory({
             {civilServants.length} <span className="text-xs font-normal text-slate-500">ท่าน</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-            สายบริหาร 1 · สายการสอน 11
+            สายบริหาร {civilServants.filter((t) => getStaffBranch(t) === 'management').length} · สายการสอน{' '}
+            {civilServants.filter((t) => getStaffBranch(t) === 'teaching').length}
           </p>
         </div>
 
@@ -1217,11 +1217,7 @@ function SalaryPromotionMasterRow({
               </button>
             ) : (
               <span
-                title={
-                  access.isUnlocked
-                    ? 'ปลดล็อกแล้ว — คลิกเพื่อล็อกกลับ'
-                    : 'ล็อกอยู่ — คลิกเพื่อปลดล็อกเฉพาะบุคคลนี้'
-                }
+                title={access.tooltip}
                 className={`p-1 shrink-0 ${
                   access.isUnlocked
                     ? 'text-emerald-600 dark:text-emerald-400'

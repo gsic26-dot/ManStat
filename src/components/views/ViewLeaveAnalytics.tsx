@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
   BarChart3,
@@ -20,9 +20,11 @@ import {
   Calendar,
   Award,
   CheckCircle2,
+  AlertTriangle,
   Clock,
 } from 'lucide-react';
 import { TeacherRecord, LeaveRequestRecord } from '@/lib/data/schoolData';
+import { getFiscalYearBE, getEvalRound } from '@/lib/regulations/fiscal-and-retirement';
 
 export function ViewLeaveAnalytics() {
   const [fiscalYear, setFiscalYear] = useState('2570');
@@ -55,60 +57,112 @@ export function ViewLeaveAnalytics() {
     };
   }, []);
 
-  // Computed metrics from real teachers data
+  // Filter approved leave requests by selected fiscalYear and selectedSemester
+  const filteredApprovedLeaves = useMemo(() => {
+    const targetFY = Number(fiscalYear);
+    return leaveRequests.filter((r) => {
+      if (r.status !== 'approved') return false;
+      if (!r.startDate) return false;
+      if (getFiscalYearBE(r.startDate) !== targetFY) return false;
+      if (selectedSemester === 'H1' && getEvalRound(r.startDate) !== 1) return false;
+      if (selectedSemester === 'H2' && getEvalRound(r.startDate) !== 2) return false;
+      return true;
+    });
+  }, [leaveRequests, fiscalYear, selectedSemester]);
+
+  const isSick = (r: LeaveRequestRecord) =>
+    r.leaveType === 'sick' || String(r.leaveTypeName || r.leaveType || '').includes('ป่วย');
+  const isPersonal = (r: LeaveRequestRecord) =>
+    r.leaveType === 'personal' || String(r.leaveTypeName || r.leaveType || '').includes('กิจ');
+  const isVacation = (r: LeaveRequestRecord) =>
+    r.leaveType === 'vacation' || String(r.leaveTypeName || r.leaveType || '').includes('พักผ่อน');
+
+  // Computed metrics strictly from filtered approved leaves
   const totalTeachers = teachers.length;
-  const zeroLeaveTeachers = teachers.filter(
-    (t) => (t.sickUsed || 0) === 0 && (t.personalUsed || 0) === 0 && (t.vacationUsed || 0) === 0
-  ).length;
-  const totalSickDays = teachers.reduce((acc, t) => acc + (Number(t.sickUsed) || 0), 0);
-  const totalPersonalDays = teachers.reduce((acc, t) => acc + (Number(t.personalUsed) || 0), 0);
-  const totalVacationDays = teachers.reduce((acc, t) => acc + (Number(t.vacationUsed) || 0), 0);
-  const totalAllDays = totalSickDays + totalPersonalDays + totalVacationDays;
+  const totalSickDays = filteredApprovedLeaves
+    .filter(isSick)
+    .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+  const totalPersonalDays = filteredApprovedLeaves
+    .filter(isPersonal)
+    .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+  const totalVacationDays = filteredApprovedLeaves
+    .filter(isVacation)
+    .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+  const totalAllDays = Number(
+    filteredApprovedLeaves.reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0).toFixed(1)
+  );
   const avgLeavePerPerson = totalTeachers > 0 ? (totalAllDays / totalTeachers).toFixed(1) : '0.0';
 
-  // Monthly trends calculated from real leave requests
-  const monthLabels = [
-    { key: '10', month: 'ต.ค.' },
-    { key: '11', month: 'พ.ย.' },
-    { key: '12', month: 'ธ.ค.' },
-    { key: '01', month: 'ม.ค.' },
-    { key: '02', month: 'ก.พ.' },
-    { key: '03', month: 'มี.ค.' },
-    { key: '04', month: 'เม.ย.' },
-    { key: '05', month: 'พ.ค.' },
-    { key: '06', month: 'มิ.ย.' },
-    { key: '07', month: 'ก.ค.' },
-    { key: '08', month: 'ส.ค.' },
-    { key: '09', month: 'ก.ย.' },
+  const zeroLeaveTeachers = teachers.filter((t) => {
+    const staffDays = filteredApprovedLeaves
+      .filter((r) => r.teacherId === t.id || r.teacherId === t.employeeCode)
+      .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+    return staffDays === 0;
+  }).length;
+
+  // Monthly trends calculated from filtered approved leave requests
+  const allMonthLabels = [
+    { key: '10', month: 'ต.ค.', round: 'H1' },
+    { key: '11', month: 'พ.ย.', round: 'H1' },
+    { key: '12', month: 'ธ.ค.', round: 'H1' },
+    { key: '01', month: 'ม.ค.', round: 'H1' },
+    { key: '02', month: 'ก.พ.', round: 'H1' },
+    { key: '03', month: 'มี.ค.', round: 'H1' },
+    { key: '04', month: 'เม.ย.', round: 'H2' },
+    { key: '05', month: 'พ.ค.', round: 'H2' },
+    { key: '06', month: 'มิ.ย.', round: 'H2' },
+    { key: '07', month: 'ก.ค.', round: 'H2' },
+    { key: '08', month: 'ส.ค.', round: 'H2' },
+    { key: '09', month: 'ก.ย.', round: 'H2' },
   ];
 
-  const monthlyData = monthLabels.map(({ key, month }) => {
-    const matchingReqs = leaveRequests.filter((r) => {
-      if (!r.startDate) return false;
-      const m = r.startDate.split('-')[1];
-      return m === key;
-    });
-    const days = matchingReqs.reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
-    const percent = Math.min(Math.round(days * 10), 100);
-    return { month, days, percent };
-  });
+  const monthLabels =
+    selectedSemester === 'ALL'
+      ? allMonthLabels
+      : allMonthLabels.filter((m) => m.round === selectedSemester);
 
-  // Department distribution calculated from real teachers and requests
-  const deptMap: Record<string, { count: number; days: number }> = {};
+  const rawMonthly = monthLabels.map(({ key, month }) => {
+    const days = filteredApprovedLeaves
+      .filter((r) => r.startDate && r.startDate.split('-')[1] === key)
+      .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+    return { month, days: Number(days.toFixed(1)) };
+  });
+  const maxMonthDays = Math.max(...rawMonthly.map((m) => m.days), 1);
+  const monthlyData = rawMonthly.map((m) => ({
+    ...m,
+    percent: m.days > 0 ? Math.max(Math.round((m.days / maxMonthDays) * 100), 6) : 0,
+  }));
+
+  // Department distribution calculated from filtered approved leaves
+  const deptMap: Record<string, { count: number; days: number; hasWatchlist: boolean }> = {};
   teachers.forEach((t) => {
     const dept = t.department || 'สายงานบริหารและสนับสนุน';
     if (!deptMap[dept]) {
-      deptMap[dept] = { count: 0, days: 0 };
+      deptMap[dept] = { count: 0, days: 0, hasWatchlist: false };
     }
+    const staffReqs = filteredApprovedLeaves.filter(
+      (r) => r.teacherId === t.id || r.teacherId === t.employeeCode
+    );
+    const staffDays = staffReqs.reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+    const spReqs = staffReqs.filter((r) => isSick(r) || isPersonal(r));
+    const spDays = spReqs.reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+
     deptMap[dept].count += 1;
-    deptMap[dept].days += (Number(t.sickUsed) || 0) + (Number(t.personalUsed) || 0) + (Number(t.vacationUsed) || 0);
+    deptMap[dept].days += staffDays;
+    if (spReqs.length > 6 || spDays > 23) {
+      deptMap[dept].hasWatchlist = true;
+    }
   });
 
-  const departments = Object.entries(deptMap).map(([name, val]) => ({
-    name: name.startsWith('กลุ่มสาระ') || name.startsWith('สายงาน') ? name : `กลุ่มสาระฯ ${name}`,
-    count: val.count,
-    days: Number(val.days.toFixed(1)),
-  }));
+  const departments = Object.entries(deptMap).map(([name, val]) => {
+    const avg = val.count > 0 ? val.days / val.count : 0;
+    return {
+      name: name.startsWith('กลุ่มสาระ') || name.startsWith('สายงาน') ? name : `กลุ่มสาระฯ ${name}`,
+      count: val.count,
+      days: Number(val.days.toFixed(1)),
+      isWatchlist: val.hasWatchlist || avg > 10,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -373,10 +427,17 @@ export function ViewLeaveAnalytics() {
                     <td className="px-4 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">{d.days}</td>
                     <td className="px-4 py-3 text-center font-mono whitespace-nowrap">{(d.days / d.count).toFixed(1)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30">
-                        <CheckCircle2 className="w-3 h-3 shrink-0" />
-                        <span>ปกติ</span>
-                      </span>
+                      {d.isWatchlist ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>เฝ้าระวัง</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          <span>ปกติ</span>
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

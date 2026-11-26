@@ -68,6 +68,18 @@ export interface SmartLeaveFormProps {
   onCancel?: () => void;
 }
 
+function getLocalTodayBangkok(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+  } catch {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+}
+
 export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
   currentStaffId = 'EXE-001',
   currentStaffName = 'นายธีรศักดิ์ มโนธรรม',
@@ -82,14 +94,9 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
 }) => {
   // Form Core State
   const [leaveType, setLeaveType] = useState<LeaveType>('ลาป่วย');
-  const [startDate, setStartDate] = useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState<string>(() => getLocalTodayBangkok());
+  const [endDate, setEndDate] = useState<string>(() => getLocalTodayBangkok());
+  const [existingLeaves, setExistingLeaves] = useState<any[]>([]);
   const [halfDay, setHalfDay] = useState<HalfDayPeriod>('full');
   const [reason, setReason] = useState<string>('');
   const [contactInfo, setContactInfo] = useState<string>('');
@@ -138,6 +145,16 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
         }
       })
       .catch(() => {});
+
+    fetch('/api/admin/leave', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && isMounted) {
+          setExistingLeaves(json.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -174,6 +191,45 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
     return calculateLeaveDays(startDate, endDate, leaveType, halfDay, officialHolidays);
   }, [startDate, endDate, leaveType, halfDay, officialHolidays, isZeroDays]);
 
+  // Real-time prior approved leave usage for this staff member
+  const priorUsage = useMemo(() => {
+    const staffApproved = existingLeaves.filter((r) => {
+      if (r.status !== 'approved') return false;
+      const matchStaff =
+        r.teacherId === currentStaffId ||
+        r.staffId === currentStaffId ||
+        (currentStaffName && r.teacherName && formatStaffName(r.teacherName) === formatStaffName(currentStaffName));
+      if (!matchStaff) return false;
+      return !r.startDate || getFiscalYearBE(r.startDate) === fiscalYear;
+    });
+
+    const isSameLeaveType = (r: any) => {
+      const name = String(r.leaveTypeName || r.leaveType || '');
+      if (leaveType === 'ลาป่วย') return r.leaveType === 'sick' || name.includes('ป่วย');
+      if (leaveType === 'ลากิจส่วนตัว') return r.leaveType === 'personal' || name.includes('กิจ');
+      if (leaveType === 'ลาพักผ่อน') return r.leaveType === 'vacation' || name.includes('พักผ่อน');
+      return name === leaveType;
+    };
+
+    const usedDaysInFiscalYear = staffApproved
+      .filter(isSameLeaveType)
+      .reduce((acc, r) => acc + (Number(r.totalDays) || 0), 0);
+
+    const roundSickPersonal = staffApproved.filter((r) => {
+      if (r.startDate && getEvalRound(r.startDate) !== evalRound) return false;
+      const name = String(r.leaveTypeName || r.leaveType || '');
+      return r.leaveType === 'sick' || r.leaveType === 'personal' || name.includes('ป่วย') || name.includes('กิจ');
+    });
+
+    const usedOccurrencesInRound = roundSickPersonal.length;
+    const usedSickPersonalDaysInRound = roundSickPersonal.reduce(
+      (acc, r) => acc + (Number(r.totalDays) || 0),
+      0
+    );
+
+    return { usedDaysInFiscalYear, usedOccurrencesInRound, usedSickPersonalDaysInRound };
+  }, [existingLeaves, currentStaffId, currentStaffName, fiscalYear, evalRound, leaveType]);
+
   // Pre-submission Regulatory Validation
   const validationResult = useMemo(() => {
     if (isZeroDays) {
@@ -191,13 +247,13 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
     return validateLeaveQuotaAndRules({
       leaveType,
       requestedDays: calculatedDays,
-      usedDaysInFiscalYear: 4,
-      usedOccurrencesInRound: 2,
-      usedSickPersonalDaysInRound: 4,
+      usedDaysInFiscalYear: priorUsage.usedDaysInFiscalYear,
+      usedOccurrencesInRound: priorUsage.usedOccurrencesInRound,
+      usedSickPersonalDaysInRound: priorUsage.usedSickPersonalDaysInRound,
       isFirstYearAppointee,
       consecutiveSickDays: calculatedDays,
     });
-  }, [leaveType, calculatedDays, isFirstYearAppointee, isZeroDays]);
+  }, [leaveType, calculatedDays, priorUsage, isFirstYearAppointee, isZeroDays]);
 
   // Teaching workload table handlers
   const handleAddWorkloadRow = () => {
@@ -327,7 +383,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
       const effectiveEndDate = isExit ? startDate : missionMode === 'single_day_time' ? startDate : endDate;
 
       // Submit leave request to server database (/api/admin/leave)
-      await fetch('/api/admin/leave', {
+      const res = await fetch('/api/admin/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -355,16 +411,18 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
         }),
       });
 
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถส่งคำร้องขอลาได้ กรุณาลองใหม่อีกครั้ง');
+      }
+
       setSubmitSuccess(true);
       setTimeout(() => {
         if (onSuccess) onSuccess();
       }, 1200);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[SmartLeaveForm Submit Error]', err);
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        if (onSuccess) onSuccess();
-      }, 1200);
+      setSubmitError(err?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อระบบ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsSubmitting(false);
     }

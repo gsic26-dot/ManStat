@@ -23,6 +23,7 @@ import {
 import {
   toThaiDigits,
   formatThaiNumber,
+  formatThaiCurrency,
   formatThaiDateWithDigits,
   getEvaluationPeriodThaiRange,
 } from '@/lib/evaluationPrintUtils';
@@ -114,8 +115,19 @@ export function EvaluationA4PrintDocument({
     return getEvaluationPeriodThaiRange(roundNumber, fiscalYear);
   }, [roundNumber, fiscalYear]);
 
-  // Is supervisor evaluation finalized?
-  const isSupervisorDone = status === 'completed' || !!data?.supervisorEvaluationDate;
+  // Is supervisor evaluation finalized? Support 'evaluated', 'acknowledged', and legacy 'completed'
+  const selfSignedDate = data?.selfSignedAt || data?.selfEvaluationDate || null;
+  const supervisorSignedDate = data?.supervisorSignedAt || data?.supervisorEvaluationDate || null;
+  const acknowledgedDateVal = data?.acknowledgedAt || data?.acknowledgedDate || null;
+  const isSupervisorDone =
+    status === 'evaluated' ||
+    status === 'acknowledged' ||
+    status === 'completed' ||
+    Boolean(supervisorSignedDate);
+  const isAcknowledged =
+    status === 'acknowledged' ||
+    status === 'completed' ||
+    Boolean(acknowledgedDateVal);
 
   // Print trigger
   const handlePrint = () => {
@@ -206,7 +218,7 @@ export function EvaluationA4PrintDocument({
                 {template.title} ({template.officialFormNumber})
               </h2>
               <p className="text-[11px] text-slate-400">
-                {part1Snapshot.evaluateeName || '-'} · รอบที่ {toThaiDigits(roundNumber)}/{toThaiDigits(fiscalYear)} ({isTeacherAssistant ? '๗ หน้า' : isDirector ? '๑๐ หน้า' : '๙ หน้า'})
+                {part1Snapshot.evaluateeName || '-'} · รอบที่ {roundNumber}/{fiscalYear} ({isTeacherAssistant ? '7 หน้า' : isDirector ? '10 หน้า' : '9 หน้า'})
               </p>
             </div>
           </div>
@@ -273,33 +285,33 @@ export function EvaluationA4PrintDocument({
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                ตำแหน่ง <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.position || '................................................'}</span>
+                ตำแหน่ง <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.position ? toThaiDigits(part1Snapshot.position) : '................................................'}</span>
               </div>
               <div>
-                เงินเดือน <span className="font-bold underline decoration-dotted underline-offset-4">{part1Snapshot.currentSalary > 0 ? `${formatThaiNumber(part1Snapshot.currentSalary)} บาท` : '.................................. บาท'}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                สถานศึกษา <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.schoolName || 'โรงเรียนชุมชนบ้านตะขบ'}</span>
-              </div>
-              <div>
-                สังกัด <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.affiliation || 'สพป.นครราชสีมา เขต 3'}</span>
+                เงินเดือน <span className="font-bold underline decoration-dotted underline-offset-4">{part1Snapshot.currentSalary > 0 ? `${formatThaiCurrency(part1Snapshot.currentSalary)} บาท` : '.................................. บาท'}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                สอนระดับชั้น <span className="underline decoration-dotted underline-offset-4">{toThaiDigits(part1Snapshot.teachingGrade || 'ประถมศึกษาปีที่ ๑ - ๖')}</span>
+                สถานศึกษา <span className="underline decoration-dotted underline-offset-4">{toThaiDigits(part1Snapshot.schoolName || 'โรงเรียนชุมชนบ้านตะขบ')}</span>
               </div>
               <div>
-                วิชา <span className="underline decoration-dotted underline-offset-4">{toThaiDigits(part1Snapshot.teachingSubject || 'ทุกกลุ่มสาระการเรียนรู้')}</span>
+                สังกัด <span className="underline decoration-dotted underline-offset-4">{toThaiDigits(part1Snapshot.affiliation || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษานครราชสีมา เขต 3')}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                สอนระดับชั้น <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.teachingGrade ? toThaiDigits(part1Snapshot.teachingGrade) : '-'}</span>
+              </div>
+              <div>
+                วิชา <span className="underline decoration-dotted underline-offset-4">{part1Snapshot.teachingSubject ? toThaiDigits(part1Snapshot.teachingSubject) : '-'}</span>
               </div>
             </div>
 
             <div>
-              ชั่วโมงการสอน <span className="font-bold underline decoration-dotted underline-offset-4">{toThaiDigits(part1Snapshot.teachingHoursPerWeek || 20)}</span> ชั่วโมง/สัปดาห์
+              ชั่วโมงการสอน <span className="font-bold underline decoration-dotted underline-offset-4">{part1Snapshot.teachingHoursPerWeek ? toThaiDigits(part1Snapshot.teachingHoursPerWeek) : '-'}</span> ชั่วโมง/สัปดาห์
             </div>
 
             <div>
@@ -428,7 +440,7 @@ export function EvaluationA4PrintDocument({
               <div>(ลงชื่อ)........................................................ ผู้รับการประเมิน</div>
               <div>({part1Snapshot.evaluateeName || '........................................................'})</div>
               <div>ตำแหน่ง {part1Snapshot.position || '........................................................'}</div>
-              <div>วันที่ {data?.selfEvaluationDate ? formatThaiDateWithDigits(data.selfEvaluationDate) : '......... เดือน .................... พ.ศ. ............'}</div>
+              <div>วันที่ {selfSignedDate ? formatThaiDateWithDigits(selfSignedDate) : '......... เดือน .................... พ.ศ. ............'}</div>
             </div>
           </div>
 
@@ -476,8 +488,8 @@ export function EvaluationA4PrintDocument({
             <div className="mt-4 flex flex-col items-center ml-auto max-w-[280px] text-center text-[11.5pt] space-y-1 pt-2">
               <div>(ลงชื่อ)........................................................ ผู้บังคับบัญชา</div>
               <div>({part1Snapshot.evaluatorName || '........................................................'})</div>
-              <div>ตำแหน่ง {part1Snapshot.evaluatorPosition || '........................................................'}</div>
-              <div>วันที่ {data?.supervisorEvaluationDate ? formatThaiDateWithDigits(data.supervisorEvaluationDate) : '......... เดือน .................... พ.ศ. ............'}</div>
+              <div>ตำแหน่ง {part1Snapshot.evaluatorPosition ? toThaiDigits(part1Snapshot.evaluatorPosition) : '........................................................'}</div>
+              <div>วันที่ {supervisorSignedDate ? formatThaiDateWithDigits(supervisorSignedDate) : '......... เดือน .................... พ.ศ. ............'}</div>
             </div>
           </div>
         </div>
@@ -498,15 +510,15 @@ export function EvaluationA4PrintDocument({
               <div className="mb-6">
                 <div className="font-bold mb-1">ผู้รับการประเมิน :</div>
                 <div className="flex items-center gap-2 pl-4 mb-4">
-                  <span className="text-[14pt]">{status === 'completed' ? '☑' : '☐'}</span>
+                  <span className="text-[14pt]">{isAcknowledged ? '☑' : '☐'}</span>
                   <span>ได้รับทราบผลการประเมินและความเห็นของผู้บังคับบัญชาแล้ว</span>
                 </div>
 
                 <div className="flex flex-col items-center ml-auto max-w-[280px] text-center text-[11.5pt] space-y-1">
                   <div>(ลงชื่อ)........................................................</div>
                   <div>({part1Snapshot.evaluateeName || '........................................................'})</div>
-                  <div>ตำแหน่ง : {part1Snapshot.position || '....................................................'}</div>
-                  <div>วันที่ : {data?.acknowledgedDate ? formatThaiDateWithDigits(data.acknowledgedDate) : '......... เดือน .................... พ.ศ. ............'}</div>
+                  <div>ตำแหน่ง : {part1Snapshot.position ? toThaiDigits(part1Snapshot.position) : '....................................................'}</div>
+                  <div>วันที่ : {acknowledgedDateVal ? formatThaiDateWithDigits(acknowledgedDateVal) : '......... เดือน .................... พ.ศ. ............'}</div>
                 </div>
               </div>
 
@@ -517,7 +529,7 @@ export function EvaluationA4PrintDocument({
                 <div className="font-bold mb-1">ผู้ประเมิน :</div>
                 <div className="space-y-1 pl-4 mb-4 text-[11.5pt]">
                   <div className="flex items-center gap-2">
-                    <span className="text-[14pt]">{status === 'completed' ? '☑' : '☐'}</span>
+                    <span className="text-[14pt]">{isAcknowledged ? '☑' : '☐'}</span>
                     <span>ได้แจ้งผลการประเมินและผู้รับการประเมินได้ลงนามรับทราบแล้ว</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -529,8 +541,8 @@ export function EvaluationA4PrintDocument({
                 <div className="flex flex-col items-center ml-auto max-w-[280px] text-center text-[11.5pt] space-y-1">
                   <div>(ลงชื่อ) : ........................................................</div>
                   <div>({part1Snapshot.evaluatorName || '........................................................'})</div>
-                  <div>ตำแหน่ง : {part1Snapshot.evaluatorPosition || '....................................................'}</div>
-                  <div>วันที่ : {data?.supervisorEvaluationDate ? formatThaiDateWithDigits(data.supervisorEvaluationDate) : '......... เดือน .................... พ.ศ. ............'}</div>
+                  <div>ตำแหน่ง : {part1Snapshot.evaluatorPosition ? toThaiDigits(part1Snapshot.evaluatorPosition) : '....................................................'}</div>
+                  <div>วันที่ : {supervisorSignedDate ? formatThaiDateWithDigits(supervisorSignedDate) : '......... เดือน .................... พ.ศ. ............'}</div>
                 </div>
               </div>
             </div>
@@ -564,20 +576,20 @@ export function EvaluationA4PrintDocument({
           <div className="text-[11.5pt] space-y-0.5 mb-2 border-b border-black pb-2">
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้รับการประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluateeName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.position || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.position || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้ประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluatorName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.evaluatorPosition || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.evaluatorPosition || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="flex items-center gap-6 pt-0.5">
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 1 ? '☑' : '☐'}</span>
-                <span>รอบการประเมิน ครั้งที่ ๑ ({periodRange.startDateText} ถึง {periodRange.endDateText})</span>
+                <span>รอบการประเมิน ครั้งที่ ๑ {roundNumber === 1 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 2 ? '☑' : '☐'}</span>
-                <span>ครั้งที่ ๒</span>
+                <span>ครั้งที่ ๒ {roundNumber === 2 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
             </div>
           </div>
@@ -861,27 +873,37 @@ export function EvaluationA4PrintDocument({
                   </td>
                 </tr>
 
-                {/* Challenge Item 2 */}
+                {/* Challenge Item 2.1 (เชิงปริมาณ) */}
                 <tr>
                   <td className="border border-black px-2 py-1.5 font-medium">
                     ๒. ผลลัพธ์การเรียนรู้ของผู้เรียนที่คาดหวัง (๒๐ คะแนน)
-                    <div className="text-[9pt] font-normal pl-2 space-y-0.5 text-slate-700 print:text-black mt-1">
-                      <div>๒.๑ เชิงปริมาณ (๑๐ คะแนน)</div>
-                      <div>๒.๒ เชิงคุณภาพ (๑๐ คะแนน)</div>
+                    <div className="text-[9pt] font-normal pl-2 text-slate-700 print:text-black mt-1">
+                      ๒.๑ เชิงปริมาณ (๑๐ คะแนน)
                     </div>
                   </td>
                   <td className="border border-black px-0.5 py-1 text-center align-middle">
-                    {renderCombinedChallengeCells(
-                      selfScores?.part2?.challenge_quantity,
-                      selfScores?.part2?.challenge_quality
-                    )}
+                    {renderLevelCells(selfScores?.part2?.challenge_quantity, 10)}
                   </td>
                   <td className="border border-black px-0.5 py-1 text-center align-middle">
                     {isSupervisorDone
-                      ? renderCombinedChallengeCells(
-                          supervisorScores?.part2?.challenge_quantity,
-                          supervisorScores?.part2?.challenge_quality
-                        )
+                      ? renderLevelCells(supervisorScores?.part2?.challenge_quantity, 10)
+                      : renderEmptyLevelCells()}
+                  </td>
+                </tr>
+
+                {/* Challenge Item 2.2 (เชิงคุณภาพ) */}
+                <tr>
+                  <td className="border border-black px-2 py-1.5 font-normal">
+                    <div className="text-[9pt] pl-2 text-slate-700 print:text-black">
+                      ๒.๒ เชิงคุณภาพ (๑๐ คะแนน)
+                    </div>
+                  </td>
+                  <td className="border border-black px-0.5 py-1 text-center align-middle">
+                    {renderLevelCells(selfScores?.part2?.challenge_quality, 10)}
+                  </td>
+                  <td className="border border-black px-0.5 py-1 text-center align-middle">
+                    {isSupervisorDone
+                      ? renderLevelCells(supervisorScores?.part2?.challenge_quality, 10)
                       : renderEmptyLevelCells()}
                   </td>
                 </tr>
@@ -979,20 +1001,20 @@ export function EvaluationA4PrintDocument({
           <div className="text-[11.5pt] space-y-0.5 mb-3 border-b border-black pb-2">
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้รับการประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluateeName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.position || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.position || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้ประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluatorName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.evaluatorPosition || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.evaluatorPosition || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="flex items-center gap-6 pt-0.5">
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 1 ? '☑' : '☐'}</span>
-                <span>รอบการประเมิน ครั้งที่ ๑ ({periodRange.startDateText} ถึง {periodRange.endDateText})</span>
+                <span>รอบการประเมิน ครั้งที่ ๑ {roundNumber === 1 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 2 ? '☑' : '☐'}</span>
-                <span>ครั้งที่ ๒</span>
+                <span>ครั้งที่ ๒ {roundNumber === 2 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
             </div>
           </div>
@@ -1107,20 +1129,20 @@ export function EvaluationA4PrintDocument({
           <div className="text-[11.5pt] space-y-0.5 mb-3 border-b border-black pb-2">
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้รับการประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluateeName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.position || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.position || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>ชื่อผู้ประเมิน <span className="underline decoration-dotted">{part1Snapshot.evaluatorName || '-'}</span></div>
-              <div>ตำแหน่ง <span className="underline decoration-dotted">{part1Snapshot.evaluatorPosition || '-'}</span> สังกัด <span className="underline decoration-dotted">{part1Snapshot.affiliation || '-'}</span></div>
+              <div>ตำแหน่ง <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.evaluatorPosition || '-')}</span> สังกัด <span className="underline decoration-dotted">{toThaiDigits(part1Snapshot.affiliation || '-')}</span></div>
             </div>
             <div className="flex items-center gap-6 pt-0.5">
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 1 ? '☑' : '☐'}</span>
-                <span>รอบการประเมิน ครั้งที่ ๑ ({periodRange.startDateText} ถึง {periodRange.endDateText})</span>
+                <span>รอบการประเมิน ครั้งที่ ๑ {roundNumber === 1 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span>{roundNumber === 2 ? '☑' : '☐'}</span>
-                <span>ครั้งที่ ๒</span>
+                <span>ครั้งที่ ๒ {roundNumber === 2 ? `(${periodRange.startDateText} ถึง ${periodRange.endDateText})` : ''}</span>
               </div>
             </div>
           </div>

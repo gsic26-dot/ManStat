@@ -27,7 +27,7 @@ export const ViewLeaveReportsHub: React.FC<ViewLeaveReportsHubProps> = ({
   return (
     <div className="space-y-5">
       {/* Top Segmented Tab Switcher (Compact w-fit) */}
-      <div className="bg-white dark:bg-[#121822] p-1.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs w-fit">
+      <div className="print:hidden bg-white dark:bg-[#121822] p-1.5 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs w-fit">
         <div className="inline-flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg">
           <button
             type="button"
