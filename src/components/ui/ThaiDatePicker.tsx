@@ -13,7 +13,8 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, RotateCcw } from 'lucide-react';
 import { THAI_MONTHS } from '@/lib/regulations/thai-numerals';
 
@@ -81,7 +82,42 @@ export const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({
   name,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Viewport-aware positioning with auto-flip upward when space below < 320px
+  const updatePopoverPosition = useCallback(() => {
+    if (!containerRef.current || typeof window === 'undefined') return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    const popoverWidth = Math.min(viewportW >= 640 ? 320 : 288, viewportW - 16);
+    const spaceBelow = viewportH - rect.bottom;
+    const spaceAbove = rect.top;
+    const flipUp = spaceBelow < 320 && spaceAbove > spaceBelow;
+
+    // Clamp horizontal position inside viewport with 8px margin
+    const clampedLeft = Math.max(8, Math.min(rect.left, viewportW - popoverWidth - 8));
+
+    if (flipUp) {
+      setPopoverStyle({
+        position: 'fixed',
+        left: `${clampedLeft}px`,
+        bottom: `${Math.max(8, viewportH - rect.top + 8)}px`,
+        width: `${popoverWidth}px`,
+        zIndex: 9999,
+      });
+    } else {
+      setPopoverStyle({
+        position: 'fixed',
+        left: `${clampedLeft}px`,
+        top: `${Math.min(rect.bottom + 8, viewportH - 320)}px`,
+        width: `${popoverWidth}px`,
+        zIndex: 9999,
+      });
+    }
+  }, []);
 
   // Parse initial view date
   const initialDate = useMemo(() => {
@@ -104,12 +140,17 @@ export const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({
     }
   }, [value]);
 
-  // Click-outside and Escape key to close
+  // Click-outside, Escape key, resize, and ancestor scroll to close cleanly
   useEffect(() => {
     if (!isOpen) return;
 
+    updatePopoverPosition();
+
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inTrigger = containerRef.current?.contains(target);
+      const inPopover = popoverRef.current?.contains(target);
+      if (!inTrigger && !inPopover) {
         setIsOpen(false);
       }
     };
@@ -120,16 +161,32 @@ export const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({
       }
     };
 
+    const handleResize = () => {
+      setIsOpen(false);
+    };
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as Node | null;
+      if (target && popoverRef.current?.contains(target)) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('touchstart', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleScroll, true);
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('touchstart', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll, true);
     };
-  }, [isOpen]);
+  }, [isOpen, updatePopoverPosition]);
 
   // Month navigation
   const handlePrevMonth = () => {
@@ -324,9 +381,20 @@ export const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({
         </div>
       </div>
 
-      {/* Floating Pop-up Calendar Dropdown */}
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-72 sm:w-80 p-3.5 bg-white dark:bg-[#121822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      {/* Floating Pop-up Calendar Dropdown (Portal to document.body to prevent modal overflow clipping) */}
+      {isOpen &&
+        popoverStyle &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="ปฏิทินเลือกวันที่"
+            style={popoverStyle}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className="p-3.5 bg-white dark:bg-[#121822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+          >
           {/* Header: Month & Year Selector in Buddhist Era */}
           <div className="flex items-center justify-between gap-1 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800">
             <button
@@ -442,7 +510,8 @@ export const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

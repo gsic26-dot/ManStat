@@ -143,6 +143,10 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  return POST(request);
+}
+
 export async function DELETE(request: Request) {
   try {
     const adminSession = await verifyAdminSession();

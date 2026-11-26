@@ -738,6 +738,16 @@ export function boardMemberToDb(b: BoardMemberRecord) {
       ? Boolean(b.isExOfficio)
       : boardPosition === 'DIRECTOR_SEC';
 
+  const toNullableDate = (val?: string | null): string | null => {
+    if (!val || typeof val !== 'string') return null;
+    const trimmed = val.trim();
+    return trimmed === '' ? null : trimmed;
+  };
+
+  const normalizedAppointmentDate = toNullableDate(b.appointmentDate || (b as any).start_date);
+  const normalizedStartDate = toNullableDate((b as any).start_date || b.appointmentDate);
+  const normalizedEndDate = toNullableDate(b.endDate);
+
   return {
     member_id: memberId,
     full_name: formatStaffName(b.fullName || ''),
@@ -752,10 +762,10 @@ export function boardMemberToDb(b: BoardMemberRecord) {
     status: b.status || 'ดำรงตำแหน่ง',
     term_number: Number(b.termNumber) || 1,
     is_ex_officio: isExOfficio,
-    appointment_date: b.appointmentDate || (b as any).start_date || '',
-    start_date: (b as any).start_date || b.appointmentDate || '',
-    end_date: b.endDate || '',
-    end_reason: endReason,
+    appointment_date: normalizedAppointmentDate,
+    start_date: normalizedStartDate,
+    end_date: normalizedEndDate,
+    end_reason: endReason || null,
   };
 }
 

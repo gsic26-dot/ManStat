@@ -23,7 +23,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { BOARD_STATUTORY_ORDER, BoardMemberRecord, type TeacherRecord } from '@/lib/data/schoolData';
+import { BOARD_STATUTORY_ORDER, BoardMemberRecord } from '@/lib/data/schoolData';
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { PhoneShield } from '@/components/security/PhoneShield';
@@ -111,47 +111,14 @@ export const ViewSchoolBoard: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    Promise.all([
-      fetch('/api/admin/board', { cache: 'no-store' })
-        .then((res) => res.json())
-        .catch(() => ({ success: false, data: [] })),
-      fetch('/api/admin/staff', { cache: 'no-store' })
-        .then((res) => res.json())
-        .catch(() => ({ success: false, data: [] })),
-    ])
-      .then(([boardJson, staffJson]) => {
-        if (!isMounted) return;
-        const staffList: TeacherRecord[] =
-          staffJson?.success && Array.isArray(staffJson.data) ? staffJson.data : [];
-        const director = staffList.find(
-          (t) =>
-            (t.position || '').includes('ผู้อำนวยการ') ||
-            t.employeeCode === 'EXE-001'
-        );
-
-        if (boardJson?.success && Array.isArray(boardJson.data)) {
-          const normalized = boardJson.data.map((raw: any) => {
-            const member = normalizeMember(raw);
-            if (member.isExOfficio || member.position === 'DIRECTOR_SEC') {
-              // Safe fallback order: director.currentPositionDate -> board.appointmentDate -> director.startDate (hireDate)
-              const syncedAppointmentDate =
-                (director?.currentPositionDate && director.currentPositionDate.trim() !== ''
-                  ? director.currentPositionDate
-                  : undefined) ||
-                member.appointmentDate ||
-                (director?.startDate && director.startDate.trim() !== ''
-                  ? director.startDate
-                  : undefined);
-              return {
-                ...member,
-                appointmentDate: syncedAppointmentDate,
-              };
-            }
-            return member;
-          });
-          setBoardList(normalized);
+    fetch('/api/admin/board', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && Array.isArray(json.data) && isMounted) {
+          setBoardList(json.data.map(normalizeMember));
         }
       })
+      .catch(() => {})
       .finally(() => {
         if (isMounted) setIsLoading(false);
       });

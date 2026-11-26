@@ -389,7 +389,7 @@ export default function AdminPage() {
         body: JSON.stringify({ ...schoolInfo, activeClasses }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setSchoolInfo(data.data);
         if (Array.isArray(data.data.activeClasses)) {
           setActiveClasses(data.data.activeClasses);
@@ -417,7 +417,7 @@ export default function AdminPage() {
         body: JSON.stringify({ name: newHolidayName, date: newHolidayDate }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setHolidays(data.data);
         setNewHolidayName('');
         setNewHolidayDate('');
@@ -630,7 +630,7 @@ export default function AdminPage() {
         body: JSON.stringify(updatedStaff),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         const savedItem: TeacherRecord = data.data;
         if (isNewStaff) {
           setTeachers((prev) => [savedItem, ...prev]);
@@ -877,7 +877,8 @@ export default function AdminPage() {
       (t) =>
         (t.position && (t.position.includes('ผู้อำนวยการ') || t.position.includes('ผอ.'))) ||
         (t.role && (t.role.includes('ผู้อำนวยการ') || t.role.includes('ผอ.'))) ||
-        t.id === 'EXE-001'
+        t.id === 'EXE-001' ||
+        t.employeeCode === 'EXE-001'
     );
 
     if (!directorTeacher) {
@@ -885,44 +886,42 @@ export default function AdminPage() {
       return;
     }
 
-    // 2. ค้นหาใน standings ของ ผอ. เฉพาะรายการที่ level มีคำว่า ผู้อำนวยการ หรือ ผอ. เรียงตาม effectiveDate ล่าสุด
-    const directorStandings = (directorTeacher.standings || [])
-      .filter((s) => s.level && (s.level.includes('ผู้อำนวยการ') || s.level.includes('ผอ.')))
-      .sort((a, b) => (b.effectiveDate || '').localeCompare(a.effectiveDate || ''));
+    // 2. ใช้ currentPositionDate เป็นหลัก และ fallback ไปที่ startDate (วันบรรจุ) เฉพาะเมื่อ currentPositionDate ว่าง
+    const syncedDate =
+      (directorTeacher.currentPositionDate && directorTeacher.currentPositionDate.trim() !== ''
+        ? directorTeacher.currentPositionDate.trim()
+        : '') ||
+      (directorTeacher.startDate && directorTeacher.startDate.trim() !== ''
+        ? directorTeacher.startDate.trim()
+        : '');
 
-    const latestDirectorStanding = directorStandings[0];
+    const isFromCurrentPosDate = Boolean(
+      directorTeacher.currentPositionDate && directorTeacher.currentPositionDate.trim() !== ''
+    );
 
-    // 3. System Guard: ห้ามดึง startDate (วันบรรจุรับราชการ/ครูผู้ช่วย) มาใส่ใน appointmentDate เด็ดขาด!
-    if (!latestDirectorStanding || !latestDirectorStanding.effectiveDate) {
-      showToast('ไม่พบวันที่แต่งตั้ง ผอ. ในประวัติ กรุณาเลือกวันที่ด้วยตนเอง', 'info');
-      setSelectedBoardMember((prev) =>
-        prev
-          ? {
-              ...prev,
-              fullName: formatStaffName(directorTeacher),
-              organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
-              occupation: 'ผู้อำนวยการสถานศึกษา',
-              phone: directorTeacher.phone || prev.phone,
-            }
-          : null
-      );
-      return;
-    }
-
-    // เติมค่าจากรายการแต่งตั้ง ผอ. ล่าสุด
     setSelectedBoardMember((prev) =>
       prev
         ? {
             ...prev,
             fullName: formatStaffName(directorTeacher),
-            appointmentDate: latestDirectorStanding.effectiveDate,
+            appointmentDate: syncedDate || prev.appointmentDate || '',
             organization: prev.organization || schoolInfo.schoolName || 'โรงเรียนชุมชนบ้านตะขบ',
             occupation: 'ผู้อำนวยการสถานศึกษา',
             phone: directorTeacher.phone || prev.phone,
           }
         : null
     );
-    showToast(`ซิงก์ข้อมูล ผอ. สำเร็จ (วันดำรงตำแหน่ง: ${latestDirectorStanding.effectiveDate})`, 'success');
+
+    if (syncedDate) {
+      showToast(
+        `ซิงก์ข้อมูล ผอ. เรียบร้อย (${
+          isFromCurrentPosDate ? 'วันที่ดำรงตำแหน่งปัจจุบัน' : 'วันบรรจุ'
+        }: ${formatThaiDateDisplay(syncedDate)}) — ตรวจสอบและกดบันทึกเพื่อยืนยัน`,
+        'success'
+      );
+    } else {
+      showToast('ซิงก์ชื่อและเบอร์โทร ผอ. แล้ว (ไม่พบวันที่ในทะเบียนบุคลากร กรุณาเลือกวันที่เอง)', 'info');
+    }
   };
 
   // School Board Handlers
@@ -961,7 +960,7 @@ export default function AdminPage() {
         body: JSON.stringify(selectedBoardMember),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         const savedMember: BoardMemberRecord = data.data;
         if (isNewBoardMember) {
           setBoardMembers((prev) => [...prev, savedMember]);
@@ -2586,9 +2585,9 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-slate-400 mb-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                      <div className="sm:col-span-2">
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">
                           ประเภทบุคลากร <span className="text-sky-500 font-semibold">*</span>
                         </label>
                         <select
@@ -2601,7 +2600,7 @@ export default function AdminPage() {
                               academicStanding: newType === 'temporary_employee' ? '-' : selectedStaff.academicStanding,
                             });
                           }}
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-medium"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white font-medium"
                         >
                           <option value="civil_servant">ข้าราชการครูและบุคลากรทางการศึกษา</option>
                           <option value="government_employee">พนักงานราชการ</option>
@@ -2609,13 +2608,13 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-slate-400 mb-1">ตำแหน่งมาตรฐาน สพฐ.</label>
+                        <label className="block text-slate-600 dark:text-slate-400 mb-1">ตำแหน่งมาตรฐาน สพฐ.</label>
                         <select
                           value={selectedStaff.position}
                           onChange={(e) =>
                             setSelectedStaff({ ...selectedStaff, position: e.target.value })
                           }
-                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white"
+                          className="w-full bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-900 dark:text-white"
                         >
                           {TEACHER_ROLES.map((role) => (
                             <option key={role} value={role}>
@@ -2626,7 +2625,7 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block text-slate-400">
+                          <label className="block text-slate-600 dark:text-slate-400">
                             วิทยฐานะ
                             {selectedStaff.employment_type === 'temporary_employee' && (
                               <span className="text-[10px] text-amber-500 ml-1">(เฉพาะข้าราชการ)</span>
@@ -2721,7 +2720,7 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                       <div>
                         <label className="block text-slate-600 dark:text-slate-400 mb-1">วิชาเอก</label>
                         <div className="space-y-1.5">
@@ -3621,7 +3620,7 @@ export default function AdminPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                         เบอร์โทรศัพท์ (PDPA)
@@ -3636,7 +3635,7 @@ export default function AdminPage() {
                             phone: e.target.value,
                           })
                         }
-                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                        className="w-full h-10 bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                       />
                     </div>
 
@@ -3653,9 +3652,9 @@ export default function AdminPage() {
                           })
                         }
                       />
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                        ใช้นับระยะเวลาปฏิบัติหน้าที่
-                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 mt-1.5 break-words">
+                        ใช้นับระยะเวลาปฏิบัติหน้าที่กรรมการโดยตำแหน่ง
+                      </p>
                     </div>
 
                     <div>
@@ -3670,7 +3669,7 @@ export default function AdminPage() {
                             status: e.target.value,
                           })
                         }
-                        className="w-full bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
+                        className="w-full h-10 bg-white dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
                       >
                         <option value="ดำรงตำแหน่ง">ดำรงตำแหน่ง</option>
                         <option value="พ้นจากตำแหน่ง">พ้นจากตำแหน่ง</option>
