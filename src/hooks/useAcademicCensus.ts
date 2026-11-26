@@ -181,9 +181,9 @@ export function useAcademicCensus(schoolId: string = '30030099'): UseAcademicCen
     [schoolId, fetchData]
   );
 
-  // Action: Delete Academic Year (Requires master password '123456')
+  // Action: Delete Academic Year (Requires typing the exact Buddhist year to confirm)
   const deleteYear = useCallback(
-    async (yearId: string, password: string): Promise<boolean> => {
+    async (yearId: string, confirmYearTh: string): Promise<boolean> => {
       try {
         setError(null);
         const res = await fetch('/api/admin/academic', {
@@ -191,7 +191,7 @@ export function useAcademicCensus(schoolId: string = '30030099'): UseAcademicCen
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'DELETE_YEAR',
-            payload: { yearId, password, schoolId },
+            payload: { yearId, confirmYearTh, schoolId },
           }),
         });
         const json = await res.json();

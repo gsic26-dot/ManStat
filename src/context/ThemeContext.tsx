@@ -94,23 +94,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const resolved = newMode === 'auto' ? resolveTimeBasedTheme() : newMode;
     setResolvedTheme(resolved);
     applyThemeToDocument(resolved);
-
-    // Asynchronous background sync to server API (only when not on public /login or /verify page)
-    try {
-      if (
-        typeof window !== 'undefined' &&
-        window.location.pathname !== '/login' &&
-        !window.location.pathname.startsWith('/verify')
-      ) {
-        fetch('/api/admin/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ themeMode: newMode }),
-        }).catch(() => {});
-      }
-    } catch {
-      // ignore network errors
-    }
   }, []);
 
   // Timer interval for 'auto' mode: checks clock every 60 seconds

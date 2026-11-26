@@ -37,7 +37,11 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 
 interface UserSettingsContextType {
   preferences: UserPreferences;
-  updatePreferences: (partial: Partial<UserPreferences>) => Promise<void>;
+  updatePreferences: (
+    partial: Partial<UserPreferences>,
+    options?: { persistGlobal?: boolean }
+  ) => Promise<void>;
+  saveGlobalSettings: () => Promise<boolean>;
   resetPreferences: () => Promise<void>;
   syncStatus: SyncStatus;
   userId: string | null;
@@ -114,7 +118,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       } catch {}
 
-      // Fetch from Server DB API first
+      // Fetch global school defaults from Server DB API (never override user's explicit local theme)
       try {
         const res = await fetch('/api/admin/settings', { cache: 'no-store' });
         const json = await res.json();
@@ -123,16 +127,13 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setPreferences((prev) => {
             const next: UserPreferences = {
               ...prev,
-              preferred_view: s.preferredView || prev.preferred_view,
+              preferred_view: prev.preferred_view || s.preferredView || 'table',
               compact_mode: s.compactMode !== undefined ? s.compactMode : prev.compact_mode,
               mask_citizen_id: s.maskCitizenId !== undefined ? s.maskCitizenId : prev.mask_citizen_id,
             };
-            if (s.themeMode) {
+            if (!hasExplicitLocalTheme && s.themeMode) {
               next.theme_mode = s.themeMode;
               setThemeMode(s.themeMode);
-              try {
-                localStorage.setItem('manstat-theme-mode', s.themeMode);
-              } catch {}
             }
             return next;
           });
@@ -199,9 +200,9 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [pathname, setThemeMode]);
 
-  // 3. Update preferences handler (Instant UI update + localStorage + server DB sync)
+  // 3. Update personal UI preferences (localStorage + ThemeContext; only POST global settings when explicitly requested)
   const updatePreferences = useCallback(
-    async (partial: Partial<UserPreferences>) => {
+    async (partial: Partial<UserPreferences>, options?: { persistGlobal?: boolean }) => {
       const updated: UserPreferences = {
         ...preferences,
         ...partial,
@@ -210,12 +211,12 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // A. Update local React state immediately
       setPreferences(updated);
 
-      // B. If theme_mode changed, notify ThemeContext
+      // B. If theme_mode changed, notify ThemeContext (local-only, zero POST)
       if (partial.theme_mode && partial.theme_mode !== themeMode) {
         setThemeMode(partial.theme_mode);
       }
 
-      // C. Save to localStorage immediately
+      // C. Save personal preferences to localStorage immediately
       try {
         const userKey = getStorageKey(userId);
         localStorage.setItem(userKey, JSON.stringify(updated));
@@ -224,47 +225,42 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.warn('[UserSettings] Failed saving to localStorage:', e);
       }
 
-      // D. Persist to Server DB API
-      setSyncStatus('syncing');
-      try {
-        const res = await fetch('/api/admin/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            themeMode: updated.theme_mode,
-            preferredView: updated.preferred_view,
-            compactMode: updated.compact_mode,
-            maskCitizenId: updated.mask_citizen_id,
-          }),
-        });
-        const json = await res.json().catch(() => null);
-        if (res.ok && json?.success) {
-          setSyncStatus('synced');
-          if (updated.theme_mode) {
-            try {
-              localStorage.setItem('manstat-theme-mode', updated.theme_mode);
-            } catch {}
+      // D. Only persist global school-wide admin settings when explicitly requested by an admin
+      if (options?.persistGlobal) {
+        setSyncStatus('syncing');
+        try {
+          const res = await fetch('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              themeMode: updated.theme_mode,
+              preferredView: updated.preferred_view,
+              compactMode: updated.compact_mode,
+              maskCitizenId: updated.mask_citizen_id,
+            }),
+          });
+          const json = await res.json().catch(() => null);
+          if (res.ok && json?.success) {
+            setSyncStatus('synced');
+          } else {
+            setSyncStatus('local_only');
+            console.warn('[UserSettings] Server settings rejected or unauthorized:', json?.error);
           }
-        } else {
+        } catch (e) {
           setSyncStatus('local_only');
-          console.warn('[UserSettings] Server settings rejected or unauthorized:', json?.error);
+          console.warn('[UserSettings] Failed saving to /api/admin/settings:', e);
         }
-      } catch (e) {
+      } else {
         setSyncStatus('local_only');
-        console.warn('[UserSettings] Failed saving to /api/admin/settings:', e);
       }
 
-      // E. Sync to Supabase if authenticated
+      // E. Sync personal preferences to Supabase user metadata if authenticated
       if (userId) {
         try {
           const supabase = createClient();
           await supabase.auth.updateUser({
             data: { preferences: updated },
           });
-          await supabase
-            .from('staff')
-            .update({ preferences: updated as any })
-            .eq('id', userId);
         } catch {
           // ignore
         }
@@ -273,9 +269,36 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [preferences, themeMode, userId, setThemeMode]
   );
 
-  // 4. Reset preferences to school system defaults
+  // Explicit global system settings save (Admin Center SystemSettingsTab)
+  const saveGlobalSettings = useCallback(async (): Promise<boolean> => {
+    setSyncStatus('syncing');
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          themeMode: preferences.theme_mode,
+          preferredView: preferences.preferred_view,
+          compactMode: preferences.compact_mode,
+          maskCitizenId: preferences.mask_citizen_id,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) {
+        setSyncStatus('synced');
+        return true;
+      }
+      setSyncStatus('local_only');
+      return false;
+    } catch {
+      setSyncStatus('local_only');
+      return false;
+    }
+  }, [preferences]);
+
+  // 4. Reset personal preferences to defaults
   const resetPreferences = useCallback(async () => {
-    await updatePreferences(DEFAULT_PREFERENCES);
+    await updatePreferences(DEFAULT_PREFERENCES, { persistGlobal: false });
   }, [updatePreferences]);
 
   return (
@@ -283,6 +306,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       value={{
         preferences,
         updatePreferences,
+        saveGlobalSettings,
         resetPreferences,
         syncStatus,
         userId,

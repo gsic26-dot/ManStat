@@ -17,7 +17,7 @@
  * ============================================================================
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sliders,
   Sun,
@@ -32,12 +32,19 @@ import {
   HardDrive,
   Loader2,
   RefreshCw,
-  Sparkles,
+  Save,
 } from 'lucide-react';
 import { useUserSettings } from '@/context/UserSettingsContext';
 
 export const SystemSettingsTab: React.FC = () => {
-  const { preferences, updatePreferences, resetPreferences, syncStatus } = useUserSettings();
+  const { preferences, updatePreferences, saveGlobalSettings, resetPreferences, syncStatus } = useUserSettings();
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const handleSaveGlobal = async () => {
+    const ok = await saveGlobalSettings();
+    setSaveMessage(ok ? 'บันทึกค่าเริ่มต้นทั้งระบบเรียบร้อยแล้ว' : 'ไม่สามารถบันทึกค่าเริ่มต้นทั้งระบบได้');
+    setTimeout(() => setSaveMessage(null), 3500);
+  };
 
   return (
     <div className="space-y-6">
@@ -56,30 +63,48 @@ export const SystemSettingsTab: React.FC = () => {
           </p>
         </div>
 
-        {/* Sync Status Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#101822] border border-slate-200/80 dark:border-slate-800 text-xs self-start sm:self-auto">
-          <Cloud className="w-4 h-4 text-sky-500 shrink-0" />
-          <span className="text-slate-500 dark:text-slate-400">สถานะคลาวด์:</span>
-          {syncStatus === 'synced' && (
-            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>ซิงค์กับ Supabase แล้ว</span>
-            </span>
-          )}
-          {syncStatus === 'syncing' && (
-            <span className="inline-flex items-center gap-1 font-medium text-sky-600 dark:text-sky-400">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>กำลังบันทึก...</span>
-            </span>
-          )}
-          {syncStatus === 'local_only' && (
-            <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-              <HardDrive className="w-3.5 h-3.5" />
-              <span>บันทึกในอุปกรณ์ (Local)</span>
-            </span>
-          )}
+        {/* Sync Status & Explicit Global Save */}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#101822] border border-slate-200/80 dark:border-slate-800 text-xs">
+            <Cloud className="w-4 h-4 text-sky-500 shrink-0" />
+            <span className="text-slate-500 dark:text-slate-400">สถานะ:</span>
+            {syncStatus === 'synced' && (
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>ซิงค์ทั้งระบบแล้ว</span>
+              </span>
+            )}
+            {syncStatus === 'syncing' && (
+              <span className="inline-flex items-center gap-1 font-medium text-sky-600 dark:text-sky-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>กำลังบันทึก...</span>
+              </span>
+            )}
+            {syncStatus === 'local_only' && (
+              <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                <HardDrive className="w-3.5 h-3.5" />
+                <span>บันทึกในอุปกรณ์ (Local)</span>
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={syncStatus === 'syncing'}
+            onClick={handleSaveGlobal}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5 shrink-0" />
+            <span>บันทึกค่าเริ่มต้นทั้งระบบ</span>
+          </button>
         </div>
       </div>
+
+      {saveMessage && (
+        <div className="px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{saveMessage}</span>
+        </div>
+      )}
 
       {/* Main Settings Sections Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

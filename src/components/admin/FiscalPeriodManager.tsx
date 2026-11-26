@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Lock,
   Unlock,
@@ -34,6 +34,7 @@ interface FiscalPeriodManagerProps {
   schoolId?: string;
   teachers?: TeacherRecord[];
   onPeriodChange?: (activeFiscalYear: number) => void;
+  onMutated?: () => void;
   showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -41,6 +42,7 @@ export function FiscalPeriodManager({
   schoolId = '30030099',
   teachers = [],
   onPeriodChange,
+  onMutated,
   showToast,
 }: FiscalPeriodManagerProps) {
   const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodRecord[]>([]);
@@ -48,6 +50,14 @@ export function FiscalPeriodManager({
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Refs to prevent callback identity changes from triggering re-fetch loops
+  const onPeriodChangeRef = useRef(onPeriodChange);
+  const showToastRef = useRef(showToast);
+  useEffect(() => {
+    onPeriodChangeRef.current = onPeriodChange;
+    showToastRef.current = showToast;
+  }, [onPeriodChange, showToast]);
 
   // Modal / Confirm state for activating period
   const [confirmModalPeriod, setConfirmModalPeriod] = useState<FiscalPeriodRecord | null>(null);
@@ -78,16 +88,16 @@ export function FiscalPeriodManager({
       });
 
       const activePeriod = periods.find((p) => p.isActive);
-      if (activePeriod && onPeriodChange) {
-        onPeriodChange(activePeriod.fiscalYearTh);
+      if (activePeriod && onPeriodChangeRef.current) {
+        onPeriodChangeRef.current(activePeriod.fiscalYearTh);
       }
     } catch (err: any) {
       console.error('[FiscalPeriodManager fetchPeriods Error]', err);
-      showToast(err.message || 'เกิดข้อผิดพลาดในการโหลดรอบปีงบประมาณ', 'error');
+      showToastRef.current(err.message || 'เกิดข้อผิดพลาดในการโหลดรอบปีงบประมาณ', 'error');
     } finally {
       setLoading(false);
     }
-  }, [schoolId, onPeriodChange, showToast]);
+  }, [schoolId]);
 
   useEffect(() => {
     fetchPeriods();
@@ -121,6 +131,7 @@ export function FiscalPeriodManager({
       );
       setConfirmModalPeriod(null);
       await fetchPeriods();
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -165,8 +176,9 @@ export function FiscalPeriodManager({
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'ไม่สามารถสร้างรอบปีงบประมาณใหม่ได้');
       }
-      showToast(`สร้างรอบปีงบฯ ${nextYear} (${nextRound === 1 ? '1 เม.ย.' : '1 ต.ค.'}) สำเร็จ`, 'success');
+      showToast(`สร้างรอบปีงบฯ ${nextYear} (${nextRound === 1 ? '1 ต.ค.' : '1 เม.ย.'}) สำเร็จ`, 'success');
       await fetchPeriods();
+      onMutated?.();
       if (json.data?.id) {
         setSelectedPeriodId(json.data.id);
       }
@@ -200,6 +212,7 @@ export function FiscalPeriodManager({
       }
       showToast(newLockState ? 'ล็อกรอบปีงบประมาณนี้แล้ว' : 'ปลดล็อกรอบปีงบประมาณแล้ว', 'success');
       await fetchPeriods();
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -232,6 +245,7 @@ export function FiscalPeriodManager({
       }
       showToast('อัปเดตรอบข้อมูลนักเรียนอ้างอิงแล้ว', 'success');
       await fetchPeriods();
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message, 'error');
     }
@@ -264,6 +278,7 @@ export function FiscalPeriodManager({
       }
       showToast(`ตั้งเวลาเปิดประเมินอัตโนมัติก่อนสิ้นรอบเป็น ${safeDays} วันแล้ว`, 'success');
       await fetchPeriods();
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {

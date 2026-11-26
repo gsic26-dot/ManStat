@@ -140,10 +140,24 @@ export async function POST(request: Request) {
       }
 
       case 'DELETE_YEAR': {
-        const { yearId, password, schoolId = '30030099' } = payload;
-        if (password !== '123456') {
+        const { yearId, confirmYearTh, schoolId = '30030099' } = payload;
+        const years = await dbGetAcademicYears(schoolId);
+        const targetYear = years.find((y) => y.id === yearId);
+        if (!targetYear) {
           return NextResponse.json(
-            { success: false, error: 'รหัสผ่านยืนยันไม่ถูกต้อง (กรุณากรอก 123456)' },
+            { success: false, error: 'ไม่พบปีการศึกษาที่ต้องการลบ' },
+            { status: 404 }
+          );
+        }
+        if (targetYear.isActive) {
+          return NextResponse.json(
+            { success: false, error: 'ไม่สามารถลบปีการศึกษาที่กำลังใช้งานอยู่ได้' },
+            { status: 400 }
+          );
+        }
+        if (String(confirmYearTh ?? '').trim() !== String(targetYear.yearTh)) {
+          return NextResponse.json(
+            { success: false, error: 'กรุณาพิมพ์ปีการศึกษาที่ต้องการลบให้ตรงกันเพื่อยืนยัน' },
             { status: 403 }
           );
         }
@@ -153,7 +167,7 @@ export async function POST(request: Request) {
           actorName,
           actorRole,
           schoolId,
-          `ลบปีการศึกษา ID: ${yearId}`
+          `ลบปีการศึกษา พ.ศ. ${targetYear.yearTh} (ID: ${yearId})`
         );
         return NextResponse.json({ success: true, message: 'ลบปีการศึกษาเรียบร้อยแล้ว' });
       }

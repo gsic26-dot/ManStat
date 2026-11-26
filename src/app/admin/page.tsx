@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
@@ -52,7 +52,6 @@ import {
 import { formatServiceDuration } from '@/lib/regulations/fiscal-and-retirement';
 import { formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
-import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { SystemSettingsTab } from '@/components/settings/SystemSettingsTab';
 import { UserProfileDropdown } from '@/components/navigation/UserProfileDropdown';
 import { SchoolAcademicManager } from '@/components/admin/SchoolAcademicManager';
@@ -173,7 +172,6 @@ export interface AuditLogRecord {
 }
 
 export default function AdminPage() {
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     'staff' | 'board' | 'school' | 'fiscal' | 'audit' | 'preferences'
   >('staff');
@@ -187,12 +185,12 @@ export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentRole, setCurrentRole] = useState<string>('superuser');
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
       setToast((current) => (current?.message === message ? null : current));
     }, 4000);
-  };
+  }, []);
 
   // Staff State
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
@@ -241,7 +239,7 @@ export default function AdminPage() {
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
-  const [holidayYearFilter, setHolidayYearFilter] = useState<'ALL' | '2569' | '2570'>('ALL');
+  const [holidayYearFilter, setHolidayYearFilter] = useState<string>('ALL');
   const [holidaySearch, setHolidaySearch] = useState('');
 
   // Real Immutable Audit Logs from Database
@@ -261,8 +259,8 @@ export default function AdminPage() {
     return filteredAndSortedAuditLogs.slice(start, start + AUDIT_PAGE_SIZE);
   }, [filteredAndSortedAuditLogs, auditCurrentPage]);
 
-  // Function to refresh audit logs
-  const refreshAuditLogs = async () => {
+  // Function to refresh audit logs (stabilized with useCallback)
+  const refreshAuditLogs = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/audit', { cache: 'no-store' });
       const data = await res.json();
@@ -272,7 +270,36 @@ export default function AdminPage() {
     } catch {
       // silent
     }
-  };
+  }, []);
+
+  const handleSemesterChange = useCallback((term: string) => {
+    setSchoolInfo((prev) => ({ ...prev, currentTerm: term }));
+  }, []);
+
+  const handleSyncSchoolInfo = useCallback(
+    ({
+      academicYear,
+      studentCount,
+      activeClasses: syncedClasses,
+    }: {
+      academicYear: string;
+      studentCount: number;
+      activeClasses: string[];
+    }) => {
+      setSchoolInfo((prev) => ({
+        ...prev,
+        academicYear,
+        studentCount,
+        activeClasses: syncedClasses,
+      }));
+      setActiveClasses(syncedClasses);
+    },
+    []
+  );
+
+  const handlePeriodChange = useCallback((activeYear: number) => {
+    setFiscalYearBE(activeYear);
+  }, []);
 
   // Initial Load from Persistent Database
   useEffect(() => {
@@ -299,13 +326,15 @@ export default function AdminPage() {
             })
             .catch(() => {});
 
+          // Purge any legacy PDPA-risk localStorage teacher PII cache
+          try {
+            localStorage.removeItem('manstat_admin_teachers');
+          } catch {
+            // ignore
+          }
+
           if (staffRes?.success && Array.isArray(staffRes.data)) {
             setTeachers(staffRes.data);
-            try {
-              localStorage.setItem('manstat_admin_teachers', JSON.stringify(staffRes.data));
-            } catch {
-              // ignore
-            }
           }
           if (boardRes?.success && Array.isArray(boardRes.data)) {
             setBoardMembers(boardRes.data);
@@ -414,13 +443,39 @@ export default function AdminPage() {
     }
   };
 
-  const count2569 = useMemo(() => holidays.filter((h) => h.date.startsWith('2026')).length, [holidays]);
-  const count2570 = useMemo(() => holidays.filter((h) => h.date.startsWith('2027')).length, [holidays]);
+  // Dynamic holiday years derived from holiday records + active fiscal year
+  const holidayYearOptions = useMemo(() => {
+    const yearSet = new Set<number>();
+    const currentYearBE = new Date().getFullYear() + 543;
+    yearSet.add(currentYearBE);
+    if (fiscalYearBE) yearSet.add(fiscalYearBE);
+    holidays.forEach((h) => {
+      if (h.date && h.date.length >= 4) {
+        const ce = parseInt(h.date.slice(0, 4), 10);
+        if (!Number.isNaN(ce)) yearSet.add(ce + 543);
+      }
+    });
+    return Array.from(yearSet)
+      .sort((a, b) => a - b)
+      .map((yearBE) => {
+        const cePrefix = String(yearBE - 543);
+        const count = holidays.filter((h) => h.date.startsWith(cePrefix)).length;
+        return { yearBE: String(yearBE), cePrefix, count };
+      });
+  }, [holidays, fiscalYearBE]);
+
+  const holidayYearRangeLabel = useMemo(() => {
+    if (holidayYearOptions.length === 0) return `พ.ศ. ${fiscalYearBE}`;
+    if (holidayYearOptions.length === 1) return `พ.ศ. ${holidayYearOptions[0].yearBE}`;
+    return `พ.ศ. ${holidayYearOptions[0].yearBE} - ${holidayYearOptions[holidayYearOptions.length - 1].yearBE}`;
+  }, [holidayYearOptions, fiscalYearBE]);
 
   const filteredHolidays = useMemo(() => {
     return holidays.filter((h) => {
-      if (holidayYearFilter === '2569' && !h.date.startsWith('2026')) return false;
-      if (holidayYearFilter === '2570' && !h.date.startsWith('2027')) return false;
+      if (holidayYearFilter !== 'ALL') {
+        const targetCE = String(Number(holidayYearFilter) - 543);
+        if (!h.date.startsWith(targetCE)) return false;
+      }
       if (holidaySearch.trim()) {
         const q = holidaySearch.toLowerCase().trim();
         const matchesName = h.name.toLowerCase().includes(q);
@@ -438,29 +493,6 @@ export default function AdminPage() {
     const date = new Date(y, m - 1, d);
     const days = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
     return days[date.getDay()] || '';
-  };
-
-  const handleSaveFiscalYear = async () => {
-    setIsSaving(true);
-    try {
-      const res = await fetch('/api/admin/school', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...schoolInfo, fiscalYear: String(fiscalYearBE), activeClasses }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSchoolInfo(data.data);
-        showToast(`บันทึกปีงบประมาณ ${fiscalYearBE} เรียบร้อยแล้ว`, 'success');
-        refreshAuditLogs();
-      } else {
-        showToast(data.error || 'บันทึกปีงบประมาณไม่สำเร็จ', 'error');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   // Staff Handlers
@@ -575,21 +607,15 @@ export default function AdminPage() {
       if (data.success) {
         const savedItem: TeacherRecord = data.data;
         if (isNewStaff) {
-          setTeachers((prev) => {
-            const next = [savedItem, ...prev];
-            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
-            return next;
-          });
+          setTeachers((prev) => [savedItem, ...prev]);
         } else {
-          setTeachers((prev) => {
-            const next = prev.map((t) =>
+          setTeachers((prev) =>
+            prev.map((t) =>
               t.id === savedItem.id || (savedItem.employeeCode && t.employeeCode === savedItem.employeeCode)
                 ? savedItem
                 : t
-            );
-            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
-            return next;
-          });
+            )
+          );
         }
         showToast('บันทึกข้อมูลบุคลากรลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
         refreshAuditLogs();
@@ -601,7 +627,6 @@ export default function AdminPage() {
           .then((sRes) => {
             if (sRes?.success && Array.isArray(sRes.data)) {
               setTeachers(sRes.data);
-              try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(sRes.data)); } catch {}
             }
           })
           .catch(() => {});
@@ -645,11 +670,7 @@ export default function AdminPage() {
         });
         const data = await res.json();
         if (data.success) {
-          setTeachers((prev) => {
-            const next = prev.filter((t) => t.id !== staffId);
-            try { localStorage.setItem('manstat_admin_teachers', JSON.stringify(next)); } catch {}
-            return next;
-          });
+          setTeachers((prev) => prev.filter((t) => t.id !== staffId));
           if (selectedStaff?.id === staffId) {
             setIsStaffModalOpen(false);
           }
@@ -1805,16 +1826,9 @@ export default function AdminPage() {
                   schoolId={schoolInfo.schoolCode8 || '30030099'}
                   currentActiveClasses={activeClasses}
                   currentTerm={schoolInfo.currentTerm}
-                  onSemesterChange={(term) => setSchoolInfo((prev) => ({ ...prev, currentTerm: term }))}
-                  onSyncSchoolInfo={({ academicYear, studentCount, activeClasses: syncedClasses }) => {
-                    setSchoolInfo((prev) => ({
-                      ...prev,
-                      academicYear,
-                      studentCount,
-                      activeClasses: syncedClasses,
-                    }));
-                    setActiveClasses(syncedClasses);
-                  }}
+                  onSemesterChange={handleSemesterChange}
+                  onSyncSchoolInfo={handleSyncSchoolInfo}
+                  onMutated={refreshAuditLogs}
                   showToast={showToast}
                 />
               </div>
@@ -1841,7 +1855,8 @@ export default function AdminPage() {
             <FiscalPeriodManager
               schoolId={schoolInfo.schoolCode8 || '30030099'}
               teachers={teachers}
-              onPeriodChange={(activeYear) => setFiscalYearBE(activeYear)}
+              onPeriodChange={handlePeriodChange}
+              onMutated={refreshAuditLogs}
               showToast={showToast}
             />
 
@@ -1895,7 +1910,7 @@ export default function AdminPage() {
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
-                    <span>ปฏิทินวันหยุดราชการ (พ.ศ. 2569 - 2570)</span>
+                    <span>ปฏิทินวันหยุดราชการ ({holidayYearRangeLabel})</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     นำไปหักลบออกจากวันลาทำการจริงโดยอัตโนมัติ ตามระเบียบสำนักนายกรัฐมนตรี
@@ -1911,11 +1926,11 @@ export default function AdminPage() {
               {/* Filter Toolbar (Segmented Year Pills + Search) */}
               <div className="p-3 bg-white dark:bg-[#111822] border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 {/* Year Filter Pills */}
-                <div className="inline-flex p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg shrink-0">
+                <div className="inline-flex flex-wrap p-1 bg-slate-100 dark:bg-[#0b1016] border border-slate-200/80 dark:border-slate-800/80 rounded-lg shrink-0 gap-0.5">
                   <button
                     type="button"
                     onClick={() => setHolidayYearFilter('ALL')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                       holidayYearFilter === 'ALL'
                         ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1923,28 +1938,20 @@ export default function AdminPage() {
                   >
                     ทั้งหมด ({holidays.length})
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setHolidayYearFilter('2569')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      holidayYearFilter === '2569'
-                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    ปี 2569 ({count2569})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHolidayYearFilter('2570')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      holidayYearFilter === '2570'
-                        ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    ปี 2570 ({count2570})
-                  </button>
+                  {holidayYearOptions.map((opt) => (
+                    <button
+                      key={opt.yearBE}
+                      type="button"
+                      onClick={() => setHolidayYearFilter(opt.yearBE)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                        holidayYearFilter === opt.yearBE
+                          ? 'bg-white text-slate-900 dark:bg-slate-800 dark:text-white shadow-sm font-semibold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      ปี {opt.yearBE} ({opt.count})
+                    </button>
+                  ))}
                 </div>
 
                 {/* Search Box */}
@@ -3748,12 +3755,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-      {/* User Preferences Modal */}
-      <UserSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-      />
-
       {/* Real-time Toast Notification Overlay */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 bg-white dark:bg-[#121a24] text-slate-900 dark:text-white border-slate-200 dark:border-slate-700">

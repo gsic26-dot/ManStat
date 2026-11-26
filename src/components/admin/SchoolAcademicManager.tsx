@@ -19,7 +19,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Lock,
   Unlock,
@@ -197,6 +197,7 @@ interface SchoolAcademicManagerProps {
     studentCount: number;
     activeClasses: string[];
   }) => void;
+  onMutated?: () => void;
   showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -206,8 +207,13 @@ export function SchoolAcademicManager({
   currentTerm,
   onSemesterChange,
   onSyncSchoolInfo,
+  onMutated,
   showToast,
 }: SchoolAcademicManagerProps) {
+  const onSyncSchoolInfoRef = useRef(onSyncSchoolInfo);
+  useEffect(() => {
+    onSyncSchoolInfoRef.current = onSyncSchoolInfo;
+  }, [onSyncSchoolInfo]);
   const {
     academicYears,
     activeAcademicYear,
@@ -416,6 +422,7 @@ export function SchoolAcademicManager({
     if (selectedYear) {
       try {
         await updateOfferedGrades(selectedYear.id, nextGrades);
+        onMutated?.();
       } catch (err: any) {
         showToast(err.message || 'ไม่สามารถบันทึกระดับชั้นที่เปิดสอนได้', 'error');
       }
@@ -427,10 +434,11 @@ export function SchoolAcademicManager({
     if (!deleteModalYear) return;
     try {
       setIsDeletingYear(true);
-      await deleteYear(deleteModalYear.id, deletePassword);
+      await deleteYear(deleteModalYear.id, deletePassword.trim());
       showToast(`ลบปีการศึกษา ${deleteModalYear.yearTh} สำเร็จ`, 'success');
       setDeleteModalYear(null);
       setDeletePassword('');
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'ไม่สามารถลบปีการศึกษาได้', 'error');
     } finally {
@@ -449,6 +457,7 @@ export function SchoolAcademicManager({
       const newId = await createYear(nextYear);
       setSelectedYearId(newId);
       showToast(`สร้างปีการศึกษา ${nextYear} สำเร็จ`, 'success');
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'เกิดข้อผิดพลาดในการสร้างปีการศึกษาใหม่', 'error');
     }
@@ -462,6 +471,7 @@ export function SchoolAcademicManager({
       await setActiveYear(confirmModalYear.id);
       showToast(`ตั้งปีการศึกษา ${confirmModalYear.yearTh} เป็นปีปัจจุบันสำเร็จ`, 'success');
       setConfirmModalYear(null);
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'เกิดข้อผิดพลาดในการตั้งปีการศึกษาปัจจุบัน', 'error');
     } finally {
@@ -475,6 +485,7 @@ export function SchoolAcademicManager({
     try {
       await setPrimaryRound(selectedYear.id, snapshotId);
       showToast('เปลี่ยนรอบหลักสำหรับคำนวณอัตรากำลังสำเร็จ', 'success');
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'ไม่สามารถเปลี่ยนรอบหลักได้', 'error');
     }
@@ -486,6 +497,7 @@ export function SchoolAcademicManager({
     try {
       await toggleLock(snapshot.id, !snapshot.isLocked);
       showToast(snapshot.isLocked ? 'ปลดล็อกรอบสำเร็จ' : 'ล็อกรอบสำเร็จ', 'success');
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'ไม่สามารถเปลี่ยนสถานะล็อกได้', 'error');
     }
@@ -519,6 +531,7 @@ export function SchoolAcademicManager({
         secondaryClassrooms: Number(form.secondaryClassrooms) || 0,
       });
       showToast(`บันทึกข้อมูลรอบ ${isJun ? '10 มิถุนายน' : '10 พฤศจิกายน'} สำเร็จ`, 'success');
+      onMutated?.();
     } catch (err: any) {
       showToast(err.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
     } finally {
@@ -576,11 +589,11 @@ export function SchoolAcademicManager({
 
   // Trigger parent onSyncSchoolInfo when active academic year or effective primary snapshot changes
   useEffect(() => {
-    if (activeAcademicYear && onSyncSchoolInfo) {
+    if (activeAcademicYear && onSyncSchoolInfoRef.current) {
       const effectiveSnapshot = effectivePrimaryRound === 'JUN_10' ? junSnapshot : novSnapshot;
       const effectiveCalc = effectivePrimaryRound === 'JUN_10' ? junCalc : novCalc;
       const studentCount = effectiveSnapshot?.totalStudents ?? effectiveCalc.totalStudents ?? 0;
-      onSyncSchoolInfo({
+      onSyncSchoolInfoRef.current({
         academicYear: String(activeAcademicYear.yearTh),
         studentCount,
         activeClasses: offeredGrades,
@@ -594,7 +607,6 @@ export function SchoolAcademicManager({
     junCalc,
     novCalc,
     offeredGrades,
-    onSyncSchoolInfo,
   ]);
 
   if (loading && academicYears.length === 0) {
@@ -1192,12 +1204,13 @@ export function SchoolAcademicManager({
             </p>
             <div>
               <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-                กรุณากรอกรหัสผ่านเพื่อยืนยัน (123456)
+                กรุณาพิมพ์ปีการศึกษา <strong className="text-slate-900 dark:text-white font-mono">{deleteModalYear.yearTh}</strong> เพื่อยืนยันการลบ
               </label>
               <input
-                type="password"
+                type="text"
+                inputMode="numeric"
                 value={deletePassword}
-                placeholder="รหัสผ่านยืนยัน"
+                placeholder={`พิมพ์ ${deleteModalYear.yearTh}`}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 font-mono"
               />
@@ -1210,15 +1223,15 @@ export function SchoolAcademicManager({
                   setDeleteModalYear(null);
                   setDeletePassword('');
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
-                disabled={isDeletingYear || deletePassword !== '123456'}
+                disabled={isDeletingYear || deletePassword.trim() !== String(deleteModalYear.yearTh)}
                 onClick={handleConfirmDeleteYear}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white transition-colors"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white transition-colors cursor-pointer"
               >
                 {isDeletingYear ? 'กำลังลบ...' : 'ยืนยันการลบ'}
               </button>
