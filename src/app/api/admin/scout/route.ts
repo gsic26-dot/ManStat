@@ -97,7 +97,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing scout id' }, { status: 400 });
     }
 
-    await dbDeleteScout(id);
+    const deleteResult = await dbDeleteScout(id);
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
     const actorRole = adminSession.user?.role || 'hr_admin';
@@ -114,6 +114,11 @@ export async function DELETE(request: Request) {
       {
         success: true,
         message: 'ลบข้อมูลวุฒิลูกเสือเรียบร้อยแล้ว',
+        data: {
+          teacherId: deleteResult.teacherId,
+          highestScout: deleteResult.highestScout,
+          scoutCertNo: deleteResult.scoutCertNo,
+        },
       },
       {
         headers: {

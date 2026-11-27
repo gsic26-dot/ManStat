@@ -22,6 +22,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { resolveHighestScout, EMPTY_HIGHEST_SCOUT } from '@/lib/regulations/scout-ranking';
 import {
   INITIAL_TEACHERS,
   INITIAL_BOARD_MEMBERS,
@@ -1859,6 +1860,58 @@ export async function dbGetScouts(): Promise<ScoutRecord[]> {
   return localScoutsFromTeachers;
 }
 
+async function syncHighestScoutToTeacherSupabase(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  teacherKey: string,
+  teachers: TeacherRecord[]
+): Promise<{ highestScout: string; scoutCertNo: string; teacherId: string }> {
+  const owner = teachers.find(
+    (t) => t.id === teacherKey || (t.employeeCode && t.employeeCode === teacherKey)
+  );
+  const candidateKeys = Array.from(
+    new Set([teacherKey, owner?.id, owner?.employeeCode].filter((k): k is string => Boolean(k)))
+  );
+
+  const { data: remainingRows, error: fetchErr } = await supabase
+    .from('history_scout')
+    .select('*')
+    .in('emp_id', candidateKeys);
+
+  if (fetchErr) {
+    console.error('[syncHighestScoutToTeacherSupabase] fetch remaining error:', fetchErr);
+  }
+
+  const remainingScouts = Array.isArray(remainingRows)
+    ? remainingRows.map((r: any) => scoutFromDb(r, teachers))
+    : [];
+
+  const resolved = resolveHighestScout(remainingScouts);
+
+  const orFilter = candidateKeys
+    .map((k) => `id.eq.${k},employee_code.eq.${k}`)
+    .join(',');
+
+  if (orFilter) {
+    const { error: updateErr } = await supabase
+      .from('teachers')
+      .update({
+        highest_scout: resolved.highestScout,
+        scout_cert_no: resolved.scoutCertNo,
+      })
+      .or(orFilter);
+
+    if (updateErr) {
+      console.error('[syncHighestScoutToTeacherSupabase] teachers update error:', updateErr);
+    }
+  }
+
+  return {
+    highestScout: resolved.highestScout,
+    scoutCertNo: resolved.scoutCertNo,
+    teacherId: owner?.id || teacherKey,
+  };
+}
+
 export async function dbUpsertScout(scout: ScoutRecord): Promise<ScoutRecord> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
@@ -1875,18 +1928,11 @@ export async function dbUpsertScout(scout: ScoutRecord): Promise<ScoutRecord> {
       throw new Error(`ไม่สามารถบันทึกข้อมูลวุฒิลูกเสือลง Supabase ได้: ${error.message}`);
     }
 
-    // Also sync back to teachers table (highest_scout & scout_cert_no)
+    const teachers = await dbGetTeachers();
     if (scout.teacherId) {
-      await supabase
-        .from('teachers')
-        .update({
-          highest_scout: scout.qualification,
-          scout_cert_no: scout.certificateNo,
-        })
-        .or(`id.eq.${scout.teacherId},employee_code.eq.${scout.teacherId}`);
+      await syncHighestScoutToTeacherSupabase(supabase, scout.teacherId, teachers);
     }
 
-    const teachers = await dbGetTeachers();
     return scoutFromDb(data, teachers);
   }
 
@@ -1900,28 +1946,107 @@ export async function dbUpsertScout(scout: ScoutRecord): Promise<ScoutRecord> {
     currentScouts.push(scout);
   }
   db.scouts = currentScouts;
+
+  if (scout.teacherId && Array.isArray(db.teachers)) {
+    const owner = db.teachers.find(
+      (t) => t.id === scout.teacherId || t.employeeCode === scout.teacherId
+    );
+    const ownerScouts = currentScouts.filter(
+      (s) =>
+        s.teacherId === scout.teacherId ||
+        (owner && (s.teacherId === owner.id || s.teacherId === owner.employeeCode))
+    );
+    const resolved = resolveHighestScout(ownerScouts);
+    if (owner) {
+      owner.highestScout = resolved.highestScout;
+      owner.scoutCertNo = resolved.scoutCertNo;
+    }
+  }
+
   saveDatabase(db);
   return scout;
 }
 
-export async function dbDeleteScout(id: string): Promise<boolean> {
+export interface DeleteScoutResult {
+  deleted: boolean;
+  teacherId?: string;
+  highestScout: string;
+  scoutCertNo: string;
+}
+
+export async function dbDeleteScout(id: string): Promise<DeleteScoutResult> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
+
+    // 1. Identify owning staff key before deleting the row
+    const { data: targetRow } = await supabase
+      .from('history_scout')
+      .select('emp_id')
+      .eq('record_id', id)
+      .maybeSingle();
+
+    const owningEmpId: string | undefined = targetRow?.emp_id || undefined;
+
+    // 2. Delete the target scout row
     const { error } = await supabase.from('history_scout').delete().eq('record_id', id);
     if (error) {
       console.error('[dbDeleteScout] Supabase delete error:', error);
       throw new Error(`ไม่สามารถลบข้อมูลวุฒิลูกเสือจาก Supabase ได้: ${error.message}`);
     }
-    return true;
+
+    // 3. Recalculate remaining highest scout & sync back to public.teachers
+    if (owningEmpId) {
+      const teachers = await dbGetTeachers();
+      const synced = await syncHighestScoutToTeacherSupabase(supabase, owningEmpId, teachers);
+      return {
+        deleted: true,
+        teacherId: synced.teacherId,
+        highestScout: synced.highestScout,
+        scoutCertNo: synced.scoutCertNo,
+      };
+    }
+
+    return {
+      deleted: true,
+      highestScout: EMPTY_HIGHEST_SCOUT,
+      scoutCertNo: '',
+    };
   }
 
   verifyVercelConfiguration();
   const db = loadDatabase();
   const currentScouts = db.scouts || INITIAL_SCOUTS;
-  db.scouts = currentScouts.filter((s) => s.id !== id);
+  const targetScout = currentScouts.find((s) => s.id === id);
+  const owningTeacherId = targetScout?.teacherId;
+
+  const remainingAll = currentScouts.filter((s) => s.id !== id);
+  db.scouts = remainingAll;
+
+  let resolved = { highestScout: EMPTY_HIGHEST_SCOUT, scoutCertNo: '' };
+  if (owningTeacherId && Array.isArray(db.teachers)) {
+    const owner = db.teachers.find(
+      (t) => t.id === owningTeacherId || t.employeeCode === owningTeacherId
+    );
+    const ownerRemaining = remainingAll.filter(
+      (s) =>
+        s.teacherId === owningTeacherId ||
+        (owner && (s.teacherId === owner.id || s.teacherId === owner.employeeCode))
+    );
+    resolved = resolveHighestScout(ownerRemaining);
+    if (owner) {
+      owner.highestScout = resolved.highestScout;
+      owner.scoutCertNo = resolved.scoutCertNo;
+    }
+  }
+
   saveDatabase(db);
-  return true;
+  return {
+    deleted: true,
+    teacherId: owningTeacherId,
+    highestScout: resolved.highestScout,
+    scoutCertNo: resolved.scoutCertNo,
+  };
 }
 
 // ============================================================================
