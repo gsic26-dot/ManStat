@@ -1804,6 +1804,8 @@ export function scoutToDb(s: ScoutRecord) {
     scout_position: s.category,
     cert_number: s.certificateNo,
     approved_year: s.issueDate,
+    order_number: s.orderNumber || '',
+    issued_by: s.issuedBy || 'สำนักงานลูกเสือแห่งชาติ',
     timestamp: new Date().toISOString(),
   };
 }

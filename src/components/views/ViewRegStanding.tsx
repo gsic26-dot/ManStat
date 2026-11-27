@@ -100,6 +100,7 @@ export const ViewRegStanding: React.FC = () => {
   const [formTeacherId, setFormTeacherId] = useState<string>('');
   const [formLevel, setFormLevel] = useState<string>(STANDING_LEVEL_OPTIONS[0]);
   const [formOrderNumber, setFormOrderNumber] = useState<string>('');
+  const [formOrderDate, setFormOrderDate] = useState<string>('');
   const [formEffectiveDate, setFormEffectiveDate] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -225,6 +226,7 @@ export const ViewRegStanding: React.FC = () => {
     setFormTeacherId(preselectTeacherId || sortedCivilServantsAll[0]?.id || '');
     setFormLevel('ชำนาญการ');
     setFormOrderNumber('');
+    setFormOrderDate('');
     setFormEffectiveDate('');
     setIsModalOpen(true);
   };
@@ -245,7 +247,8 @@ export const ViewRegStanding: React.FC = () => {
         ? normalizedLevel
         : current.level || STANDING_LEVEL_OPTIONS[0]
     );
-    setFormOrderNumber(current.orderNumber || '');
+    setFormOrderNumber(current.orderNumber === '-' ? '' : current.orderNumber || '');
+    setFormOrderDate(current.orderDate || '');
     setFormEffectiveDate(current.effectiveDate || '');
     setIsModalOpen(true);
   };
@@ -304,6 +307,7 @@ export const ViewRegStanding: React.FC = () => {
     const nextOrder: StandingOrderItem = {
       level: formLevel.trim(),
       orderNumber: formOrderNumber.trim() || '-',
+      orderDate: formOrderDate || undefined,
       effectiveDate: formEffectiveDate || '',
     };
 
@@ -643,6 +647,14 @@ export const ViewRegStanding: React.FC = () => {
                                                 <span className="font-semibold">{formatShortStanding(ord.level)}</span>
                                                 <span className="text-slate-400 dark:text-slate-500">·</span>
                                                 <span className="font-mono">{ord.orderNumber}</span>
+                                                {ord.orderDate && (
+                                                  <>
+                                                    <span className="text-slate-400 dark:text-slate-500">·</span>
+                                                    <span className="font-mono text-slate-500 dark:text-slate-400">
+                                                      ลงวันที่ {formatThaiDateDisplay(ord.orderDate)}
+                                                    </span>
+                                                  </>
+                                                )}
                                                 <span className="text-slate-400 dark:text-slate-500">·</span>
                                                 <span className="font-mono text-slate-500 dark:text-slate-400">
                                                   มีผล {formatThaiDateDisplay(ord.effectiveDate)}
@@ -801,14 +813,13 @@ export const ViewRegStanding: React.FC = () => {
         </div>
       )}
 
-      {/* Add / Edit Standing Order Modal (Admin Only) */}
+      {/* Add / Edit Standing Order Modal (Admin Only — locked against accidental backdrop close) */}
       {isModalOpen && canManage && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="standing-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
-          onClick={() => !isSaving && setIsModalOpen(false)}
         >
           <div
             className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden text-slate-800 dark:text-slate-200"
@@ -871,18 +882,29 @@ export const ViewRegStanding: React.FC = () => {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  เลขที่คำสั่งแต่งตั้ง {!BASELINE_STANDING_LEVELS.has(formLevel) && <span className="text-rose-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  required={!BASELINE_STANDING_LEVELS.has(formLevel)}
+                  value={formOrderNumber}
+                  onChange={(e) => setFormOrderNumber(e.target.value)}
+                  placeholder="เช่น คำสั่งที่ 123/2567"
+                  className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    เลขที่คำสั่งแต่งตั้ง {!BASELINE_STANDING_LEVELS.has(formLevel) && <span className="text-rose-500">*</span>}
+                    ลงวันที่คำสั่ง (ถ้ามี)
                   </label>
-                  <input
-                    type="text"
-                    required={!BASELINE_STANDING_LEVELS.has(formLevel)}
-                    value={formOrderNumber}
-                    onChange={(e) => setFormOrderNumber(e.target.value)}
-                    placeholder="เช่น คำสั่งที่ 123/2567"
-                    className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                  <ThaiDatePicker
+                    value={formOrderDate}
+                    onChange={setFormOrderDate}
+                    placeholder="เลือกวันที่ลงนามคำสั่ง"
                   />
                 </div>
                 <div>

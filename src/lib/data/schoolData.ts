@@ -75,8 +75,11 @@ export interface TeacherRecord {
     level: string;
     effectiveDate: string;
     orderNumber: string;
+    orderDate?: string;
   }>;
   educations: Array<{
+    level?: string;
+    programYears?: string;
     degree: string;
     major: string;
     institute: string;

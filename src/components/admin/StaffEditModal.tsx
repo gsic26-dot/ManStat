@@ -45,6 +45,14 @@ import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatStaffName, formatShortStanding } from '@/lib/regulations/staff-formatting';
 import { calculateRetirementInfo } from '@/lib/regulations/fiscal-and-retirement';
+import { evaluateLicenseHealth } from '@/lib/regulations/khurusapha-and-pa';
+import {
+  hydrateEducationsList,
+  resolveHighestEducation,
+  sortEducationsHighestFirst,
+  inferEducationLevel,
+  type EducationEntry,
+} from '@/lib/regulations/education-ranking';
 import {
   MAJOR_GROUPS,
   CUSTOM_MAJOR_OPTION,
@@ -122,13 +130,14 @@ const STANDING_LEVEL_OPTIONS = [
 const BASELINE_STANDING_LEVELS = new Set(['ไม่มีวิทยฐานะ', 'ครูผู้ช่วย']);
 
 const LICENSE_TYPE_OPTIONS = [
+  'ใบอนุญาตปฏิบัติหน้าที่ครู (P-License)',
   'ใบอนุญาตประกอบวิชาชีพครู (ชั้นต้น / B-License)',
   'ใบอนุญาตประกอบวิชาชีพครู (ชั้นสูง / A-License)',
-  'ใบอนุญาตปฏิบัติหน้าที่ครู (P-License)',
   'ใบอนุญาตประกอบวิชาชีพครู',
   'ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา',
   'ใบอนุญาตประกอบวิชาชีพผู้บริหารการศึกษา',
   'ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์',
+  'หนังสืออนุญาตให้ประกอบวิชาชีพโดยไม่มีใบอนุญาตฯ (ผ่อนผัน)',
 ];
 
 const CUSTOM_LICENSE_VALUE = '__CUSTOM__';
@@ -198,21 +207,25 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   // Khurusapha manual override unlock state (only applies when type === 'สมาชิกสามัญ')
   const [isKhurusaphaUnlocked, setIsKhurusaphaUnlocked] = useState(false);
 
-  // Custom-input flags for Tab 3 Program Years & Degree
-  const [isCustomProgramYears, setIsCustomProgramYears] = useState(false);
-  const [isCustomDegree, setIsCustomDegree] = useState(false);
-
-  // Local state for education history add/edit sub-form inside Tab 3
-  const [newEduDegree, setNewEduDegree] = useState('ค.บ.');
-  const [newEduMajor, setNewEduMajor] = useState('');
-  const [newEduInst, setNewEduInst] = useState('');
-  const [newEduYear, setNewEduYear] = useState('');
+  // Tab 3: Standardized ก.ค.ศ. Education List + Form state
+  const [eduLevel, setEduLevel] = useState<string>('');
+  const [eduProgramYears, setEduProgramYears] = useState<string>('');
+  const [eduDegree, setEduDegree] = useState<string>('');
+  const [eduMajor, setEduMajor] = useState<string>('');
+  const [eduInstitution, setEduInstitution] = useState<string>('');
+  const [eduGradYear, setEduGradYear] = useState<string>('');
+  const [eduIsCustomYears, setEduIsCustomYears] = useState<boolean>(false);
+  const [eduIsCustomDegree, setEduIsCustomDegree] = useState<boolean>(false);
+  const [eduIsCustomMajor, setEduIsCustomMajor] = useState<boolean>(false);
   const [editingEduIdx, setEditingEduIdx] = useState<number | null>(null);
+  const [deletingEduIdx, setDeletingEduIdx] = useState<number | null>(null);
+  const [eduFormError, setEduFormError] = useState<string | null>(null);
 
   // Tab 4: Academic Standing inline CRUD state
   const [editingStandingIdx, setEditingStandingIdx] = useState<number | null>(null);
   const [stdLevel, setStdLevel] = useState<string>('ชำนาญการ');
   const [stdOrderNo, setStdOrderNo] = useState<string>('');
+  const [stdOrderDate, setStdOrderDate] = useState<string>('');
   const [stdEffectiveDate, setStdEffectiveDate] = useState<string>('');
   const [stdFormError, setStdFormError] = useState<string | null>(null);
   const [deletingStandingIdx, setDeletingStandingIdx] = useState<number | null>(null);
@@ -233,6 +246,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   const [isScoutSaving, setIsScoutSaving] = useState<boolean>(false);
   const [editingScoutId, setEditingScoutId] = useState<string | null>(null);
   const [scoutQualification, setScoutQualification] = useState<string>('');
+  const [isScoutQualManual, setIsScoutQualManual] = useState<boolean>(false);
   const [scoutBadgeLevel, setScoutBadgeLevel] = useState<string>(SCOUT_BADGE_LEVELS[2]);
   const [scoutCategory, setScoutCategory] = useState<string>(SCOUT_CATEGORIES[0]);
   const [scoutCertNo, setScoutCertNo] = useState<string>('');
@@ -242,11 +256,30 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   const [scoutNotice, setScoutNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [deletingScoutItem, setDeletingScoutItem] = useState<ScoutRecord | null>(null);
 
-  // Reset Tabs 4–6 inline sub-forms whenever modal opens/closes or staff changes
+  const buildDefaultScoutTitle = (category: string, badgeLevel: string) => {
+    const cleanLevel = badgeLevel.startsWith('ขั้น') ? badgeLevel : `ขั้น${badgeLevel}`;
+    return `ผู้กำกับ${category} ${cleanLevel}`;
+  };
+
+  // Reset Tabs 3–6 inline sub-forms whenever modal opens/closes or staff changes
   useEffect(() => {
+    setEduLevel('');
+    setEduProgramYears('');
+    setEduDegree('');
+    setEduMajor('');
+    setEduInstitution('');
+    setEduGradYear('');
+    setEduIsCustomYears(false);
+    setEduIsCustomDegree(false);
+    setEduIsCustomMajor(false);
+    setEditingEduIdx(null);
+    setDeletingEduIdx(null);
+    setEduFormError(null);
+
     setEditingStandingIdx(null);
     setStdLevel('ชำนาญการ');
     setStdOrderNo('');
+    setStdOrderDate('');
     setStdEffectiveDate('');
     setStdFormError(null);
     setDeletingStandingIdx(null);
@@ -261,9 +294,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     setDeletingLicenseIdx(null);
 
     setEditingScoutId(null);
-    setScoutQualification('');
     setScoutBadgeLevel(SCOUT_BADGE_LEVELS[2]);
     setScoutCategory(SCOUT_CATEGORIES[0]);
+    setScoutQualification(buildDefaultScoutTitle(SCOUT_CATEGORIES[0], SCOUT_BADGE_LEVELS[2]));
+    setIsScoutQualManual(false);
     setScoutCertNo('');
     setScoutOrderNo('');
     setScoutIssueDate('');
@@ -308,13 +342,6 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   useEffect(() => {
     if (!isOpen || !staff) {
       setIsKhurusaphaUnlocked(false);
-      setIsCustomProgramYears(false);
-      setIsCustomDegree(false);
-      setEditingEduIdx(null);
-      setNewEduDegree('ค.บ.');
-      setNewEduMajor('');
-      setNewEduInst('');
-      setNewEduYear('');
       return;
     }
 
@@ -324,29 +351,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     setIsKhurusaphaUnlocked(
       memberType === 'สมาชิกสามัญ' && Boolean(memberNo) && Boolean(idCard) && memberNo !== idCard
     );
-
-    const yearsOptions = getProgramYearsForLevel(staff.educationLevel);
-    setIsCustomProgramYears(
-      Boolean(staff.educationProgramYears && !yearsOptions.includes(staff.educationProgramYears))
-    );
-
-    const degreeOptions = getDegreesForLevel(staff.educationLevel);
-    setIsCustomDegree(
-      Boolean(staff.educationDegree && !degreeOptions.includes(staff.educationDegree))
-    );
   }, [isOpen, staff?.id]);
 
-  // Escape key to close (disabled while saving)
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSaving) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isSaving, onClose]);
+  // Note: Escape key & backdrop-click closing are intentionally disabled on StaffEditModal
+  // to prevent accidental data loss (close explicitly via X or ยกเลิก).
 
   // Cascading Thai Geography Lists (100% offline)
   const provinces = useMemo(() => getThaiProvinces(), []);
@@ -375,11 +383,14 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   if (!isOpen || !staff) return null;
 
   const derivedDivisions = getStaffDivisions(staff, workloads);
-  const programYearsOptions = getProgramYearsForLevel(staff.educationLevel);
-  const degreeOptions = getDegreesForLevel(staff.educationLevel);
+  const displayedEducations = hydrateEducationsList(staff);
+  const eduProgramYearsOptions = getProgramYearsForLevel(eduLevel);
+  const eduDegreeOptions = getDegreesForLevel(eduLevel);
   const khurusaphaType = staff.khurusaphaMemberType || '';
   const isOrdinaryMember = khurusaphaType === 'สมาชิกสามัญ';
   const isNonMember = khurusaphaType === 'ไม่เป็นสมาชิก';
+  void isCustomMajor;
+  void onChangeCustomMajor;
 
   const handleCitizenIdChange = (nextIdCard: string) => {
     const cleaned = nextIdCard.replace(/[^\d]/g, '').slice(0, 13);
@@ -418,67 +429,97 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     }
   };
 
-  const handleEducationLevelChange = (nextLevel: string) => {
+  const resetEduForm = () => {
+    setEditingEduIdx(null);
+    setEduLevel('');
+    setEduProgramYears('');
+    setEduDegree('');
+    setEduMajor('');
+    setEduInstitution('');
+    setEduGradYear('');
+    setEduIsCustomYears(false);
+    setEduIsCustomDegree(false);
+    setEduIsCustomMajor(false);
+    setEduFormError(null);
+  };
+
+  const handleEduFormLevelChange = (nextLevel: string) => {
     const validYears = getProgramYearsForLevel(nextLevel);
     const validDegrees = getDegreesForLevel(nextLevel);
-    setIsCustomProgramYears(false);
-    setIsCustomDegree(false);
+    setEduLevel(nextLevel);
+    setEduIsCustomYears(false);
+    setEduIsCustomDegree(false);
+    setEduProgramYears((prev) => (prev && validYears.includes(prev) ? prev : ''));
+    setEduDegree((prev) => (prev && validDegrees.includes(prev) ? prev : ''));
+    setEduFormError(null);
+  };
+
+  const applyEducationsUpdate = (nextEntries: EducationEntry[]) => {
+    const sorted = sortEducationsHighestFirst(nextEntries);
+    const highest = resolveHighestEducation(sorted);
     onChangeStaff({
       ...staff,
-      educationLevel: nextLevel,
-      educationProgramYears:
-        staff.educationProgramYears && validYears.includes(staff.educationProgramYears)
-          ? staff.educationProgramYears
-          : '',
-      educationDegree:
-        staff.educationDegree && validDegrees.includes(staff.educationDegree)
-          ? staff.educationDegree
-          : '',
+      educations: sorted,
+      educationLevel: highest.educationLevel,
+      educationProgramYears: highest.educationProgramYears,
+      educationDegree: highest.educationDegree,
+      major: highest.major,
+      educationInstitution: highest.educationInstitution,
+      educationGradYear: highest.educationGradYear,
     });
   };
 
   const handleSaveEducation = () => {
-    if (!newEduDegree.trim() && !newEduMajor.trim()) return;
-    const entry = {
-      degree: newEduDegree.trim() || '-',
-      major: newEduMajor.trim() || '-',
-      institute: newEduInst.trim() || '-',
-      gradYear: newEduYear.trim() || '-',
-    };
-    const list = [...(staff.educations || [])];
-    if (editingEduIdx !== null && editingEduIdx >= 0 && editingEduIdx < list.length) {
-      list[editingEduIdx] = entry;
-    } else {
-      list.push(entry);
+    if (!eduLevel.trim() && !eduDegree.trim()) {
+      setEduFormError('กรุณาเลือกระดับวุฒิการศึกษาหรือชื่อคุณวุฒิ');
+      return;
     }
-    onChangeStaff({ ...staff, educations: list });
-    setEditingEduIdx(null);
-    setNewEduDegree('ค.บ.');
-    setNewEduMajor('');
-    setNewEduInst('');
-    setNewEduYear('');
+    const entry: EducationEntry = {
+      level: eduLevel.trim() || inferEducationLevel({ degree: eduDegree }),
+      programYears: eduProgramYears.trim(),
+      degree: eduDegree.trim() || eduLevel.trim(),
+      major: eduMajor.trim(),
+      institute: eduInstitution.trim(),
+      gradYear: eduGradYear.trim(),
+    };
+    const nextList = [...displayedEducations];
+    if (editingEduIdx !== null && editingEduIdx >= 0 && editingEduIdx < nextList.length) {
+      nextList[editingEduIdx] = entry;
+    } else {
+      nextList.push(entry);
+    }
+    applyEducationsUpdate(nextList);
+    resetEduForm();
   };
 
   const handleEditEducation = (idx: number) => {
-    const item = (staff.educations || [])[idx];
+    const item = displayedEducations[idx];
     if (!item) return;
+    const resolvedLevel = inferEducationLevel(item) || item.level || '';
+    const validYears = getProgramYearsForLevel(resolvedLevel);
+    const validDegrees = getDegreesForLevel(resolvedLevel);
+
     setEditingEduIdx(idx);
-    setNewEduDegree(item.degree || '');
-    setNewEduMajor(item.major || '');
-    setNewEduInst(item.institute || '');
-    setNewEduYear(item.gradYear || '');
+    setEduLevel(resolvedLevel);
+    setEduProgramYears(item.programYears || '');
+    setEduIsCustomYears(Boolean(item.programYears && !validYears.includes(item.programYears)));
+    setEduDegree(item.degree || '');
+    setEduIsCustomDegree(Boolean(item.degree && !validDegrees.includes(item.degree)));
+    setEduMajor(item.major || '');
+    setEduIsCustomMajor(Boolean(item.major && !isStandardMajor(item.major)));
+    setEduInstitution(item.institute || '');
+    setEduGradYear(item.gradYear || '');
+    setEduFormError(null);
   };
 
-  const handleDeleteEducation = (idx: number) => {
-    const list = (staff.educations || []).filter((_, i) => i !== idx);
-    onChangeStaff({ ...staff, educations: list });
-    if (editingEduIdx === idx) {
-      setEditingEduIdx(null);
-      setNewEduDegree('ค.บ.');
-      setNewEduMajor('');
-      setNewEduInst('');
-      setNewEduYear('');
+  const handleConfirmDeleteEducation = () => {
+    if (deletingEduIdx === null) return;
+    const nextList = displayedEducations.filter((_, i) => i !== deletingEduIdx);
+    applyEducationsUpdate(nextList);
+    if (editingEduIdx === deletingEduIdx) {
+      resetEduForm();
     }
+    setDeletingEduIdx(null);
   };
 
   // =========================================================================
@@ -490,6 +531,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     setEditingStandingIdx(null);
     setStdLevel('ชำนาญการ');
     setStdOrderNo('');
+    setStdOrderDate('');
     setStdEffectiveDate('');
     setStdFormError(null);
   };
@@ -513,6 +555,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     const nextItem = {
       level: levelClean,
       orderNumber: stdOrderNo.trim() || '-',
+      orderDate: stdOrderDate || undefined,
       effectiveDate: stdEffectiveDate || '',
     };
 
@@ -541,6 +584,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     setEditingStandingIdx(idx);
     setStdLevel(STANDING_LEVEL_OPTIONS.includes(normalized) ? normalized : item.level || 'ชำนาญการ');
     setStdOrderNo(item.orderNumber === '-' ? '' : item.orderNumber || '');
+    setStdOrderDate(item.orderDate || '');
     setStdEffectiveDate(item.effectiveDate || '');
     setStdFormError(null);
   };
@@ -646,9 +690,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
 
   const resetScoutForm = () => {
     setEditingScoutId(null);
-    setScoutQualification('');
     setScoutBadgeLevel(SCOUT_BADGE_LEVELS[2]);
     setScoutCategory(SCOUT_CATEGORIES[0]);
+    setScoutQualification(buildDefaultScoutTitle(SCOUT_CATEGORIES[0], SCOUT_BADGE_LEVELS[2]));
+    setIsScoutQualManual(false);
     setScoutCertNo('');
     setScoutOrderNo('');
     setScoutIssueDate('');
@@ -658,6 +703,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   const handleEditScoutInline = (record: ScoutRecord) => {
     setEditingScoutId(record.id);
     setScoutQualification(record.qualification || '');
+    setIsScoutQualManual(true);
     setScoutBadgeLevel(record.badgeLevel || SCOUT_BADGE_LEVELS[2]);
     setScoutCategory(record.category || SCOUT_CATEGORIES[0]);
     setScoutCertNo(record.certificateNo || '');
@@ -750,9 +796,6 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
       aria-modal="true"
       aria-labelledby="staff-edit-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
-      onClick={() => {
-        if (!isSaving) onClose();
-      }}
     >
       <div
         className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs flex flex-col text-slate-800 dark:text-slate-200"
@@ -1462,15 +1505,15 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* TAB 3: วุฒิการศึกษาและวิชาเอก (ก.ค.ศ. 2×2 + 105+ Majors)         */}
+          {/* TAB 3: วุฒิการศึกษาและวิชาเอก (List Top + Standardized ก.ค.ศ. Form) */}
           {/* ============================================================== */}
           {activeTab === 'education' && (
             <div className="space-y-4">
-              {/* Highest Qualification — 2×2 Grid */}
-              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
+              {/* Top Section: Saved Qualifications List (Sorted Highest-First) */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    วุฒิการศึกษาสูงสุด (มาตรฐาน ก.ค.ศ.)
+                    วุฒิการศึกษาที่บันทึกไว้ ({displayedEducations.length} รายการ)
                   </span>
                   <a
                     href="https://qualification.otepc.go.th"
@@ -1483,15 +1526,108 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                   </a>
                 </div>
 
+                {displayedEducations.length > 0 ? (
+                  <div className="space-y-2">
+                    {displayedEducations.map((edu, idx) => {
+                      const resolvedLevel = inferEducationLevel(edu) || edu.level || '';
+                      return (
+                        <div
+                          key={`${edu.degree}-${edu.major}-${edu.gradYear}-${idx}`}
+                          className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border transition-colors ${
+                            editingEduIdx === idx
+                              ? 'border-sky-500 ring-1 ring-sky-500/30'
+                              : 'border-slate-200/90 dark:border-slate-700/80'
+                          }`}
+                        >
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {idx === 0 && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/30">
+                                  วุฒิสูงสุด
+                                </span>
+                              )}
+                              {resolvedLevel && (
+                                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                  {resolvedLevel}
+                                </span>
+                              )}
+                              <span className="font-semibold text-slate-900 dark:text-white">
+                                {edu.degree || '-'}
+                              </span>
+                              {edu.programYears && (
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                  ({edu.programYears})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {edu.major ? `สาขา/วิชาเอก: ${edu.major}` : 'ไม่ระบุวิชาเอก'}
+                              {edu.institute ? ` · ${edu.institute}` : ''}
+                              {edu.gradYear ? ` · พ.ศ. ${edu.gradYear}` : ''}
+                            </div>
+                          </div>
+                          <div className="inline-flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleEditEducation(idx)}
+                              title="แก้ไขวุฒิการศึกษา"
+                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingEduIdx(idx)}
+                              title="ลบวุฒิการศึกษา"
+                              className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 py-1">
+                    ยังไม่มีวุฒิการศึกษาที่บันทึกไว้ สามารถเพิ่มได้จากแบบฟอร์มมาตรฐาน ก.ค.ศ. ด้านล่าง
+                  </p>
+                )}
+              </div>
+
+              {/* Bottom Section: Single Standardized ก.ค.ศ. Form */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {editingEduIdx !== null ? 'แก้ไขวุฒิการศึกษา' : 'เพิ่มวุฒิการศึกษา (มาตรฐาน ก.ค.ศ.)'}
+                  </span>
+                  {editingEduIdx !== null && (
+                    <button
+                      type="button"
+                      onClick={resetEduForm}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                    >
+                      ยกเลิกการแก้ไข
+                    </button>
+                  )}
+                </div>
+
+                {eduFormError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{eduFormError}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                   {/* 1. ระดับวุฒิการศึกษา */}
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      ระดับวุฒิการศึกษา
+                      ระดับวุฒิการศึกษา <span className="text-rose-500">*</span>
                     </label>
                     <select
-                      value={staff.educationLevel || ''}
-                      onChange={(e) => handleEducationLevelChange(e.target.value)}
+                      value={eduLevel}
+                      onChange={(e) => handleEduFormLevelChange(e.target.value)}
                       className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                     >
                       <option value="">- เลือกระดับวุฒิการศึกษา -</option>
@@ -1509,49 +1645,46 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       หลักสูตร (จำนวนปี)
                     </label>
                     <select
-                      disabled={!staff.educationLevel}
+                      disabled={!eduLevel}
                       value={
-                        isCustomProgramYears
+                        eduIsCustomYears
                           ? CUSTOM_OPTION_LABEL
-                          : staff.educationProgramYears &&
-                            programYearsOptions.includes(staff.educationProgramYears)
-                          ? staff.educationProgramYears
+                          : eduProgramYears && eduProgramYearsOptions.includes(eduProgramYears)
+                          ? eduProgramYears
                           : ''
                       }
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === CUSTOM_OPTION_LABEL) {
-                          setIsCustomProgramYears(true);
-                          if (programYearsOptions.includes(staff.educationProgramYears || '')) {
-                            onChangeStaff({ ...staff, educationProgramYears: '' });
+                          setEduIsCustomYears(true);
+                          if (eduProgramYearsOptions.includes(eduProgramYears)) {
+                            setEduProgramYears('');
                           }
                         } else {
-                          setIsCustomProgramYears(false);
-                          onChangeStaff({ ...staff, educationProgramYears: val });
+                          setEduIsCustomYears(false);
+                          setEduProgramYears(val);
                         }
                       }}
                       className="w-full h-10 bg-white dark:bg-[#16212e] disabled:bg-slate-100 dark:disabled:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 disabled:cursor-not-allowed"
                     >
                       <option value="">
-                        {staff.educationLevel ? '- เลือกหลักสูตร -' : 'เลือกระดับวุฒิก่อน'}
+                        {eduLevel ? '- เลือกหลักสูตร -' : 'เลือกระดับวุฒิก่อน'}
                       </option>
-                      {programYearsOptions.map((opt) => (
+                      {eduProgramYearsOptions.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
                         </option>
                       ))}
-                      {staff.educationLevel && (
+                      {eduLevel && (
                         <option value={CUSTOM_OPTION_LABEL}>{CUSTOM_OPTION_LABEL}</option>
                       )}
                     </select>
-                    {isCustomProgramYears && (
+                    {eduIsCustomYears && (
                       <input
                         type="text"
-                        value={staff.educationProgramYears || ''}
+                        value={eduProgramYears}
                         placeholder="ระบุหลักสูตร..."
-                        onChange={(e) =>
-                          onChangeStaff({ ...staff, educationProgramYears: e.target.value })
-                        }
+                        onChange={(e) => setEduProgramYears(e.target.value)}
                         className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                       />
                     )}
@@ -1563,48 +1696,46 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       ชื่อคุณวุฒิ / ปริญญา
                     </label>
                     <select
-                      disabled={!staff.educationLevel}
+                      disabled={!eduLevel}
                       value={
-                        isCustomDegree
+                        eduIsCustomDegree
                           ? CUSTOM_OPTION_LABEL
-                          : staff.educationDegree && degreeOptions.includes(staff.educationDegree)
-                          ? staff.educationDegree
+                          : eduDegree && eduDegreeOptions.includes(eduDegree)
+                          ? eduDegree
                           : ''
                       }
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === CUSTOM_OPTION_LABEL) {
-                          setIsCustomDegree(true);
-                          if (degreeOptions.includes(staff.educationDegree || '')) {
-                            onChangeStaff({ ...staff, educationDegree: '' });
+                          setEduIsCustomDegree(true);
+                          if (eduDegreeOptions.includes(eduDegree)) {
+                            setEduDegree('');
                           }
                         } else {
-                          setIsCustomDegree(false);
-                          onChangeStaff({ ...staff, educationDegree: val });
+                          setEduIsCustomDegree(false);
+                          setEduDegree(val);
                         }
                       }}
                       className="w-full h-10 bg-white dark:bg-[#16212e] disabled:bg-slate-100 dark:disabled:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 disabled:cursor-not-allowed"
                     >
                       <option value="">
-                        {staff.educationLevel ? '- เลือกชื่อคุณวุฒิ / ปริญญา -' : 'เลือกระดับวุฒิก่อน'}
+                        {eduLevel ? '- เลือกชื่อคุณวุฒิ / ปริญญา -' : 'เลือกระดับวุฒิก่อน'}
                       </option>
-                      {degreeOptions.map((deg) => (
+                      {eduDegreeOptions.map((deg) => (
                         <option key={deg} value={deg}>
                           {deg}
                         </option>
                       ))}
-                      {staff.educationLevel && (
+                      {eduLevel && (
                         <option value={CUSTOM_OPTION_LABEL}>{CUSTOM_OPTION_LABEL}</option>
                       )}
                     </select>
-                    {isCustomDegree && (
+                    {eduIsCustomDegree && (
                       <input
                         type="text"
-                        value={staff.educationDegree || ''}
+                        value={eduDegree}
                         placeholder="ระบุชื่อคุณวุฒิ / ปริญญา..."
-                        onChange={(e) =>
-                          onChangeStaff({ ...staff, educationDegree: e.target.value })
-                        }
+                        onChange={(e) => setEduDegree(e.target.value)}
                         className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                       />
                     )}
@@ -1617,10 +1748,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                     </label>
                     <SearchableCombobox
                       value={
-                        isCustomMajor
+                        eduIsCustomMajor
                           ? CUSTOM_MAJOR_OPTION
-                          : staff.major && isStandardMajor(staff.major)
-                          ? staff.major
+                          : eduMajor && isStandardMajor(eduMajor)
+                          ? eduMajor
                           : ''
                       }
                       groups={MAJOR_GROUPS}
@@ -1630,41 +1761,39 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       allowClear
                       onChange={(val) => {
                         if (val === CUSTOM_MAJOR_OPTION) {
-                          onChangeCustomMajor(true);
-                          if (isStandardMajor(staff.major)) {
-                            onChangeStaff({ ...staff, major: '' });
+                          setEduIsCustomMajor(true);
+                          if (isStandardMajor(eduMajor)) {
+                            setEduMajor('');
                           }
                         } else {
-                          onChangeCustomMajor(false);
-                          onChangeStaff({ ...staff, major: val });
+                          setEduIsCustomMajor(false);
+                          setEduMajor(val);
                         }
                       }}
                     />
-                    {isCustomMajor && (
+                    {eduIsCustomMajor && (
                       <input
                         type="text"
-                        value={staff.major || ''}
+                        value={eduMajor}
                         placeholder="ระบุสาขา / วิชาเอกเพิ่มเติม..."
-                        onChange={(e) => onChangeStaff({ ...staff, major: e.target.value })}
+                        onChange={(e) => setEduMajor(e.target.value)}
                         className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                       />
                     )}
                   </div>
                 </div>
 
-                {/* Optional Institution & Graduation Year */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {/* 5 & 6: สถาบันการศึกษา & ปี พ.ศ. ที่จบ */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                       สถาบันการศึกษา (ถ้ามี)
                     </label>
                     <input
                       type="text"
-                      value={staff.educationInstitution || ''}
+                      value={eduInstitution}
                       placeholder="เช่น มหาวิทยาลัยราชภัฏนครราชสีมา"
-                      onChange={(e) =>
-                        onChangeStaff({ ...staff, educationInstitution: e.target.value })
-                      }
+                      onChange={(e) => setEduInstitution(e.target.value)}
                       className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                     />
                   </div>
@@ -1676,146 +1805,45 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       type="text"
                       inputMode="numeric"
                       maxLength={4}
-                      value={staff.educationGradYear || ''}
+                      value={eduGradYear}
                       placeholder="เช่น 2562"
                       onChange={(e) =>
-                        onChangeStaff({
-                          ...staff,
-                          educationGradYear: e.target.value.replace(/[^\d]/g, '').slice(0, 4),
-                        })
+                        setEduGradYear(e.target.value.replace(/[^\d]/g, '').slice(0, 4))
                       }
                       className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Additional Education History */}
-              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    ประวัติการศึกษาเพิ่มเติม
+                {/* Bottom Action Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    ระบบจะซิงก์วุฒิสูงสุดอัตโนมัติ และบันทึกเมื่อกด &ldquo;บันทึกการเปลี่ยนแปลง&rdquo;
                   </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                    {(staff.educations || []).length} รายการ
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {!staff.educations || staff.educations.length === 0 ? (
-                    <div className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/70 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-center">
-                      ยังไม่มีประวัติการศึกษาเพิ่มเติม
-                    </div>
-                  ) : (
-                    staff.educations.map((edu, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3 rounded-lg bg-white dark:bg-[#16212e] border transition-colors flex items-center justify-between gap-3 ${
-                          editingEduIdx === idx
-                            ? 'border-sky-500 ring-1 ring-sky-500/30'
-                            : 'border-slate-200/90 dark:border-slate-700'
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <div className="font-semibold text-slate-900 dark:text-white">
-                            {edu.degree} สาขา {edu.major}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {edu.institute} (พ.ศ. {edu.gradYear})
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleEditEducation(idx)}
-                            className="p-1.5 rounded-md text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="แก้ไขวุฒินี้"
-                          >
-                            <Pencil className="w-3.5 h-3.5 shrink-0" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEducation(idx)}
-                            className="p-1.5 rounded-md text-rose-500 hover:text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="ลบวุฒินี้"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Add / Edit Education Inline Sub-Form */}
-                <div className="p-3 rounded-lg bg-white dark:bg-[#141d28] border border-dashed border-slate-300 dark:border-slate-700 space-y-2.5">
-                  <div className="font-medium text-slate-700 dark:text-slate-300 text-[11px] flex items-center justify-between">
-                    <span>
-                      {editingEduIdx !== null
-                        ? `แก้ไขวุฒิการศึกษา (รายการที่ ${editingEduIdx + 1})`
-                        : 'เพิ่มประวัติการศึกษา'}
-                    </span>
+                  <div className="flex items-center gap-2 shrink-0">
                     {editingEduIdx !== null && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setEditingEduIdx(null);
-                          setNewEduDegree('ค.บ.');
-                          setNewEduMajor('');
-                          setNewEduInst('');
-                          setNewEduYear('');
-                        }}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline cursor-pointer"
+                        onClick={resetEduForm}
+                        className="px-3 py-2 rounded-lg bg-slate-200/80 hover:bg-slate-300/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer"
                       >
-                        ยกเลิกการแก้ไข
+                        ยกเลิก
                       </button>
                     )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <input
-                      type="text"
-                      value={newEduDegree}
-                      placeholder="วุฒิ (เช่น ค.บ., กศ.ม.)"
-                      onChange={(e) => setNewEduDegree(e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                    />
-                    <input
-                      type="text"
-                      value={newEduMajor}
-                      placeholder="สาขาวิชา"
-                      onChange={(e) => setNewEduMajor(e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                    />
-                    <input
-                      type="text"
-                      value={newEduInst}
-                      placeholder="สถาบันการศึกษา"
-                      onChange={(e) => setNewEduInst(e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                    />
-                    <input
-                      type="text"
-                      value={newEduYear}
-                      placeholder="ปี พ.ศ. ที่จบ"
-                      onChange={(e) => setNewEduYear(e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700 rounded-lg px-2.5 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={handleSaveEducation}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-medium transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
                     >
                       {editingEduIdx !== null ? (
                         <>
                           <Check className="w-3.5 h-3.5 shrink-0" />
-                          <span>อัปเดตรายการวุฒิ</span>
+                          <span>บันทึกการแก้ไข</span>
                         </>
                       ) : (
                         <>
                           <Plus className="w-3.5 h-3.5 shrink-0" />
-                          <span>เพิ่มประวัติการศึกษา</span>
+                          <span>เพิ่มวุฒิการศึกษา</span>
                         </>
                       )}
                     </button>
@@ -1856,7 +1884,9 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                             {formatShortStanding(ord.level)}
                           </div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                            คำสั่ง: {ord.orderNumber || '-'} · มีผล:{' '}
+                            คำสั่ง: {ord.orderNumber || '-'}
+                            {ord.orderDate ? ` · ลงวันที่: ${formatThaiDateDisplay(ord.orderDate)}` : ''}
+                            {' · '}มีผล:{' '}
                             {ord.effectiveDate ? formatThaiDateDisplay(ord.effectiveDate) : '-'}
                           </div>
                         </div>
@@ -1912,7 +1942,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                       ระดับวิทยฐานะ <span className="text-rose-500">*</span>
@@ -1948,6 +1978,16 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       }}
                       placeholder="เช่น คำสั่งที่ 123/2567"
                       className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ลงวันที่คำสั่ง (ถ้ามี)
+                    </label>
+                    <ThaiDatePicker
+                      value={stdOrderDate}
+                      onChange={setStdOrderDate}
+                      placeholder="เลือกวันที่ลงนามคำสั่ง"
                     />
                   </div>
                   <div>
@@ -2007,44 +2047,70 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
 
                 {currentLicenses.length > 0 ? (
                   <div className="space-y-2">
-                    {currentLicenses.map((lic, idx) => (
-                      <div
-                        key={`${lic.number}-${idx}`}
-                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700/80"
-                      >
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="font-semibold text-slate-900 dark:text-white">
-                            {lic.type}{' '}
-                            <span className="font-mono text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                              ({lic.number})
-                            </span>
+                    {currentLicenses.map((lic, idx) => {
+                      const healthEval = lic.expiryDate ? evaluateLicenseHealth(lic.expiryDate) : null;
+                      const healthLabel =
+                        healthEval?.health === 'EXPIRED'
+                          ? 'หมดอายุ'
+                          : healthEval?.health === 'EXPIRING_SOON'
+                          ? 'ใกล้หมดอายุ'
+                          : healthEval?.health === 'VALID'
+                          ? 'ปกติ'
+                          : null;
+                      const healthBadgeClass =
+                        healthEval?.health === 'EXPIRED'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30'
+                          : healthEval?.health === 'EXPIRING_SOON'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30';
+                      return (
+                        <div
+                          key={`${lic.number}-${idx}`}
+                          className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700/80"
+                        >
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-semibold text-slate-900 dark:text-white">
+                                {lic.type}
+                              </span>
+                              <span className="font-mono text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                                ({lic.number})
+                              </span>
+                              {healthLabel && (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${healthBadgeClass}`}
+                                >
+                                  {healthLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                              วันออก: {lic.issueDate ? formatThaiDateDisplay(lic.issueDate) : '-'} ·
+                              วันหมดอายุ:{' '}
+                              {lic.expiryDate ? formatThaiDateDisplay(lic.expiryDate) : '-'}
+                            </div>
                           </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                            วันออก: {lic.issueDate ? formatThaiDateDisplay(lic.issueDate) : '-'} ·
-                            วันหมดอายุ:{' '}
-                            {lic.expiryDate ? formatThaiDateDisplay(lic.expiryDate) : '-'}
+                          <div className="inline-flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleEditLicenseInline(idx)}
+                              title="แก้ไขใบอนุญาต"
+                              className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingLicenseIdx(idx)}
+                              title="ลบใบอนุญาต"
+                              className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                        <div className="inline-flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleEditLicenseInline(idx)}
-                            title="แก้ไขใบอนุญาต"
-                            className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingLicenseIdx(idx)}
-                            title="ลบใบอนุญาต"
-                            className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 py-1">
@@ -2181,12 +2247,6 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           {/* ============================================================== */}
           {activeTab === 'scout' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/60 text-[11px] text-sky-700 dark:text-sky-300">
-                <span>
-                  ข้อมูลวุฒิลูกเสือบันทึกตรงเข้าทะเบียนวุฒิลูกเสือทันที และซิงก์วุฒิสูงสุดกลับข้อมูลบุคลากรอัตโนมัติ
-                </span>
-              </div>
-
               {scoutNotice && (
                 <div
                   className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-medium ${
@@ -2279,7 +2339,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                     )}
                   </div>
 
-                  {/* Add / Edit Scout Sub-Form */}
+                  {/* Add / Edit Scout Sub-Form (Dropdowns Above Title w/ Smart Auto-Fill) */}
                   <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
@@ -2296,19 +2356,6 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                        ชื่อวุฒิทางลูกเสือ <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={scoutQualification}
-                        onChange={(e) => setScoutQualification(e.target.value)}
-                        placeholder="เช่น ผู้กำกับลูกเสือสามัญ ขั้นความรู้ชั้นสูง (A.T.C.)"
-                        className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                      />
-                    </div>
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
@@ -2316,7 +2363,13 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                         </label>
                         <select
                           value={scoutBadgeLevel}
-                          onChange={(e) => setScoutBadgeLevel(e.target.value)}
+                          onChange={(e) => {
+                            const nextLvl = e.target.value;
+                            setScoutBadgeLevel(nextLvl);
+                            if (!isScoutQualManual) {
+                              setScoutQualification(buildDefaultScoutTitle(scoutCategory, nextLvl));
+                            }
+                          }}
                           className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                         >
                           {SCOUT_BADGE_LEVELS.map((lvl) => (
@@ -2332,7 +2385,13 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                         </label>
                         <select
                           value={scoutCategory}
-                          onChange={(e) => setScoutCategory(e.target.value)}
+                          onChange={(e) => {
+                            const nextCat = e.target.value;
+                            setScoutCategory(nextCat);
+                            if (!isScoutQualManual) {
+                              setScoutQualification(buildDefaultScoutTitle(nextCat, scoutBadgeLevel));
+                            }
+                          }}
                           className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                         >
                           {SCOUT_CATEGORIES.map((cat) => (
@@ -2342,6 +2401,22 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                           ))}
                         </select>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                        ชื่อวุฒิทางลูกเสือ <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={scoutQualification}
+                        onChange={(e) => {
+                          setScoutQualification(e.target.value);
+                          setIsScoutQualManual(e.target.value.trim().length > 0);
+                        }}
+                        placeholder="เช่น ผู้กำกับลูกเสือสามัญ ขั้นวูดแบดจ์ 2 ท่อน (W.B.)"
+                        className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2396,12 +2471,15 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        บันทึกตรงเข้าทะเบียนวุฒิลูกเสือทันที และซิงก์วุฒิสูงสุดอัตโนมัติ
+                      </span>
                       <button
                         type="button"
                         disabled={isScoutSaving}
                         onClick={handleSaveScoutDirect}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                       >
                         {isScoutSaving ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -2473,7 +2551,17 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
         </div>
       </div>
 
-      {/* In-App Delete Confirmations for Tabs 4, 5, 6 */}
+      {/* In-App Delete Confirmations for Tabs 3, 4, 5, 6 */}
+      <ConfirmModal
+        isOpen={deletingEduIdx !== null}
+        title="ยืนยันการลบวุฒิการศึกษา"
+        description="ต้องการลบวุฒิการศึกษารายการนี้ออกจากประวัติบุคลากรใช่หรือไม่? ระบบจะปรับวุฒิการศึกษาสูงสุดให้อัตโนมัติ"
+        confirmLabel="ยืนยันการลบ"
+        variant="danger"
+        onConfirm={handleConfirmDeleteEducation}
+        onCancel={() => setDeletingEduIdx(null)}
+      />
+
       <ConfirmModal
         isOpen={deletingStandingIdx !== null}
         title="ยืนยันการลบรายการวิทยฐานะ"

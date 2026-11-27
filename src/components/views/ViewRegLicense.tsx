@@ -45,13 +45,14 @@ import { isAdminRole } from '@/lib/auth/roles';
 import { buildLicenseExpiryCsv, triggerCsvDownload } from '@/lib/exports/hrExports';
 
 const LICENSE_TYPE_OPTIONS = [
+  'ใบอนุญาตปฏิบัติหน้าที่ครู (P-License)',
   'ใบอนุญาตประกอบวิชาชีพครู (ชั้นต้น / B-License)',
   'ใบอนุญาตประกอบวิชาชีพครู (ชั้นสูง / A-License)',
-  'ใบอนุญาตปฏิบัติหน้าที่ครู (P-License)',
   'ใบอนุญาตประกอบวิชาชีพครู',
   'ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา',
   'ใบอนุญาตประกอบวิชาชีพผู้บริหารการศึกษา',
   'ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์',
+  'หนังสืออนุญาตให้ประกอบวิชาชีพโดยไม่มีใบอนุญาตฯ (ผ่อนผัน)',
 ];
 
 const CUSTOM_LICENSE_VALUE = '__CUSTOM__';
@@ -916,14 +917,13 @@ export const ViewRegLicense: React.FC = () => {
         </div>
       </div>
 
-      {/* Add / Edit License Modal (Admin Only) */}
+      {/* Add / Edit License Modal (Admin Only — locked against accidental backdrop close) */}
       {isModalOpen && canManage && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="license-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
-          onClick={() => !isSaving && setIsModalOpen(false)}
         >
           <div
             className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden text-slate-800 dark:text-slate-200"

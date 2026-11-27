@@ -699,6 +699,23 @@ export default function AdminPage() {
     );
   };
 
+  const handleRequestCloseStaffModal = () => {
+    if (!hasStaffUnsavedChanges) {
+      setIsStaffModalOpen(false);
+      return;
+    }
+    setConfirmDialog({
+      title: 'ยังไม่ได้บันทึกการเปลี่ยนแปลง',
+      description:
+        'คุณมีการแก้ไขข้อมูลบุคลากรที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้โดยไม่บันทึกใช่หรือไม่?',
+      confirmLabel: 'ปิดโดยไม่บันทึก',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        setIsStaffModalOpen(false);
+      },
+    });
+  };
+
   const handleNavigateToView = (view: StaffQuickJumpView, staffKey?: string) => {
     const viewLabels: Record<StaffQuickJumpView, string> = {
       workload: 'ตารางสอนและภาระงาน',
@@ -2528,7 +2545,7 @@ export default function AdminPage() {
         onScoutSynced={handleScoutSynced}
         onDeleteStaff={handleDeleteStaff}
         onSave={handleSaveStaff}
-        onClose={() => setIsStaffModalOpen(false)}
+        onClose={handleRequestCloseStaffModal}
       />
 
       {/* School Board Modal (Feature-complete legacy GAS restoration) */}

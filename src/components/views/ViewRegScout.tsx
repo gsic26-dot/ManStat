@@ -655,13 +655,12 @@ export function ViewRegScout() {
         )
       )}
 
-      {/* Create / Edit Scout Credential Modal */}
+      {/* Create / Edit Scout Credential Modal (locked against accidental backdrop close) */}
       {isModalOpen && canManage && (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm overflow-y-auto"
-          onClick={() => !isSaving && setIsModalOpen(false)}
         >
           <div
             className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
