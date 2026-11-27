@@ -898,10 +898,19 @@ export interface WorkloadItem {
   hoursPerWeek: number;
   roleInTask: string;
   orderOrRef?: string;
-  status: 'กำลังดำเนินการ' | 'เสร็จสิ้นแล้ว' | 'งานประจำต่อเนื่อง';
+  status:
+    | 'กำลังดำเนินการ'
+    | 'เสร็จสิ้นแล้ว'
+    | 'งานประจำต่อเนื่อง'
+    | 'ดำเนินการแล้วเสร็จ'
+    | 'รอดำเนินการ';
   coEmp?: string;
   courseCode?: string;
   type?: 'MAIN' | 'TA';
+  academicYear?: string;
+  scopeDescription?: string;
+  obecSystems?: string[];
+  coResponsibleIds?: string[];
 }
 
 export const INITIAL_WORKLOAD_ITEMS: WorkloadItem[] = [

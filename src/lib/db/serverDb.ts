@@ -2065,10 +2065,14 @@ export function workloadFromDb(row: any): WorkloadItem {
     hoursPerWeek: Number(row.hours_per_week) || 0,
     roleInTask: row.role_in_task || 'ผู้รับผิดชอบหลัก',
     orderOrRef: row.order_or_ref || '',
-    status: (row.status || 'กำลังดำเนินการ') as any,
+    status: (row.status || 'กำลังดำเนินการ') as WorkloadItem['status'],
     coEmp: row.co_emp_ids || '',
     courseCode: row.academic_term || '',
     type: (row.effective_period === 'TA' ? 'TA' : 'MAIN'),
+    academicYear: row.academic_year || '',
+    scopeDescription: row.scope_description || '',
+    obecSystems: Array.isArray(row.obec_systems) ? row.obec_systems : [],
+    coResponsibleIds: Array.isArray(row.co_responsible_ids) ? row.co_responsible_ids : [],
   };
 }
 
@@ -2086,6 +2090,10 @@ export function workloadToDb(w: WorkloadItem) {
     order_or_ref: w.orderOrRef || '',
     effective_period: w.type || 'MAIN',
     status: w.status,
+    academic_year: w.academicYear || '',
+    scope_description: w.scopeDescription || '',
+    obec_systems: Array.isArray(w.obecSystems) ? w.obecSystems : [],
+    co_responsible_ids: Array.isArray(w.coResponsibleIds) ? w.coResponsibleIds : [],
     timestamp: new Date().toISOString(),
   };
 }
