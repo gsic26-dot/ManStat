@@ -615,7 +615,14 @@ export default function AdminPage() {
   // Dirty-tab indicators comparing current edited staff against initial loaded snapshot
   const staffTabDirty = useMemo(() => {
     if (!selectedStaff || !initialStaffSnapshot) {
-      return { personal: false, position: false, education: false, account: false };
+      return {
+        personal: false,
+        position: false,
+        education: false,
+        standing: false,
+        license: false,
+        scout: false,
+      };
     }
     const personal =
       (selectedStaff.prefix || '') !== (initialStaffSnapshot.prefix || '') ||
@@ -646,7 +653,9 @@ export default function AdminPage() {
       (selectedStaff.classLevel || '-') !== (initialStaffSnapshot.classLevel || '-') ||
       (selectedStaff.dutyDay || '-') !== (initialStaffSnapshot.dutyDay || '-') ||
       (selectedStaff.startDate || '') !== (initialStaffSnapshot.startDate || '') ||
-      (selectedStaff.currentPositionDate || '') !== (initialStaffSnapshot.currentPositionDate || '');
+      (selectedStaff.currentPositionDate || '') !== (initialStaffSnapshot.currentPositionDate || '') ||
+      (selectedStaff.employeeCode || '') !== (initialStaffSnapshot.employeeCode || '') ||
+      (selectedStaff.accessLevel || 'User') !== (initialStaffSnapshot.accessLevel || 'User');
 
     const education =
       (selectedStaff.educationLevel || '') !== (initialStaffSnapshot.educationLevel || '') ||
@@ -658,18 +667,37 @@ export default function AdminPage() {
       JSON.stringify(selectedStaff.educations || []) !==
         JSON.stringify(initialStaffSnapshot.educations || []);
 
-    const account =
-      (selectedStaff.employeeCode || '') !== (initialStaffSnapshot.employeeCode || '') ||
-      (selectedStaff.accessLevel || 'User') !== (initialStaffSnapshot.accessLevel || 'User');
+    const standing =
+      (selectedStaff.academicStanding || '-') !== (initialStaffSnapshot.academicStanding || '-') ||
+      JSON.stringify(selectedStaff.standings || []) !==
+        JSON.stringify(initialStaffSnapshot.standings || []);
 
-    return { personal, position, education, account };
+    const license =
+      JSON.stringify(selectedStaff.licenses || []) !==
+      JSON.stringify(initialStaffSnapshot.licenses || []);
+
+    // Tab 6 (scout) saves directly to /api/admin/scout -> never marked unsaved
+    return { personal, position, education, standing, license, scout: false };
   }, [selectedStaff, initialStaffSnapshot]);
 
   const hasStaffUnsavedChanges =
     staffTabDirty.personal ||
     staffTabDirty.position ||
     staffTabDirty.education ||
-    staffTabDirty.account;
+    staffTabDirty.standing ||
+    staffTabDirty.license;
+
+  const handleScoutSynced = (staffId: string, highestScout: string, scoutCertNo: string) => {
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === staffId ? { ...t, highestScout, scoutCertNo } : t))
+    );
+    setSelectedStaff((prev) =>
+      prev && prev.id === staffId ? { ...prev, highestScout, scoutCertNo } : prev
+    );
+    setInitialStaffSnapshot((prev) =>
+      prev && prev.id === staffId ? { ...prev, highestScout, scoutCertNo } : prev
+    );
+  };
 
   const handleNavigateToView = (view: StaffQuickJumpView, staffKey?: string) => {
     const viewLabels: Record<StaffQuickJumpView, string> = {
@@ -2479,7 +2507,7 @@ export default function AdminPage() {
         {activeTab === 'preferences' && <SystemSettingsTab />}
       </main>
 
-      {/* Staff Edit Modal (Clean 2x2 Core Tabs — Single Source of Truth) */}
+      {/* Staff Edit Modal (Balanced 6-Tab 3x2 Wider Layout — Single Source of Truth) */}
       <StaffEditModal
         isOpen={isStaffModalOpen}
         isNewStaff={isNewStaff}
@@ -2497,6 +2525,7 @@ export default function AdminPage() {
         onChangeStaff={setSelectedStaff}
         onChangeCustomMajor={setIsCustomMajor}
         onNavigateToView={handleNavigateToView}
+        onScoutSynced={handleScoutSynced}
         onDeleteStaff={handleDeleteStaff}
         onSave={handleSaveStaff}
         onClose={() => setIsStaffModalOpen(false)}

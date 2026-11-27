@@ -22,7 +22,9 @@ import {
   Users,
   Briefcase,
   GraduationCap,
-  ShieldCheck,
+  Medal,
+  BadgeCheck,
+  Compass,
   X,
   Save,
   Loader2,
@@ -31,15 +33,17 @@ import {
   Pencil,
   Check,
   ChevronRight,
-  AlertTriangle,
   Lock,
   Unlock,
   ExternalLink,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
-import type { TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
-import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
+import type { ScoutRecord, TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
+import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
-import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { formatStaffName, formatShortStanding } from '@/lib/regulations/staff-formatting';
 import { calculateRetirementInfo } from '@/lib/regulations/fiscal-and-retirement';
 import {
   MAJOR_GROUPS,
@@ -61,7 +65,13 @@ import {
 } from '@/lib/constants/thaiAddress';
 import { getStaffDivisions } from '@/lib/staffDivisions';
 
-export type StaffModalTabKey = 'personal' | 'position' | 'education' | 'account';
+export type StaffModalTabKey =
+  | 'personal'
+  | 'position'
+  | 'education'
+  | 'standing'
+  | 'license'
+  | 'scout';
 export type StaffQuickJumpView = 'workload' | 'dir_standing' | 'dir_license' | 'dir_scout';
 
 export interface StaffEditModalProps {
@@ -81,6 +91,7 @@ export interface StaffEditModalProps {
   onChangeStaff: (updated: TeacherRecord) => void;
   onChangeCustomMajor: (isCustom: boolean) => void;
   onNavigateToView: (view: StaffQuickJumpView, staffKey?: string) => void;
+  onScoutSynced?: (staffId: string, highestScout: string, scoutCertNo: string) => void;
   onDeleteStaff: (staffId: string) => void;
   onSave: () => void;
   onClose: () => void;
@@ -94,8 +105,61 @@ const MODAL_TABS: Array<{
   { key: 'personal', label: 'ข้อมูลส่วนตัว', icon: Users },
   { key: 'position', label: 'ตำแหน่งและสังกัด', icon: Briefcase },
   { key: 'education', label: 'วุฒิการศึกษาและวิชาเอก', icon: GraduationCap },
-  { key: 'account', label: 'บัญชีและสิทธิ์ระบบ', icon: ShieldCheck },
+  { key: 'standing', label: 'วิทยฐานะ', icon: Medal },
+  { key: 'license', label: 'ใบอนุญาตฯ', icon: BadgeCheck },
+  { key: 'scout', label: 'วุฒิลูกเสือ', icon: Compass },
 ];
+
+const STANDING_LEVEL_OPTIONS = [
+  'ไม่มีวิทยฐานะ',
+  'ครูผู้ช่วย',
+  'ชำนาญการ',
+  'ชำนาญการพิเศษ',
+  'เชี่ยวชาญ',
+  'เชี่ยวชาญพิเศษ',
+];
+
+const BASELINE_STANDING_LEVELS = new Set(['ไม่มีวิทยฐานะ', 'ครูผู้ช่วย']);
+
+const LICENSE_TYPE_OPTIONS = [
+  'ใบอนุญาตประกอบวิชาชีพครู (ชั้นต้น / B-License)',
+  'ใบอนุญาตประกอบวิชาชีพครู (ชั้นสูง / A-License)',
+  'ใบอนุญาตปฏิบัติหน้าที่ครู (P-License)',
+  'ใบอนุญาตประกอบวิชาชีพครู',
+  'ใบอนุญาตประกอบวิชาชีพผู้บริหารสถานศึกษา',
+  'ใบอนุญาตประกอบวิชาชีพผู้บริหารการศึกษา',
+  'ใบอนุญาตประกอบวิชาชีพศึกษานิเทศก์',
+];
+
+const CUSTOM_LICENSE_VALUE = '__CUSTOM__';
+
+const SCOUT_BADGE_LEVELS = [
+  'วูดแบดจ์ 4 ท่อน (L.T.)',
+  'วูดแบดจ์ 3 ท่อน (A.L.T.)',
+  'วูดแบดจ์ 2 ท่อน (W.B.)',
+  'ขั้นความรู้ชั้นสูง (A.T.C.)',
+  'ขั้นความรู้เบื้องต้น (B.T.C.)',
+];
+
+const SCOUT_CATEGORIES = [
+  'ลูกเสือสามัญ',
+  'ลูกเสือสามัญรุ่นใหญ่',
+  'ลูกเสือสำรอง',
+  'ลูกเสือวิสามัญ',
+];
+
+function deriveLicenseCategory(type: string): string {
+  if (type.includes('ผู้บริหาร')) return 'ผู้บริหาร';
+  if (type.includes('ศึกษานิเทศก์')) return 'ศึกษานิเทศก์';
+  return 'ครู';
+}
+
+function sortStandingsDesc(standings?: TeacherRecord['standings']) {
+  if (!standings || standings.length === 0) return [];
+  return [...standings].sort((a, b) =>
+    String(b.effectiveDate || '').localeCompare(String(a.effectiveDate || ''))
+  );
+}
 
 function computeAgeYears(birthDateStr?: string | null): number | null {
   if (!birthDateStr || !/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) return null;
@@ -126,6 +190,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   onChangeStaff,
   onChangeCustomMajor,
   onNavigateToView,
+  onScoutSynced,
   onDeleteStaff,
   onSave,
   onClose,
@@ -143,6 +208,101 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   const [newEduInst, setNewEduInst] = useState('');
   const [newEduYear, setNewEduYear] = useState('');
   const [editingEduIdx, setEditingEduIdx] = useState<number | null>(null);
+
+  // Tab 4: Academic Standing inline CRUD state
+  const [editingStandingIdx, setEditingStandingIdx] = useState<number | null>(null);
+  const [stdLevel, setStdLevel] = useState<string>('ชำนาญการ');
+  const [stdOrderNo, setStdOrderNo] = useState<string>('');
+  const [stdEffectiveDate, setStdEffectiveDate] = useState<string>('');
+  const [stdFormError, setStdFormError] = useState<string | null>(null);
+  const [deletingStandingIdx, setDeletingStandingIdx] = useState<number | null>(null);
+
+  // Tab 5: License inline CRUD state
+  const [editingLicenseIdx, setEditingLicenseIdx] = useState<number | null>(null);
+  const [licTypeSelect, setLicTypeSelect] = useState<string>(LICENSE_TYPE_OPTIONS[0]);
+  const [licCustomType, setLicCustomType] = useState<string>('');
+  const [licNumber, setLicNumber] = useState<string>('');
+  const [licIssueDate, setLicIssueDate] = useState<string>('');
+  const [licExpiryDate, setLicExpiryDate] = useState<string>('');
+  const [licFormError, setLicFormError] = useState<string | null>(null);
+  const [deletingLicenseIdx, setDeletingLicenseIdx] = useState<number | null>(null);
+
+  // Tab 6: Scout direct CRUD state (Single Source of Truth via /api/admin/scout)
+  const [scoutRecords, setScoutRecords] = useState<ScoutRecord[]>([]);
+  const [isScoutLoading, setIsScoutLoading] = useState<boolean>(false);
+  const [isScoutSaving, setIsScoutSaving] = useState<boolean>(false);
+  const [editingScoutId, setEditingScoutId] = useState<string | null>(null);
+  const [scoutQualification, setScoutQualification] = useState<string>('');
+  const [scoutBadgeLevel, setScoutBadgeLevel] = useState<string>(SCOUT_BADGE_LEVELS[2]);
+  const [scoutCategory, setScoutCategory] = useState<string>(SCOUT_CATEGORIES[0]);
+  const [scoutCertNo, setScoutCertNo] = useState<string>('');
+  const [scoutOrderNo, setScoutOrderNo] = useState<string>('');
+  const [scoutIssueDate, setScoutIssueDate] = useState<string>('');
+  const [scoutIssuedBy, setScoutIssuedBy] = useState<string>('สำนักงานลูกเสือแห่งชาติ');
+  const [scoutNotice, setScoutNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [deletingScoutItem, setDeletingScoutItem] = useState<ScoutRecord | null>(null);
+
+  // Reset Tabs 4–6 inline sub-forms whenever modal opens/closes or staff changes
+  useEffect(() => {
+    setEditingStandingIdx(null);
+    setStdLevel('ชำนาญการ');
+    setStdOrderNo('');
+    setStdEffectiveDate('');
+    setStdFormError(null);
+    setDeletingStandingIdx(null);
+
+    setEditingLicenseIdx(null);
+    setLicTypeSelect(LICENSE_TYPE_OPTIONS[0]);
+    setLicCustomType('');
+    setLicNumber('');
+    setLicIssueDate('');
+    setLicExpiryDate('');
+    setLicFormError(null);
+    setDeletingLicenseIdx(null);
+
+    setEditingScoutId(null);
+    setScoutQualification('');
+    setScoutBadgeLevel(SCOUT_BADGE_LEVELS[2]);
+    setScoutCategory(SCOUT_CATEGORIES[0]);
+    setScoutCertNo('');
+    setScoutOrderNo('');
+    setScoutIssueDate('');
+    setScoutIssuedBy('สำนักงานลูกเสือแห่งชาติ');
+    setScoutNotice(null);
+    setDeletingScoutItem(null);
+  }, [staff?.id, isOpen]);
+
+  // Load this staff member's scout records from /api/admin/scout
+  const staffIdForScout = staff?.id || '';
+  const staffCodeForScout = staff?.employeeCode || '';
+  const staffFullNameForScout = staff ? formatStaffName(staff) : '';
+
+  useEffect(() => {
+    if (!isOpen || !staffIdForScout || isNewStaff) {
+      setScoutRecords([]);
+      return;
+    }
+    let isMounted = true;
+    setIsScoutLoading(true);
+    fetch('/api/admin/scout', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!isMounted || !json?.success || !Array.isArray(json.data)) return;
+        const matched = (json.data as ScoutRecord[]).filter(
+          (s) =>
+            (s.teacherId && (s.teacherId === staffIdForScout || s.teacherId === staffCodeForScout)) ||
+            (s.teacherName && formatStaffName(s.teacherName) === staffFullNameForScout)
+        );
+        setScoutRecords(matched);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsScoutLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, staffIdForScout, staffCodeForScout, staffFullNameForScout, isNewStaff]);
 
   // Sync local helper flags when modal opens or switches staff
   useEffect(() => {
@@ -321,6 +481,269 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     }
   };
 
+  // =========================================================================
+  // Tab 4: Academic Standing Handlers (Synced with ViewRegStanding)
+  // =========================================================================
+  const orderedStandings = sortStandingsDesc(staff.standings);
+
+  const resetStandingForm = () => {
+    setEditingStandingIdx(null);
+    setStdLevel('ชำนาญการ');
+    setStdOrderNo('');
+    setStdEffectiveDate('');
+    setStdFormError(null);
+  };
+
+  const handleSaveStandingInline = () => {
+    const levelClean = stdLevel.trim();
+    const isBaseline = BASELINE_STANDING_LEVELS.has(levelClean);
+    if (!levelClean) {
+      setStdFormError('กรุณาเลือกระดับวิทยฐานะ');
+      return;
+    }
+    if (!isBaseline && !stdOrderNo.trim()) {
+      setStdFormError('กรุณาระบุเลขที่คำสั่งแต่งตั้ง');
+      return;
+    }
+    if (!isBaseline && !stdEffectiveDate) {
+      setStdFormError('กรุณาเลือกวันที่มีผลตามคำสั่ง');
+      return;
+    }
+
+    const nextItem = {
+      level: levelClean,
+      orderNumber: stdOrderNo.trim() || '-',
+      effectiveDate: stdEffectiveDate || '',
+    };
+
+    const currentList = [...orderedStandings];
+    if (editingStandingIdx !== null && editingStandingIdx >= 0 && editingStandingIdx < currentList.length) {
+      currentList[editingStandingIdx] = nextItem;
+    } else {
+      currentList.push(nextItem);
+    }
+
+    const sortedNext = sortStandingsDesc(currentList);
+    const nextAcademicStanding = sortedNext.length > 0 ? sortedNext[0].level : '-';
+
+    onChangeStaff({
+      ...staff,
+      standings: sortedNext,
+      academicStanding: nextAcademicStanding,
+    });
+    resetStandingForm();
+  };
+
+  const handleEditStandingInline = (idx: number) => {
+    const item = orderedStandings[idx];
+    if (!item) return;
+    const normalized = formatShortStanding(item.level);
+    setEditingStandingIdx(idx);
+    setStdLevel(STANDING_LEVEL_OPTIONS.includes(normalized) ? normalized : item.level || 'ชำนาญการ');
+    setStdOrderNo(item.orderNumber === '-' ? '' : item.orderNumber || '');
+    setStdEffectiveDate(item.effectiveDate || '');
+    setStdFormError(null);
+  };
+
+  const handleConfirmDeleteStandingInline = () => {
+    if (deletingStandingIdx === null) return;
+    const nextList = orderedStandings.filter((_, i) => i !== deletingStandingIdx);
+    const sortedNext = sortStandingsDesc(nextList);
+    const nextAcademicStanding = sortedNext.length > 0 ? sortedNext[0].level : '-';
+    onChangeStaff({
+      ...staff,
+      standings: sortedNext,
+      academicStanding: nextAcademicStanding,
+    });
+    if (editingStandingIdx === deletingStandingIdx) {
+      resetStandingForm();
+    }
+    setDeletingStandingIdx(null);
+  };
+
+  // =========================================================================
+  // Tab 5: License Handlers (Synced with ViewRegLicense)
+  // =========================================================================
+  const currentLicenses = Array.isArray(staff.licenses) ? staff.licenses : [];
+
+  const resetLicenseForm = () => {
+    setEditingLicenseIdx(null);
+    setLicTypeSelect(LICENSE_TYPE_OPTIONS[0]);
+    setLicCustomType('');
+    setLicNumber('');
+    setLicIssueDate('');
+    setLicExpiryDate('');
+    setLicFormError(null);
+  };
+
+  const handleSaveLicenseInline = () => {
+    const resolvedType =
+      licTypeSelect === CUSTOM_LICENSE_VALUE ? licCustomType.trim() : licTypeSelect.trim();
+    if (!resolvedType) {
+      setLicFormError('กรุณาระบุประเภทใบอนุญาตประกอบวิชาชีพ');
+      return;
+    }
+    if (!licNumber.trim()) {
+      setLicFormError('กรุณาระบุเลขที่ใบอนุญาต');
+      return;
+    }
+    if (!licExpiryDate) {
+      setLicFormError('กรุณาเลือกวันหมดอายุใบอนุญาต');
+      return;
+    }
+
+    const nextLic = {
+      category: deriveLicenseCategory(resolvedType),
+      type: resolvedType,
+      number: licNumber.trim(),
+      issueDate: licIssueDate || '',
+      expiryDate: licExpiryDate,
+    };
+
+    const nextList = [...currentLicenses];
+    if (editingLicenseIdx !== null && editingLicenseIdx >= 0 && editingLicenseIdx < nextList.length) {
+      nextList[editingLicenseIdx] = nextLic;
+    } else {
+      nextList.push(nextLic);
+    }
+
+    onChangeStaff({ ...staff, licenses: nextList });
+    resetLicenseForm();
+  };
+
+  const handleEditLicenseInline = (idx: number) => {
+    const item = currentLicenses[idx];
+    if (!item) return;
+    const isPreset = LICENSE_TYPE_OPTIONS.includes(item.type);
+    setEditingLicenseIdx(idx);
+    setLicTypeSelect(isPreset ? item.type : CUSTOM_LICENSE_VALUE);
+    setLicCustomType(isPreset ? '' : item.type || '');
+    setLicNumber(item.number || '');
+    setLicIssueDate(item.issueDate || '');
+    setLicExpiryDate(item.expiryDate || '');
+    setLicFormError(null);
+  };
+
+  const handleConfirmDeleteLicenseInline = () => {
+    if (deletingLicenseIdx === null) return;
+    const nextList = currentLicenses.filter((_, i) => i !== deletingLicenseIdx);
+    onChangeStaff({ ...staff, licenses: nextList });
+    if (editingLicenseIdx === deletingLicenseIdx) {
+      resetLicenseForm();
+    }
+    setDeletingLicenseIdx(null);
+  };
+
+  // =========================================================================
+  // Tab 6: Scout Handlers (Direct Single Source of Truth via /api/admin/scout)
+  // =========================================================================
+  const showScoutNotice = (type: 'success' | 'error', text: string) => {
+    setScoutNotice({ type, text });
+    setTimeout(() => {
+      setScoutNotice((prev) => (prev?.text === text ? null : prev));
+    }, 4000);
+  };
+
+  const resetScoutForm = () => {
+    setEditingScoutId(null);
+    setScoutQualification('');
+    setScoutBadgeLevel(SCOUT_BADGE_LEVELS[2]);
+    setScoutCategory(SCOUT_CATEGORIES[0]);
+    setScoutCertNo('');
+    setScoutOrderNo('');
+    setScoutIssueDate('');
+    setScoutIssuedBy('สำนักงานลูกเสือแห่งชาติ');
+  };
+
+  const handleEditScoutInline = (record: ScoutRecord) => {
+    setEditingScoutId(record.id);
+    setScoutQualification(record.qualification || '');
+    setScoutBadgeLevel(record.badgeLevel || SCOUT_BADGE_LEVELS[2]);
+    setScoutCategory(record.category || SCOUT_CATEGORIES[0]);
+    setScoutCertNo(record.certificateNo || '');
+    setScoutOrderNo(record.orderNumber || '');
+    setScoutIssueDate(record.issueDate || '');
+    setScoutIssuedBy(record.issuedBy || 'สำนักงานลูกเสือแห่งชาติ');
+  };
+
+  const handleSaveScoutDirect = async () => {
+    if (isNewStaff) return;
+    if (!scoutQualification.trim()) {
+      showScoutNotice('error', 'กรุณาระบุชื่อวุฒิทางลูกเสือ');
+      return;
+    }
+
+    const payload: ScoutRecord = {
+      id: editingScoutId || `SCT-${Date.now().toString().slice(-6)}`,
+      teacherId: staff.id,
+      teacherName: formatStaffName(staff),
+      position: staff.position || 'ครู',
+      qualification: scoutQualification.trim(),
+      badgeLevel: scoutBadgeLevel,
+      category: scoutCategory,
+      certificateNo: scoutCertNo.trim() || '-',
+      orderNumber: scoutOrderNo.trim() || '-',
+      issueDate: scoutIssueDate || '',
+      issuedBy: scoutIssuedBy.trim() || 'สำนักงานลูกเสือแห่งชาติ',
+    };
+
+    setIsScoutSaving(true);
+    try {
+      const res = await fetch('/api/admin/scout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกวุฒิลูกเสือได้');
+      }
+      const savedRecord: ScoutRecord = json.data || payload;
+      setScoutRecords((prev) =>
+        editingScoutId
+          ? prev.map((r) => (r.id === editingScoutId ? savedRecord : r))
+          : [savedRecord, ...prev]
+      );
+      onScoutSynced?.(staff.id, savedRecord.qualification, savedRecord.certificateNo || '');
+      resetScoutForm();
+      showScoutNotice(
+        'success',
+        editingScoutId ? 'อัปเดตวุฒิลูกเสือในทะเบียนเรียบร้อยแล้ว' : 'เพิ่มวุฒิลูกเสือลงทะเบียนเรียบร้อยแล้ว'
+      );
+    } catch (err) {
+      showScoutNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกวุฒิลูกเสือ');
+    } finally {
+      setIsScoutSaving(false);
+    }
+  };
+
+  const handleConfirmDeleteScoutDirect = async () => {
+    if (!deletingScoutItem) return;
+    const targetId = deletingScoutItem.id;
+    setIsScoutSaving(true);
+    try {
+      const res = await fetch(`/api/admin/scout?id=${encodeURIComponent(targetId)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถลบวุฒิลูกเสือได้');
+      }
+      const remaining = scoutRecords.filter((r) => r.id !== targetId);
+      setScoutRecords(remaining);
+      const nextHighest = remaining[0]?.qualification || 'ไม่มีวุฒิลูกเสือ';
+      const nextCertNo = remaining[0]?.certificateNo || '';
+      onScoutSynced?.(staff.id, nextHighest, nextCertNo);
+      if (editingScoutId === targetId) resetScoutForm();
+      setDeletingScoutItem(null);
+      showScoutNotice('success', 'ลบข้อมูลวุฒิลูกเสือออกจากทะเบียนเรียบร้อยแล้ว');
+    } catch (err) {
+      showScoutNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลบข้อมูล');
+    } finally {
+      setIsScoutSaving(false);
+    }
+  };
+
   return (
     <div
       role="dialog"
@@ -332,7 +755,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
       }}
     >
       <div
-        className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs flex flex-col text-slate-800 dark:text-slate-200"
+        className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs flex flex-col text-slate-800 dark:text-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header (Fixed) */}
@@ -367,10 +790,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           </button>
         </div>
 
-        {/* 2×2 Equal-Width Core Tab Navigation (Fixed) */}
+        {/* 3×2 Equal-Width Core Tab Navigation (Fixed) */}
         <div
           role="tablist"
-          className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#0d141d] rounded-xl border border-slate-200/80 dark:border-slate-800 shrink-0"
+          className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-[#0d141d] rounded-xl border border-slate-200/80 dark:border-slate-800 shrink-0"
         >
           {MODAL_TABS.map((tab) => {
             const Icon = tab.icon;
@@ -1002,32 +1425,38 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 px-1">
-                <span>จัดการ</span>
-                <button
-                  type="button"
-                  onClick={() => onNavigateToView('dir_standing', staff.employeeCode || staff.id)}
-                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
-                >
-                  วิทยฐานะ
-                </button>
-                <span aria-hidden="true">/</span>
-                <button
-                  type="button"
-                  onClick={() => onNavigateToView('dir_license', staff.employeeCode || staff.id)}
-                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
-                >
-                  ใบอนุญาตฯ
-                </button>
-                <span aria-hidden="true">/</span>
-                <button
-                  type="button"
-                  onClick={() => onNavigateToView('dir_scout', staff.employeeCode || staff.id)}
-                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
-                >
-                  วุฒิลูกเสือ
-                </button>
-                <span>ได้ที่เมนูหมวดงานทะเบียนประวัติ</span>
+              {/* Relocated Sub-group: บัญชีและสิทธิ์ระบบ (2-Column) */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  บัญชีและสิทธิ์ระบบ
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      รหัสประจำตัวบุคลากร
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.employeeCode}
+                      onChange={(e) => onChangeStaff({ ...staff, employeeCode: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ระดับสิทธิ์การใช้งานระบบ
+                    </label>
+                    <select
+                      value={staff.accessLevel || 'User'}
+                      onChange={(e) => onChangeStaff({ ...staff, accessLevel: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
+                    >
+                      <option value="Superuser">Superuser (สิทธิ์ผู้ดูแลสูงสุด)</option>
+                      <option value="Admin">Admin (ฝ่ายบริหาร / งานบุคคล)</option>
+                      <option value="User">User (ครูและบุคลากรทั่วไป)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1397,133 +1826,688 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* TAB 4: บัญชีและสิทธิ์ระบบ (Focused Access Control + Danger Zone) */}
+          {/* TAB 4: วิทยฐานะ (Full In-Modal CRUD, Synced w/ ViewRegStanding) */}
           {/* ============================================================== */}
-          {activeTab === 'account' && (
+          {activeTab === 'standing' && (
             <div className="space-y-4">
-              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
-                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
-                  บัญชีผู้ใช้งานและสิทธิ์การเข้าถึงระบบ
+              {/* Current Academic Standing Summary */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    ประวัติคำสั่งแต่งตั้งวิทยฐานะ ({orderedStandings.length} รายการ)
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    วิทยฐานะปัจจุบัน:{' '}
+                    <strong className="text-amber-600 dark:text-amber-400">
+                      {formatShortStanding(staff.academicStanding)}
+                    </strong>
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    รหัสประจำตัวบุคลากร
-                  </label>
-                  <input
-                    type="text"
-                    value={staff.employeeCode}
-                    onChange={(e) => onChangeStaff({ ...staff, employeeCode: e.target.value })}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    ระดับสิทธิ์การใช้งานระบบ
-                  </label>
-                  <select
-                    value={staff.accessLevel || 'User'}
-                    onChange={(e) => onChangeStaff({ ...staff, accessLevel: e.target.value })}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
-                  >
-                    <option value="Superuser">Superuser (สิทธิ์ผู้ดูแลสูงสุด)</option>
-                    <option value="Admin">Admin (ฝ่ายบริหาร / งานบุคคล)</option>
-                    <option value="User">User (ครูและบุคลากรทั่วไป)</option>
-                  </select>
-                </div>
+                {orderedStandings.length > 0 ? (
+                  <div className="space-y-2">
+                    {orderedStandings.map((ord, idx) => (
+                      <div
+                        key={`${ord.level}-${ord.orderNumber}-${ord.effectiveDate}-${idx}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700/80"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="font-semibold text-slate-900 dark:text-white">
+                            {formatShortStanding(ord.level)}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            คำสั่ง: {ord.orderNumber || '-'} · มีผล:{' '}
+                            {ord.effectiveDate ? formatThaiDateDisplay(ord.effectiveDate) : '-'}
+                          </div>
+                        </div>
+                        <div className="inline-flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleEditStandingInline(idx)}
+                            title="แก้ไขคำสั่งวิทยฐานะ"
+                            className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingStandingIdx(idx)}
+                            title="ลบคำสั่งวิทยฐานะ"
+                            className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 py-1">
+                    ยังไม่มีรายการคำสั่งวิทยฐานะที่บันทึกไว้ สามารถเพิ่มได้จากแบบฟอร์มด้านล่าง
+                  </p>
+                )}
               </div>
 
-              {/* Danger Zone */}
-              {!isNewStaff && (
-                <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 font-semibold text-rose-700 dark:text-rose-400">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <span>พื้นที่อันตราย (Danger Zone)</span>
-                    </div>
-                    <p className="text-[11px] text-rose-600/90 dark:text-rose-300/80">
-                      ลบข้อมูลบุคลากรนี้ออกจากระบบอย่างถาวร (ไม่สามารถกู้คืนได้)
-                    </p>
+              {/* Add / Edit Standing Sub-Form */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {editingStandingIdx !== null ? 'แก้ไขรายการวิทยฐานะ' : 'เพิ่มรายการวิทยฐานะ / คำสั่งแต่งตั้ง'}
+                  </span>
+                  {editingStandingIdx !== null && (
+                    <button
+                      type="button"
+                      onClick={resetStandingForm}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                    >
+                      ยกเลิกการแก้ไข
+                    </button>
+                  )}
+                </div>
+
+                {stdFormError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{stdFormError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ระดับวิทยฐานะ <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={stdLevel}
+                      onChange={(e) => {
+                        setStdLevel(e.target.value);
+                        setStdFormError(null);
+                      }}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      {STANDING_LEVEL_OPTIONS.map((lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {lvl}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      เลขที่คำสั่งแต่งตั้ง{' '}
+                      {!BASELINE_STANDING_LEVELS.has(stdLevel) && (
+                        <span className="text-rose-500">*</span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={stdOrderNo}
+                      onChange={(e) => {
+                        setStdOrderNo(e.target.value);
+                        setStdFormError(null);
+                      }}
+                      placeholder="เช่น คำสั่งที่ 123/2567"
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      วันที่มีผลตามคำสั่ง{' '}
+                      {!BASELINE_STANDING_LEVELS.has(stdLevel) && (
+                        <span className="text-rose-500">*</span>
+                      )}
+                    </label>
+                    <ThaiDatePicker
+                      value={stdEffectiveDate}
+                      onChange={(val) => {
+                        setStdEffectiveDate(val);
+                        setStdFormError(null);
+                      }}
+                      placeholder="เลือกวันที่มีผล"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    ระบบจะปรับวิทยฐานะปัจจุบันตามคำสั่งล่าสุด และบันทึกเมื่อกด &ldquo;บันทึกการเปลี่ยนแปลง&rdquo;
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveStandingInline}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer shrink-0"
+                  >
+                    {editingStandingIdx !== null ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 shrink-0" />
+                        <span>อัปเดตรายการ</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5 shrink-0" />
+                        <span>เพิ่มวิทยฐานะ</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 5: ใบอนุญาตฯ (Full In-Modal CRUD, Synced w/ ViewRegLicense) */}
+          {/* ============================================================== */}
+          {activeTab === 'license' && (
+            <div className="space-y-4">
+              {/* Existing Licenses List */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  ใบอนุญาตประกอบวิชาชีพที่ถือครอง ({currentLicenses.length} ฉบับ)
+                </div>
+
+                {currentLicenses.length > 0 ? (
+                  <div className="space-y-2">
+                    {currentLicenses.map((lic, idx) => (
+                      <div
+                        key={`${lic.number}-${idx}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700/80"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="font-semibold text-slate-900 dark:text-white">
+                            {lic.type}{' '}
+                            <span className="font-mono text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                              ({lic.number})
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            วันออก: {lic.issueDate ? formatThaiDateDisplay(lic.issueDate) : '-'} ·
+                            วันหมดอายุ:{' '}
+                            {lic.expiryDate ? formatThaiDateDisplay(lic.expiryDate) : '-'}
+                          </div>
+                        </div>
+                        <div className="inline-flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleEditLicenseInline(idx)}
+                            title="แก้ไขใบอนุญาต"
+                            className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingLicenseIdx(idx)}
+                            title="ลบใบอนุญาต"
+                            className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 py-1">
+                    ยังไม่มีข้อมูลใบอนุญาตประกอบวิชาชีพ สามารถเพิ่มได้จากแบบฟอร์มด้านล่าง
+                  </p>
+                )}
+              </div>
+
+              {/* Add / Edit License Sub-Form */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {editingLicenseIdx !== null ? 'แก้ไขข้อมูลใบอนุญาตประกอบวิชาชีพ' : 'เพิ่มใบอนุญาตประกอบวิชาชีพ'}
+                  </span>
+                  {editingLicenseIdx !== null && (
+                    <button
+                      type="button"
+                      onClick={resetLicenseForm}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                    >
+                      ยกเลิกการแก้ไข
+                    </button>
+                  )}
+                </div>
+
+                {licFormError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{licFormError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ประเภทใบอนุญาต <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={licTypeSelect}
+                      onChange={(e) => {
+                        setLicTypeSelect(e.target.value);
+                        setLicFormError(null);
+                      }}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      {LICENSE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                      <option value={CUSTOM_LICENSE_VALUE}>อื่นๆ (ระบุเอง)...</option>
+                    </select>
+                    {licTypeSelect === CUSTOM_LICENSE_VALUE && (
+                      <input
+                        type="text"
+                        value={licCustomType}
+                        onChange={(e) => setLicCustomType(e.target.value)}
+                        placeholder="ระบุประเภทใบอนุญาต..."
+                        className="mt-2 w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      เลขที่ใบอนุญาต <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={licNumber}
+                      onChange={(e) => {
+                        setLicNumber(e.target.value);
+                        setLicFormError(null);
+                      }}
+                      placeholder="เช่น 65109000123456"
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      วันออกใบอนุญาต
+                    </label>
+                    <ThaiDatePicker
+                      value={licIssueDate}
+                      onChange={setLicIssueDate}
+                      placeholder="เลือกวันออกใบอนุญาต"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      วันหมดอายุ <span className="text-rose-500">*</span>
+                    </label>
+                    <ThaiDatePicker
+                      value={licExpiryDate}
+                      onChange={(val) => {
+                        setLicExpiryDate(val);
+                        setLicFormError(null);
+                      }}
+                      placeholder="เลือกวันหมดอายุ"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    ซิงก์ตรงกับทะเบียนใบอนุญาตฯ เมื่อกด &ldquo;บันทึกการเปลี่ยนแปลง&rdquo;
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveLicenseInline}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer shrink-0"
+                  >
+                    {editingLicenseIdx !== null ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 shrink-0" />
+                        <span>อัปเดตใบอนุญาต</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5 shrink-0" />
+                        <span>เพิ่มใบอนุญาต</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 6: วุฒิลูกเสือ (Direct Single Source of Truth /api/admin/scout) */}
+          {/* ============================================================== */}
+          {activeTab === 'scout' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/60 text-[11px] text-sky-700 dark:text-sky-300">
+                <span>
+                  ข้อมูลวุฒิลูกเสือบันทึกตรงเข้าทะเบียนวุฒิลูกเสือทันที และซิงก์วุฒิสูงสุดกลับข้อมูลบุคลากรอัตโนมัติ
+                </span>
+              </div>
+
+              {scoutNotice && (
+                <div
+                  className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-medium ${
+                    scoutNotice.type === 'success'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {scoutNotice.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{scoutNotice.text}</span>
                   </div>
                   <button
                     type="button"
-                    disabled={isSaving}
-                    onClick={() => onDeleteStaff(staff.id)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                    onClick={() => setScoutNotice(null)}
+                    className="opacity-70 hover:opacity-100 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>ลบข้อมูลบุคลากรนี้</span>
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+              )}
+
+              {isNewStaff ? (
+                <div className="bg-slate-50 dark:bg-[#101822] p-5 rounded-xl border border-slate-200/90 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
+                  กรุณาบันทึกข้อมูลบุคลากรใหม่ให้เรียบร้อยก่อน จึงจะสามารถเพิ่มประวัติวุฒิลูกเสือในทะเบียนวุฒิลูกเสือได้
+                </div>
+              ) : (
+                <>
+                  {/* Existing Scout Records */}
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                      ประวัติวุฒิทางลูกเสือ ({scoutRecords.length} รายการ)
+                    </div>
+
+                    {isScoutLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+                        <span>กำลังโหลดข้อมูลวุฒิลูกเสือ...</span>
+                      </div>
+                    ) : scoutRecords.length > 0 ? (
+                      <div className="space-y-2">
+                        {scoutRecords.map((rec) => (
+                          <div
+                            key={rec.id}
+                            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700/80"
+                          >
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="font-semibold text-slate-900 dark:text-white">
+                                {rec.qualification}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {rec.badgeLevel} · {rec.category} · วุฒิบัตร:{' '}
+                                <span className="font-mono">{rec.certificateNo || '-'}</span>
+                                {rec.issueDate
+                                  ? ` · ${formatThaiDateDisplay(rec.issueDate)}`
+                                  : ''}
+                              </div>
+                            </div>
+                            <div className="inline-flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                disabled={isScoutSaving}
+                                onClick={() => handleEditScoutInline(rec)}
+                                title="แก้ไขวุฒิลูกเสือ"
+                                className="p-1.5 rounded-md text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isScoutSaving}
+                                onClick={() => setDeletingScoutItem(rec)}
+                                title="ลบวุฒิลูกเสือ"
+                                className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 py-1">
+                        ยังไม่มีบันทึกวุฒิทางลูกเสือในระบบ สามารถเพิ่มได้จากแบบฟอร์มด้านล่าง
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Add / Edit Scout Sub-Form */}
+                  <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {editingScoutId ? 'แก้ไขข้อมูลวุฒิลูกเสือ' : 'เพิ่มข้อมูลวุฒิลูกเสือ'}
+                      </span>
+                      {editingScoutId && (
+                        <button
+                          type="button"
+                          onClick={resetScoutForm}
+                          className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                        >
+                          ยกเลิกการแก้ไข
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                        ชื่อวุฒิทางลูกเสือ <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={scoutQualification}
+                        onChange={(e) => setScoutQualification(e.target.value)}
+                        placeholder="เช่น ผู้กำกับลูกเสือสามัญ ขั้นความรู้ชั้นสูง (A.T.C.)"
+                        className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          ระดับวุฒิ / เครื่องหมาย
+                        </label>
+                        <select
+                          value={scoutBadgeLevel}
+                          onChange={(e) => setScoutBadgeLevel(e.target.value)}
+                          className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        >
+                          {SCOUT_BADGE_LEVELS.map((lvl) => (
+                            <option key={lvl} value={lvl}>
+                              {lvl}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          ประเภทลูกเสือ
+                        </label>
+                        <select
+                          value={scoutCategory}
+                          onChange={(e) => setScoutCategory(e.target.value)}
+                          className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        >
+                          {SCOUT_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          เลขที่วุฒิบัตร
+                        </label>
+                        <input
+                          type="text"
+                          value={scoutCertNo}
+                          onChange={(e) => setScoutCertNo(e.target.value)}
+                          placeholder="เช่น ว.บ. 1234/2565"
+                          className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          วันที่ได้รับวุฒิบัตร
+                        </label>
+                        <ThaiDatePicker
+                          value={scoutIssueDate}
+                          onChange={setScoutIssueDate}
+                          placeholder="เลือกวันที่ได้รับวุฒิบัตร"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          คำสั่งอ้างอิง (ถ้ามี)
+                        </label>
+                        <input
+                          type="text"
+                          value={scoutOrderNo}
+                          onChange={(e) => setScoutOrderNo(e.target.value)}
+                          placeholder="เช่น คำสั่งที่ 45/2565"
+                          className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          หน่วยงานที่ออกวุฒิบัตร
+                        </label>
+                        <input
+                          type="text"
+                          value={scoutIssuedBy}
+                          onChange={(e) => setScoutIssuedBy(e.target.value)}
+                          placeholder="สำนักงานลูกเสือแห่งชาติ"
+                          className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        disabled={isScoutSaving}
+                        onClick={handleSaveScoutDirect}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {isScoutSaving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        ) : editingScoutId ? (
+                          <Check className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span>
+                          {isScoutSaving
+                            ? 'กำลังบันทึก...'
+                            : editingScoutId
+                            ? 'บันทึกการแก้ไขวุฒิลูกเสือ'
+                            : 'เพิ่มวุฒิลูกเสือ'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
         </div>
 
-        {/* Unified Modal Footer (Fixed) with always-visible registry quick-jump links */}
+        {/* Unified Modal Footer (Fixed): Delete on bottom-left, Cancel + Save on bottom-right */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
-          {!isNewStaff ? (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-              <span>ทะเบียน:</span>
+          <div>
+            {!isNewStaff && (
               <button
                 type="button"
-                onClick={() => onNavigateToView('dir_standing', staff.employeeCode || staff.id)}
-                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
+                disabled={isSaving}
+                onClick={() => onDeleteStaff(staff.id)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300/90 text-rose-600 hover:bg-rose-50 dark:border-rose-900/70 dark:text-rose-400 dark:hover:bg-rose-950/40 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
               >
-                วิทยฐานะ
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span>ลบข้อมูลบุคลากร</span>
               </button>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => onNavigateToView('dir_license', staff.employeeCode || staff.id)}
-                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
-              >
-                ใบอนุญาตฯ
-              </button>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => onNavigateToView('dir_scout', staff.employeeCode || staff.id)}
-                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
-              >
-                วุฒิลูกเสือ
-              </button>
-            </div>
-          ) : (
-            <div />
-          )}
-          <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-          >
-            ยกเลิก
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold border border-transparent inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 shrink-0" />
             )}
-            <span>
-              {isSaving
-                ? 'กำลังบันทึก...'
-                : isNewStaff
-                ? 'บันทึกเพิ่มบุคลากรใหม่'
-                : 'บันทึกการเปลี่ยนแปลง'}
-            </span>
-          </button>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-300 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isSaving}
+              className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold border border-transparent inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 shrink-0" />
+              )}
+              <span>
+                {isSaving
+                  ? 'กำลังบันทึก...'
+                  : isNewStaff
+                  ? 'บันทึกเพิ่มบุคลากรใหม่'
+                  : 'บันทึกการเปลี่ยนแปลง'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* In-App Delete Confirmations for Tabs 4, 5, 6 */}
+      <ConfirmModal
+        isOpen={deletingStandingIdx !== null}
+        title="ยืนยันการลบรายการวิทยฐานะ"
+        description="ต้องการลบคำสั่งวิทยฐานะรายการนี้ออกจากประวัติของบุคลากรใช่หรือไม่? ระบบจะปรับวิทยฐานะปัจจุบันให้ตรงกับคำสั่งล่าสุดโดยอัตโนมัติ"
+        confirmLabel="ยืนยันการลบ"
+        variant="danger"
+        onConfirm={handleConfirmDeleteStandingInline}
+        onCancel={() => setDeletingStandingIdx(null)}
+      />
+
+      <ConfirmModal
+        isOpen={deletingLicenseIdx !== null}
+        title="ยืนยันการลบใบอนุญาตประกอบวิชาชีพ"
+        description="ต้องการลบใบอนุญาตประกอบวิชาชีพฉบับนี้ออกจากข้อมูลบุคลากรใช่หรือไม่?"
+        confirmLabel="ยืนยันการลบ"
+        variant="danger"
+        onConfirm={handleConfirmDeleteLicenseInline}
+        onCancel={() => setDeletingLicenseIdx(null)}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deletingScoutItem)}
+        title="ยืนยันการลบวุฒิทางลูกเสือ"
+        description={
+          deletingScoutItem
+            ? `ต้องการลบวุฒิลูกเสือ "${deletingScoutItem.qualification}" ออกจากทะเบียนวุฒิลูกเสือใช่หรือไม่?`
+            : ''
+        }
+        confirmLabel="ยืนยันการลบ"
+        variant="danger"
+        isLoading={isScoutSaving}
+        onConfirm={handleConfirmDeleteScoutDirect}
+        onCancel={() => !isScoutSaving && setDeletingScoutItem(null)}
+      />
     </div>
   );
 };
