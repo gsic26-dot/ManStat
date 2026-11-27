@@ -44,6 +44,7 @@ import {
   STANDARD_DIVISIONS,
   WORKLOAD_ADMIN_CATEGORY,
   normalizeDivisionName,
+  getStaffDivisions,
 } from '@/lib/staffDivisions';
 
 export type WorkloadCategory =
@@ -406,6 +407,7 @@ export const ViewWorkload: React.FC = () => {
         position: teacher.position || '-',
         department: teacher.department || '-',
         division: teacher.division,
+        derivedDivisions: getStaffDivisions(teacher, workloads),
         classLevel: teacher.classLevel,
         dutyDay: teacher.dutyDay,
         teachingHours,
@@ -674,7 +676,12 @@ export const ViewWorkload: React.FC = () => {
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
                                   <span className="text-slate-500 dark:text-slate-400 text-[11px] block">2. บริหารและงานฝ่าย</span>
                                   <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5 block">{w.supportHours} ชม./สัปดาห์</span>
-                                  <span className="text-[11px] text-amber-600 dark:text-amber-300 mt-1 block">{w.division || 'งานประจำฝ่าย'}</span>
+                                  <span
+                                    className="text-[11px] text-amber-600 dark:text-amber-300 mt-1 block truncate"
+                                    title={w.derivedDivisions.length > 0 ? w.derivedDivisions.join(', ') : 'ยังไม่ระบุภาระงานฝ่าย'}
+                                  >
+                                    {w.derivedDivisions.length > 0 ? w.derivedDivisions.join(', ') : 'ยังไม่ระบุภาระงานฝ่าย'}
+                                  </span>
                                 </div>
                                 <div className="bg-white dark:bg-[#121924] p-3 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
                                   <span className="text-slate-500 dark:text-slate-400 text-[11px] block">3. พัฒนาสถานศึกษา</span>
@@ -852,7 +859,11 @@ export const ViewWorkload: React.FC = () => {
                                   </div>
                                 ) : (
                                   <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
-                                    ยังไม่มีรายการงานฝ่ายที่บันทึกในระบบ (สังกัด: <span className="text-slate-700 dark:text-slate-200 font-medium">{w.division || '-'}</span>)
+                                    ยังไม่มีรายการงานฝ่ายที่บันทึกในระบบ (สังกัด:{' '}
+                                    <span className="text-slate-700 dark:text-slate-200 font-medium">
+                                      {w.derivedDivisions.length > 0 ? w.derivedDivisions.join(', ') : '-'}
+                                    </span>
+                                    )
                                   </div>
                                 )}
                               </div>

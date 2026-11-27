@@ -29,6 +29,7 @@ import {
   Pencil,
   Trash2,
   X,
+  Download,
 } from 'lucide-react';
 import { type TeacherRecord } from '@/lib/data/schoolData';
 import { ThaiDatePicker, formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
@@ -41,6 +42,7 @@ import {
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { isAdminRole } from '@/lib/auth/roles';
+import { buildLicenseExpiryCsv, triggerCsvDownload } from '@/lib/exports/hrExports';
 
 const LICENSE_TYPE_OPTIONS = [
   'ใบอนุญาตประกอบวิชาชีพครู (ชั้นต้น / B-License)',
@@ -203,6 +205,13 @@ export const ViewRegLicense: React.FC = () => {
   const totalFilteredCount = useMemo(() => {
     return filteredGroups.reduce((acc, g) => acc + g.members.length, 0);
   }, [filteredGroups]);
+
+  const handleExportLicenseCsv = () => {
+    const orderedPersons = filteredGroups.flatMap((g) => g.members);
+    const csv = buildLicenseExpiryCsv(orderedPersons);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    triggerCsvDownload(csv, `ManStat_License_Expiry_${todayIso}.csv`);
+  };
 
   const openAddModal = (preselectTeacherId?: string) => {
     setEditingContext(null);
@@ -386,6 +395,17 @@ export const ViewRegLicense: React.FC = () => {
               <span>เพิ่มใบอนุญาต</span>
             </button>
           )}
+
+          <button
+            type="button"
+            disabled={isLoading || totalFilteredCount === 0}
+            onClick={handleExportLicenseCsv}
+            aria-label="ส่งออกรายงานใบอนุญาตประกอบวิชาชีพเป็นไฟล์ CSV"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-200 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors duration-200 whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>ส่งออกรายงานใบอนุญาตฯ</span>
+          </button>
 
           <a
             href="https://ksp-eservice.ksp.or.th/"

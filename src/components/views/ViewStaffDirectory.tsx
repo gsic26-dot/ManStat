@@ -29,6 +29,7 @@ import {
   LayoutGrid,
   Search,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { type TeacherRecord, type WorkloadItem } from '@/lib/data/schoolData';
 import { getStaffDivisions, STANDARD_DIVISIONS } from '@/lib/staffDivisions';
@@ -50,7 +51,8 @@ import {
   formatAcademicStandingSubtext,
 } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
-import { isCivilServantForSalary } from '@/lib/auth/roles';
+import { isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
+import { buildStaffDirectoryCsv, triggerCsvDownload } from '@/lib/exports/hrExports';
 
 const getShortDeptName = (dept: string): string => {
   if (dept === 'ALL') return 'ทั้งหมด';
@@ -224,6 +226,15 @@ export const ViewStaffDirectory: React.FC = () => {
     setRetirementMode('ALL');
   };
 
+  const handleExportCsv = () => {
+    const orderedStaff = groupedTeachers.flatMap((g) => g.members);
+    const csv = buildStaffDirectoryCsv(orderedStaff, workloadsList, {
+      isAdmin: isAdminRole(currentRole),
+    });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    triggerCsvDownload(csv, `ManStat_Staff_Directory_${todayIso}.csv`);
+  };
+
   const filteredTeachers = useMemo(() => {
     let result = employmentScopedTeachers;
     if (selectedDept !== 'ALL') {
@@ -293,7 +304,7 @@ export const ViewStaffDirectory: React.FC = () => {
             </h2>
           </div>
 
-          {/* Search & View Switcher */}
+          {/* Search, Export & View Switcher */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <div className="relative w-full sm:w-60">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
@@ -305,6 +316,17 @@ export const ViewStaffDirectory: React.FC = () => {
                 className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
               />
             </div>
+
+            <button
+              type="button"
+              disabled={isLoading || filteredTeachers.length === 0}
+              onClick={handleExportCsv}
+              aria-label="ส่งออกทะเบียนประวัติบุคลากรเป็นไฟล์ Excel CSV"
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 hover:text-slate-900 border border-slate-200/90 dark:bg-[#121822] dark:hover:bg-slate-800/70 dark:text-slate-200 dark:hover:text-white dark:border-slate-800/80 text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>ส่งออก Excel (CSV)</span>
+            </button>
 
             <div className="inline-flex p-1 bg-slate-100 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-800/80 rounded-lg">
               <button
