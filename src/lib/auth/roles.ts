@@ -44,7 +44,8 @@ export function mapAccessLevelToRole(accessLevel?: string | null): UserRole {
  */
 export function isAdminRole(role?: string | null): boolean {
   if (!role) return false;
-  return role === 'superuser' || role === 'hr_admin' || role === 'director';
+  const normalized = mapAccessLevelToRole(role);
+  return normalized === 'superuser' || normalized === 'hr_admin' || normalized === 'director';
 }
 
 /**

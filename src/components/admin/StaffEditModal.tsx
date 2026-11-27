@@ -80,7 +80,7 @@ export interface StaffEditModalProps {
   onTabChange: (tab: StaffModalTabKey) => void;
   onChangeStaff: (updated: TeacherRecord) => void;
   onChangeCustomMajor: (isCustom: boolean) => void;
-  onNavigateToView: (view: StaffQuickJumpView) => void;
+  onNavigateToView: (view: StaffQuickJumpView, staffKey?: string) => void;
   onDeleteStaff: (staffId: string) => void;
   onSave: () => void;
   onClose: () => void;
@@ -1006,7 +1006,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 <span>จัดการ</span>
                 <button
                   type="button"
-                  onClick={() => onNavigateToView('dir_standing')}
+                  onClick={() => onNavigateToView('dir_standing', staff.employeeCode || staff.id)}
                   className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
                 >
                   วิทยฐานะ
@@ -1014,7 +1014,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 <span aria-hidden="true">/</span>
                 <button
                   type="button"
-                  onClick={() => onNavigateToView('dir_license')}
+                  onClick={() => onNavigateToView('dir_license', staff.employeeCode || staff.id)}
                   className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
                 >
                   ใบอนุญาตฯ
@@ -1022,7 +1022,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 <span aria-hidden="true">/</span>
                 <button
                   type="button"
-                  onClick={() => onNavigateToView('dir_scout')}
+                  onClick={() => onNavigateToView('dir_scout', staff.employeeCode || staff.id)}
                   className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
                 >
                   วุฒิลูกเสือ
@@ -1461,8 +1461,39 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
         </div>
 
-        {/* Unified 2-Button Modal Footer (Fixed) */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
+        {/* Unified Modal Footer (Fixed) with always-visible registry quick-jump links */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
+          {!isNewStaff ? (
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+              <span>ทะเบียน:</span>
+              <button
+                type="button"
+                onClick={() => onNavigateToView('dir_standing', staff.employeeCode || staff.id)}
+                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                วิทยฐานะ
+              </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => onNavigateToView('dir_license', staff.employeeCode || staff.id)}
+                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                ใบอนุญาตฯ
+              </button>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => onNavigateToView('dir_scout', staff.employeeCode || staff.id)}
+                className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                วุฒิลูกเสือ
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
@@ -1490,6 +1521,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 : 'บันทึกการเปลี่ยนแปลง'}
             </span>
           </button>
+          </div>
         </div>
       </div>
     </div>

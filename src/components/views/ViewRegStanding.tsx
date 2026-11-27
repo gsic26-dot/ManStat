@@ -45,11 +45,15 @@ import { isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
 import { useUserSettings } from '@/context/UserSettingsContext';
 
 const STANDING_LEVEL_OPTIONS = [
+  'ไม่มีวิทยฐานะ',
+  'ครูผู้ช่วย',
   'ชำนาญการ',
   'ชำนาญการพิเศษ',
   'เชี่ยวชาญ',
   'เชี่ยวชาญพิเศษ',
 ];
+
+const BASELINE_STANDING_LEVELS = new Set(['ไม่มีวิทยฐานะ', 'ครูผู้ช่วย']);
 
 type StandingOrderItem = NonNullable<TeacherRecord['standings']>[number];
 
@@ -140,7 +144,20 @@ export const ViewRegStanding: React.FC = () => {
         .then((res) => res.json())
         .then((data) => {
           if (isMounted && data.success && Array.isArray(data.data)) {
-            setTeachersList(data.data);
+            const list: TeacherRecord[] = data.data;
+            setTeachersList(list);
+            if (typeof window !== 'undefined') {
+              const staffParam = new URLSearchParams(window.location.search).get('staff');
+              if (staffParam) {
+                const matched = list.find(
+                  (t) => t.id === staffParam || t.employeeCode === staffParam
+                );
+                if (matched) {
+                  setSearchQuery(formatStaffName(matched));
+                  setExpandedId(matched.id);
+                }
+              }
+            }
           }
         })
         .catch(() => {}),
@@ -206,7 +223,7 @@ export const ViewRegStanding: React.FC = () => {
   const openAddModal = (preselectTeacherId?: string) => {
     setEditingContext(null);
     setFormTeacherId(preselectTeacherId || sortedCivilServantsAll[0]?.id || '');
-    setFormLevel(STANDING_LEVEL_OPTIONS[0]);
+    setFormLevel('ชำนาญการ');
     setFormOrderNumber('');
     setFormEffectiveDate('');
     setIsModalOpen(true);
@@ -274,19 +291,20 @@ export const ViewRegStanding: React.FC = () => {
       showNotice('error', 'กรุณาเลือกระดับวิทยฐานะ');
       return;
     }
-    if (!formOrderNumber.trim()) {
+    const isBaselineLevel = BASELINE_STANDING_LEVELS.has(formLevel.trim());
+    if (!isBaselineLevel && !formOrderNumber.trim()) {
       showNotice('error', 'กรุณาระบุเลขที่คำสั่งแต่งตั้ง');
       return;
     }
-    if (!formEffectiveDate) {
+    if (!isBaselineLevel && !formEffectiveDate) {
       showNotice('error', 'กรุณาเลือกวันที่มีผลตามคำสั่ง');
       return;
     }
 
     const nextOrder: StandingOrderItem = {
       level: formLevel.trim(),
-      orderNumber: formOrderNumber.trim(),
-      effectiveDate: formEffectiveDate,
+      orderNumber: formOrderNumber.trim() || '-',
+      effectiveDate: formEffectiveDate || '',
     };
 
     const currentStandings = Array.isArray(targetTeacher.standings) ? [...targetTeacher.standings] : [];
@@ -856,11 +874,11 @@ export const ViewRegStanding: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    เลขที่คำสั่งแต่งตั้ง <span className="text-rose-500">*</span>
+                    เลขที่คำสั่งแต่งตั้ง {!BASELINE_STANDING_LEVELS.has(formLevel) && <span className="text-rose-500">*</span>}
                   </label>
                   <input
                     type="text"
-                    required
+                    required={!BASELINE_STANDING_LEVELS.has(formLevel)}
                     value={formOrderNumber}
                     onChange={(e) => setFormOrderNumber(e.target.value)}
                     placeholder="เช่น คำสั่งที่ 123/2567"
@@ -869,13 +887,13 @@ export const ViewRegStanding: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    วันที่มีผลตามคำสั่ง <span className="text-rose-500">*</span>
+                    วันที่มีผลตามคำสั่ง {!BASELINE_STANDING_LEVELS.has(formLevel) && <span className="text-rose-500">*</span>}
                   </label>
                   <ThaiDatePicker
                     value={formEffectiveDate}
                     onChange={setFormEffectiveDate}
                     placeholder="เลือกวันที่มีผลตามคำสั่ง"
-                    required
+                    required={!BASELINE_STANDING_LEVELS.has(formLevel)}
                   />
                 </div>
               </div>

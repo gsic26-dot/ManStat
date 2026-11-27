@@ -671,7 +671,7 @@ export default function AdminPage() {
     staffTabDirty.education ||
     staffTabDirty.account;
 
-  const handleNavigateToView = (view: StaffQuickJumpView) => {
+  const handleNavigateToView = (view: StaffQuickJumpView, staffKey?: string) => {
     const viewLabels: Record<StaffQuickJumpView, string> = {
       workload: 'ตารางสอนและภาระงาน',
       dir_standing: 'ทะเบียนวิทยฐานะ',
@@ -679,9 +679,11 @@ export default function AdminPage() {
       dir_scout: 'ทะเบียนวุฒิลูกเสือ',
     };
     const targetLabel = viewLabels[view];
+    const staffQuery =
+      staffKey && view !== 'workload' ? `&staff=${encodeURIComponent(staffKey)}` : '';
     const go = () => {
       setIsStaffModalOpen(false);
-      window.location.href = `/?view=${view}`;
+      window.location.href = `/?view=${view}${staffQuery}`;
     };
     if (!hasStaffUnsavedChanges) {
       go();
@@ -1527,6 +1529,28 @@ export default function AdminPage() {
                                                     ? t.licenses[0].type
                                                     : 'ไม่มีข้อมูลใบอนุญาต'}
                                                 </span>
+                                              </div>
+                                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[11px]">
+                                                <Link
+                                                  href={`/?view=dir_standing&staff=${encodeURIComponent(t.employeeCode || t.id)}`}
+                                                  className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline font-medium"
+                                                >
+                                                  วิทยฐานะ
+                                                </Link>
+                                                <span className="text-slate-300 dark:text-slate-600">·</span>
+                                                <Link
+                                                  href={`/?view=dir_license&staff=${encodeURIComponent(t.employeeCode || t.id)}`}
+                                                  className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline font-medium"
+                                                >
+                                                  ใบอนุญาตฯ
+                                                </Link>
+                                                <span className="text-slate-300 dark:text-slate-600">·</span>
+                                                <Link
+                                                  href={`/?view=dir_scout&staff=${encodeURIComponent(t.employeeCode || t.id)}`}
+                                                  className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline font-medium"
+                                                >
+                                                  วุฒิลูกเสือ
+                                                </Link>
                                               </div>
                                             </div>
                                           </div>

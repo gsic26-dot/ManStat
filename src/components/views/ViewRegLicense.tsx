@@ -144,7 +144,20 @@ export const ViewRegLicense: React.FC = () => {
         .then((res) => res.json())
         .then((data) => {
           if (isMounted && data.success && Array.isArray(data.data)) {
-            setTeachersList(data.data);
+            const list: TeacherRecord[] = data.data;
+            setTeachersList(list);
+            if (typeof window !== 'undefined') {
+              const staffParam = new URLSearchParams(window.location.search).get('staff');
+              if (staffParam) {
+                const matched = list.find(
+                  (t) => t.id === staffParam || t.employeeCode === staffParam
+                );
+                if (matched) {
+                  setSearchQuery(formatStaffName(matched));
+                  setExpandedId(matched.id);
+                }
+              }
+            }
           }
         })
         .catch(() => {}),

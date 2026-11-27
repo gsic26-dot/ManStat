@@ -126,7 +126,19 @@ export function ViewRegScout() {
         .then((res) => res.json())
         .then((data) => {
           if (isMounted && data.success && Array.isArray(data.data)) {
-            setTeachers(data.data);
+            const list: TeacherRecord[] = data.data;
+            setTeachers(list);
+            if (typeof window !== 'undefined') {
+              const staffParam = new URLSearchParams(window.location.search).get('staff');
+              if (staffParam) {
+                const matched = list.find(
+                  (t) => t.id === staffParam || t.employeeCode === staffParam
+                );
+                if (matched) {
+                  setSearchQuery(formatStaffName(matched));
+                }
+              }
+            }
           }
         })
         .catch(() => {}),
