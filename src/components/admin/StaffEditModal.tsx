@@ -62,6 +62,7 @@ import {
 import { getStaffDivisions } from '@/lib/staffDivisions';
 
 export type StaffModalTabKey = 'personal' | 'position' | 'education' | 'account';
+export type StaffQuickJumpView = 'workload' | 'dir_standing' | 'dir_license' | 'dir_scout';
 
 export interface StaffEditModalProps {
   isOpen: boolean;
@@ -79,7 +80,7 @@ export interface StaffEditModalProps {
   onTabChange: (tab: StaffModalTabKey) => void;
   onChangeStaff: (updated: TeacherRecord) => void;
   onChangeCustomMajor: (isCustom: boolean) => void;
-  onNavigateToWorkload: () => void;
+  onNavigateToView: (view: StaffQuickJumpView) => void;
   onDeleteStaff: (staffId: string) => void;
   onSave: () => void;
   onClose: () => void;
@@ -124,7 +125,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   onTabChange,
   onChangeStaff,
   onChangeCustomMajor,
-  onNavigateToWorkload,
+  onNavigateToView,
   onDeleteStaff,
   onSave,
   onClose,
@@ -829,7 +830,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                     </span>
                     <button
                       type="button"
-                      onClick={onNavigateToWorkload}
+                      onClick={() => onNavigateToView('workload')}
                       className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors cursor-pointer"
                     >
                       <span>จัดการในตารางสอนและภาระงาน</span>
@@ -1001,9 +1002,33 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
-                จัดการวิทยฐานะ / ใบอนุญาตฯ / วุฒิลูกเสือ ได้ที่เมนูหมวดงานทะเบียนประวัติ
-              </p>
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                <span>จัดการ</span>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('dir_standing')}
+                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
+                >
+                  วิทยฐานะ
+                </button>
+                <span aria-hidden="true">/</span>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('dir_license')}
+                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
+                >
+                  ใบอนุญาตฯ
+                </button>
+                <span aria-hidden="true">/</span>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('dir_scout')}
+                  className="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 hover:underline transition-colors cursor-pointer"
+                >
+                  วุฒิลูกเสือ
+                </button>
+                <span>ได้ที่เมนูหมวดงานทะเบียนประวัติ</span>
+              </div>
             </div>
           )}
 

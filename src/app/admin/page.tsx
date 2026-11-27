@@ -19,7 +19,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
 import { isStandardMajor } from '@/lib/constants/majors';
-import { StaffEditModal, type StaffModalTabKey } from '@/components/admin/StaffEditModal';
+import {
+  StaffEditModal,
+  type StaffModalTabKey,
+  type StaffQuickJumpView,
+} from '@/components/admin/StaffEditModal';
 import type { WorkloadItem } from '@/lib/data/schoolData';
 import {
   ShieldAlert,
@@ -667,9 +671,17 @@ export default function AdminPage() {
     staffTabDirty.education ||
     staffTabDirty.account;
 
-  const handleNavigateToWorkload = () => {
+  const handleNavigateToView = (view: StaffQuickJumpView) => {
+    const viewLabels: Record<StaffQuickJumpView, string> = {
+      workload: 'ตารางสอนและภาระงาน',
+      dir_standing: 'ทะเบียนวิทยฐานะ',
+      dir_license: 'ทะเบียนใบอนุญาตประกอบวิชาชีพ',
+      dir_scout: 'ทะเบียนวุฒิลูกเสือ',
+    };
+    const targetLabel = viewLabels[view];
     const go = () => {
-      window.location.href = '/?view=workload';
+      setIsStaffModalOpen(false);
+      window.location.href = `/?view=${view}`;
     };
     if (!hasStaffUnsavedChanges) {
       go();
@@ -677,9 +689,8 @@ export default function AdminPage() {
     }
     setConfirmDialog({
       title: 'ยังไม่ได้บันทึกการเปลี่ยนแปลง',
-      description:
-        'คุณมีการแก้ไขข้อมูลบุคลากรที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้เพื่อไปจัดการสังกัดฝ่ายงานในเมนูตารางสอนและภาระงานใช่หรือไม่?',
-      confirmLabel: 'ไปที่ตารางสอนและภาระงาน',
+      description: `คุณมีการแก้ไขข้อมูลบุคลากรที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้เพื่อไปที่เมนู${targetLabel}ใช่หรือไม่?`,
+      confirmLabel: `ไปที่${targetLabel}`,
       onConfirm: () => {
         setConfirmDialog(null);
         go();
@@ -2461,7 +2472,7 @@ export default function AdminPage() {
         onTabChange={setStaffModalTab}
         onChangeStaff={setSelectedStaff}
         onChangeCustomMajor={setIsCustomMajor}
-        onNavigateToWorkload={handleNavigateToWorkload}
+        onNavigateToView={handleNavigateToView}
         onDeleteStaff={handleDeleteStaff}
         onSave={handleSaveStaff}
         onClose={() => setIsStaffModalOpen(false)}

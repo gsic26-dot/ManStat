@@ -33,6 +33,7 @@ import { ScoutRecord, TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { isAdminRole } from '@/lib/auth/roles';
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
 function formatScoutDate(dateStr?: string | null): string {
   if (!dateStr) return '-';
@@ -737,11 +738,10 @@ export function ViewRegScout() {
                 </div>
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">วันที่ได้รับวุฒิบัตร</label>
-                  <input
-                    type="date"
+                  <ThaiDatePicker
                     value={formIssueDate}
-                    onChange={(e) => setFormIssueDate(e.target.value)}
-                    className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                    onChange={setFormIssueDate}
+                    placeholder="เลือกวันที่ได้รับวุฒิบัตร"
                   />
                 </div>
               </div>
