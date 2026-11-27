@@ -33,6 +33,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "thai-address-database": "^0.0.33",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

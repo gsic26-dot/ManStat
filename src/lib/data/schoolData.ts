@@ -7,6 +7,12 @@
 
 export type EmploymentType = 'civil_servant' | 'government_employee' | 'temporary_employee';
 
+export type KhurusaphaMemberType =
+  | 'สมาชิกสามัญ'
+  | 'สมาชิกวิสามัญ'
+  | 'สมาชิกกิตติมศักดิ์'
+  | 'ไม่เป็นสมาชิก';
+
 export interface TeacherRecord {
   id: string;
   employeeCode: string;
@@ -27,7 +33,24 @@ export interface TeacherRecord {
   role?: string;
   startDate: string;
   currentPositionDate?: string | null;
-  birthDate?: string;
+  birthDate?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactRelation?: string | null;
+  emergencyContactPhone?: string | null;
+  addressHouseNo?: string | null;
+  addressMoo?: string | null;
+  addressSoiRoad?: string | null;
+  addressSubdistrict?: string | null;
+  addressDistrict?: string | null;
+  addressProvince?: string | null;
+  addressPostalCode?: string | null;
+  khurusaphaMemberType?: KhurusaphaMemberType | string | null;
+  khurusaphaMemberNo?: string | null;
+  educationLevel?: string | null;
+  educationProgramYears?: string | null;
+  educationDegree?: string | null;
+  educationInstitution?: string | null;
+  educationGradYear?: string | null;
   email: string;
   phone: string;
   maskedCitizenId: string;

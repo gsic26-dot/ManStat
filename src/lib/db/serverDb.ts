@@ -600,6 +600,14 @@ export function teacherToDb(t: TeacherRecord) {
     if (!lastName) lastName = parsed.lastName;
   }
 
+  const cleanStr = (v?: string | null) => (v && v.trim() !== '' ? v.trim() : null);
+
+  const normalizedMemberType = cleanStr(t.khurusaphaMemberType) || (t.memberId ? 'สมาชิกสามัญ' : null);
+  const normalizedMemberNo =
+    normalizedMemberType === 'ไม่เป็นสมาชิก'
+      ? null
+      : cleanStr(t.khurusaphaMemberNo) || cleanStr(t.memberId);
+
   return {
     id,
     employee_code: t.employeeCode || id,
@@ -612,23 +620,38 @@ export function teacherToDb(t: TeacherRecord) {
     employment_type: t.employment_type || (t as any).employmentType || deriveEmploymentType(t),
     department: deriveDepartment(t),
     division: t.division || '',
-    major: t.major && t.major.trim() !== '' ? t.major.trim() : null,
+    major: cleanStr(t.major),
     class_level: t.classLevel || '-',
     duty_day: t.dutyDay || '-',
     access_level: accessLevel,
     role: positionTitle, // Preserve Thai position title in legacy role column! NEVER overwrite with system roles ('superuser'|'hr_admin'|'teacher')
     system_role: systemRole,
     start_date: t.startDate || '',
-    current_position_date:
-      t.currentPositionDate && t.currentPositionDate.trim() !== ''
-        ? t.currentPositionDate.trim()
-        : null,
+    current_position_date: cleanStr(t.currentPositionDate),
+    birth_date: cleanStr(t.birthDate),
+    emergency_contact_name: cleanStr(t.emergencyContactName),
+    emergency_contact_relation: cleanStr(t.emergencyContactRelation),
+    emergency_contact_phone: cleanStr(t.emergencyContactPhone),
+    address_house_no: cleanStr(t.addressHouseNo),
+    address_moo: cleanStr(t.addressMoo),
+    address_soi_road: cleanStr(t.addressSoiRoad),
+    address_subdistrict: cleanStr(t.addressSubdistrict),
+    address_district: cleanStr(t.addressDistrict),
+    address_province: cleanStr(t.addressProvince),
+    address_postal_code: cleanStr(t.addressPostalCode),
+    khurusapha_member_type: normalizedMemberType,
+    khurusapha_member_no: normalizedMemberNo,
+    education_level: cleanStr(t.educationLevel),
+    education_program_years: cleanStr(t.educationProgramYears),
+    education_degree: cleanStr(t.educationDegree),
+    education_institution: cleanStr(t.educationInstitution),
+    education_grad_year: cleanStr(t.educationGradYear),
     email: t.email || '',
     phone: t.phone || '',
     masked_citizen_id: t.maskedCitizenId || '',
     id_card: t.idCard || '',
     position_no: t.positionNo || '',
-    member_id: t.memberId || '',
+    member_id: normalizedMemberNo || '',
     highest_scout: t.highestScout || 'ไม่มีวุฒิลูกเสือ',
     scout_cert_no: t.scoutCertNo || '',
     teaching_hours: Number(t.teachingHours) || 18,
@@ -703,6 +726,24 @@ export function teacherFromDb(row: any): TeacherRecord {
     role: systemRole,
     startDate: row.start_date || '',
     currentPositionDate: row.current_position_date || '',
+    birthDate: row.birth_date || '',
+    emergencyContactName: row.emergency_contact_name || '',
+    emergencyContactRelation: row.emergency_contact_relation || '',
+    emergencyContactPhone: row.emergency_contact_phone || '',
+    addressHouseNo: row.address_house_no || '',
+    addressMoo: row.address_moo || '',
+    addressSoiRoad: row.address_soi_road || '',
+    addressSubdistrict: row.address_subdistrict || '',
+    addressDistrict: row.address_district || '',
+    addressProvince: row.address_province || '',
+    addressPostalCode: row.address_postal_code || '',
+    khurusaphaMemberType: row.khurusapha_member_type || (row.member_id ? 'สมาชิกสามัญ' : ''),
+    khurusaphaMemberNo: row.khurusapha_member_no || row.member_id || '',
+    educationLevel: row.education_level || '',
+    educationProgramYears: row.education_program_years || '',
+    educationDegree: row.education_degree || '',
+    educationInstitution: row.education_institution || '',
+    educationGradYear: row.education_grad_year || '',
     email: row.email || '',
     phone: row.phone || '',
     maskedCitizenId: row.masked_citizen_id || '',

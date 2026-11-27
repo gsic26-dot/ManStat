@@ -79,6 +79,20 @@ export async function POST(request: Request) {
 
     // Map and synchronize role with accessLevel
     const mappedRole = mapAccessLevelToRole(updatedStaff.accessLevel);
+    const cleanOpt = (val?: string | null) =>
+      val !== undefined ? (val && val.trim() !== '' ? val.trim() : null) : undefined;
+
+    const resolvedMemberType =
+      updatedStaff.khurusaphaMemberType !== undefined
+        ? cleanOpt(updatedStaff.khurusaphaMemberType)
+        : oldStaff?.khurusaphaMemberType || null;
+    const resolvedMemberNo =
+      resolvedMemberType === 'ไม่เป็นสมาชิก'
+        ? null
+        : updatedStaff.khurusaphaMemberNo !== undefined
+        ? cleanOpt(updatedStaff.khurusaphaMemberNo)
+        : oldStaff?.khurusaphaMemberNo || oldStaff?.memberId || null;
+
     const staffToSave: TeacherRecord = {
       ...(oldStaff || {}),
       ...updatedStaff,
@@ -93,6 +107,13 @@ export async function POST(request: Request) {
         updatedStaff.currentPositionDate !== undefined
           ? updatedStaff.currentPositionDate?.trim() || null
           : oldStaff?.currentPositionDate || null,
+      birthDate:
+        updatedStaff.birthDate !== undefined
+          ? updatedStaff.birthDate?.trim() || null
+          : oldStaff?.birthDate || null,
+      khurusaphaMemberType: resolvedMemberType,
+      khurusaphaMemberNo: resolvedMemberNo,
+      memberId: resolvedMemberNo || '',
       // Statutory leave balances are derived from approved leave requests; never manually overridden here
       sickUsed: oldStaff?.sickUsed ?? updatedStaff.sickUsed ?? 0,
       personalUsed: oldStaff?.personalUsed ?? updatedStaff.personalUsed ?? 0,

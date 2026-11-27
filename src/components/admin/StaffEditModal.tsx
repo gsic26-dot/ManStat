@@ -2,22 +2,21 @@
 
 /**
  * ============================================================================
- * ManStat: StaffEditModal (ตั้งค่าและแก้ไขบุคลากร — 2×2 Core Tabs)
+ * ManStat: StaffEditModal (ตั้งค่าและแก้ไขบุคลากร — Fixed-Height 2×2 Core Tabs)
  * ============================================================================
- * Single Source of Truth HR Staff Profile Editor:
- * - 4 equal-width tabs arranged in a 2×2 grid (grid-cols-2 gap-2):
- *   1. ข้อมูลส่วนตัว (Personal Info & Contact)
- *   2. ตำแหน่งและสังกัด (Position, Auto-Derived Multi-Division, Dates)
- *   3. วุฒิการศึกษาและวิชาเอก (Appointment Major & Education History)
- *   4. บัญชีและสิทธิ์ระบบ (System IDs, Access Level & Danger Zone)
- * - Removes duplicate registry tabs (Licenses, Scout, Workload, Standing)
- *   so those domains remain managed exclusively in their dedicated menus.
- * - Preserves untouched registry data on save (zero accidental wipes).
- * - Dirty-tab dot indicators, Portal ThaiDatePicker, Dual Light/Dark theme.
+ * Official Thai Civil-Service HR Standard:
+ * - Fixed middle container height (h-[460px] sm:h-[500px]) -> ZERO UI jumping
+ * - 4 equal-width tabs in a 2×2 grid with dirty-tab indicators:
+ *   1. ข้อมูลส่วนตัว (Identity + Birth Date/Age/Retirement + Contact/Emergency + Thai Address)
+ *   2. ตำแหน่งและสังกัด (Position + Position No + Multi-Division + Smart Khurusapha + Dates)
+ *   3. วุฒิการศึกษาและวิชาเอก (ก.ค.ศ. 4-field Highest Qualification + 105+ Majors Combobox + History)
+ *   4. บัญชีและสิทธิ์ระบบ (Employee Code + Access Level + Danger Zone)
+ * - Portal ThaiDatePicker & Portal SearchableCombobox (zero clipping).
+ * - PDPA compliant (no religion / blood type). Arabic numerals (0-9). Dual Theme.
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   UserCheck,
   Users,
@@ -33,15 +32,33 @@ import {
   Check,
   ChevronRight,
   AlertTriangle,
+  Lock,
+  Unlock,
+  ExternalLink,
 } from 'lucide-react';
 import type { TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
+import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { calculateRetirementInfo } from '@/lib/regulations/fiscal-and-retirement';
 import {
-  STANDARD_APPOINTMENT_MAJORS,
+  MAJOR_GROUPS,
   CUSTOM_MAJOR_OPTION,
   isStandardMajor,
 } from '@/lib/constants/majors';
+import {
+  CUSTOM_OPTION_LABEL,
+  KHURUSAPHA_MEMBER_TYPES,
+  EDUCATION_LEVELS,
+  getProgramYearsForLevel,
+  getDegreesForLevel,
+} from '@/lib/constants/qualifications';
+import {
+  getThaiProvinces,
+  getDistrictsByProvince,
+  getSubdistrictsByDistrict,
+  getPostalCode,
+} from '@/lib/constants/thaiAddress';
 import { getStaffDivisions } from '@/lib/staffDivisions';
 
 export type StaffModalTabKey = 'personal' | 'position' | 'education' | 'account';
@@ -79,6 +96,18 @@ const MODAL_TABS: Array<{
   { key: 'account', label: 'บัญชีและสิทธิ์ระบบ', icon: ShieldCheck },
 ];
 
+function computeAgeYears(birthDateStr?: string | null): number | null {
+  if (!birthDateStr || !/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) return null;
+  const [y, m, d] = birthDateStr.split('-').map((n) => parseInt(n, 10));
+  const today = new Date();
+  let age = today.getFullYear() - y;
+  const monthDiff = today.getMonth() + 1 - m;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+}
+
 export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   isOpen,
   isNewStaff,
@@ -100,6 +129,13 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   onSave,
   onClose,
 }) => {
+  // Khurusapha manual override unlock state (only applies when type === 'สมาชิกสามัญ')
+  const [isKhurusaphaUnlocked, setIsKhurusaphaUnlocked] = useState(false);
+
+  // Custom-input flags for Tab 3 Program Years & Degree
+  const [isCustomProgramYears, setIsCustomProgramYears] = useState(false);
+  const [isCustomDegree, setIsCustomDegree] = useState(false);
+
   // Local state for education history add/edit sub-form inside Tab 3
   const [newEduDegree, setNewEduDegree] = useState('ค.บ.');
   const [newEduMajor, setNewEduMajor] = useState('');
@@ -107,15 +143,37 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
   const [newEduYear, setNewEduYear] = useState('');
   const [editingEduIdx, setEditingEduIdx] = useState<number | null>(null);
 
+  // Sync local helper flags when modal opens or switches staff
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !staff) {
+      setIsKhurusaphaUnlocked(false);
+      setIsCustomProgramYears(false);
+      setIsCustomDegree(false);
       setEditingEduIdx(null);
       setNewEduDegree('ค.บ.');
       setNewEduMajor('');
       setNewEduInst('');
       setNewEduYear('');
+      return;
     }
-  }, [isOpen]);
+
+    const memberType = staff.khurusaphaMemberType || '';
+    const memberNo = staff.khurusaphaMemberNo || staff.memberId || '';
+    const idCard = staff.idCard || '';
+    setIsKhurusaphaUnlocked(
+      memberType === 'สมาชิกสามัญ' && Boolean(memberNo) && Boolean(idCard) && memberNo !== idCard
+    );
+
+    const yearsOptions = getProgramYearsForLevel(staff.educationLevel);
+    setIsCustomProgramYears(
+      Boolean(staff.educationProgramYears && !yearsOptions.includes(staff.educationProgramYears))
+    );
+
+    const degreeOptions = getDegreesForLevel(staff.educationLevel);
+    setIsCustomDegree(
+      Boolean(staff.educationDegree && !degreeOptions.includes(staff.educationDegree))
+    );
+  }, [isOpen, staff?.id]);
 
   // Escape key to close (disabled while saving)
   useEffect(() => {
@@ -129,9 +187,94 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isSaving, onClose]);
 
+  // Cascading Thai Geography Lists (100% offline)
+  const provinces = useMemo(() => getThaiProvinces(), []);
+  const districts = useMemo(
+    () => getDistrictsByProvince(staff?.addressProvince),
+    [staff?.addressProvince]
+  );
+  const subdistricts = useMemo(
+    () => getSubdistrictsByDistrict(staff?.addressProvince, staff?.addressDistrict),
+    [staff?.addressProvince, staff?.addressDistrict]
+  );
+
+  // Birth date -> Age + Official Retirement Year badge
+  const birthSummary = useMemo(() => {
+    if (!staff?.birthDate || !/^\d{4}-\d{2}-\d{2}$/.test(staff.birthDate)) return null;
+    try {
+      const age = computeAgeYears(staff.birthDate);
+      const ret = calculateRetirementInfo(staff.birthDate);
+      if (age === null) return null;
+      return `อายุ ${age} ปี • เกษียณ 30 ก.ย. พ.ศ. ${ret.retireFiscalYearBE}`;
+    } catch {
+      return null;
+    }
+  }, [staff?.birthDate]);
+
   if (!isOpen || !staff) return null;
 
   const derivedDivisions = getStaffDivisions(staff, workloads);
+  const programYearsOptions = getProgramYearsForLevel(staff.educationLevel);
+  const degreeOptions = getDegreesForLevel(staff.educationLevel);
+  const khurusaphaType = staff.khurusaphaMemberType || '';
+  const isOrdinaryMember = khurusaphaType === 'สมาชิกสามัญ';
+  const isNonMember = khurusaphaType === 'ไม่เป็นสมาชิก';
+
+  const handleCitizenIdChange = (nextIdCard: string) => {
+    const cleaned = nextIdCard.replace(/[^\d]/g, '').slice(0, 13);
+    const next: TeacherRecord = { ...staff, idCard: cleaned };
+    // Live-sync Khurusapha number when สมาชิกสามัญ and not manually unlocked
+    if (isOrdinaryMember && !isKhurusaphaUnlocked) {
+      next.khurusaphaMemberNo = cleaned;
+      next.memberId = cleaned;
+    }
+    onChangeStaff(next);
+  };
+
+  const handleKhurusaphaTypeChange = (nextType: string) => {
+    if (nextType === 'สมาชิกสามัญ') {
+      setIsKhurusaphaUnlocked(false);
+      onChangeStaff({
+        ...staff,
+        khurusaphaMemberType: nextType,
+        khurusaphaMemberNo: staff.idCard || '',
+        memberId: staff.idCard || '',
+      });
+    } else if (nextType === 'ไม่เป็นสมาชิก') {
+      setIsKhurusaphaUnlocked(false);
+      onChangeStaff({
+        ...staff,
+        khurusaphaMemberType: nextType,
+        khurusaphaMemberNo: '',
+        memberId: '',
+      });
+    } else {
+      setIsKhurusaphaUnlocked(false);
+      onChangeStaff({
+        ...staff,
+        khurusaphaMemberType: nextType,
+      });
+    }
+  };
+
+  const handleEducationLevelChange = (nextLevel: string) => {
+    const validYears = getProgramYearsForLevel(nextLevel);
+    const validDegrees = getDegreesForLevel(nextLevel);
+    setIsCustomProgramYears(false);
+    setIsCustomDegree(false);
+    onChangeStaff({
+      ...staff,
+      educationLevel: nextLevel,
+      educationProgramYears:
+        staff.educationProgramYears && validYears.includes(staff.educationProgramYears)
+          ? staff.educationProgramYears
+          : '',
+      educationDegree:
+        staff.educationDegree && validDegrees.includes(staff.educationDegree)
+          ? staff.educationDegree
+          : '',
+    });
+  };
 
   const handleSaveEducation = () => {
     if (!newEduDegree.trim() && !newEduMajor.trim()) return;
@@ -188,10 +331,10 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
       }}
     >
       <div
-        className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs my-6 max-h-[90vh] flex flex-col text-slate-800 dark:text-slate-200"
+        className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs flex flex-col text-slate-800 dark:text-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
+        {/* Modal Header (Fixed) */}
         <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 pb-3.5 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
@@ -223,7 +366,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           </button>
         </div>
 
-        {/* 2×2 Equal-Width Core Tab Navigation */}
+        {/* 2×2 Equal-Width Core Tab Navigation (Fixed) */}
         <div
           role="tablist"
           className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-[#0d141d] rounded-xl border border-slate-200/80 dark:border-slate-800 shrink-0"
@@ -258,129 +401,350 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           })}
         </div>
 
-        {/* Scrollable Modal Body */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+        {/* Fixed-Height Scrollable Middle Container (ZERO UI Jumping Across Tabs) */}
+        <div className="h-[460px] sm:h-[500px] overflow-y-auto px-1 space-y-4">
           {/* ============================================================== */}
-          {/* TAB 1: ข้อมูลส่วนตัว                                            */}
+          {/* TAB 1: ข้อมูลส่วนตัว (3 Clean Sub-Groups)                       */}
           {/* ============================================================== */}
           {activeTab === 'personal' && (
-            <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    คำนำหน้า
-                  </label>
-                  <select
-                    value={staff.prefix || 'นาย'}
-                    onChange={(e) => {
-                      const newPrefix = e.target.value;
-                      onChangeStaff({
-                        ...staff,
-                        prefix: newPrefix,
-                        name: formatStaffName({
-                          id: staff.id,
-                          employeeCode: staff.employeeCode,
+            <div className="space-y-4">
+              {/* Sub-group 1: ข้อมูลระบุตัวตน */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  ข้อมูลระบุตัวตน
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      คำนำหน้า
+                    </label>
+                    <select
+                      value={staff.prefix || 'นาย'}
+                      onChange={(e) => {
+                        const newPrefix = e.target.value;
+                        onChangeStaff({
+                          ...staff,
                           prefix: newPrefix,
-                          firstName: staff.firstName,
-                          lastName: staff.lastName,
-                        }),
-                      });
-                    }}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                  >
-                    <option value="นาย">นาย</option>
-                    <option value="นาง">นาง</option>
-                    <option value="นางสาว">นางสาว</option>
-                    <option value="ว่าที่ ร.ต.">ว่าที่ ร.ต.</option>
-                    <option value="ดร.">ดร.</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    ชื่อจริง
-                  </label>
-                  <input
-                    type="text"
-                    value={staff.firstName || ''}
-                    placeholder="ชื่อจริง"
-                    onChange={(e) =>
-                      onChangeStaff({
-                        ...staff,
-                        firstName: e.target.value,
-                        name: formatStaffName({
-                          id: staff.id,
-                          employeeCode: staff.employeeCode,
-                          prefix: staff.prefix,
+                          name: formatStaffName({
+                            id: staff.id,
+                            employeeCode: staff.employeeCode,
+                            prefix: newPrefix,
+                            firstName: staff.firstName,
+                            lastName: staff.lastName,
+                          }),
+                        });
+                      }}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option value="นาย">นาย</option>
+                      <option value="นาง">นาง</option>
+                      <option value="นางสาว">นางสาว</option>
+                      <option value="ว่าที่ ร.ต.">ว่าที่ ร.ต.</option>
+                      <option value="ดร.">ดร.</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ชื่อจริง
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.firstName || ''}
+                      placeholder="ชื่อจริง"
+                      onChange={(e) =>
+                        onChangeStaff({
+                          ...staff,
                           firstName: e.target.value,
-                          lastName: staff.lastName,
-                        }),
-                      })
-                    }
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    นามสกุล
-                  </label>
-                  <input
-                    type="text"
-                    value={staff.lastName || ''}
-                    placeholder="นามสกุล"
-                    onChange={(e) =>
-                      onChangeStaff({
-                        ...staff,
-                        lastName: e.target.value,
-                        name: formatStaffName({
-                          id: staff.id,
-                          employeeCode: staff.employeeCode,
-                          prefix: staff.prefix,
-                          firstName: staff.firstName,
+                          name: formatStaffName({
+                            id: staff.id,
+                            employeeCode: staff.employeeCode,
+                            prefix: staff.prefix,
+                            firstName: e.target.value,
+                            lastName: staff.lastName,
+                          }),
+                        })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      นามสกุล
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.lastName || ''}
+                      placeholder="นามสกุล"
+                      onChange={(e) =>
+                        onChangeStaff({
+                          ...staff,
                           lastName: e.target.value,
-                        }),
-                      })
-                    }
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                  />
+                          name: formatStaffName({
+                            id: staff.id,
+                            employeeCode: staff.employeeCode,
+                            prefix: staff.prefix,
+                            firstName: staff.firstName,
+                            lastName: e.target.value,
+                          }),
+                        })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      เลขประจำตัวประชาชน (13 หลัก)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={13}
+                      value={staff.idCard || ''}
+                      placeholder="กรอกเลข 13 หลัก"
+                      onChange={(e) => handleCitizenIdChange(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      วันเดือนปีเกิด
+                    </label>
+                    <ThaiDatePicker
+                      value={staff.birthDate || ''}
+                      onChange={(dateStr) => onChangeStaff({ ...staff, birthDate: dateStr })}
+                      placeholder="เลือกวันเดือนปีเกิด"
+                    />
+                    {birthSummary && (
+                      <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/70 text-[11px] font-medium tabular-nums">
+                        {birthSummary}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/80 dark:border-slate-800">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    เบอร์โทรศัพท์
-                  </label>
-                  <input
-                    type="text"
-                    value={staff.phone || ''}
-                    placeholder="เช่น 081-xxx-xxxx"
-                    onChange={(e) => onChangeStaff({ ...staff, phone: e.target.value })}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
+              {/* Sub-group 2: ข้อมูลติดต่อและกรณีฉุกเฉิน */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  ข้อมูลติดต่อและกรณีฉุกเฉิน
                 </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    อีเมลติดต่อ
-                  </label>
-                  <input
-                    type="email"
-                    value={staff.email || ''}
-                    placeholder="name@school.ac.th"
-                    onChange={(e) => onChangeStaff({ ...staff, email: e.target.value })}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      เบอร์โทรศัพท์
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.phone || ''}
+                      placeholder="เช่น 081-xxx-xxxx"
+                      onChange={(e) => onChangeStaff({ ...staff, phone: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      อีเมลติดต่อ
+                    </label>
+                    <input
+                      type="email"
+                      value={staff.email || ''}
+                      placeholder="name@school.ac.th"
+                      onChange={(e) => onChangeStaff({ ...staff, email: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Emergency Contact: 1 compact 3-column row */}
+                <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/80">
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2">
+                    ผู้ติดต่อกรณีฉุกเฉิน (ไม่บังคับ)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <input
+                      type="text"
+                      value={staff.emergencyContactName || ''}
+                      placeholder="ชื่อผู้ติดต่อ"
+                      onChange={(e) =>
+                        onChangeStaff({ ...staff, emergencyContactName: e.target.value })
+                      }
+                      className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                    <input
+                      type="text"
+                      value={staff.emergencyContactRelation || ''}
+                      placeholder="ความสัมพันธ์ (เช่น คู่สมรส, บิดา)"
+                      onChange={(e) =>
+                        onChangeStaff({ ...staff, emergencyContactRelation: e.target.value })
+                      }
+                      className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                    <input
+                      type="text"
+                      value={staff.emergencyContactPhone || ''}
+                      placeholder="เบอร์โทรฉุกเฉิน"
+                      onChange={(e) =>
+                        onChangeStaff({ ...staff, emergencyContactPhone: e.target.value })
+                      }
+                      className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-group 3: ที่อยู่ปัจจุบัน (มาตรฐานไทย) */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  ที่อยู่ปัจจุบัน (มาตรฐานไทย)
+                </div>
+
+                {/* Row 1: บ้านเลขที่, หมู่ที่, ซอย / ถนน */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      บ้านเลขที่
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.addressHouseNo || ''}
+                      placeholder="เช่น 123/4"
+                      onChange={(e) => onChangeStaff({ ...staff, addressHouseNo: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      หมู่ที่
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.addressMoo || ''}
+                      placeholder="เช่น 5"
+                      onChange={(e) => onChangeStaff({ ...staff, addressMoo: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ซอย / ถนน (ถ้ามี)
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.addressSoiRoad || ''}
+                      placeholder="เช่น ถ.ราชสีมา-ปักธงชัย"
+                      onChange={(e) => onChangeStaff({ ...staff, addressSoiRoad: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Cascading Searchable Dropdowns (จังหวัด -> อำเภอ -> ตำบล -> รหัสไปรษณีย์) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      จังหวัด
+                    </label>
+                    <SearchableCombobox
+                      value={staff.addressProvince || ''}
+                      options={provinces}
+                      placeholder="เลือกจังหวัด"
+                      searchPlaceholder="ค้นหาจังหวัด..."
+                      allowClear
+                      onChange={(nextProv) =>
+                        onChangeStaff({
+                          ...staff,
+                          addressProvince: nextProv,
+                          addressDistrict: '',
+                          addressSubdistrict: '',
+                          addressPostalCode: '',
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      อำเภอ / เขต
+                    </label>
+                    <SearchableCombobox
+                      value={staff.addressDistrict || ''}
+                      options={districts}
+                      disabled={!staff.addressProvince}
+                      placeholder={staff.addressProvince ? 'เลือกอำเภอ / เขต' : 'เลือกจังหวัดก่อน'}
+                      searchPlaceholder="ค้นหาอำเภอ / เขต..."
+                      allowClear
+                      onChange={(nextDist) =>
+                        onChangeStaff({
+                          ...staff,
+                          addressDistrict: nextDist,
+                          addressSubdistrict: '',
+                          addressPostalCode: '',
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ตำบล / แขวง
+                    </label>
+                    <SearchableCombobox
+                      value={staff.addressSubdistrict || ''}
+                      options={subdistricts}
+                      disabled={!staff.addressDistrict}
+                      placeholder={staff.addressDistrict ? 'เลือกตำบล / แขวง' : 'เลือกอำเภอก่อน'}
+                      searchPlaceholder="ค้นหาตำบล / แขวง..."
+                      allowClear
+                      onChange={(nextSub) => {
+                        const autoZip = getPostalCode(
+                          staff.addressProvince,
+                          staff.addressDistrict,
+                          nextSub
+                        );
+                        onChangeStaff({
+                          ...staff,
+                          addressSubdistrict: nextSub,
+                          addressPostalCode: autoZip || staff.addressPostalCode || '',
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      รหัสไปรษณีย์
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={staff.addressPostalCode || ''}
+                      placeholder="เช่น 30150"
+                      onChange={(e) =>
+                        onChangeStaff({
+                          ...staff,
+                          addressPostalCode: e.target.value.replace(/[^\d]/g, '').slice(0, 5),
+                        })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* ============================================================== */}
-          {/* TAB 2: ตำแหน่งและสังกัด                                         */}
+          {/* TAB 2: ตำแหน่งและสังกัด (Position No + Smart Khurusapha + Dates) */}
           {/* ============================================================== */}
           {activeTab === 'position' && (
             <div className="space-y-3.5">
               <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                   <div className="sm:col-span-2">
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                       ประเภทบุคลากร <span className="text-sky-500 font-semibold">*</span>
@@ -399,7 +763,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                             newType === 'temporary_employee' ? '-' : staff.academicStanding,
                         });
                       }}
-                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-xs sm:text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:border-sky-500"
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-sky-500"
                     >
                       <option value="civil_servant">ข้าราชการครูและบุคลากรทางการศึกษา</option>
                       <option value="government_employee">พนักงานราชการ</option>
@@ -407,6 +771,21 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                     </select>
                   </div>
 
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      เลขที่ตำแหน่ง
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.positionNo || ''}
+                      placeholder="เช่น 75362"
+                      onChange={(e) => onChangeStaff({ ...staff, positionNo: e.target.value })}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                       ตำแหน่งมาตรฐาน สพฐ.
@@ -475,6 +854,91 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                   </div>
                 </div>
 
+                {/* Smart Khurusapha Membership (2-column row) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ประเภทสมาชิกคุรุสภา
+                    </label>
+                    <select
+                      value={khurusaphaType}
+                      onChange={(e) => handleKhurusaphaTypeChange(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option value="">- เลือกประเภทสมาชิก -</option>
+                      {KHURUSAPHA_MEMBER_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium">
+                        เลขสมาชิกคุรุสภา
+                      </label>
+                      {isOrdinaryMember && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isKhurusaphaUnlocked) {
+                              setIsKhurusaphaUnlocked(false);
+                              onChangeStaff({
+                                ...staff,
+                                khurusaphaMemberNo: staff.idCard || '',
+                                memberId: staff.idCard || '',
+                              });
+                            } else {
+                              setIsKhurusaphaUnlocked(true);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 cursor-pointer"
+                        >
+                          {isKhurusaphaUnlocked ? (
+                            <>
+                              <Lock className="w-3 h-3 shrink-0" />
+                              <span>ซิงก์เลข ปชช.</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="w-3 h-3 shrink-0" />
+                              <span>แก้ไขเอง</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      disabled={isNonMember || (isOrdinaryMember && !isKhurusaphaUnlocked)}
+                      value={
+                        isNonMember
+                          ? ''
+                          : isOrdinaryMember && !isKhurusaphaUnlocked
+                          ? staff.idCard || ''
+                          : staff.khurusaphaMemberNo || ''
+                      }
+                      placeholder={
+                        isNonMember
+                          ? 'ไม่เป็นสมาชิกคุรุสภา'
+                          : isOrdinaryMember
+                          ? 'ซิงก์อัตโนมัติจากเลข ปชช.'
+                          : 'ระบุเลขสมาชิกคุรุสภา'
+                      }
+                      onChange={(e) =>
+                        onChangeStaff({
+                          ...staff,
+                          khurusaphaMemberNo: e.target.value,
+                          memberId: e.target.value,
+                        })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:text-slate-500 border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
@@ -537,7 +1001,6 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 </div>
               </div>
 
-              {/* Minimal single-line registry note */}
               <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
                 จัดการวิทยฐานะ / ใบอนุญาตฯ / วุฒิลูกเสือ ได้ที่เมนูหมวดงานทะเบียนประวัติ
               </p>
@@ -545,61 +1008,239 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* TAB 3: วุฒิการศึกษาและวิชาเอก                                   */}
+          {/* TAB 3: วุฒิการศึกษาและวิชาเอก (ก.ค.ศ. 2×2 + 105+ Majors)         */}
           {/* ============================================================== */}
           {activeTab === 'education' && (
             <div className="space-y-4">
-              {/* Appointment Major (ก.ค.ศ. / สพฐ. Standard Dropdown) */}
-              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-2.5">
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold">
-                  สาขา / วิชาเอกที่บรรจุแต่งตั้ง (ก.ค.ศ. / สพฐ.)
-                </label>
-                <select
-                  value={
-                    isCustomMajor
-                      ? CUSTOM_MAJOR_OPTION
-                      : staff.major && isStandardMajor(staff.major)
-                      ? staff.major
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === CUSTOM_MAJOR_OPTION) {
-                      onChangeCustomMajor(true);
-                      if (isStandardMajor(staff.major)) {
-                        onChangeStaff({ ...staff, major: '' });
+              {/* Highest Qualification — 2×2 Grid */}
+              <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    วุฒิการศึกษาสูงสุด (มาตรฐาน ก.ค.ศ.)
+                  </span>
+                  <a
+                    href="https://qualification.otepc.go.th"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+                  >
+                    <span>ตรวจสอบคุณวุฒิที่ ก.ค.ศ. รับรอง</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  {/* 1. ระดับวุฒิการศึกษา */}
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ระดับวุฒิการศึกษา
+                    </label>
+                    <select
+                      value={staff.educationLevel || ''}
+                      onChange={(e) => handleEducationLevelChange(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option value="">- เลือกระดับวุฒิการศึกษา -</option>
+                      {EDUCATION_LEVELS.map((lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {lvl}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 2. หลักสูตร (จำนวนปี) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      หลักสูตร (จำนวนปี)
+                    </label>
+                    <select
+                      disabled={!staff.educationLevel}
+                      value={
+                        isCustomProgramYears
+                          ? CUSTOM_OPTION_LABEL
+                          : staff.educationProgramYears &&
+                            programYearsOptions.includes(staff.educationProgramYears)
+                          ? staff.educationProgramYears
+                          : ''
                       }
-                    } else {
-                      onChangeCustomMajor(false);
-                      onChangeStaff({ ...staff, major: val });
-                    }
-                  }}
-                  className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-sky-500"
-                >
-                  <option value="">- ไม่ระบุวิชาเอก -</option>
-                  {STANDARD_APPOINTMENT_MAJORS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_MAJOR_OPTION}>{CUSTOM_MAJOR_OPTION}</option>
-                </select>
-                {isCustomMajor && (
-                  <input
-                    type="text"
-                    value={staff.major || ''}
-                    placeholder="ระบุวิชาเอกเพิ่มเติม..."
-                    onChange={(e) => onChangeStaff({ ...staff, major: e.target.value })}
-                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-sky-500"
-                  />
-                )}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === CUSTOM_OPTION_LABEL) {
+                          setIsCustomProgramYears(true);
+                          if (programYearsOptions.includes(staff.educationProgramYears || '')) {
+                            onChangeStaff({ ...staff, educationProgramYears: '' });
+                          }
+                        } else {
+                          setIsCustomProgramYears(false);
+                          onChangeStaff({ ...staff, educationProgramYears: val });
+                        }
+                      }}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] disabled:bg-slate-100 dark:disabled:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {staff.educationLevel ? '- เลือกหลักสูตร -' : 'เลือกระดับวุฒิก่อน'}
+                      </option>
+                      {programYearsOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                      {staff.educationLevel && (
+                        <option value={CUSTOM_OPTION_LABEL}>{CUSTOM_OPTION_LABEL}</option>
+                      )}
+                    </select>
+                    {isCustomProgramYears && (
+                      <input
+                        type="text"
+                        value={staff.educationProgramYears || ''}
+                        placeholder="ระบุหลักสูตร..."
+                        onChange={(e) =>
+                          onChangeStaff({ ...staff, educationProgramYears: e.target.value })
+                        }
+                        className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
+                    )}
+                  </div>
+
+                  {/* 3. ชื่อคุณวุฒิ / ปริญญา */}
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ชื่อคุณวุฒิ / ปริญญา
+                    </label>
+                    <select
+                      disabled={!staff.educationLevel}
+                      value={
+                        isCustomDegree
+                          ? CUSTOM_OPTION_LABEL
+                          : staff.educationDegree && degreeOptions.includes(staff.educationDegree)
+                          ? staff.educationDegree
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === CUSTOM_OPTION_LABEL) {
+                          setIsCustomDegree(true);
+                          if (degreeOptions.includes(staff.educationDegree || '')) {
+                            onChangeStaff({ ...staff, educationDegree: '' });
+                          }
+                        } else {
+                          setIsCustomDegree(false);
+                          onChangeStaff({ ...staff, educationDegree: val });
+                        }
+                      }}
+                      className="w-full h-10 bg-white dark:bg-[#16212e] disabled:bg-slate-100 dark:disabled:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {staff.educationLevel ? '- เลือกชื่อคุณวุฒิ / ปริญญา -' : 'เลือกระดับวุฒิก่อน'}
+                      </option>
+                      {degreeOptions.map((deg) => (
+                        <option key={deg} value={deg}>
+                          {deg}
+                        </option>
+                      ))}
+                      {staff.educationLevel && (
+                        <option value={CUSTOM_OPTION_LABEL}>{CUSTOM_OPTION_LABEL}</option>
+                      )}
+                    </select>
+                    {isCustomDegree && (
+                      <input
+                        type="text"
+                        value={staff.educationDegree || ''}
+                        placeholder="ระบุชื่อคุณวุฒิ / ปริญญา..."
+                        onChange={(e) =>
+                          onChangeStaff({ ...staff, educationDegree: e.target.value })
+                        }
+                        className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
+                    )}
+                  </div>
+
+                  {/* 4. สาขา / วิชาเอก (Grouped Searchable Combobox — 105+ Majors) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      สาขา / วิชาเอก
+                    </label>
+                    <SearchableCombobox
+                      value={
+                        isCustomMajor
+                          ? CUSTOM_MAJOR_OPTION
+                          : staff.major && isStandardMajor(staff.major)
+                          ? staff.major
+                          : ''
+                      }
+                      groups={MAJOR_GROUPS}
+                      extraBottomOption={CUSTOM_MAJOR_OPTION}
+                      placeholder="เลือกสาขา / วิชาเอก..."
+                      searchPlaceholder="ค้นหาวิชาเอก (105+ สาขา)..."
+                      allowClear
+                      onChange={(val) => {
+                        if (val === CUSTOM_MAJOR_OPTION) {
+                          onChangeCustomMajor(true);
+                          if (isStandardMajor(staff.major)) {
+                            onChangeStaff({ ...staff, major: '' });
+                          }
+                        } else {
+                          onChangeCustomMajor(false);
+                          onChangeStaff({ ...staff, major: val });
+                        }
+                      }}
+                    />
+                    {isCustomMajor && (
+                      <input
+                        type="text"
+                        value={staff.major || ''}
+                        placeholder="ระบุสาขา / วิชาเอกเพิ่มเติม..."
+                        onChange={(e) => onChangeStaff({ ...staff, major: e.target.value })}
+                        className="w-full h-9 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Optional Institution & Graduation Year */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      สถาบันการศึกษา (ถ้ามี)
+                    </label>
+                    <input
+                      type="text"
+                      value={staff.educationInstitution || ''}
+                      placeholder="เช่น มหาวิทยาลัยราชภัฏนครราชสีมา"
+                      onChange={(e) =>
+                        onChangeStaff({ ...staff, educationInstitution: e.target.value })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      ปี พ.ศ. ที่จบ (ถ้ามี)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={staff.educationGradYear || ''}
+                      placeholder="เช่น 2562"
+                      onChange={(e) =>
+                        onChangeStaff({
+                          ...staff,
+                          educationGradYear: e.target.value.replace(/[^\d]/g, '').slice(0, 4),
+                        })
+                      }
+                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Education History (Highest Degree & Degrees List) */}
+              {/* Additional Education History */}
               <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    วุฒิการศึกษาสูงสุดและประวัติการศึกษา
+                    ประวัติการศึกษาเพิ่มเติม
                   </span>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                     {(staff.educations || []).length} รายการ
@@ -609,7 +1250,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 <div className="space-y-2">
                   {!staff.educations || staff.educations.length === 0 ? (
                     <div className="p-3 rounded-lg bg-white dark:bg-[#16212e] border border-slate-200/70 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-center">
-                      ยังไม่มีข้อมูลวุฒิการศึกษา
+                      ยังไม่มีประวัติการศึกษาเพิ่มเติม
                     </div>
                   ) : (
                     staff.educations.map((edu, idx) => (
@@ -658,7 +1299,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                     <span>
                       {editingEduIdx !== null
                         ? `แก้ไขวุฒิการศึกษา (รายการที่ ${editingEduIdx + 1})`
-                        : 'เพิ่มวุฒิการศึกษา'}
+                        : 'เพิ่มประวัติการศึกษา'}
                     </span>
                     {editingEduIdx !== null && (
                       <button
@@ -720,7 +1361,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                       ) : (
                         <>
                           <Plus className="w-3.5 h-3.5 shrink-0" />
-                          <span>เพิ่มวุฒิการศึกษา</span>
+                          <span>เพิ่มประวัติการศึกษา</span>
                         </>
                       )}
                     </button>
@@ -731,63 +1372,28 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
 
           {/* ============================================================== */}
-          {/* TAB 4: บัญชีและสิทธิ์ระบบ (+ Danger Zone)                        */}
+          {/* TAB 4: บัญชีและสิทธิ์ระบบ (Focused Access Control + Danger Zone) */}
           {/* ============================================================== */}
           {activeTab === 'account' && (
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-[#101822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 space-y-3.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      รหัสประจำตัวบุคลากร
-                    </label>
-                    <input
-                      type="text"
-                      value={staff.employeeCode}
-                      onChange={(e) => onChangeStaff({ ...staff, employeeCode: e.target.value })}
-                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      เลขที่ตำแหน่ง
-                    </label>
-                    <input
-                      type="text"
-                      value={staff.positionNo || ''}
-                      placeholder="เช่น 75362"
-                      onChange={(e) => onChangeStaff({ ...staff, positionNo: e.target.value })}
-                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      สมาชิกประเภทสามัญ เลขที่
-                    </label>
-                    <input
-                      type="text"
-                      value={staff.memberId || ''}
-                      placeholder="เลขสมาชิกสามัญ"
-                      onChange={(e) => onChangeStaff({ ...staff, memberId: e.target.value })}
-                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      เลขประจำตัวประชาชน (13 หลัก)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={13}
-                      value={staff.idCard || ''}
-                      placeholder="เลขบัตร 13 หลัก"
-                      onChange={(e) => onChangeStaff({ ...staff, idCard: e.target.value })}
-                      className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                  บัญชีผู้ใช้งานและสิทธิ์การเข้าถึงระบบ
                 </div>
 
-                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                    รหัสประจำตัวบุคลากร
+                  </label>
+                  <input
+                    type="text"
+                    value={staff.employeeCode}
+                    onChange={(e) => onChangeStaff({ ...staff, employeeCode: e.target.value })}
+                    className="w-full h-10 bg-white dark:bg-[#16212e] border border-slate-200/90 dark:border-slate-700 rounded-lg px-3 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                     ระดับสิทธิ์การใช้งานระบบ
                   </label>
@@ -803,7 +1409,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
                 </div>
               </div>
 
-              {/* Danger Zone (Relocated safely out of global modal footer) */}
+              {/* Danger Zone */}
               {!isNewStaff && (
                 <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
@@ -830,7 +1436,7 @@ export const StaffEditModal: React.FC<StaffEditModalProps> = ({
           )}
         </div>
 
-        {/* Unified 2-Button Modal Footer */}
+        {/* Unified 2-Button Modal Footer (Fixed) */}
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
           <button
             type="button"

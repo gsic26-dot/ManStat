@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { type TeacherRecord, type WorkloadItem } from '@/lib/data/schoolData';
 import { getStaffDivisions } from '@/lib/staffDivisions';
+import { calculateRetirementInfo } from '@/lib/regulations/fiscal-and-retirement';
+import {
+  formatHighestQualification,
+  formatThaiAddress,
+} from '@/lib/constants/qualifications';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { PhoneShield } from '@/components/security/PhoneShield';
 import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
@@ -774,10 +779,36 @@ export const ViewStaffDirectory: React.FC = () => {
                     })()}
                   </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-400">วิชาเอก:</span>
-                  <span className="text-slate-700 dark:text-slate-200">{selectedTeacher.major || '-'}</span>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400 shrink-0">วุฒิการศึกษาสูงสุด:</span>
+                  <span className="text-slate-700 dark:text-slate-200 text-right">
+                    {formatHighestQualification(selectedTeacher) ||
+                      (selectedTeacher.major ? `วิชาเอก${selectedTeacher.major}` : '-')}
+                    {selectedTeacher.educationInstitution
+                      ? ` (${selectedTeacher.educationInstitution}${
+                          selectedTeacher.educationGradYear
+                            ? ` พ.ศ. ${selectedTeacher.educationGradYear}`
+                            : ''
+                        })`
+                      : ''}
+                  </span>
                 </div>
+                {selectedTeacher.birthDate && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 dark:text-slate-400 shrink-0">วันเดือนปีเกิด:</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-200 text-right">
+                      {formatThaiDateDisplay(selectedTeacher.birthDate)}
+                      {(() => {
+                        try {
+                          const ret = calculateRetirementInfo(selectedTeacher.birthDate);
+                          return ` (เกษียณ 30 ก.ย. พ.ศ. ${ret.retireFiscalYearBE})`;
+                        } catch {
+                          return '';
+                        }
+                      })()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">วันที่บรรจุรับราชการ:</span>
                   <span className="font-mono text-slate-700 dark:text-slate-200">{formatThaiDateDisplay(selectedTeacher.startDate)}</span>
@@ -790,6 +821,28 @@ export const ViewStaffDirectory: React.FC = () => {
                       : '-'}
                   </span>
                 </div>
+                {(selectedTeacher.khurusaphaMemberType || selectedTeacher.khurusaphaMemberNo || selectedTeacher.memberId) && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 dark:text-slate-400 shrink-0">สมาชิกคุรุสภา:</span>
+                    <span className="text-slate-700 dark:text-slate-200 text-right font-mono">
+                      {selectedTeacher.khurusaphaMemberType === 'ไม่เป็นสมาชิก'
+                        ? 'ไม่เป็นสมาชิก'
+                        : `${selectedTeacher.khurusaphaMemberType || 'สมาชิกสามัญ'}${
+                            selectedTeacher.khurusaphaMemberNo || selectedTeacher.memberId
+                              ? ` (${selectedTeacher.khurusaphaMemberNo || selectedTeacher.memberId})`
+                              : ''
+                          }`}
+                    </span>
+                  </div>
+                )}
+                {formatThaiAddress(selectedTeacher) && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 dark:text-slate-400 shrink-0">ที่อยู่ปัจจุบัน:</span>
+                    <span className="text-slate-700 dark:text-slate-200 text-right">
+                      {formatThaiAddress(selectedTeacher)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200/80 dark:border-slate-800">
                   <span className="text-slate-500 dark:text-slate-400">เลขประจำตัว ปชช. (PDPA):</span>
                   <CitizenIdShield

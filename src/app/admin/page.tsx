@@ -617,28 +617,45 @@ export default function AdminPage() {
       (selectedStaff.prefix || '') !== (initialStaffSnapshot.prefix || '') ||
       (selectedStaff.firstName || '') !== (initialStaffSnapshot.firstName || '') ||
       (selectedStaff.lastName || '') !== (initialStaffSnapshot.lastName || '') ||
+      (selectedStaff.idCard || '') !== (initialStaffSnapshot.idCard || '') ||
+      (selectedStaff.birthDate || '') !== (initialStaffSnapshot.birthDate || '') ||
       (selectedStaff.phone || '') !== (initialStaffSnapshot.phone || '') ||
-      (selectedStaff.email || '') !== (initialStaffSnapshot.email || '');
+      (selectedStaff.email || '') !== (initialStaffSnapshot.email || '') ||
+      (selectedStaff.emergencyContactName || '') !== (initialStaffSnapshot.emergencyContactName || '') ||
+      (selectedStaff.emergencyContactRelation || '') !== (initialStaffSnapshot.emergencyContactRelation || '') ||
+      (selectedStaff.emergencyContactPhone || '') !== (initialStaffSnapshot.emergencyContactPhone || '') ||
+      (selectedStaff.addressHouseNo || '') !== (initialStaffSnapshot.addressHouseNo || '') ||
+      (selectedStaff.addressMoo || '') !== (initialStaffSnapshot.addressMoo || '') ||
+      (selectedStaff.addressSoiRoad || '') !== (initialStaffSnapshot.addressSoiRoad || '') ||
+      (selectedStaff.addressSubdistrict || '') !== (initialStaffSnapshot.addressSubdistrict || '') ||
+      (selectedStaff.addressDistrict || '') !== (initialStaffSnapshot.addressDistrict || '') ||
+      (selectedStaff.addressProvince || '') !== (initialStaffSnapshot.addressProvince || '') ||
+      (selectedStaff.addressPostalCode || '') !== (initialStaffSnapshot.addressPostalCode || '');
 
     const position =
       (selectedStaff.employment_type || '') !== (initialStaffSnapshot.employment_type || '') ||
       (selectedStaff.position || '') !== (initialStaffSnapshot.position || '') ||
+      (selectedStaff.positionNo || '') !== (initialStaffSnapshot.positionNo || '') ||
       (selectedStaff.department || '') !== (initialStaffSnapshot.department || '') ||
+      (selectedStaff.khurusaphaMemberType || '') !== (initialStaffSnapshot.khurusaphaMemberType || '') ||
+      (selectedStaff.khurusaphaMemberNo || '') !== (initialStaffSnapshot.khurusaphaMemberNo || '') ||
       (selectedStaff.classLevel || '-') !== (initialStaffSnapshot.classLevel || '-') ||
       (selectedStaff.dutyDay || '-') !== (initialStaffSnapshot.dutyDay || '-') ||
       (selectedStaff.startDate || '') !== (initialStaffSnapshot.startDate || '') ||
       (selectedStaff.currentPositionDate || '') !== (initialStaffSnapshot.currentPositionDate || '');
 
     const education =
+      (selectedStaff.educationLevel || '') !== (initialStaffSnapshot.educationLevel || '') ||
+      (selectedStaff.educationProgramYears || '') !== (initialStaffSnapshot.educationProgramYears || '') ||
+      (selectedStaff.educationDegree || '') !== (initialStaffSnapshot.educationDegree || '') ||
       (selectedStaff.major || '') !== (initialStaffSnapshot.major || '') ||
+      (selectedStaff.educationInstitution || '') !== (initialStaffSnapshot.educationInstitution || '') ||
+      (selectedStaff.educationGradYear || '') !== (initialStaffSnapshot.educationGradYear || '') ||
       JSON.stringify(selectedStaff.educations || []) !==
         JSON.stringify(initialStaffSnapshot.educations || []);
 
     const account =
       (selectedStaff.employeeCode || '') !== (initialStaffSnapshot.employeeCode || '') ||
-      (selectedStaff.positionNo || '') !== (initialStaffSnapshot.positionNo || '') ||
-      (selectedStaff.memberId || '') !== (initialStaffSnapshot.memberId || '') ||
-      (selectedStaff.idCard || '') !== (initialStaffSnapshot.idCard || '') ||
       (selectedStaff.accessLevel || 'User') !== (initialStaffSnapshot.accessLevel || 'User');
 
     return { personal, position, education, account };
