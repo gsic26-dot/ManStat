@@ -40,6 +40,11 @@ import { evaluatePAWorkload } from '@/lib/regulations/khurusapha-and-pa';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
+import {
+  STANDARD_DIVISIONS,
+  WORKLOAD_ADMIN_CATEGORY,
+  normalizeDivisionName,
+} from '@/lib/staffDivisions';
 
 export type WorkloadCategory =
   | 'งานสอนและการจัดการเรียนรู้'
@@ -278,7 +283,11 @@ export const ViewWorkload: React.FC = () => {
     const found = presets.find((p) => p.title === presetTitle);
     if (found) {
       setFormTitle(found.title);
-      setFormSubGroup(found.sub);
+      const resolvedSub =
+        formCategory === WORKLOAD_ADMIN_CATEGORY
+          ? normalizeDivisionName(found.sub) || found.sub
+          : found.sub;
+      setFormSubGroup(resolvedSub);
       setFormRole(found.role);
       setFormHours(found.suggestedHours);
     }
@@ -1119,15 +1128,39 @@ export const ViewWorkload: React.FC = () => {
 
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                    ฝ่ายงาน / กลุ่มสาระ / ระดับชั้น
+                    {formCategory === WORKLOAD_ADMIN_CATEGORY
+                      ? 'สังกัดฝ่ายบริหาร (4 ฝ่ายมาตรฐาน สพฐ.) *'
+                      : 'ฝ่ายงาน / กลุ่มสาระ / ระดับชั้น'}
                   </label>
-                  <input
-                    type="text"
-                    placeholder="เช่น ฝ่ายบริหารวิชาการ หรือ ป.5/1"
-                    value={formSubGroup}
-                    onChange={(e) => setFormSubGroup(e.target.value)}
-                    className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
-                  />
+                  {formCategory === WORKLOAD_ADMIN_CATEGORY ? (
+                    <select
+                      required
+                      value={formSubGroup}
+                      onChange={(e) => setFormSubGroup(e.target.value)}
+                      className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="">-- เลือกฝ่ายบริหารงาน --</option>
+                      {STANDARD_DIVISIONS.map((divName) => (
+                        <option key={divName} value={divName}>
+                          {divName}
+                        </option>
+                      ))}
+                      {formSubGroup &&
+                        !(STANDARD_DIVISIONS as readonly string[]).includes(formSubGroup) && (
+                          <option value={formSubGroup}>
+                            {formSubGroup} (ข้อมูลเดิม)
+                          </option>
+                        )}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="เช่น ป.5/1 หรือ โครงการตามแผนฯ"
+                      value={formSubGroup}
+                      onChange={(e) => setFormSubGroup(e.target.value)}
+                      className="w-full h-10 bg-slate-50 dark:bg-[#0e141c] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                    />
+                  )}
                 </div>
 
                 <div>

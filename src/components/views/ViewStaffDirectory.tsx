@@ -31,15 +31,18 @@ import {
   Loader2,
 } from 'lucide-react';
 import { type TeacherRecord, type WorkloadItem } from '@/lib/data/schoolData';
-import { getStaffDivisions } from '@/lib/staffDivisions';
-import { calculateRetirementInfo } from '@/lib/regulations/fiscal-and-retirement';
+import { getStaffDivisions, STANDARD_DIVISIONS } from '@/lib/staffDivisions';
+import {
+  calculateRetirementInfo,
+  calculateTenure,
+  getFiscalYearBE,
+} from '@/lib/regulations/fiscal-and-retirement';
 import {
   formatHighestQualification,
   formatThaiAddress,
 } from '@/lib/constants/qualifications';
 import { CitizenIdShield } from '@/components/security/CitizenIdShield';
 import { PhoneShield } from '@/components/security/PhoneShield';
-import { calculateTenure } from '@/lib/regulations/fiscal-and-retirement';
 import { useUserSettings } from '@/context/UserSettingsContext';
 import { formatThaiDateDisplay } from '@/components/ui/ThaiDatePicker';
 import {
@@ -79,6 +82,9 @@ export const ViewStaffDirectory: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedEmploymentType, setSelectedEmploymentType] = useState<'ALL' | 'civil_servant' | 'temporary_employee'>('ALL');
+  const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
+  const [selectedMajor, setSelectedMajor] = useState<string>('ALL');
+  const [retirementMode, setRetirementMode] = useState<'ALL' | 'WITHIN_5_YEARS' | 'SORT_NEAREST'>('ALL');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -179,10 +185,63 @@ export const ViewStaffDirectory: React.FC = () => {
     return teachersList.length - civilServantCount;
   }, [teachersList, civilServantCount]);
 
+  // Distinct non-empty majors sorted alphabetically in Thai
+  const availableMajors = useMemo(() => {
+    const set = new Set<string>();
+    teachersList.forEach((t) => {
+      const m = (t.major || '').trim();
+      if (m && m !== '-') set.add(m);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [teachersList]);
+
+  // Helper to safely compute retirement fiscal year BE for a teacher
+  const currentFiscalYearBE = useMemo(() => getFiscalYearBE(new Date()), []);
+
+  const getRetireYearBE = (birthDate?: string | null): number | null => {
+    if (!birthDate) return null;
+    try {
+      return calculateRetirementInfo(birthDate).retireFiscalYearBE;
+    } catch {
+      return null;
+    }
+  };
+
+  const hasActiveFilters =
+    searchQuery.trim() !== '' ||
+    selectedEmploymentType !== 'ALL' ||
+    selectedDept !== 'ALL' ||
+    selectedDivision !== 'ALL' ||
+    selectedMajor !== 'ALL' ||
+    retirementMode !== 'ALL';
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedEmploymentType('ALL');
+    setSelectedDept('ALL');
+    setSelectedDivision('ALL');
+    setSelectedMajor('ALL');
+    setRetirementMode('ALL');
+  };
+
   const filteredTeachers = useMemo(() => {
     let result = employmentScopedTeachers;
     if (selectedDept !== 'ALL') {
       result = result.filter((t) => t.department === selectedDept);
+    }
+    if (selectedDivision !== 'ALL') {
+      result = result.filter((t) =>
+        getStaffDivisions(t, workloadsList).includes(selectedDivision)
+      );
+    }
+    if (selectedMajor !== 'ALL') {
+      result = result.filter((t) => (t.major || '').trim() === selectedMajor);
+    }
+    if (retirementMode === 'WITHIN_5_YEARS') {
+      result = result.filter((t) => {
+        const yr = getRetireYearBE(t.birthDate);
+        return yr !== null && yr >= currentFiscalYearBE && yr <= currentFiscalYearBE + 5;
+      });
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -191,15 +250,36 @@ export const ViewStaffDirectory: React.FC = () => {
           formatStaffName(t).toLowerCase().includes(q) ||
           (t.employeeCode || '').toLowerCase().includes(q) ||
           (t.department || '').toLowerCase().includes(q) ||
-          (t.position || '').toLowerCase().includes(q)
+          (t.position || '').toLowerCase().includes(q) ||
+          (t.major || '').toLowerCase().includes(q)
       );
     }
     return result;
-  }, [employmentScopedTeachers, selectedDept, searchQuery]);
+  }, [
+    employmentScopedTeachers,
+    selectedDept,
+    selectedDivision,
+    selectedMajor,
+    retirementMode,
+    workloadsList,
+    currentFiscalYearBE,
+    searchQuery,
+  ]);
 
   const groupedTeachers = useMemo(() => {
-    return groupAndSortTeachers(filteredTeachers);
-  }, [filteredTeachers]);
+    const groups = groupAndSortTeachers(filteredTeachers);
+    if (retirementMode === 'SORT_NEAREST' || retirementMode === 'WITHIN_5_YEARS') {
+      return groups.map((g) => ({
+        ...g,
+        members: [...g.members].sort((a, b) => {
+          const ya = getRetireYearBE(a.birthDate) ?? Number.MAX_SAFE_INTEGER;
+          const yb = getRetireYearBE(b.birthDate) ?? Number.MAX_SAFE_INTEGER;
+          return ya - yb;
+        }),
+      }));
+    }
+    return groups;
+  }, [filteredTeachers, retirementMode]);
 
   return (
     <div className="space-y-6">
@@ -386,6 +466,62 @@ export const ViewStaffDirectory: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Compact HR Filters: Division, Major & Civil-Service Retirement Forecast */}
+        <div className="pt-2 border-t border-slate-200/90 dark:border-slate-800 flex flex-wrap items-center gap-2.5">
+          <select
+            aria-label="กรองตามสังกัดฝ่ายงาน"
+            value={selectedDivision}
+            onChange={(e) => setSelectedDivision(e.target.value)}
+            className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            <option value="ALL">สังกัดฝ่ายงาน: ทั้งหมด</option>
+            <option value="ผู้บริหารสถานศึกษา">ผู้บริหารสถานศึกษา</option>
+            {STANDARD_DIVISIONS.map((divName) => (
+              <option key={divName} value={divName}>
+                {divName}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="กรองตามวิชาเอก"
+            value={selectedMajor}
+            onChange={(e) => setSelectedMajor(e.target.value)}
+            className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer max-w-[220px]"
+          >
+            <option value="ALL">วิชาเอก: ทั้งหมด</option>
+            {availableMajors.map((major) => (
+              <option key={major} value={major}>
+                {major}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="คาดการณ์ปีเกษียณอายุราชการ"
+            value={retirementMode}
+            onChange={(e) =>
+              setRetirementMode(e.target.value as 'ALL' | 'WITHIN_5_YEARS' | 'SORT_NEAREST')
+            }
+            className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-lg px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            <option value="ALL">เกษียณอายุราชการ: ทั้งหมด</option>
+            <option value="WITHIN_5_YEARS">เกษียณภายใน 5 ปี (พ.ศ. {currentFiscalYearBE}-{currentFiscalYearBE + 5})</option>
+            <option value="SORT_NEAREST">เรียงตามปีเกษียณใกล้สุด</option>
+          </select>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white text-xs font-medium transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 shrink-0" />
+              <span>ล้างตัวกรอง</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main View Mode: Table (Default & Recommended) */}
@@ -418,7 +554,7 @@ export const ViewStaffDirectory: React.FC = () => {
                 ) : filteredTeachers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                      {searchQuery.trim() || selectedDept !== 'ALL' || selectedEmploymentType !== 'ALL'
+                      {hasActiveFilters
                         ? 'ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไข'
                         : 'ยังไม่มีข้อมูลบุคลากรในระบบ'}
                     </td>
@@ -501,14 +637,34 @@ export const ViewStaffDirectory: React.FC = () => {
                                   </div>
                                 </td>
 
-                                {/* Tenure */}
+                                {/* Tenure & Retirement Forecast */}
                                 <td className={`px-4 ${cellPy} text-center whitespace-nowrap`}>
-                                  <span className="font-mono font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-                                    {tenure.years} ปี {tenure.months} เดือน
-                                  </span>
-                                  <span className="block text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                                    บรรจุ {formatThaiDateDisplay(teacher.startDate)}
-                                  </span>
+                                  {(() => {
+                                    const retireYear = getRetireYearBE(teacher.birthDate);
+                                    const isRetiringSoon =
+                                      retireYear !== null &&
+                                      retireYear >= currentFiscalYearBE &&
+                                      retireYear <= currentFiscalYearBE + 5;
+                                    return (
+                                      <>
+                                        <span className="font-mono font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                                          {tenure.years} ปี {tenure.months} เดือน
+                                        </span>
+                                        <span className="block text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                          บรรจุ {formatThaiDateDisplay(teacher.startDate)}
+                                        </span>
+                                        <span
+                                          className={`block text-[11px] font-mono mt-0.5 ${
+                                            isRetiringSoon
+                                              ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                                              : 'text-slate-400 dark:text-slate-500'
+                                          }`}
+                                        >
+                                          {retireYear ? `เกษียณ ${retireYear}` : 'เกษียณ -'}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
                                 </td>
 
                                 {/* Expand Arrow */}
@@ -614,7 +770,7 @@ export const ViewStaffDirectory: React.FC = () => {
         </div>
       ) : filteredTeachers.length === 0 ? (
         <div className="bg-white dark:bg-[#111823] p-12 rounded-2xl border border-slate-200/90 dark:border-slate-800 text-center text-slate-500">
-          {searchQuery.trim() || selectedDept !== 'ALL' || selectedEmploymentType !== 'ALL'
+          {hasActiveFilters
             ? 'ไม่พบข้อมูลบุคลากรที่ตรงกับเงื่อนไข'
             : 'ยังไม่มีข้อมูลบุคลากรในระบบ'}
         </div>
@@ -677,6 +833,30 @@ export const ViewStaffDirectory: React.FC = () => {
                                 อายุราชการ: <strong className="text-slate-900 dark:text-slate-100">{tenure.years} ปี {tenure.months} เดือน</strong>
                               </span>
                             </div>
+                            {(() => {
+                              const retireYear = getRetireYearBE(teacher.birthDate);
+                              const isRetiringSoon =
+                                retireYear !== null &&
+                                retireYear >= currentFiscalYearBE &&
+                                retireYear <= currentFiscalYearBE + 5;
+                              return (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <Award className="w-4 h-4 text-slate-400 shrink-0" />
+                                  <span>
+                                    คาดการณ์เกษียณ:{' '}
+                                    <strong
+                                      className={`font-mono ${
+                                        isRetiringSoon
+                                          ? 'text-amber-600 dark:text-amber-400'
+                                          : 'text-slate-800 dark:text-slate-200'
+                                      }`}
+                                    >
+                                      {retireYear ? `พ.ศ. ${retireYear}` : '-'}
+                                    </strong>
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             {teacher.phone && teacher.phone !== '-' && (
                               <div className="flex items-center gap-2">
                                 <PhoneShield

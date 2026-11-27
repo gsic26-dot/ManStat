@@ -114,4 +114,105 @@ describe('getStaffDivisions (Multi-Division Auto-Derivation from Workload Catego
     assert.equal(generalMembers.length, 1);
     assert.equal(generalMembers[0].employeeCode, 'TCH-002');
   });
+
+  it('derives single division accurately for a teacher assigned to 1 division', () => {
+    const teacherSingle = {
+      id: 'TCH-010',
+      employeeCode: 'TCH-010',
+      position: 'ครู',
+      division: 'ฝ่ายบริหารทั่วไป',
+    };
+    const workloads: WorkloadItem[] = [
+      {
+        id: 'WL-SINGLE-1',
+        teacherId: 'TCH-010',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานพัฒนาหลักสูตรสถานศึกษา',
+        subGroupOrLevel: 'ฝ่ายบริหารวิชาการ',
+        hoursPerWeek: 3,
+        roleInTask: 'ผู้รับผิดชอบหลัก',
+        status: 'งานประจำต่อเนื่อง',
+      },
+    ];
+    // Category 2 workload overrides legacy staff.division cleanly
+    assert.deepEqual(getStaffDivisions(teacherSingle, workloads), ['ฝ่ายบริหารวิชาการ']);
+  });
+
+  it('deduplicates and orders all 4 standard divisions when a teacher has multiple tasks including duplicates in the same division', () => {
+    const teacherAllFour = {
+      id: 'TCH-011',
+      employeeCode: 'TCH-011',
+      position: 'ครูชำนาญการ',
+      division: '-',
+    };
+    const workloads: WorkloadItem[] = [
+      {
+        id: 'WL-4D-1',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานอาคารสถานที่',
+        subGroupOrLevel: 'ฝ่ายบริหารทั่วไป',
+        hoursPerWeek: 2,
+        roleInTask: 'ผู้รับผิดชอบหลัก',
+        status: 'งานประจำต่อเนื่อง',
+      },
+      {
+        id: 'WL-4D-2',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานเทคโนโลยีสารสนเทศ',
+        subGroupOrLevel: 'งาน ICT', // duplicate -> normalizes to ฝ่ายบริหารทั่วไป
+        hoursPerWeek: 2,
+        roleInTask: 'ผู้รับผิดชอบหลัก',
+        status: 'งานประจำต่อเนื่อง',
+      },
+      {
+        id: 'WL-4D-3',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานวิทยฐานะ PA/DPA',
+        subGroupOrLevel: 'ฝ่ายบริหารงานบุคคล',
+        hoursPerWeek: 2,
+        roleInTask: 'ผู้รับผิดชอบหลัก',
+        status: 'งานประจำต่อเนื่อง',
+      },
+      {
+        id: 'WL-4D-4',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานพัสดุ',
+        subGroupOrLevel: 'ฝ่ายบริหารงบประมาณ',
+        hoursPerWeek: 2,
+        roleInTask: 'เจ้าหน้าที่พัสดุ',
+        status: 'งานประจำต่อเนื่อง',
+      },
+      {
+        id: 'WL-4D-5',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานการเงิน',
+        subGroupOrLevel: 'ฝ่ายบริหารงบประมาณ', // duplicate exact standard name
+        hoursPerWeek: 2,
+        roleInTask: 'เจ้าหน้าที่การเงิน',
+        status: 'งานประจำต่อเนื่อง',
+      },
+      {
+        id: 'WL-4D-6',
+        teacherId: 'TCH-011',
+        category: 'งานบริหารและงานประจำฝ่าย/กลุ่มงาน',
+        title: 'งานทะเบียนนักเรียน',
+        subGroupOrLevel: 'ฝ่ายบริหารวิชาการ',
+        hoursPerWeek: 2,
+        roleInTask: 'นายทะเบียน',
+        status: 'งานประจำต่อเนื่อง',
+      },
+    ];
+
+    assert.deepEqual(getStaffDivisions(teacherAllFour, workloads), [
+      'ฝ่ายบริหารวิชาการ',
+      'ฝ่ายบริหารงบประมาณ',
+      'ฝ่ายบริหารงานบุคคล',
+      'ฝ่ายบริหารทั่วไป',
+    ]);
+  });
 });

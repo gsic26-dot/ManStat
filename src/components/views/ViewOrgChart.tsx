@@ -572,7 +572,7 @@ export const ViewOrgChart: React.FC = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {activeModalDivision.members.map((m) => (
                     <span
-                      key={m.id}
+                      key={`${activeModalDivision.id}-${m.id}`}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 text-xs text-slate-800 dark:text-slate-200"
                     >
                       <span className="font-medium">{formatStaffName(m)}</span>
