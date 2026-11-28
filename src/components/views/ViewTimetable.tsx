@@ -44,12 +44,17 @@ import {
   Baby,
   Archive,
   RotateCcw,
+  UserCheck,
+  ClipboardCopy,
+  Utensils,
 } from 'lucide-react';
-import type { TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
+import type { LeaveRequestRecord, TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
 import type {
   KindergartenActivityItem,
   KindergartenSchedule,
+  LunchBreakConfig,
   PeriodConfigItem,
+  TeachingSubstitution,
   TimetableAllocation,
   TimetableSemester,
   TimetableSettings,
@@ -69,9 +74,9 @@ import {
   STANDARD_ROOMS,
   KINDERGARTEN_ROOMS,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
+  DEFAULT_LUNCH_CONFIG,
   DAYS_OF_WEEK,
   LUNCH_BREAK_LABEL,
-  LUNCH_BREAK_TIME,
   STANDARD_SUBJECT_GROUPS,
   SUBJECT_TYPES,
   COMMON_SUBJECT_PRESETS,
@@ -79,9 +84,11 @@ import {
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
   isEligibleForTeaching,
+  clampPeriodDurationMinutes,
 } from '@/lib/regulations/timetable-utils';
 import {
   evaluateSmartSwapTargets,
+  type AutoScheduleStrategy,
   type SlotCoord,
   type UnplacedAllocationItem,
 } from '@/lib/regulations/auto-scheduler';
@@ -89,8 +96,13 @@ import {
   mapLegacyWorkloadToAllocation,
   type TimetableRolloverMode,
 } from '@/lib/regulations/timetable-rollover';
+import {
+  getAffectedSlotsForDate,
+  formatSubstitutionLineSummary,
+} from '@/lib/regulations/substitute-utils';
+import { getStaffDivisions } from '@/lib/staffDivisions';
 
-type TimetableTab = 'room' | 'teacher' | 'allocations' | 'kindergarten' | 'summary';
+type TimetableTab = 'room' | 'teacher' | 'allocations' | 'kindergarten' | 'substitutes' | 'summary';
 
 function getSubjectTypeBadgeStyle(type: TimetableSubjectType): string {
   switch (type) {
@@ -126,6 +138,11 @@ export const ViewTimetable: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [currentRole, setCurrentRole] = useState<string>('teacher');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [currentUserPosition, setCurrentUserPosition] = useState<string>('');
+  const [allWorkloads, setAllWorkloads] = useState<WorkloadItem[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
+  const [substitutions, setSubstitutions] = useState<TeachingSubstitution[]>([]);
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // View selections
@@ -168,13 +185,27 @@ export const ViewTimetable: React.FC = () => {
   // Settings Modal State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [draftPeriods, setDraftPeriods] = useState<PeriodConfigItem[]>([]);
+  const [draftLunchConfig, setDraftLunchConfig] = useState<LunchBreakConfig>({ ...DEFAULT_LUNCH_CONFIG });
   const [draftFooterNote, setDraftFooterNote] = useState<string>('');
 
-  // Phase 9.2: Auto-Schedule, Smart Swap, Unplaced Queue & Quick Pin/Lock State
+  // Phase 9.2 + 9.4: Auto-Schedule, Smart Swap, Unplaced Queue & Quick Pin/Lock State
   const [isAutoModalOpen, setIsAutoModalOpen] = useState<boolean>(false);
   const [autoScopeMode, setAutoScopeMode] = useState<'all' | 'room'>('all');
   const [autoRespectLocked, setAutoRespectLocked] = useState<boolean>(true);
+  const [autoStrategy, setAutoStrategy] = useState<AutoScheduleStrategy>('primary_morning_core');
   const [isAutoScheduling, setIsAutoScheduling] = useState<boolean>(false);
+
+  // Phase 9.4: Daily Substitutions & Master Lock State
+  const [selectedSubDate, setSelectedSubDate] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
+  const [isTogglingMasterLock, setIsTogglingMasterLock] = useState<boolean>(false);
+  const [savingSubKey, setSavingSubKey] = useState<string | null>(null);
+  const [isSubStatsExpanded, setIsSubStatsExpanded] = useState<boolean>(false);
   const [lastUnplacedItems, setLastUnplacedItems] = useState<UnplacedAllocationItem[]>([]);
   const [isUnplacedExpanded, setIsUnplacedExpanded] = useState<boolean>(true);
 
@@ -232,7 +263,24 @@ export const ViewTimetable: React.FC = () => {
   const [removeLegacyAfterMigrate, setRemoveLegacyAfterMigrate] = useState<boolean>(false);
   const [isMigratingLegacy, setIsMigratingLegacy] = useState<boolean>(false);
 
-  const canManage = isAdminRole(currentRole);
+  const isMasterLocked = Boolean(settings.isLocked);
+
+  // Phase 9.4: Academic Affairs & Admin/Director Edit Permission
+  const canManageTimetable = useMemo(() => {
+    if (isAdminRole(currentRole)) return true;
+    if ((currentUserPosition || '').includes('ผู้อำนวยการ')) return true;
+    if (!currentUserId) return false;
+    const me = teachersList.find(
+      (t) => t.id === currentUserId || t.employeeCode === currentUserId
+    );
+    if (!me) return false;
+    const divisions = getStaffDivisions(me, allWorkloads);
+    return divisions.includes('ฝ่ายบริหารวิชาการ');
+  }, [currentRole, currentUserPosition, currentUserId, teachersList, allWorkloads]);
+
+  // Master-timetable edits are disabled when locked; daily substitutions remain editable!
+  const canManage = canManageTimetable && !isMasterLocked;
+  const canManageSubstitutions = canManageTimetable;
 
   const showNotice = (type: 'success' | 'error', text: string) => {
     setStatusNotice({ type, text });
@@ -252,8 +300,10 @@ export const ViewTimetable: React.FC = () => {
       fetch('/api/auth/me', { cache: 'no-store' })
         .then((r) => r.json())
         .then((res) => {
-          if (isMounted && res.success && res.user?.role) {
-            setCurrentRole(res.user.role);
+          if (isMounted && res.success && res.user) {
+            if (res.user.role) setCurrentRole(res.user.role);
+            if (res.user.id) setCurrentUserId(res.user.id);
+            if (res.user.position) setCurrentUserPosition(res.user.position);
           }
         })
         .catch(() => {}),
@@ -269,9 +319,18 @@ export const ViewTimetable: React.FC = () => {
         .then((r) => r.json())
         .then((res) => {
           if (isMounted && res.success && Array.isArray(res.data)) {
+            setAllWorkloads(res.data);
             setLegacyTeachingWorkloads(
               res.data.filter((w: WorkloadItem) => w.category === 'งานสอนและการจัดการเรียนรู้')
             );
+          }
+        })
+        .catch(() => {}),
+      fetch('/api/admin/leave', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (isMounted && res.success && Array.isArray(res.data)) {
+            setLeaveRequests(res.data);
           }
         })
         .catch(() => {}),
@@ -285,11 +344,18 @@ export const ViewTimetable: React.FC = () => {
   const loadBundle = useCallback(async (yr: string, sem: TimetableSemester) => {
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `/api/timetable?academicYear=${encodeURIComponent(yr)}&semester=${encodeURIComponent(sem)}`,
-        { cache: 'no-store' }
-      );
+      const [res, subRes] = await Promise.all([
+        fetch(
+          `/api/timetable?academicYear=${encodeURIComponent(yr)}&semester=${encodeURIComponent(sem)}`,
+          { cache: 'no-store' }
+        ),
+        fetch(
+          `/api/timetable/substitutions?academicYear=${encodeURIComponent(yr)}&semester=${encodeURIComponent(sem)}`,
+          { cache: 'no-store' }
+        ),
+      ]);
       const json = await res.json().catch(() => ({}));
+      const subJson = await subRes.json().catch(() => ({}));
       if (res.ok && json.success && json.data) {
         setSettings(json.data.settings || getDefaultTimetableSettings(yr, sem));
         setAllocations(Array.isArray(json.data.allocations) ? json.data.allocations : []);
@@ -303,11 +369,17 @@ export const ViewTimetable: React.FC = () => {
         setSlots([]);
         setKindergartenSchedules([]);
       }
+      if (subRes.ok && subJson.success && Array.isArray(subJson.data)) {
+        setSubstitutions(subJson.data);
+      } else {
+        setSubstitutions([]);
+      }
     } catch {
       setSettings(getDefaultTimetableSettings(yr, sem));
       setAllocations([]);
       setSlots([]);
       setKindergartenSchedules([]);
+      setSubstitutions([]);
     } finally {
       setIsLoading(false);
     }
@@ -371,8 +443,50 @@ export const ViewTimetable: React.FC = () => {
     });
   }, [settings, academicYear, semester]);
 
-  const morningPeriods = useMemo(() => periodsConfig.filter((p) => p.periodNo <= 3), [periodsConfig]);
-  const afternoonPeriods = useMemo(() => periodsConfig.filter((p) => p.periodNo >= 4), [periodsConfig]);
+  const lunchConfig = useMemo(() => {
+    const raw = settings.lunchConfig || DEFAULT_LUNCH_CONFIG;
+    return {
+      afterPeriod: Math.max(2, Math.min(4, Number(raw.afterPeriod) || 3)),
+      startTime: raw.startTime || DEFAULT_LUNCH_CONFIG.startTime,
+      endTime: raw.endTime || DEFAULT_LUNCH_CONFIG.endTime,
+      durationMinutes: clampPeriodDurationMinutes(raw.durationMinutes),
+    };
+  }, [settings.lunchConfig]);
+
+  const lunchTimeText = `${lunchConfig.startTime} - ${lunchConfig.endTime}`;
+
+  const morningPeriods = useMemo(
+    () => periodsConfig.filter((p) => p.periodNo <= lunchConfig.afterPeriod),
+    [periodsConfig, lunchConfig.afterPeriod]
+  );
+  const afternoonPeriods = useMemo(
+    () => periodsConfig.filter((p) => p.periodNo > lunchConfig.afterPeriod),
+    [periodsConfig, lunchConfig.afterPeriod]
+  );
+
+  // Phase 9.4: Daily Affected Slots & Term Substitution Stats
+  const affectedForSubDate = useMemo(
+    () =>
+      getAffectedSlotsForDate({
+        dateStr: selectedSubDate,
+        leaves: leaveRequests,
+        slots,
+        kindergartenSchedules,
+        teachers: sortedTeachers,
+        existingSubstitutions: substitutions,
+      }),
+    [selectedSubDate, leaveRequests, slots, kindergartenSchedules, sortedTeachers, substitutions]
+  );
+
+  const termSubstitutionStats = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const sub of substitutions) {
+      counts.set(sub.substituteTeacherId, (counts.get(sub.substituteTeacherId) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([teacherId, count]) => ({ teacherId, name: getCleanName(teacherId), count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'th'));
+  }, [substitutions, getCleanName]);
 
   // Real-time Conflict Detection & ว 9/2564 Loads
   const conflictResult = useMemo(() => detectTimetableConflicts(slots), [slots]);
@@ -697,7 +811,13 @@ export const ViewTimetable: React.FC = () => {
   // Settings Modal handlers
   const handleOpenSettingsModal = () => {
     if (!canManage) return;
-    setDraftPeriods(periodsConfig.map((p) => ({ ...p })));
+    setDraftPeriods(
+      periodsConfig.map((p) => ({
+        ...p,
+        durationMinutes: clampPeriodDurationMinutes(p.durationMinutes),
+      }))
+    );
+    setDraftLunchConfig({ ...lunchConfig });
     setDraftFooterNote(settings.footerNote || '');
     setIsSettingsModalOpen(true);
   };
@@ -707,11 +827,20 @@ export const ViewTimetable: React.FC = () => {
     if (!canManage) return;
     setIsSaving(true);
     try {
-      const normalizedPeriods = draftPeriods.map((p) => ({
-        ...p,
-        durationMinutes: Math.max(15, Number(p.durationMinutes) || 60),
-        durationHours: Math.round(((Math.max(15, Number(p.durationMinutes) || 60)) / 60) * 100) / 100,
-      }));
+      const normalizedPeriods = draftPeriods.map((p) => {
+        const mins = clampPeriodDurationMinutes(p.durationMinutes);
+        return {
+          ...p,
+          durationMinutes: mins,
+          durationHours: Math.round((mins / 60) * 100) / 100,
+        };
+      });
+      const safeLunch: LunchBreakConfig = {
+        afterPeriod: Math.max(2, Math.min(4, Number(draftLunchConfig.afterPeriod) || 3)),
+        startTime: draftLunchConfig.startTime.trim() || '11.30',
+        endTime: draftLunchConfig.endTime.trim() || '12.30',
+        durationMinutes: clampPeriodDurationMinutes(draftLunchConfig.durationMinutes),
+      };
       const res = await fetch('/api/admin/timetable/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -721,19 +850,146 @@ export const ViewTimetable: React.FC = () => {
           periodsConfig: normalizedPeriods,
           fixedSlotsConfig: settings.fixedSlotsConfig || [],
           footerNote: draftFooterNote,
+          lunchConfig: safeLunch,
+          isLocked: Boolean(settings.isLocked),
         }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
-        throw new Error(json.error || 'ไม่สามารถบันทึกตั้งค่าคาบเรียนได้');
+        throw new Error(json.error || 'ไม่สามารถบันทึกตั้งค่าเวลาเรียนได้');
       }
       setSettings(json.data);
       setIsSettingsModalOpen(false);
-      showNotice('success', 'บันทึกตั้งค่าคาบเรียนเรียบร้อยแล้ว');
+      showNotice('success', 'บันทึกตั้งค่าเวลาเรียนและพักกลางวันเรียบร้อยแล้ว');
     } catch (err: unknown) {
       showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกตั้งค่า');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Phase 9.4: Toggle Master Timetable Lock
+  const handleToggleMasterLock = async () => {
+    if (!canManageTimetable || isTogglingMasterLock) return;
+    setIsTogglingMasterLock(true);
+    try {
+      const nextLocked = !isMasterLocked;
+      const res = await fetch('/api/admin/timetable/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear,
+          semester,
+          isLocked: nextLocked,
+          toggleLockOnly: true,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถเปลี่ยนสถานะล็อกตารางสอนได้');
+      }
+      setSettings(json.data);
+      if (nextLocked) {
+        setIsSmartSwapMode(false);
+        setSwapSource(null);
+      }
+      showNotice(
+        'success',
+        nextLocked
+          ? `ล็อกตารางสอนภาคเรียน ${academicYear}/${semester} แล้ว (โหมดดูอย่างเดียว)`
+          : `ปลดล็อกตารางสอนภาคเรียน ${academicYear}/${semester} แล้ว`
+      );
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะล็อกตารางสอน');
+    } finally {
+      setIsTogglingMasterLock(false);
+    }
+  };
+
+  // Phase 9.4: Assign / Clear Daily Substitution
+  const handleAssignSubstitution = async (
+    item: (typeof affectedForSubDate.affectedItems)[number],
+    substituteTeacherId: string
+  ) => {
+    if (!canManageSubstitutions || savingSubKey) return;
+    if (!substituteTeacherId) {
+      if (item.currentSubstitution) {
+        await handleClearSubstitution(item.currentSubstitution.id, item.key);
+      }
+      return;
+    }
+
+    setSavingSubKey(item.key);
+    try {
+      const res = await fetch('/api/admin/timetable/substitutions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear,
+          semester,
+          subDate: selectedSubDate,
+          roomName: item.roomName,
+          dayOfWeek: item.dayOfWeek,
+          periodNo: item.periodNo,
+          subjectName: item.subjectName,
+          absentTeacherId: item.absentTeacherId,
+          substituteTeacherId,
+          leaveId: item.leaveId,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกผู้สอนแทนได้');
+      }
+      const saved: TeachingSubstitution = json.data;
+      setSubstitutions((prev) => {
+        const filtered = prev.filter(
+          (s) =>
+            s.id !== saved.id &&
+            !(s.subDate === saved.subDate && s.roomName === saved.roomName && s.periodNo === saved.periodNo)
+        );
+        return [...filtered, saved];
+      });
+      showNotice('success', `จัดผู้สอนแทนห้อง ${item.roomName} เรียบร้อยแล้ว`);
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการจัดผู้สอนแทน');
+    } finally {
+      setSavingSubKey(null);
+    }
+  };
+
+  const handleClearSubstitution = async (subId: string, itemKey: string) => {
+    if (!canManageSubstitutions || savingSubKey) return;
+    setSavingSubKey(itemKey);
+    try {
+      const res = await fetch(`/api/admin/timetable/substitutions?id=${encodeURIComponent(subId)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถยกเลิกผู้สอนแทนได้');
+      }
+      setSubstitutions((prev) => prev.filter((s) => s.id !== subId));
+      showNotice('success', 'ยกเลิกรายการผู้สอนแทนเรียบร้อยแล้ว');
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการยกเลิกผู้สอนแทน');
+    } finally {
+      setSavingSubKey(null);
+    }
+  };
+
+  const handleCopySubstitutionSummary = async () => {
+    const text = formatSubstitutionLineSummary({
+      dateStr: selectedSubDate,
+      affectedItems: affectedForSubDate.affectedItems,
+      teachers: sortedTeachers,
+      periodsConfig,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      showNotice('success', 'คัดลอกข้อความแจ้งสอนแทนสำหรับกลุ่ม LINE เรียบร้อยแล้ว');
+    } catch {
+      showNotice('error', 'ไม่สามารถคัดลอกข้อความไปยังคลิปบอร์ดได้');
     }
   };
 
@@ -866,6 +1122,7 @@ export const ViewTimetable: React.FC = () => {
           semester,
           scopeRooms: autoScopeMode === 'room' ? [selectedRoom] : undefined,
           respectLockedSlots: autoRespectLocked,
+          strategy: autoStrategy,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -1211,6 +1468,26 @@ export const ViewTimetable: React.FC = () => {
             <option value="2">ภาคเรียนที่ 2</option>
           </select>
 
+          {canManageTimetable && (
+            <button
+              type="button"
+              disabled={isTogglingMasterLock}
+              onClick={handleToggleMasterLock}
+              className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer disabled:opacity-50 ${
+                isMasterLocked
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-600'
+                  : 'bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              {isMasterLocked ? (
+                <Unlock className="w-4 h-4 shrink-0" />
+              ) : (
+                <Lock className="w-4 h-4 shrink-0" />
+              )}
+              <span>{isMasterLocked ? 'ปลดล็อกตารางสอน' : 'ล็อกตารางสอน'}</span>
+            </button>
+          )}
+
           {canManage && (
             <>
               <button
@@ -1233,6 +1510,21 @@ export const ViewTimetable: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Master Timetable Lock Status Banner */}
+      {isMasterLocked && (
+        <div
+          role="status"
+          className="px-4 py-3 rounded-xl border bg-amber-50/90 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs font-medium flex flex-wrap items-center justify-between gap-2"
+        >
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              ตารางสอนภาคเรียนนี้ถูกล็อกโดยฝ่ายวิชาการ (โหมดดูอย่างเดียว) — ยังสามารถจัดสอนแทนรายวันและพิมพ์ตาราง A4 ได้ตามปกติ
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Status Notice */}
       {statusNotice && (
@@ -1319,6 +1611,7 @@ export const ViewTimetable: React.FC = () => {
             { id: 'teacher', label: 'ตารางสอนรายบุคคล', icon: User },
             { id: 'allocations', label: 'แผนการสอน', icon: BookOpen },
             { id: 'kindergarten', label: 'ระดับปฐมวัย (อ.1–อ.3)', icon: Baby },
+            { id: 'substitutes', label: 'จัดสอนแทน', icon: UserCheck },
             { id: 'summary', label: 'สรุปชั่วโมงสอน (ว 9/2564)', icon: BarChart3 },
           ] as const
         ).map((tab) => {
@@ -1710,7 +2003,7 @@ export const ViewTimetable: React.FC = () => {
                               className="bg-amber-50/70 dark:bg-amber-950/20 border border-slate-200 dark:border-slate-800 text-center align-middle px-1"
                             >
                               <div className="[writing-mode:vertical-rl] rotate-180 mx-auto text-xs font-semibold text-amber-700 dark:text-amber-300 tracking-wider">
-                                {LUNCH_BREAK_LABEL} ({LUNCH_BREAK_TIME})
+                                {LUNCH_BREAK_LABEL} ({lunchTimeText})
                               </div>
                             </td>
                           )}
@@ -2115,7 +2408,7 @@ export const ViewTimetable: React.FC = () => {
                               className="bg-amber-50/70 dark:bg-amber-950/20 border border-slate-200 dark:border-slate-800 text-center align-middle px-1"
                             >
                               <div className="[writing-mode:vertical-rl] rotate-180 mx-auto text-xs font-semibold text-amber-700 dark:text-amber-300 tracking-wider">
-                                {LUNCH_BREAK_LABEL} ({LUNCH_BREAK_TIME})
+                                {LUNCH_BREAK_LABEL} ({lunchTimeText})
                               </div>
                             </td>
                           )}
@@ -2491,7 +2784,230 @@ export const ViewTimetable: React.FC = () => {
           )}
 
           {/* =============================================================== */}
-          {/* TAB 5: สรุปชั่วโมงสอน (ว 9/2564)                                 */}
+          {/* TAB 5: จัดสอนแทนรายวัน (Leave-to-Substitute Bridge)              */}
+          {/* =============================================================== */}
+          {activeTab === 'substitutes' && (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-sky-500 shrink-0" />
+                      <span>จัดสอนแทนรายวัน (เชื่อมโยงระบบการลาอัตโนมัติ)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      แสดงรายชื่อครูที่ลาในวันที่เลือก พร้อมคัดกรองเฉพาะบุคลากรที่ว่างจริง (ไม่รวมนักการภารโรง ผู้ลา และผู้ที่มีสอน)
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      aria-label="เลือกวันที่จัดสอนแทน"
+                      value={selectedSubDate}
+                      onChange={(e) => setSelectedSubDate(e.target.value)}
+                      className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        setSelectedSubDate(
+                          `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+                        );
+                      }}
+                      className="h-9 px-3 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      วันนี้
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopySubstitutionSummary}
+                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <ClipboardCopy className="w-3.5 h-3.5 shrink-0" />
+                      <span>คัดลอกข้อความแจ้งสอนแทน</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Daily Summary Pills */}
+                <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                  <span className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/70 font-medium">
+                    ครูลาวันนี้ {affectedForSubDate.absentTeachers.length} คน
+                  </span>
+                  <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-medium">
+                    ชั่วโมงที่ได้รับผลกระทบ {affectedForSubDate.affectedItems.length} ชม.
+                  </span>
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70 font-medium">
+                    จัดสอนแทนแล้ว{' '}
+                    {affectedForSubDate.affectedItems.filter((i) => Boolean(i.currentSubstitution)).length} /{' '}
+                    {affectedForSubDate.affectedItems.length} ชม.
+                  </span>
+                </div>
+
+                {affectedForSubDate.isWeekend ? (
+                  <div className="p-8 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                    วันที่เลือกเป็นวันหยุดเสาร์–อาทิตย์ ไม่มีการจัดการเรียนการสอน
+                  </div>
+                ) : affectedForSubDate.affectedItems.length === 0 ? (
+                  <div className="p-8 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                    {affectedForSubDate.absentTeachers.length === 0
+                      ? 'ไม่พบรายการครูลาในวันที่เลือก'
+                      : 'ครูที่ลาในวันนี้ไม่มีชั่วโมงสอนที่ได้รับผลกระทบในตารางสอน'}
+                  </div>
+                ) : (
+                  <div tabIndex={0} role="region" aria-label="ตารางจัดสอนแทนรายวัน" className="overflow-x-auto w-full">
+                    <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                      <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
+                        <tr>
+                          <th scope="col" className="px-3 py-3 whitespace-nowrap">ห้องเรียน</th>
+                          <th scope="col" className="px-3 py-3 whitespace-nowrap">ชั่วโมง / เวลา</th>
+                          <th scope="col" className="px-3 py-3">รายวิชา</th>
+                          <th scope="col" className="px-3 py-3 whitespace-nowrap">ครูที่ลา</th>
+                          <th scope="col" className="px-3 py-3 min-w-[260px]">ผู้สอนแทน (คัดกรองเฉพาะผู้ว่าง)</th>
+                          {canManageSubstitutions && (
+                            <th scope="col" className="px-3 py-3 text-right whitespace-nowrap">จัดการ</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
+                        {affectedForSubDate.affectedItems.map((item) => {
+                          const pCfg = periodsConfig.find((p) => p.periodNo === item.periodNo);
+                          const timeLabel =
+                            item.periodNo === 0
+                              ? 'ตลอดวัน (ปฐมวัย)'
+                              : pCfg
+                              ? `${pCfg.label} (${pCfg.startTime}-${pCfg.endTime})`
+                              : `ชั่วโมงที่ ${item.periodNo}`;
+                          const currentSubId = item.currentSubstitution?.substituteTeacherId || '';
+                          return (
+                            <tr
+                              key={item.key}
+                              className="hover:bg-slate-50 dark:hover:bg-[#1a2636]/40 transition-colors"
+                            >
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-sky-600 text-white text-[11px]">
+                                  {item.roomName}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap font-mono text-[11px]">
+                                {timeLabel}
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  {item.subjectName}
+                                </div>
+                                {item.presentCoTeacherId && (
+                                  <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/70">
+                                    มีครูร่วมสอนปฏิบัติหน้าที่อยู่ ({getCleanName(item.presentCoTeacherId)})
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="font-medium text-slate-900 dark:text-white">
+                                  {getCleanName(item.absentTeacherId)}
+                                </div>
+                                <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                                  {item.leaveTypeName}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                {canManageSubstitutions ? (
+                                  <select
+                                    aria-label={`เลือกผู้สอนแทนห้อง ${item.roomName}`}
+                                    disabled={savingSubKey === item.key}
+                                    value={currentSubId}
+                                    onChange={(e) => handleAssignSubstitution(item, e.target.value)}
+                                    className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <option value="">-- ยังไม่ได้จัดผู้สอนแทน --</option>
+                                    {item.availableSubstitutes.map((cand) => (
+                                      <option key={cand.teacherId} value={cand.teacherId}>
+                                        {cand.name}
+                                        {cand.isPresentCoTeacher
+                                          ? ' • ครูร่วมสอนในห้องนี้'
+                                          : ` • สอนวันนี้ ${cand.dailyTeachingCount} ชม.`}
+                                      </option>
+                                    ))}
+                                    {currentSubId &&
+                                      !item.availableSubstitutes.some((c) => c.teacherId === currentSubId) && (
+                                        <option value={currentSubId}>{getCleanName(currentSubId)}</option>
+                                      )}
+                                  </select>
+                                ) : (
+                                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                                    {currentSubId ? getCleanName(currentSubId) : 'ยังไม่ได้จัดผู้สอนแทน'}
+                                  </span>
+                                )}
+                              </td>
+                              {canManageSubstitutions && (
+                                <td className="px-3 py-3 text-right whitespace-nowrap">
+                                  {item.currentSubstitution && (
+                                    <button
+                                      type="button"
+                                      disabled={savingSubKey === item.key}
+                                      onClick={() =>
+                                        handleClearSubstitution(item.currentSubstitution!.id, item.key)
+                                      }
+                                      title="ยกเลิกผู้สอนแทน"
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Collapsible Term Cumulative Substitution Stats */}
+              <div className="bg-white dark:bg-[#121822] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSubStatsExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between gap-2 text-left text-xs font-semibold text-slate-800 dark:text-slate-100 cursor-pointer"
+                >
+                  <span>
+                    สถิติการสอนแทนสะสมภาคเรียนที่ {semester}/{academicYear} ({substitutions.length} ครั้ง)
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      isSubStatsExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {isSubStatsExpanded && (
+                  termSubstitutionStats.length === 0 ? (
+                    <p className="text-xs text-slate-400">ยังไม่มีสถิติการสอนแทนในภาคเรียนนี้</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {termSubstitutionStats.map((st) => (
+                        <span
+                          key={st.teacherId}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200"
+                        >
+                          <span className="font-medium">{st.name}</span>
+                          <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                            {st.count} ครั้ง
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* =============================================================== */}
+          {/* TAB 6: สรุปชั่วโมงสอน (ว 9/2564)                                 */}
           {/* =============================================================== */}
           {activeTab === 'summary' && (
             <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm space-y-4">
@@ -3114,7 +3630,7 @@ export const ViewTimetable: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Settings className="w-5 h-5 text-sky-500 shrink-0" />
                 <h3 id="settings-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
-                  ตั้งค่าคาบเรียนและหมายเหตุตารางสอน ({academicYear}/{semester})
+                  ตั้งค่าเวลาเรียนและหมายเหตุตารางสอน ({academicYear}/{semester})
                 </h3>
               </div>
               <button
@@ -3135,9 +3651,12 @@ export const ViewTimetable: React.FC = () => {
               className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
             >
               <div className="space-y-2.5">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                  โครงสร้างเวลาคาบเรียน (7 คาบ)
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    โครงสร้างเวลาเรียน (6 ชั่วโมงเรียน + พบครูประจำชั้น)
+                  </span>
+                  <span className="text-[11px] text-slate-400">สูงสุด 60 นาที / ช่วง</span>
+                </div>
                 <div className="space-y-2">
                   {draftPeriods.map((p, idx) => (
                     <div
@@ -3147,7 +3666,7 @@ export const ViewTimetable: React.FC = () => {
                       <div className="col-span-4">
                         <input
                           type="text"
-                          aria-label={`ชื่อคาบที่ ${p.periodNo}`}
+                          aria-label={`ชื่อชั่วโมงที่ ${p.periodNo}`}
                           value={p.label}
                           onChange={(e) =>
                             setDraftPeriods((prev) =>
@@ -3160,7 +3679,7 @@ export const ViewTimetable: React.FC = () => {
                       <div className="col-span-3">
                         <input
                           type="text"
-                          aria-label={`เวลาเริ่มคาบที่ ${p.periodNo}`}
+                          aria-label={`เวลาเริ่มชั่วโมงที่ ${p.periodNo}`}
                           value={p.startTime}
                           onChange={(e) =>
                             setDraftPeriods((prev) =>
@@ -3173,7 +3692,7 @@ export const ViewTimetable: React.FC = () => {
                       <div className="col-span-3">
                         <input
                           type="text"
-                          aria-label={`เวลาสิ้นสุดคาบที่ ${p.periodNo}`}
+                          aria-label={`เวลาสิ้นสุดชั่วโมงที่ ${p.periodNo}`}
                           value={p.endTime}
                           onChange={(e) =>
                             setDraftPeriods((prev) =>
@@ -3186,22 +3705,112 @@ export const ViewTimetable: React.FC = () => {
                       <div className="col-span-2">
                         <input
                           type="number"
-                          min={15}
-                          max={120}
-                          aria-label={`ระยะเวลานาทีคาบที่ ${p.periodNo}`}
+                          min={10}
+                          max={60}
+                          aria-label={`ระยะเวลานาทีชั่วโมงที่ ${p.periodNo}`}
                           value={p.durationMinutes}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const clamped = clampPeriodDurationMinutes(Number(e.target.value));
                             setDraftPeriods((prev) =>
                               prev.map((item, i) =>
-                                i === idx ? { ...item, durationMinutes: Number(e.target.value) || 60 } : item
+                                i === idx ? { ...item, durationMinutes: clamped } : item
                               )
-                            )
-                          }
+                            );
+                          }}
                           className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
                         />
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Flexible Lunch Break Config Card */}
+              <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800/70 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                  <Utensils className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>ช่วงพักกลางวัน</span>
+                </div>
+                <div className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-4">
+                    <label
+                      htmlFor="lunch-after-period"
+                      className="block text-[11px] text-slate-600 dark:text-slate-300 mb-1"
+                    >
+                      พักหลังชั่วโมงที่
+                    </label>
+                    <select
+                      id="lunch-after-period"
+                      value={draftLunchConfig.afterPeriod}
+                      onChange={(e) =>
+                        setDraftLunchConfig((prev) => ({
+                          ...prev,
+                          afterPeriod: Math.max(2, Math.min(4, Number(e.target.value) || 3)),
+                        }))
+                      }
+                      className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs cursor-pointer"
+                    >
+                      <option value={2}>หลังชั่วโมงที่ 2</option>
+                      <option value={3}>หลังชั่วโมงที่ 3</option>
+                      <option value={4}>หลังชั่วโมงที่ 4</option>
+                    </select>
+                  </div>
+                  <div className="col-span-3">
+                    <label
+                      htmlFor="lunch-start"
+                      className="block text-[11px] text-slate-600 dark:text-slate-300 mb-1"
+                    >
+                      เวลาเริ่ม
+                    </label>
+                    <input
+                      id="lunch-start"
+                      type="text"
+                      value={draftLunchConfig.startTime}
+                      onChange={(e) =>
+                        setDraftLunchConfig((prev) => ({ ...prev, startTime: e.target.value }))
+                      }
+                      className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label
+                      htmlFor="lunch-end"
+                      className="block text-[11px] text-slate-600 dark:text-slate-300 mb-1"
+                    >
+                      เวลาสิ้นสุด
+                    </label>
+                    <input
+                      id="lunch-end"
+                      type="text"
+                      value={draftLunchConfig.endTime}
+                      onChange={(e) =>
+                        setDraftLunchConfig((prev) => ({ ...prev, endTime: e.target.value }))
+                      }
+                      className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label
+                      htmlFor="lunch-mins"
+                      className="block text-[11px] text-slate-600 dark:text-slate-300 mb-1"
+                    >
+                      นาที
+                    </label>
+                    <input
+                      id="lunch-mins"
+                      type="number"
+                      min={15}
+                      max={60}
+                      value={draftLunchConfig.durationMinutes}
+                      onChange={(e) =>
+                        setDraftLunchConfig((prev) => ({
+                          ...prev,
+                          durationMinutes: clampPeriodDurationMinutes(Number(e.target.value)),
+                        }))
+                      }
+                      className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -3310,6 +3919,46 @@ export const ViewTimetable: React.FC = () => {
                   <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
                     จัดเฉพาะห้อง {selectedRoom} (ยึดตารางห้องอื่นไว้กันครูชนคาบ)
                   </span>
+                </label>
+              </fieldset>
+
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  รูปแบบการจัดตาราง
+                </legend>
+                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-[#101822] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="autoStrategy"
+                    checked={autoStrategy === 'primary_morning_core'}
+                    onChange={() => setAutoStrategy('primary_morning_core')}
+                    className="mt-0.5 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-white">
+                      เน้นวิชาหลักช่วงเช้า (แนะนำสำหรับประถม)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      ดันภาษาไทย คณิต วิทย์ อังกฤษ ลงชั่วโมงที่ 1–3 และเกลี่ยวิชาปฏิบัติ/ศิลปะ/พละ/กิจกรรมไปช่วงบ่าย
+                    </div>
+                  </div>
+                </label>
+                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-[#101822] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="autoStrategy"
+                    checked={autoStrategy === 'balanced'}
+                    onChange={() => setAutoStrategy('balanced')}
+                    className="mt-0.5 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-white">
+                      จัดอัตโนมัติแบบสมดุล (มาตรฐาน)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      จัดตามเงื่อนไขเน้นช่วงเช้าและวิชาคู่ที่กำหนดไว้ในแผนการสอนแต่ละรายวิชา
+                    </div>
+                  </div>
                 </label>
               </fieldset>
 

@@ -29,6 +29,13 @@ export interface FixedSlotConfigItem {
   rooms?: string[];
 }
 
+export interface LunchBreakConfig {
+  afterPeriod: number; // 2..4 (default 3)
+  startTime: string; // e.g. '11.30'
+  endTime: string; // e.g. '12.30'
+  durationMinutes: number; // clamped 10..60
+}
+
 export interface TimetableSettings {
   id: string; // `${academicYear}-${semester}`
   academicYear: string;
@@ -36,7 +43,25 @@ export interface TimetableSettings {
   periodsConfig: PeriodConfigItem[];
   fixedSlotsConfig: FixedSlotConfigItem[];
   footerNote: string;
+  isLocked?: boolean;
+  lunchConfig?: LunchBreakConfig;
   updatedAt?: string;
+}
+
+export interface TeachingSubstitution {
+  id: string;
+  academicYear: string;
+  semester: TimetableSemester;
+  subDate: string; // YYYY-MM-DD
+  roomName: string; // 'ป.1'..'ม.3' or 'อ.1'..'อ.3'
+  dayOfWeek: number; // 1..5
+  periodNo: number; // 1..7 or 0 for full-day kindergarten
+  subjectName: string;
+  absentTeacherId: string;
+  substituteTeacherId: string;
+  leaveId?: string;
+  note?: string;
+  createdAt?: string;
 }
 
 export interface TimetableAllocation {

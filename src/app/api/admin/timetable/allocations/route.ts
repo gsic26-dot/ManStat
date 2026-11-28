@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import {
   dbUpsertTimetableAllocation,
   dbDeleteTimetableAllocation,
+  dbIsTimetableLocked,
   recordAuditLog,
 } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { verifyTimetableManagerSession } from '@/lib/auth/serverAuth';
 import type { TimetableAllocation, TimetableSemester } from '@/lib/data/timetableTypes';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
-    const adminSession = await verifyAdminSession();
+    const adminSession = await verifyTimetableManagerSession();
     if (!adminSession.authorized) {
       return NextResponse.json(
         { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
@@ -31,6 +32,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: 'กรุณากรอกข้อมูลแผนการสอนให้ครบถ้วน (ปีการศึกษา, ห้อง, รายวิชา, ครูผู้สอน)' },
         { status: 400 }
+      );
+    }
+
+    if (await dbIsTimetableLocked(academicYear, semester)) {
+      return NextResponse.json(
+        { success: false, error: 'ตารางสอนภาคเรียนนี้ถูกล็อกโดยฝ่ายวิชาการ กรุณาปลดล็อกก่อนแก้ไขแผนการสอน' },
+        { status: 423 }
       );
     }
 
@@ -75,7 +83,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const adminSession = await verifyAdminSession();
+    const adminSession = await verifyTimetableManagerSession();
     if (!adminSession.authorized) {
       return NextResponse.json(
         { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },

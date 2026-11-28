@@ -39,6 +39,9 @@ export interface UnplacedAllocationItem {
   reason: string;
 }
 
+export type AutoScheduleStrategy = 'balanced' | 'primary_morning_core';
+export type PrimarySubjectWeight = 'core_heavy' | 'light_afternoon' | 'standard';
+
 export interface AutoScheduleParams {
   academicYear: string;
   semester: TimetableSemester;
@@ -48,6 +51,48 @@ export interface AutoScheduleParams {
   scopeRooms?: readonly string[];
   respectLockedSlots?: boolean;
   clearUnlockedFirst?: boolean;
+  strategy?: AutoScheduleStrategy;
+}
+
+const CORE_HEAVY_KEYWORDS = [
+  'ภาษาไทย',
+  'ส่งเสริมอ่านเขียน',
+  'คณิตศาสตร์',
+  'วิทยาศาสตร์',
+  'วิทยาการคำนวณ',
+  'ปัญญาประดิษฐ์',
+  'ภาษาอังกฤษ',
+  'ภาษาต่างประเทศ',
+];
+
+const LIGHT_AFTERNOON_KEYWORDS = [
+  'ศิลปะ',
+  'ดนตรี',
+  'สุขศึกษา',
+  'พลศึกษา',
+  'การงานอาชีพ',
+  'กิจกรรมพัฒนาผู้เรียน',
+  'แนะแนว',
+  'ชุมนุม',
+  'ลูกเสือ',
+  'สวดมนต์',
+];
+
+/**
+ * Classifies an allocation's cognitive weight for Primary School morning-core scheduling.
+ */
+export function classifyPrimarySubjectWeight(
+  alloc: Pick<TimetableAllocation, 'subjectName' | 'subjectGroup' | 'subjectType'>
+): PrimarySubjectWeight {
+  if (alloc.subjectType === 'กิจกรรมพัฒนาผู้เรียน') return 'light_afternoon';
+  const combined = `${alloc.subjectName || ''} ${alloc.subjectGroup || ''}`;
+  if (LIGHT_AFTERNOON_KEYWORDS.some((kw) => combined.includes(kw))) {
+    return 'light_afternoon';
+  }
+  if (CORE_HEAVY_KEYWORDS.some((kw) => combined.includes(kw))) {
+    return 'core_heavy';
+  }
+  return 'standard';
 }
 
 export interface AutoScheduleResult {
@@ -129,6 +174,7 @@ export function generateAutoSchedule(params: AutoScheduleParams): AutoScheduleRe
   const { academicYear, semester } = params;
   const respectLocked = params.respectLockedSlots ?? true;
   const clearUnlocked = params.clearUnlockedFirst ?? true;
+  const strategy: AutoScheduleStrategy = params.strategy || 'balanced';
   const periodsCfg =
     params.periodsConfig && params.periodsConfig.length > 0
       ? params.periodsConfig
@@ -238,7 +284,15 @@ export function generateAutoSchedule(params: AutoScheduleParams): AutoScheduleRe
     const coB = b.coTeacherId ? 1 : 0;
     if (coA !== coB) return coB - coA;
 
-    // 4. Morning priority subjects
+    // 4. Primary morning-core priority or morning preference
+    if (strategy === 'primary_morning_core') {
+      const rank = (w: PrimarySubjectWeight) =>
+        w === 'core_heavy' ? 0 : w === 'standard' ? 1 : 2;
+      const wA = rank(classifyPrimarySubjectWeight(a));
+      const wB = rank(classifyPrimarySubjectWeight(b));
+      if (wA !== wB) return wA - wB;
+    }
+
     if (a.preferMorning !== b.preferMorning) {
       return a.preferMorning ? -1 : 1;
     }
@@ -291,6 +345,8 @@ export function generateAutoSchedule(params: AutoScheduleParams): AutoScheduleRe
 
     const isHomeroom = alloc.subjectType === 'ประจำชั้น';
     const normSubj = normalizeSubjectKey(alloc.subjectName);
+    const subjectWeight =
+      strategy === 'primary_morning_core' ? classifyPrimarySubjectWeight(alloc) : 'standard';
 
     // 4A. Double-period blocks (consecutivePeriods === 2)
     if (!isHomeroom && alloc.consecutivePeriods === 2) {
@@ -318,7 +374,13 @@ export function generateAutoSchedule(params: AutoScheduleParams): AutoScheduleRe
             }
 
             let score = 0;
-            if (alloc.preferMorning) {
+            if (strategy === 'primary_morning_core') {
+              if (subjectWeight === 'core_heavy') {
+                score += p2 <= 3 ? 50 : -20;
+              } else if (subjectWeight === 'light_afternoon') {
+                score += p1 >= 4 ? 40 : -18;
+              }
+            } else if (alloc.preferMorning) {
               if (p2 <= 3) score += 40;
               else score -= 10;
             }
@@ -400,7 +462,19 @@ export function generateAutoSchedule(params: AutoScheduleParams): AutoScheduleRe
 
           let score = 0;
           if (!isHomeroom) {
-            if (alloc.preferMorning) {
+            if (strategy === 'primary_morning_core') {
+              if (subjectWeight === 'core_heavy') {
+                if (period <= 3) score += 50;
+                else if (period === 4) score += 10;
+                else score -= 22;
+              } else if (subjectWeight === 'light_afternoon') {
+                if (period >= 4) score += 40;
+                else score -= 18;
+              } else if (alloc.preferMorning) {
+                if (period <= 3) score += 25;
+                else if (period === 4) score += 15;
+              }
+            } else if (alloc.preferMorning) {
               if (period <= 3) score += 40;
               else if (period === 4) score += 22;
               else score -= 12;

@@ -3,9 +3,10 @@ import {
   dbGetTimetableBundle,
   dbGetTeachers,
   dbApplyTimetableRolloverBatch,
+  dbIsTimetableLocked,
   recordAuditLog,
 } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
+import { verifyTimetableManagerSession } from '@/lib/auth/serverAuth';
 import {
   buildTimetableRollover,
   type TimetableRolloverMode,
@@ -17,7 +18,7 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
-    const adminSession = await verifyAdminSession();
+    const adminSession = await verifyTimetableManagerSession();
     if (!adminSession.authorized) {
       return NextResponse.json(
         { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
@@ -43,6 +44,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: 'ภาคเรียนต้นทางและภาคเรียนปลายทางต้องไม่ซ้ำกัน' },
         { status: 400 }
+      );
+    }
+
+    if (await dbIsTimetableLocked(targetYear, targetSemester)) {
+      return NextResponse.json(
+        { success: false, error: 'ตารางสอนภาคเรียนปลายทางถูกล็อกอยู่ กรุณาปลดล็อกก่อนคัดลอก' },
+        { status: 423 }
       );
     }
 

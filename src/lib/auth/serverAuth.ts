@@ -8,9 +8,10 @@
  */
 
 import { cookies } from 'next/headers';
-import { dbGetTeachers } from '@/lib/db/serverDb';
+import { dbGetTeachers, dbGetWorkloads } from '@/lib/db/serverDb';
 import { mapAccessLevelToRole, isAdminRole } from '@/lib/auth/roles';
 import { verifySessionToken } from '@/lib/auth/sessionCookie';
+import { getStaffDivisions } from '@/lib/staffDivisions';
 import type { UserRole } from '@/types/database.types';
 
 export interface AuthenticatedUser {
@@ -143,5 +144,61 @@ export async function verifyAdminSession(): Promise<{
     authorized: true,
     user,
     status: 200,
+  };
+}
+
+/**
+ * Enforces Timetable Manager authorization:
+ * Grants access to Admin roles, School Director, OR any active staff assigned to ฝ่ายบริหารวิชาการ.
+ */
+export async function verifyTimetableManagerSession(): Promise<{
+  authorized: boolean;
+  user: AuthenticatedUser | null;
+  error?: string;
+  status: number;
+}> {
+  const user = await getSessionUser();
+
+  if (!user) {
+    return {
+      authorized: false,
+      user: null,
+      error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ',
+      status: 401,
+    };
+  }
+
+  if (isAdminRole(user.role) || (user.position || '').includes('ผู้อำนวยการ')) {
+    return {
+      authorized: true,
+      user,
+      status: 200,
+    };
+  }
+
+  try {
+    const [teachers, workloads] = await Promise.all([dbGetTeachers(), dbGetWorkloads()]);
+    const staff = teachers.find(
+      (t) => t.id === user.id || (user.employeeCode && t.employeeCode === user.employeeCode)
+    );
+    if (staff) {
+      const divisions = getStaffDivisions(staff, workloads);
+      if (divisions.includes('ฝ่ายบริหารวิชาการ')) {
+        return {
+          authorized: true,
+          user,
+          status: 200,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[verifyTimetableManagerSession] Division check error:', err);
+  }
+
+  return {
+    authorized: false,
+    user,
+    error: 'สงวนสิทธิ์เฉพาะผู้ดูแลระบบ ผู้บริหารสถานศึกษา และฝ่ายบริหารวิชาการ',
+    status: 403,
   };
 }

@@ -5,6 +5,7 @@ import {
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
   isEligibleForTeaching,
+  clampPeriodDurationMinutes,
 } from '../timetable-utils';
 import type { TimetableSlot } from '@/lib/data/timetableTypes';
 import type { TeacherRecord } from '@/lib/data/schoolData';
@@ -266,5 +267,14 @@ describe('Timetable Conflict Detection & ว 9/2564 Calculator (timetable-utils.
     assert.equal(dirLoad?.w9StatusLabel, 'ผู้บริหารสถานศึกษา');
     assert.equal(supLoad?.w9StatusLabel, 'สายสนับสนุน');
     assert.equal(teacherLoad?.w9StatusLabel, 'ต่ำกว่าเกณฑ์');
+  });
+
+  it('strictly clamps period and lunch duration minutes between 10 and 60', () => {
+    assert.equal(clampPeriodDurationMinutes(60), 60);
+    assert.equal(clampPeriodDurationMinutes(90), 60);
+    assert.equal(clampPeriodDurationMinutes(120), 60);
+    assert.equal(clampPeriodDurationMinutes(30), 30);
+    assert.equal(clampPeriodDurationMinutes(5), 10);
+    assert.equal(clampPeriodDurationMinutes(NaN), 60);
   });
 });

@@ -342,4 +342,114 @@ describe('Deterministic Auto-Scheduler & Smart Swap Engine (auto-scheduler.ts)',
     assert.equal(nowAtD1P1?.subjectName, 'คณิตศาสตร์');
     assert.equal(nowAtD1P2?.subjectName, 'ภาษาไทย');
   });
+
+  it('Test 6: primary_morning_core strategy places core subjects in morning Hours 1–3 and light subjects in afternoon Hours 4–6', () => {
+    const allocations: TimetableAllocation[] = [
+      {
+        id: 'A-ART',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'ศิลปะ/ดนตรี',
+        subjectGroup: 'ศิลปะ',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-ART',
+        periodsPerWeek: 2,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+      {
+        id: 'A-PE',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'พลศึกษา',
+        subjectGroup: 'สุขศึกษาและพลศึกษา',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-PE',
+        periodsPerWeek: 2,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+      {
+        id: 'A-TH',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'ภาษาไทย',
+        subjectGroup: 'ภาษาไทย',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-HR',
+        periodsPerWeek: 3,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+      {
+        id: 'A-MATH',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'คณิตศาสตร์',
+        subjectGroup: 'คณิตศาสตร์',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-HR',
+        periodsPerWeek: 3,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+      {
+        id: 'A-SCI',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'วิทยาศาสตร์',
+        subjectGroup: 'วิทยาศาสตร์และเทคโนโลยี',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-SCI',
+        periodsPerWeek: 2,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+      {
+        id: 'A-ENG',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'ป.3',
+        subjectName: 'ภาษาอังกฤษ',
+        subjectGroup: 'ภาษาต่างประเทศ',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-ENG',
+        periodsPerWeek: 2,
+        preferMorning: false,
+        consecutivePeriods: 1,
+      },
+    ];
+
+    const result = generateAutoSchedule({
+      academicYear: '2569',
+      semester: '1',
+      allocations,
+      existingSlots: [],
+      strategy: 'primary_morning_core',
+    });
+
+    assert.equal(result.conflictsCount, 0);
+    assert.equal(result.unplaced.length, 0);
+
+    const coreSlots = result.slots.filter((s) =>
+      ['ภาษาไทย', 'คณิตศาสตร์', 'วิทยาศาสตร์', 'ภาษาอังกฤษ'].includes(s.subjectName)
+    );
+    const lightSlots = result.slots.filter((s) =>
+      ['ศิลปะ/ดนตรี', 'พลศึกษา'].includes(s.subjectName)
+    );
+
+    assert.equal(coreSlots.length, 10);
+    assert.equal(lightSlots.length, 4);
+    for (const s of coreSlots) {
+      assert.ok(s.periodNo <= 3, `Core subject ${s.subjectName} should be in morning 1-3, got ${s.periodNo}`);
+    }
+    for (const s of lightSlots) {
+      assert.ok(s.periodNo >= 4, `Light subject ${s.subjectName} should be in afternoon 4-6, got ${s.periodNo}`);
+    }
+  });
 });

@@ -11,6 +11,7 @@ import type { TeacherRecord } from '@/lib/data/schoolData';
 import type {
   KindergartenActivityItem,
   KindergartenSchedule,
+  LunchBreakConfig,
   PeriodConfigItem,
   TimetableSemester,
   TimetableSettings,
@@ -95,6 +96,22 @@ export const DAYS_OF_WEEK = [
 
 export const LUNCH_BREAK_LABEL = 'พักกลางวัน';
 export const LUNCH_BREAK_TIME = '11.30 - 12.30';
+
+export const DEFAULT_LUNCH_CONFIG: LunchBreakConfig = {
+  afterPeriod: 3,
+  startTime: '11.30',
+  endTime: '12.30',
+  durationMinutes: 60,
+};
+
+/**
+ * Strictly clamps any period or lunch break duration between 10 and 60 minutes.
+ */
+export function clampPeriodDurationMinutes(minutes: number): number {
+  const num = Number(minutes);
+  if (Number.isNaN(num) || !Number.isFinite(num)) return 60;
+  return Math.max(10, Math.min(60, Math.round(num)));
+}
 
 export const DEFAULT_PERIODS_CONFIG: readonly PeriodConfigItem[] = [
   { periodNo: 1, label: 'ชั่วโมงที่ 1', startTime: '08.30', endTime: '09.30', durationMinutes: 60, durationHours: 1.0 },
@@ -199,6 +216,8 @@ export function getDefaultTimetableSettings(
     periodsConfig: DEFAULT_PERIODS_CONFIG.map((p) => ({ ...p })),
     fixedSlotsConfig: [],
     footerNote: DEFAULT_FOOTER_NOTE,
+    isLocked: false,
+    lunchConfig: { ...DEFAULT_LUNCH_CONFIG },
   };
 }
 

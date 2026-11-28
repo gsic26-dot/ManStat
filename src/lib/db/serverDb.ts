@@ -53,6 +53,7 @@ import type {
   TimetableAllocation,
   TimetableSlot,
   KindergartenSchedule,
+  TeachingSubstitution,
   TimetableBundle,
   TimetableSemester,
   TimetableSubjectType,
@@ -60,6 +61,8 @@ import type {
 import {
   getDefaultTimetableSettings,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
+  DEFAULT_LUNCH_CONFIG,
+  clampPeriodDurationMinutes,
 } from '@/lib/regulations/timetable-utils';
 
 export type {
@@ -128,6 +131,7 @@ export interface DatabaseState {
   timetableAllocations?: TimetableAllocation[];
   timetableSlots?: TimetableSlot[];
   kindergartenSchedules?: KindergartenSchedule[];
+  teachingSubstitutions?: TeachingSubstitution[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -3306,6 +3310,16 @@ export async function dbSavePerformanceEvaluation(
 
 function timetableSettingsFromDb(row: any, academicYear: string, semester: TimetableSemester): TimetableSettings {
   const defaults = getDefaultTimetableSettings(academicYear, semester);
+  const rawLunch = row.lunch_config && typeof row.lunch_config === 'object' ? row.lunch_config : null;
+  const lunchConfig = rawLunch
+    ? {
+        afterPeriod: Math.max(2, Math.min(4, Number(rawLunch.afterPeriod) || 3)),
+        startTime: String(rawLunch.startTime || DEFAULT_LUNCH_CONFIG.startTime),
+        endTime: String(rawLunch.endTime || DEFAULT_LUNCH_CONFIG.endTime),
+        durationMinutes: clampPeriodDurationMinutes(rawLunch.durationMinutes ?? 60),
+      }
+    : { ...DEFAULT_LUNCH_CONFIG };
+
   return {
     id: row.id || defaults.id,
     academicYear: row.academic_year || academicYear,
@@ -3318,6 +3332,8 @@ function timetableSettingsFromDb(row: any, academicYear: string, semester: Timet
     footerNote: typeof row.footer_note === 'string' && row.footer_note.length > 0
       ? row.footer_note
       : defaults.footerNote,
+    isLocked: Boolean(row.is_locked),
+    lunchConfig,
     updatedAt: row.updated_at || undefined,
   };
 }
@@ -3460,6 +3476,24 @@ export async function dbGetTimetableBundle(
 
 export async function dbUpsertTimetableSettings(settings: TimetableSettings): Promise<TimetableSettings> {
   const now = new Date().toISOString();
+  const safeLunch = settings.lunchConfig
+    ? {
+        afterPeriod: Math.max(2, Math.min(4, Number(settings.lunchConfig.afterPeriod) || 3)),
+        startTime: String(settings.lunchConfig.startTime || DEFAULT_LUNCH_CONFIG.startTime),
+        endTime: String(settings.lunchConfig.endTime || DEFAULT_LUNCH_CONFIG.endTime),
+        durationMinutes: clampPeriodDurationMinutes(settings.lunchConfig.durationMinutes),
+      }
+    : { ...DEFAULT_LUNCH_CONFIG };
+
+  const safePeriods = (settings.periodsConfig || []).map((p) => {
+    const mins = clampPeriodDurationMinutes(p.durationMinutes);
+    return {
+      ...p,
+      durationMinutes: mins,
+      durationHours: Math.round((mins / 60) * 100) / 100,
+    };
+  });
+
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
@@ -3467,9 +3501,11 @@ export async function dbUpsertTimetableSettings(settings: TimetableSettings): Pr
       id: settings.id || `${settings.academicYear}-${settings.semester}`,
       academic_year: settings.academicYear,
       semester: settings.semester,
-      periods_config: settings.periodsConfig,
+      periods_config: safePeriods,
       fixed_slots_config: settings.fixedSlotsConfig || [],
       footer_note: settings.footerNote || '',
+      is_locked: Boolean(settings.isLocked),
+      lunch_config: safeLunch,
       updated_at: now,
     };
     const { data, error } = await supabase
@@ -3486,7 +3522,13 @@ export async function dbUpsertTimetableSettings(settings: TimetableSettings): Pr
   verifyVercelConfiguration();
   const db = loadDatabase();
   const list = [...(db.timetableSettings || [])];
-  const next: TimetableSettings = { ...settings, updatedAt: now };
+  const next: TimetableSettings = {
+    ...settings,
+    periodsConfig: safePeriods,
+    lunchConfig: safeLunch,
+    isLocked: Boolean(settings.isLocked),
+    updatedAt: now,
+  };
   const idx = list.findIndex(
     (s) => s.academicYear === settings.academicYear && s.semester === settings.semester
   );
@@ -3495,6 +3537,14 @@ export async function dbUpsertTimetableSettings(settings: TimetableSettings): Pr
   db.timetableSettings = list;
   saveDatabase(db);
   return next;
+}
+
+export async function dbIsTimetableLocked(
+  academicYear: string,
+  semester: TimetableSemester
+): Promise<boolean> {
+  const bundle = await dbGetTimetableBundle(academicYear, semester);
+  return Boolean(bundle.settings?.isLocked);
 }
 
 export async function dbUpsertTimetableAllocation(
@@ -4035,6 +4085,126 @@ export async function dbMigrateLegacyTeachingWorkloads(params: {
   }
 
   return { createdAllocations, deletedLegacyCount };
+}
+
+function substitutionFromDb(row: any): TeachingSubstitution {
+  return {
+    id: row.id,
+    academicYear: row.academic_year || '',
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    subDate: row.sub_date || '',
+    roomName: row.room_name || '',
+    dayOfWeek: Number(row.day_of_week) || 1,
+    periodNo: Number(row.period_no) || 0,
+    subjectName: row.subject_name || '',
+    absentTeacherId: row.absent_teacher_id || '',
+    substituteTeacherId: row.substitute_teacher_id || '',
+    leaveId: row.leave_id || '',
+    note: row.note || '',
+    createdAt: row.created_at || undefined,
+  };
+}
+
+export async function dbGetTeachingSubstitutions(
+  academicYear: string,
+  semester: TimetableSemester,
+  subDate?: string
+): Promise<TeachingSubstitution[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    let query = supabase
+      .from('teaching_substitutions')
+      .select('*')
+      .eq('academic_year', academicYear)
+      .eq('semester', semester);
+    if (subDate) {
+      query = query.eq('sub_date', subDate);
+    }
+    const { data, error } = await query;
+    if (error) {
+      throw new Error(`ไม่สามารถโหลดข้อมูลการจัดสอนแทนจาก Supabase ได้: ${error.message}`);
+    }
+    return Array.isArray(data) ? data.map(substitutionFromDb) : [];
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return (db.teachingSubstitutions || []).filter(
+    (s) =>
+      s.academicYear === academicYear &&
+      s.semester === semester &&
+      (!subDate || s.subDate === subDate)
+  );
+}
+
+export async function dbUpsertTeachingSubstitution(
+  sub: TeachingSubstitution
+): Promise<TeachingSubstitution> {
+  const now = new Date().toISOString();
+  const id = sub.id || `SUB-${sub.subDate}-${sub.roomName}-P${sub.periodNo}`;
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id,
+      academic_year: sub.academicYear,
+      semester: sub.semester,
+      sub_date: sub.subDate,
+      room_name: sub.roomName,
+      day_of_week: sub.dayOfWeek,
+      period_no: sub.periodNo,
+      subject_name: sub.subjectName,
+      absent_teacher_id: sub.absentTeacherId,
+      substitute_teacher_id: sub.substituteTeacherId,
+      leave_id: sub.leaveId || '',
+      note: sub.note || '',
+      created_at: sub.createdAt || now,
+    };
+    const { data, error } = await supabase
+      .from('teaching_substitutions')
+      .upsert(row, { onConflict: 'sub_date,room_name,period_no' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกการจัดสอนแทนลง Supabase ได้: ${error.message}`);
+    }
+    return substitutionFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.teachingSubstitutions || [])];
+  const next: TeachingSubstitution = { ...sub, id, createdAt: sub.createdAt || now };
+  const idx = list.findIndex(
+    (s) =>
+      s.id === id ||
+      (s.subDate === sub.subDate && s.roomName === sub.roomName && s.periodNo === sub.periodNo)
+  );
+  if (idx >= 0) list[idx] = next;
+  else list.push(next);
+  db.teachingSubstitutions = list;
+  saveDatabase(db);
+  return next;
+}
+
+export async function dbDeleteTeachingSubstitution(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('teaching_substitutions').delete().eq('id', id);
+    if (error) {
+      throw new Error(`ไม่สามารถลบรายการจัดสอนแทนจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.teachingSubstitutions = (db.teachingSubstitutions || []).filter((s) => s.id !== id);
+  saveDatabase(db);
+  return true;
 }
 
 

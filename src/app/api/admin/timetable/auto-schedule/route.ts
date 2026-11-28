@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import {
   dbGetTimetableBundle,
+  dbIsTimetableLocked,
   dbReplaceTimetableSlotsForRooms,
   recordAuditLog,
 } from '@/lib/db/serverDb';
-import { verifyAdminSession } from '@/lib/auth/serverAuth';
-import { generateAutoSchedule } from '@/lib/regulations/auto-scheduler';
+import { verifyTimetableManagerSession } from '@/lib/auth/serverAuth';
+import {
+  generateAutoSchedule,
+  type AutoScheduleStrategy,
+} from '@/lib/regulations/auto-scheduler';
 import type { TimetableSemester } from '@/lib/data/timetableTypes';
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +17,10 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
-    const adminSession = await verifyAdminSession();
+    const adminSession = await verifyTimetableManagerSession();
     if (!adminSession.authorized) {
       return NextResponse.json(
-        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง' },
         { status: adminSession.status }
       );
     }
@@ -29,10 +33,19 @@ export async function POST(request: Request) {
         ? body.scopeRooms.map((r: unknown) => String(r).trim()).filter(Boolean)
         : undefined;
     const respectLockedSlots = body?.respectLockedSlots !== false;
+    const strategy: AutoScheduleStrategy =
+      body?.strategy === 'primary_morning_core' ? 'primary_morning_core' : 'balanced';
     const dryRun = Boolean(body?.dryRun);
 
     if (!academicYear) {
       return NextResponse.json({ success: false, error: 'กรุณาระบุปีการศึกษา' }, { status: 400 });
+    }
+
+    if (!dryRun && (await dbIsTimetableLocked(academicYear, semester))) {
+      return NextResponse.json(
+        { success: false, error: 'ตารางสอนภาคเรียนนี้ถูกล็อกโดยฝ่ายวิชาการ กรุณาปลดล็อกก่อนจัดตารางอัตโนมัติ' },
+        { status: 423 }
+      );
     }
 
     const bundle = await dbGetTimetableBundle(academicYear, semester);
@@ -58,6 +71,7 @@ export async function POST(request: Request) {
       scopeRooms: effectiveRooms,
       respectLockedSlots,
       clearUnlockedFirst: true,
+      strategy,
     });
 
     if (dryRun) {

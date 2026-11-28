@@ -26,8 +26,8 @@ import {
   DAYS_OF_WEEK,
   DEFAULT_FOOTER_NOTE,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
+  DEFAULT_LUNCH_CONFIG,
   LUNCH_BREAK_LABEL,
-  LUNCH_BREAK_TIME,
   STANDARD_ROOMS,
   type TeacherWeeklyLoadSummary,
 } from '@/lib/regulations/timetable-utils';
@@ -65,8 +65,11 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
   getCleanName,
   onClose,
 }) => {
-  const morningPeriods = periodsConfig.filter((p) => p.periodNo <= 3);
-  const afternoonPeriods = periodsConfig.filter((p) => p.periodNo >= 4);
+  const lunchCfg = settings.lunchConfig || DEFAULT_LUNCH_CONFIG;
+  const lunchAfter = Math.max(2, Math.min(4, Number(lunchCfg.afterPeriod) || 3));
+  const lunchTimeText = `${lunchCfg.startTime || '11.30'} - ${lunchCfg.endTime || '12.30'}`;
+  const morningPeriods = periodsConfig.filter((p) => p.periodNo <= lunchAfter);
+  const afternoonPeriods = periodsConfig.filter((p) => p.periodNo > lunchAfter);
   const footerNote = settings.footerNote || DEFAULT_FOOTER_NOTE;
 
   const roomsToPrint = mode === 'room_all' ? [...STANDARD_ROOMS] : [selectedRoom];
@@ -143,7 +146,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                 {dIdx === 0 && (
                   <td rowSpan={5} className="border border-black text-center align-middle bg-slate-50">
                     <div className="[writing-mode:vertical-rl] rotate-180 mx-auto text-[10px] font-bold">
-                      {LUNCH_BREAK_LABEL} {LUNCH_BREAK_TIME}
+                      {LUNCH_BREAK_LABEL} {lunchTimeText}
                     </div>
                   </td>
                 )}
@@ -266,7 +269,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                 {dIdx === 0 && (
                   <td rowSpan={5} className="border border-black text-center align-middle bg-slate-50">
                     <div className="[writing-mode:vertical-rl] rotate-180 mx-auto text-[10px] font-bold">
-                      {LUNCH_BREAK_LABEL} {LUNCH_BREAK_TIME}
+                      {LUNCH_BREAK_LABEL} {lunchTimeText}
                     </div>
                   </td>
                 )}
