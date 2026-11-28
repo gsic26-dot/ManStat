@@ -44,6 +44,7 @@ import {
   Baby,
   Archive,
   Download,
+  ClipboardCheck,
   RotateCcw,
   UserCheck,
   ClipboardCopy,
@@ -74,6 +75,7 @@ import {
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { SubjectCatalogModal } from '@/components/views/SubjectCatalogModal';
+import { CurriculumAuditModal } from '@/components/views/CurriculumAuditModal';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
@@ -194,6 +196,7 @@ export const ViewTimetable: React.FC = () => {
   // Settings Modal State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isSubjectCatalogOpen, setIsSubjectCatalogOpen] = useState<boolean>(false);
+  const [isCurriculumAuditOpen, setIsCurriculumAuditOpen] = useState<boolean>(false);
 
   // Phase 11.2: School Subject Catalog Integration, Bulk Pull & Code Display Toggle
   const [schoolSubjects, setSchoolSubjects] = useState<SchoolSubject[]>([]);
@@ -1690,6 +1693,15 @@ export const ViewTimetable: React.FC = () => {
           >
             <BookOpen className="w-4 h-4 shrink-0 text-sky-600 dark:text-sky-400" />
             <span>คลังรายวิชา</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCurriculumAuditOpen(true)}
+            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+          >
+            <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>ตรวจหลักสูตร (SAR)</span>
           </button>
 
           {canManage && (
@@ -5150,6 +5162,16 @@ export const ViewTimetable: React.FC = () => {
         canManage={canManageTimetable}
         onClose={() => setIsSubjectCatalogOpen(false)}
         onCatalogChanged={loadSchoolSubjects}
+      />
+
+      {/* Phase 12.2: School-Wide Curriculum vs. Timetable Audit Modal */}
+      <CurriculumAuditModal
+        isOpen={isCurriculumAuditOpen}
+        onClose={() => setIsCurriculumAuditOpen(false)}
+        academicYear={academicYear}
+        semester={semester}
+        slots={slots}
+        schoolSubjects={schoolSubjects}
       />
     </div>
   );
