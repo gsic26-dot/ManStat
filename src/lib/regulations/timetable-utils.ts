@@ -471,3 +471,140 @@ export function getCurrentThaiAcademicTerm(now: Date = new Date()): {
   }
   return { academicYear: String(beYear - 1), semester: '2' };
 }
+
+/**
+ * Standard Thai OBEC Early Childhood (อ.1–อ.3) 6 Core Daily Experience Blocks.
+ * Mon–Fri 08.30–15.30 (excluding 11.30–13.30 lunch & nap break):
+ * 0.5 + 1.0 + 1.0 + 0.5 + 1.0 + 1.0 = 5.0 hours/day = 25 hours/week.
+ */
+export interface KindergartenDailyExperienceBlock {
+  order: number;
+  timeRange: string;
+  activityName: string;
+  description: string;
+  durationMinutes: number;
+  durationHours: number;
+  periodSlot: 'morning' | 'afternoon';
+}
+
+export const KINDERGARTEN_LUNCH_NAP_BLOCK = {
+  timeRange: '11.30 - 13.30',
+  activityName: 'พักรับประทานอาหารกลางวัน ทำความสะอาดร่างกาย และนอนพักผ่อน',
+  description: 'รับประทานอาหารกลางวัน แปรงฟัน ดื่มนม และพักผ่อนกลางวัน (ไม่นับรวมในชั่วโมงจัดประสบการณ์)',
+  durationMinutes: 120,
+} as const;
+
+export const KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS: readonly KindergartenDailyExperienceBlock[] = [
+  {
+    order: 1,
+    timeRange: '08.30 - 09.00',
+    activityName: 'กิจกรรมเคลื่อนไหวและจังหวะ',
+    description: 'ฝึกการเคลื่อนไหวร่างกายตามจังหวะ เสียงเพลง และข้อตกลงร่วมกัน',
+    durationMinutes: 30,
+    durationHours: 0.5,
+    periodSlot: 'morning',
+  },
+  {
+    order: 2,
+    timeRange: '09.00 - 10.00',
+    activityName: 'กิจกรรมเสริมประสบการณ์',
+    description: 'สนทนา เล่านิทาน ทดลอง สังเกต และเรียนรู้ตามหน่วยการจัดประสบการณ์',
+    durationMinutes: 60,
+    durationHours: 1,
+    periodSlot: 'morning',
+  },
+  {
+    order: 3,
+    timeRange: '10.00 - 11.00',
+    activityName: 'กิจกรรมสร้างสรรค์',
+    description: 'ศิลปะสร้างสรรค์ วาดภาพ ระบายสี ปั้น ฉีก ตัด ปะ พัฒนากล้ามเนื้อมัดเล็ก',
+    durationMinutes: 60,
+    durationHours: 1,
+    periodSlot: 'morning',
+  },
+  {
+    order: 4,
+    timeRange: '11.00 - 11.30',
+    activityName: 'กิจกรรมเสรี (เล่นตามมุมประสบการณ์)',
+    description: 'เลือกเล่นตามมุมบล็อก บทบาทสมมติ หนังสือ และมุมวิทยาศาสตร์ตามความสนใจ',
+    durationMinutes: 30,
+    durationHours: 0.5,
+    periodSlot: 'morning',
+  },
+  {
+    order: 5,
+    timeRange: '13.30 - 14.30',
+    activityName: 'กิจกรรมกลางแจ้ง',
+    description: 'เล่นเครื่องเล่นสนาม การละเล่นพื้นบ้าน และกิจกรรมพัฒนากล้ามเนื้อใหญ่',
+    durationMinutes: 60,
+    durationHours: 1,
+    periodSlot: 'afternoon',
+  },
+  {
+    order: 6,
+    timeRange: '14.30 - 15.30',
+    activityName: 'เกมการศึกษาและสรุปกิจกรรมประจำวัน',
+    description: 'เกมจับคู่ เรียงลำดับ ต่อภาพ ฝึกทักษะการคิด ทบทวนประจำวัน และเตรียมกลับบ้าน',
+    durationMinutes: 60,
+    durationHours: 1,
+    periodSlot: 'afternoon',
+  },
+];
+
+export type TeacherTimetableMode = 'standard' | 'kindergarten_only' | 'hybrid';
+
+export interface TeacherTimetableModeResult {
+  mode: TeacherTimetableMode;
+  kindergartenRooms: string[];
+  kindergartenWeeklyHours: number;
+  standardSlotsCount: number;
+}
+
+/**
+ * Resolves how an individual teacher's timetable should be rendered:
+ * - 'kindergarten_only': Assigned to อ.1–อ.3 (homeroom or assistant) and 0 ป.1–ม.3 slots
+ * - 'hybrid': Assigned to อ.1–อ.3 AND also teaches at least 1 ป.1–ม.3 slot
+ * - 'standard': Standard ป.1–ม.3 teacher (no kindergarten classroom assignment)
+ */
+export function resolveTeacherTimetableMode(params: {
+  teacherId: string;
+  slots: readonly TimetableSlot[];
+  kindergartenSchedules: readonly KindergartenSchedule[];
+}): TeacherTimetableModeResult {
+  const { teacherId, slots, kindergartenSchedules } = params;
+  if (!teacherId) {
+    return {
+      mode: 'standard',
+      kindergartenRooms: [],
+      kindergartenWeeklyHours: 0,
+      standardSlotsCount: 0,
+    };
+  }
+
+  const matchedKg = kindergartenSchedules.filter(
+    (kg) => kg.homeroomTeacherId === teacherId || kg.assistantTeacherId === teacherId
+  );
+  const kindergartenRooms = Array.from(new Set(matchedKg.map((kg) => kg.roomName))).sort(
+    (a, b) => a.localeCompare(b, 'th')
+  );
+  const kindergartenWeeklyHours = roundHours(
+    matchedKg.reduce((sum, kg) => sum + (Number(kg.weeklyHours) || 0), 0)
+  );
+  const standardSlotsCount = slots.filter(
+    (s) => s.teacherId === teacherId || s.coTeacherId === teacherId
+  ).length;
+
+  let mode: TeacherTimetableMode = 'standard';
+  if (kindergartenRooms.length > 0 && standardSlotsCount === 0) {
+    mode = 'kindergarten_only';
+  } else if (kindergartenRooms.length > 0 && standardSlotsCount > 0) {
+    mode = 'hybrid';
+  }
+
+  return {
+    mode,
+    kindergartenRooms,
+    kindergartenWeeklyHours,
+    standardSlotsCount,
+  };
+}

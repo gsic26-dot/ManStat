@@ -28,9 +28,12 @@ import {
   DAYS_OF_WEEK,
   DEFAULT_FOOTER_NOTE,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
+  KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS,
+  KINDERGARTEN_LUNCH_NAP_BLOCK,
   DEFAULT_LUNCH_CONFIG,
   LUNCH_BREAK_LABEL,
   STANDARD_ROOMS,
+  resolveTeacherTimetableMode,
   type TeacherWeeklyLoadSummary,
 } from '@/lib/regulations/timetable-utils';
 
@@ -218,6 +221,125 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
   };
 
   const renderTeacherSheet = () => {
+    const teacherMode = resolveTeacherTimetableMode({
+      teacherId: selectedTeacherId,
+      slots,
+      kindergartenSchedules,
+    });
+
+    if (teacherMode.mode === 'kindergarten_only') {
+      const morningBlocks = KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.filter(
+        (b) => b.periodSlot === 'morning'
+      );
+      const afternoonBlocks = KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.filter(
+        (b) => b.periodSlot === 'afternoon'
+      );
+
+      return (
+        <section className="bg-white text-black p-6 print:p-0">
+          <header className="text-center mb-3">
+            <h1 className="text-base font-bold">
+              ตารางจัดประสบการณ์ระดับปฐมวัยรายบุคคล — {getCleanName(selectedTeacherId)}
+            </h1>
+            <p className="text-xs font-medium mt-0.5">
+              โรงเรียนชุมชนบ้านตะขบ · ภาคเรียนที่ {semester} ปีการศึกษา {academicYear} · ประจำชั้น{' '}
+              {teacherMode.kindergartenRooms.join(', ')} · {teacherMode.kindergartenWeeklyHours}{' '}
+              ชม./สัปดาห์ (ผ่านเกณฑ์ ว 9/2564)
+            </p>
+          </header>
+
+          <table className="w-full border-collapse border border-black text-xs">
+            <thead>
+              <tr className="bg-slate-100">
+                <th className="border border-black px-2 py-2 w-12 text-center">ลำดับ</th>
+                <th className="border border-black px-3 py-2 w-32 text-center">เวลา</th>
+                <th className="border border-black px-3 py-2 w-60 text-left">
+                  กิจกรรมหลักประจำวัน (จันทร์ – ศุกร์)
+                </th>
+                <th className="border border-black px-3 py-2 text-left">
+                  ขอบข่ายการจัดประสบการณ์
+                </th>
+                <th className="border border-black px-2 py-2 w-24 text-center">ระยะเวลา/วัน</th>
+              </tr>
+            </thead>
+            <tbody>
+              {morningBlocks.map((block) => (
+                <tr key={block.order}>
+                  <td className="border border-black px-2 py-1.5 text-center font-mono">
+                    {block.order}
+                  </td>
+                  <td className="border border-black px-3 py-1.5 text-center font-mono">
+                    {block.timeRange} น.
+                  </td>
+                  <td className="border border-black px-3 py-1.5 font-semibold">
+                    {block.activityName}
+                  </td>
+                  <td className="border border-black px-3 py-1.5">{block.description}</td>
+                  <td className="border border-black px-2 py-1.5 text-center font-mono">
+                    {block.durationMinutes} นาที
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-slate-50 font-semibold">
+                <td className="border border-black px-2 py-1.5 text-center">-</td>
+                <td className="border border-black px-3 py-1.5 text-center font-mono">
+                  {KINDERGARTEN_LUNCH_NAP_BLOCK.timeRange} น.
+                </td>
+                <td className="border border-black px-3 py-1.5">
+                  {KINDERGARTEN_LUNCH_NAP_BLOCK.activityName}
+                </td>
+                <td className="border border-black px-3 py-1.5 font-normal">
+                  {KINDERGARTEN_LUNCH_NAP_BLOCK.description}
+                </td>
+                <td className="border border-black px-2 py-1.5 text-center">พักกลางวัน</td>
+              </tr>
+              {afternoonBlocks.map((block) => (
+                <tr key={block.order}>
+                  <td className="border border-black px-2 py-1.5 text-center font-mono">
+                    {block.order}
+                  </td>
+                  <td className="border border-black px-3 py-1.5 text-center font-mono">
+                    {block.timeRange} น.
+                  </td>
+                  <td className="border border-black px-3 py-1.5 font-semibold">
+                    {block.activityName}
+                  </td>
+                  <td className="border border-black px-3 py-1.5">{block.description}</td>
+                  <td className="border border-black px-2 py-1.5 text-center font-mono">
+                    {block.durationMinutes} นาที
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-100 font-bold">
+                <td colSpan={4} className="border border-black px-3 py-1.5 text-right">
+                  รวมเวลาจัดประสบการณ์ระดับปฐมวัย (ไม่รวมพักกลางวัน/นอนพักผ่อน)
+                </td>
+                <td className="border border-black px-2 py-1.5 text-center font-mono">
+                  5 ชม./วัน (25 ชม./สัปดาห์)
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <footer className="mt-4 space-y-4">
+            <p className="text-[10px] leading-relaxed border border-slate-400 px-2.5 py-1.5 rounded">
+              <strong>หมายเหตุ:</strong> จัดกิจกรรมครบ 6 กิจกรรมหลักตามหลักสูตรการศึกษาปฐมวัย พ.ศ. 2560
+              รวมเวลาจัดประสบการณ์ 5 ชั่วโมง/วัน (25 ชั่วโมง/สัปดาห์) ผ่านเกณฑ์ภาระงานสอน ว 9/2564
+            </p>
+            <div className="flex justify-end pr-8 pt-2 text-[11px] text-center">
+              <div className="space-y-1">
+                <div>ลงชื่อ.......................................................................</div>
+                <div>(.......................................................................)</div>
+                <div>ผู้อำนวยการสถานศึกษา โรงเรียนชุมชนบ้านตะขบ</div>
+              </div>
+            </div>
+          </footer>
+        </section>
+      );
+    }
+
     const slotMap = new Map<string, TimetableSlot[]>();
     for (const s of slots) {
       if (s.teacherId === selectedTeacherId || s.coTeacherId === selectedTeacherId) {
@@ -243,6 +365,14 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
               : ''}
           </p>
         </header>
+
+        {teacherMode.mode === 'hybrid' && (
+          <div className="mb-2.5 px-3 py-1.5 border border-black bg-slate-50 text-[11px]">
+            <strong>ภาระงานระดับปฐมวัยเพิ่มเติม:</strong> ประจำชั้น/ผู้ช่วยห้อง{' '}
+            {teacherMode.kindergartenRooms.join(', ')} ({teacherMode.kindergartenWeeklyHours}{' '}
+            ชม./สัปดาห์)
+          </div>
+        )}
 
         <table className="w-full border-collapse border border-black text-[11px]">
           <thead>

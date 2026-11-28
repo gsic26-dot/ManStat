@@ -85,6 +85,8 @@ import {
   STANDARD_ROOMS,
   KINDERGARTEN_ROOMS,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
+  KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS,
+  KINDERGARTEN_LUNCH_NAP_BLOCK,
   DEFAULT_LUNCH_CONFIG,
   DAYS_OF_WEEK,
   LUNCH_BREAK_LABEL,
@@ -95,6 +97,7 @@ import {
   getDefaultTimetableSettings,
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
+  resolveTeacherTimetableMode,
   isEligibleForTeaching,
   clampPeriodDurationMinutes,
 } from '@/lib/regulations/timetable-utils';
@@ -587,6 +590,16 @@ export const ViewTimetable: React.FC = () => {
     }
     return map;
   }, [slots, selectedTeacherId]);
+
+  const activeTeacherMode = useMemo(
+    () =>
+      resolveTeacherTimetableMode({
+        teacherId: selectedTeacherId,
+        slots,
+        kindergartenSchedules,
+      }),
+    [selectedTeacherId, slots, kindergartenSchedules]
+  );
 
   // Room allocations & placed counts
   const selectedRoomAllocations = useMemo(
@@ -2450,6 +2463,14 @@ export const ViewTimetable: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  {activeTeacherMode.kindergartenRooms.length > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-pink-50 text-pink-700 border border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800/70">
+                      <Baby className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        ครูปฐมวัย • ประจำชั้น {activeTeacherMode.kindergartenRooms.join(', ')}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
                 {activeTeacherLoad && (
@@ -2476,15 +2497,17 @@ export const ViewTimetable: React.FC = () => {
                           : 'ต่ำกว่า 12 ชม./สัปดาห์'}
                       </span>
                     )}
-                    <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={showSubjectCode}
-                        onChange={(e) => setShowSubjectCode(e.target.checked)}
-                        className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-                      />
-                      <span>แสดงรหัสวิชา</span>
-                    </label>
+                    {activeTeacherMode.mode !== 'kindergarten_only' && (
+                      <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={showSubjectCode}
+                          onChange={(e) => setShowSubjectCode(e.target.checked)}
+                          className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                        />
+                        <span>แสดงรหัสวิชา</span>
+                      </label>
+                    )}
                     <button
                       type="button"
                       onClick={() => setPrintMode('teacher')}
@@ -2497,12 +2520,184 @@ export const ViewTimetable: React.FC = () => {
                 )}
               </div>
 
-              <div
-                tabIndex={0}
-                role="region"
-                aria-label={`ตารางสอนของ ${getCleanName(selectedTeacherId)}`}
-                className="overflow-x-auto w-full"
-              >
+              {activeTeacherMode.mode === 'hybrid' && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3 rounded-xl bg-pink-50/70 dark:bg-pink-950/25 border border-pink-200/90 dark:border-pink-800/60 text-xs">
+                  <div className="flex items-center gap-2 text-pink-800 dark:text-pink-200">
+                    <Baby className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
+                    <span>
+                      <strong>ภาระงานระดับปฐมวัยเพิ่มเติม:</strong> ประจำชั้น/ผู้ช่วยห้อง{' '}
+                      <span className="font-semibold">
+                        {activeTeacherMode.kindergartenRooms.join(', ')}
+                      </span>{' '}
+                      ({activeTeacherMode.kindergartenWeeklyHours} ชม./สัปดาห์) ร่วมกับตารางสอนระดับ ป.1–ม.3 ด้านล่าง
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedKgRoom(
+                        activeTeacherMode.kindergartenRooms[0] || KINDERGARTEN_ROOMS[0]
+                      );
+                      setActiveTab('kindergarten');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-pink-100/70 dark:bg-slate-900 dark:hover:bg-pink-950/50 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/70 font-medium whitespace-nowrap cursor-pointer self-start sm:self-auto"
+                  >
+                    <span>จัดการในแท็บระดับปฐมวัย</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                </div>
+              )}
+
+              {activeTeacherMode.mode === 'kindergarten_only' ? (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-pink-50/60 dark:bg-pink-950/20 border border-pink-200/80 dark:border-pink-800/60">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                        <Baby className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
+                        <span>ตารางจัดประสบการณ์ระดับปฐมวัย จันทร์–ศุกร์ 08.30–15.30 น.</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        ประจำชั้นห้อง{' '}
+                        <strong className="text-slate-900 dark:text-white">
+                          {activeTeacherMode.kindergartenRooms.join(', ')}
+                        </strong>{' '}
+                        • จัดประสบการณ์ 6 กิจกรรมหลัก 5 ชั่วโมง/วัน (
+                        <span className="font-mono font-semibold">
+                          {activeTeacherMode.kindergartenWeeklyHours}
+                        </span>{' '}
+                        ชั่วโมง/สัปดาห์ · ผ่านเกณฑ์ ว 9/2564)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedKgRoom(
+                          activeTeacherMode.kindergartenRooms[0] || KINDERGARTEN_ROOMS[0]
+                        );
+                        setActiveTab('kindergarten');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-medium whitespace-nowrap transition-colors cursor-pointer self-start sm:self-auto"
+                    >
+                      <span>จัดการในแท็บระดับปฐมวัย</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                  </div>
+
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-label={`ตารางจัดประสบการณ์ระดับปฐมวัยของ ${getCleanName(selectedTeacherId)}`}
+                    className="overflow-x-auto w-full rounded-xl border border-slate-200 dark:border-slate-800"
+                  >
+                    <table className="w-full min-w-[680px] border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800">
+                          <th scope="col" className="px-3 py-2.5 text-center font-semibold w-14">
+                            ลำดับ
+                          </th>
+                          <th scope="col" className="px-3 py-2.5 text-center font-semibold w-36">
+                            เวลา (จันทร์–ศุกร์)
+                          </th>
+                          <th scope="col" className="px-4 py-2.5 text-left font-semibold w-64">
+                            กิจกรรมหลัก 6 กิจกรรม
+                          </th>
+                          <th scope="col" className="px-4 py-2.5 text-left font-semibold">
+                            ขอบข่ายการจัดประสบการณ์
+                          </th>
+                          <th scope="col" className="px-3 py-2.5 text-right font-semibold w-28">
+                            ระยะเวลา/วัน
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/80">
+                        {KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.filter(
+                          (b) => b.periodSlot === 'morning'
+                        ).map((block) => (
+                          <tr
+                            key={block.order}
+                            className="bg-white dark:bg-[#121822] hover:bg-slate-50/80 dark:hover:bg-[#16202e]"
+                          >
+                            <td className="px-3 py-3 text-center font-mono text-slate-500 dark:text-slate-400">
+                              {block.order}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {block.timeRange} น.
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                              {block.activityName}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {block.description}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                              {block.durationMinutes} นาที
+                            </td>
+                          </tr>
+                        ))}
+
+                        <tr className="bg-amber-50/70 dark:bg-amber-950/20">
+                          <td className="px-3 py-2.5 text-center text-amber-700 dark:text-amber-300 font-semibold">
+                            -
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-mono font-semibold text-amber-800 dark:text-amber-300 whitespace-nowrap">
+                            {KINDERGARTEN_LUNCH_NAP_BLOCK.timeRange} น.
+                          </td>
+                          <td className="px-4 py-2.5 font-semibold text-amber-800 dark:text-amber-200">
+                            {KINDERGARTEN_LUNCH_NAP_BLOCK.activityName}
+                          </td>
+                          <td className="px-4 py-2.5 text-amber-700/90 dark:text-amber-300/90">
+                            {KINDERGARTEN_LUNCH_NAP_BLOCK.description}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                            พักกลางวัน
+                          </td>
+                        </tr>
+
+                        {KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.filter(
+                          (b) => b.periodSlot === 'afternoon'
+                        ).map((block) => (
+                          <tr
+                            key={block.order}
+                            className="bg-white dark:bg-[#121822] hover:bg-slate-50/80 dark:hover:bg-[#16202e]"
+                          >
+                            <td className="px-3 py-3 text-center font-mono text-slate-500 dark:text-slate-400">
+                              {block.order}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {block.timeRange} น.
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                              {block.activityName}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {block.description}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                              {block.durationMinutes} นาที
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-50 dark:bg-[#101822] border-t border-slate-200 dark:border-slate-800 font-semibold text-slate-800 dark:text-slate-100">
+                          <td colSpan={4} className="px-4 py-2.5 text-right">
+                            รวมเวลาจัดประสบการณ์ระดับปฐมวัย (ไม่รวมพักกลางวัน/นอนพักผ่อน)
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono whitespace-nowrap">
+                            5 ชม./วัน (25 ชม./สัปดาห์)
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label={`ตารางสอนของ ${getCleanName(selectedTeacherId)}`}
+                  className="overflow-x-auto w-full"
+                >
                 <table className="table-fixed w-full min-w-[780px] border-separate border-spacing-0 text-xs">
                   <thead>
                     <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-600 dark:text-slate-300">
@@ -2647,6 +2842,7 @@ export const ViewTimetable: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
 

@@ -2,10 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_PERIODS_CONFIG,
+  KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS,
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
   isEligibleForTeaching,
   clampPeriodDurationMinutes,
+  resolveTeacherTimetableMode,
 } from '../timetable-utils';
 import type { TimetableSlot } from '@/lib/data/timetableTypes';
 import type { TeacherRecord } from '@/lib/data/schoolData';
@@ -276,5 +278,97 @@ describe('Timetable Conflict Detection & ว 9/2564 Calculator (timetable-utils.
     assert.equal(clampPeriodDurationMinutes(30), 30);
     assert.equal(clampPeriodDurationMinutes(5), 10);
     assert.equal(clampPeriodDurationMinutes(NaN), 60);
+  });
+
+  it('defines 6 standard Kindergarten daily experience blocks summing to 5 hours/day (25 hours/week)', () => {
+    assert.equal(KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.length, 6);
+    const totalDailyHours = KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.reduce(
+      (sum, b) => sum + b.durationHours,
+      0
+    );
+    const totalDailyMinutes = KINDERGARTEN_DAILY_EXPERIENCE_BLOCKS.reduce(
+      (sum, b) => sum + b.durationMinutes,
+      0
+    );
+    assert.equal(totalDailyHours, 5);
+    assert.equal(totalDailyMinutes, 300);
+    assert.equal(totalDailyHours * 5, 25);
+  });
+
+  it('resolves individual teacher timetable mode accurately across kindergarten_only, standard, and hybrid', () => {
+    const kgSchedules = [
+      {
+        id: 'KG-2569-2-อ.1',
+        academicYear: '2569',
+        semester: '2' as const,
+        roomName: 'อ.1',
+        homeroomTeacherId: 'TCH-02',
+        assistantTeacherId: 'TCH-01',
+        weeklyHours: 25,
+        activitiesJson: [],
+      },
+    ];
+
+    const slots: TimetableSlot[] = [
+      {
+        id: 'S1',
+        academicYear: '2569',
+        semester: '2',
+        roomName: 'ป.1',
+        dayOfWeek: 1,
+        periodNo: 1,
+        subjectName: 'ภาษาไทย',
+        subjectGroup: 'ภาษาไทย',
+        subjectType: 'พื้นฐาน',
+        teacherId: 'TCH-01',
+        isLocked: false,
+      },
+      {
+        id: 'S2',
+        academicYear: '2569',
+        semester: '2',
+        roomName: 'ป.6',
+        dayOfWeek: 2,
+        periodNo: 3,
+        subjectName: 'แนะแนว',
+        subjectGroup: 'กิจกรรมพัฒนาผู้เรียน',
+        subjectType: 'กิจกรรมพัฒนาผู้เรียน',
+        teacherId: 'TCH-DIR',
+        isLocked: false,
+      },
+    ];
+
+    // Kindergarten-only teacher (homeroom of อ.1, 0 ป.1–ม.3 slots)
+    const kgOnly = resolveTeacherTimetableMode({
+      teacherId: 'TCH-02',
+      slots,
+      kindergartenSchedules: kgSchedules,
+    });
+    assert.equal(kgOnly.mode, 'kindergarten_only');
+    assert.deepEqual(kgOnly.kindergartenRooms, ['อ.1']);
+    assert.equal(kgOnly.kindergartenWeeklyHours, 25);
+    assert.equal(kgOnly.standardSlotsCount, 0);
+
+    // Hybrid teacher (assistant in อ.1 AND teaches ป.1 slot)
+    const hybrid = resolveTeacherTimetableMode({
+      teacherId: 'TCH-01',
+      slots,
+      kindergartenSchedules: kgSchedules,
+    });
+    assert.equal(hybrid.mode, 'hybrid');
+    assert.deepEqual(hybrid.kindergartenRooms, ['อ.1']);
+    assert.equal(hybrid.kindergartenWeeklyHours, 25);
+    assert.equal(hybrid.standardSlotsCount, 1);
+
+    // Standard teacher (only ป.1–ม.3 slots, no kindergarten room)
+    const standard = resolveTeacherTimetableMode({
+      teacherId: 'TCH-DIR',
+      slots,
+      kindergartenSchedules: kgSchedules,
+    });
+    assert.equal(standard.mode, 'standard');
+    assert.deepEqual(standard.kindergartenRooms, []);
+    assert.equal(standard.kindergartenWeeklyHours, 0);
+    assert.equal(standard.standardSlotsCount, 1);
   });
 });

@@ -1313,8 +1313,9 @@ export const ViewWorkload: React.FC = () => {
                     'สายงานบริหารและสนับสนุนการศึกษา',
                     'บริหารและสนับสนุนฯ'
                   );
-                  const visibleSystems = row.obecSystems.slice(0, 4);
-                  const overflowSystemsCount = Math.max(0, row.obecSystems.length - 4);
+                  const visibleSystems = row.obecSystems.slice(0, 2);
+                  const hiddenSystems = row.obecSystems.slice(2);
+                  const overflowSystemsCount = hiddenSystems.length;
 
                   return (
                     <React.Fragment key={row.id}>
@@ -1371,17 +1372,25 @@ export const ViewWorkload: React.FC = () => {
 
                         <td className="px-4 py-3.5">
                           {row.obecSystems.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {visibleSystems.map((code) => (
-                                <span
-                                  key={code}
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/80"
-                                >
-                                  {code}
-                                </span>
-                              ))}
+                            <div className="flex items-center flex-nowrap gap-1.5 min-w-0">
+                              {visibleSystems.map((code) => {
+                                const meta = OBEC_SYSTEM_CATALOG.find((s) => s.code === code);
+                                return (
+                                  <span
+                                    key={code}
+                                    title={meta ? `${meta.code} — ${meta.name}` : code}
+                                    className="inline-block max-w-[108px] truncate whitespace-nowrap px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/80"
+                                  >
+                                    {code}
+                                  </span>
+                                );
+                              })}
                               {overflowSystemsCount > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                <span
+                                  title={hiddenSystems.join(', ')}
+                                  aria-label={`และอีก ${overflowSystemsCount} ระบบ สพฐ.: ${hiddenSystems.join(', ')}`}
+                                  className="inline-flex items-center shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                                >
                                   +{overflowSystemsCount}
                                 </span>
                               )}

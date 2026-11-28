@@ -275,18 +275,6 @@ export const ViewOrgChart: React.FC = () => {
     };
   }, []);
 
-  // Close mission scope modal with Escape key
-  useEffect(() => {
-    if (!activeModalDivision) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setActiveModalDivision(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeModalDivision]);
-
   // 1. Resolve Director info from real staff database
   const directorInfo = useMemo(() => {
     return getDirectorInfo(teachersList, school.directorName, school.directorPosition);
@@ -650,79 +638,26 @@ export const ViewOrgChart: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Live Assigned Members & Roles Preview (from staff_workloads) */}
-                  <div className="mt-3.5 space-y-2 flex-1">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      <span>บุคลากรและหน้าที่ในฝ่าย</span>
-                      <span className="font-mono text-slate-500 dark:text-slate-400">
-                        {div.members.length} ท่าน
-                      </span>
+                  {/* Clean Uniform-Height Division Summary Strip */}
+                  <div className="mt-3.5 pt-3 border-t border-slate-200/70 dark:border-slate-800/80 flex flex-col justify-between flex-1 gap-2.5">
+                    <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                      บุคลากรในฝ่าย{' '}
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                        {div.members.length}
+                      </span>{' '}
+                      ท่าน •{' '}
+                      <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                        {div.duties.length}
+                      </span>{' '}
+                      ขอบข่ายภารกิจ •{' '}
+                      <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                        {div.totalObecSystems}
+                      </span>{' '}
+                      ระบบ สพฐ.
                     </div>
-
-                    {div.members.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {div.members.slice(0, 4).map((m) => (
-                          <div
-                            key={`${div.id}-card-${m.teacher.id}`}
-                            className="p-2 rounded-lg bg-slate-50 dark:bg-[#101723] border border-slate-200/60 dark:border-slate-800/60 space-y-1"
-                          >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                {m.name}
-                              </span>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {m.isHead && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                                    หัวหน้า
-                                  </span>
-                                )}
-                                {m.obecSystemCount > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-                                    {m.obecSystemCount} ระบบ
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {m.roleTitles.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {m.roleTitles.slice(0, 2).map((role) => (
-                                  <span
-                                    key={role}
-                                    title={role}
-                                    className="inline-block max-w-full truncate px-1.5 py-0.5 rounded text-[10px] bg-white dark:bg-[#141d27] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80"
-                                  >
-                                    {role}
-                                  </span>
-                                ))}
-                                {m.roleTitles.length > 2 && (
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                    +{m.roleTitles.length - 2}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {div.members.length > 4 && (
-                          <div className="text-[11px] text-center text-slate-500 dark:text-slate-400 pt-0.5">
-                            และบุคลากรอีก {div.members.length - 4} ท่าน
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {div.duties.slice(0, 3).map((duty, idx) => (
-                          <div
-                            key={idx}
-                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
-                            title={duty}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
-                            <span className="truncate leading-relaxed">{duty}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                      {div.duties[0] || 'กำกับดูแลและขับเคลื่อนภารกิจตามโครงสร้าง 4 กลุ่มบริหารงาน สพฐ.'}
+                    </p>
                   </div>
                 </div>
 
@@ -733,7 +668,7 @@ export const ViewOrgChart: React.FC = () => {
                     onClick={() => setActiveModalDivision(div)}
                     className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors duration-200 cursor-pointer"
                   >
-                    <span>ดูขอบข่ายภารกิจทั้งหมด</span>
+                    <span>ดูบุคลากรและขอบข่ายภารกิจ</span>
                     <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                   </button>
                 </div>
@@ -758,143 +693,175 @@ export const ViewOrgChart: React.FC = () => {
       </div>
 
       {/* ================================================================= */}
-      {/* 4. MODAL: Full Scope of Duties (Clean, non-stretching viewer)      */}
+      {/* 4. MODAL: Full Personnel & Scope of Duties (Close-Locked)         */}
       {/* ================================================================= */}
-      {activeModalDivision && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="org-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setActiveModalDivision(null)}
-        >
+      {activeModalDivision && (() => {
+        const headMember = activeModalDivision.members.find((m) => m.isHead);
+        const nonHeadMembers = activeModalDivision.members.filter((m) => !m.isHead);
+
+        return (
           <div
-            className="bg-white dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col text-slate-900 dark:text-slate-100"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="org-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
           >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-xl ${activeModalDivision.accentBg} ${activeModalDivision.accentText} shrink-0`}>
-                  {React.createElement(activeModalDivision.icon, { className: 'w-6 h-6 shrink-0' })}
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    กลุ่มบริหารงาน
+            <div className="bg-white dark:bg-[#121822] border border-slate-200/90 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[88vh] flex flex-col text-slate-900 dark:text-slate-100">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-xl ${activeModalDivision.accentBg} ${activeModalDivision.accentText} shrink-0`}>
+                    {React.createElement(activeModalDivision.icon, { className: 'w-6 h-6 shrink-0' })}
                   </div>
-                  <h3 id="org-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
-                    {activeModalDivision.title}
-                  </h3>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                    หัวหน้ากลุ่มงาน: <span className="font-semibold text-slate-800 dark:text-slate-200">{formatStaffName(activeModalDivision.headName)}</span> ({activeModalDivision.headPositionFormatted})
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      กลุ่มบริหารงาน ·{' '}
+                      {selectedAcademicYear === 'ALL'
+                        ? 'ทุกปีการศึกษา'
+                        : `ปีการศึกษา ${selectedAcademicYear}`}
+                    </div>
+                    <h3 id="org-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
+                      {activeModalDivision.title}
+                    </h3>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModalDivision(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  aria-label="ปิดหน้าต่าง"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveModalDivision(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                aria-label="ปิดหน้าต่าง"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Division Members (Live Sync from Workload Category 2, Clean Names without parenthetical positions) */}
-            {activeModalDivision.members.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
-                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                  <span>
-                    บุคลากรที่ปฏิบัติงานในกลุ่มงานนี้ ({activeModalDivision.members.length} ท่าน ·{' '}
-                    {selectedAcademicYear === 'ALL'
-                      ? 'ทุกปีการศึกษา'
-                      : `ปีการศึกษา ${selectedAcademicYear}`}
-                    )
-                  </span>
-                  {activeModalDivision.totalObecSystems > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono text-indigo-600 dark:text-indigo-400">
-                      <Database className="w-3 h-3 shrink-0" />
-                      <span>{activeModalDivision.totalObecSystems} ระบบ สพฐ.</span>
+              {/* Scrollable Content Area */}
+              <div className="overflow-y-auto pr-1 space-y-4 flex-1">
+                {/* Section A: Division Head (Strictly Deduplicated) */}
+                <div className="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/60 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                      <Crown className="w-3.5 h-3.5 shrink-0" />
+                      <span>หัวหน้ากลุ่มบริหารงาน</span>
                     </span>
+                    {headMember && headMember.obecSystemCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/70 shrink-0">
+                        <Database className="w-3 h-3 shrink-0" />
+                        <span>{headMember.obecSystemCount} ระบบ สพฐ.</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                    {formatStaffName(activeModalDivision.headName)}
+                  </div>
+                  {headMember && headMember.roleTitles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {headMember.roleTitles.map((role) => (
+                        <span
+                          key={role}
+                          className="px-2 py-0.5 rounded-md text-[11px] bg-white dark:bg-[#141d27] text-slate-700 dark:text-slate-200 border border-amber-200/70 dark:border-amber-800/50"
+                        >
+                          {role}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {activeModalDivision.members.map((m) => (
-                    <div
-                      key={`${activeModalDivision.id}-${m.teacher.id}`}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                          {m.name}
-                        </span>
-                        {m.isHead && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0">
-                            <Crown className="w-2.5 h-2.5 shrink-0" />
-                            <span>หัวหน้าฝ่าย</span>
-                          </span>
-                        )}
-                        {m.obecSystemCount > 0 && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 shrink-0">
-                            {m.obecSystemCount} ระบบ สพฐ.
-                          </span>
-                        )}
-                      </div>
-                      {m.roleTitles.length > 0 && (
-                        <div className="flex flex-wrap gap-1 sm:justify-end">
-                          {m.roleTitles.map((role) => (
-                            <span
-                              key={role}
-                              className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                            >
-                              {role}
+
+                {/* Section B: Division Members (Non-Head, Full Untruncated Names) */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                    <span>
+                      บุคลากรในฝ่าย ({nonHeadMembers.length} ท่าน · รวมหัวหน้าฝ่าย {activeModalDivision.members.length} ท่าน)
+                    </span>
+                    {activeModalDivision.totalObecSystems > 0 && (
+                      <span className="inline-flex items-center gap-1 font-mono text-indigo-600 dark:text-indigo-400">
+                        <Database className="w-3 h-3 shrink-0" />
+                        <span>รวม {activeModalDivision.totalObecSystems} ระบบ สพฐ.</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {nonHeadMembers.length > 0 ? (
+                    <div className="space-y-2">
+                      {nonHeadMembers.map((m) => (
+                        <div
+                          key={`${activeModalDivision.id}-${m.teacher.id}`}
+                          className="p-3 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 space-y-1.5"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white leading-snug">
+                              {m.name}
                             </span>
-                          ))}
+                            {m.obecSystemCount > 0 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/70 shrink-0">
+                                <Database className="w-2.5 h-2.5 shrink-0" />
+                                <span>{m.obecSystemCount} ระบบ สพฐ.</span>
+                              </span>
+                            )}
+                          </div>
+                          {m.roleTitles.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {m.roleTitles.map((role) => (
+                                <span
+                                  key={role}
+                                  className="px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                >
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
+                      ยังไม่มีบุคลากรอื่นในกลุ่มงานนี้เพิ่มเติมจากหัวหน้ากลุ่มบริหารงาน
+                    </div>
+                  )}
+                </div>
+
+                {/* Section C: Full Scope of Duties */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+                    <span>ขอบข่ายภารกิจตามระเบียบ สพฐ.</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      ขอบข่ายภารกิจ · {activeModalDivision.duties.length} งาน
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {activeModalDivision.duties.map((duty, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-800 dark:text-slate-200 flex items-start gap-2.5 leading-relaxed"
+                      >
+                        <span className="font-mono text-xs text-slate-400 dark:text-slate-500 font-semibold shrink-0 mt-0.5 min-w-[22px]">
+                          {idx + 1}.
+                        </span>
+                        <span className="flex-1">{duty}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Modal Subtitle / Count */}
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
-              <span>ขอบข่ายภารกิจตามระเบียบ สพฐ.</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                ขอบข่ายภารกิจ · {activeModalDivision.duties.length} งาน
-              </span>
-            </div>
-
-            {/* Modal Body: Scrollable Duties List */}
-            <div className="overflow-y-auto pr-1 space-y-2 flex-1 max-h-[55vh]">
-              {activeModalDivision.duties.map((duty, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-800 dark:text-slate-200 flex items-start gap-2.5 leading-relaxed"
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-slate-200/90 dark:border-slate-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveModalDivision(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 font-semibold shrink-0 mt-0.5 min-w-[22px]">
-                    {idx + 1}.
-                  </span>
-                  <span className="flex-1">{duty}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="pt-3 border-t border-slate-200/90 dark:border-slate-800 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveModalDivision(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                ปิดหน้าต่าง
-              </button>
+                  ปิดหน้าต่าง
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
