@@ -153,8 +153,26 @@ export interface SchoolSubject {
   defaultConsecutive: 1 | 2;
   curriculumVersion: string;
   description: string;
+  courseDescription?: string;
+  assessmentRatio?: string;
   isActive: boolean;
   sortOrder: number;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export type DeliverableStatus = 'pending' | 'reviewing' | 'submitted';
+
+export interface AcademicDeliverableRecord {
+  id: string;
+  academicYear: string;
+  semester: TimetableSemester;
+  teacherId: string;
+  roomName: string;
+  subjectName: string;
+  subjectCode: string;
+  lessonPlanStatus: DeliverableStatus;
+  gradebookStatus: DeliverableStatus;
+  remarks: string;
   updatedAt?: string;
 }

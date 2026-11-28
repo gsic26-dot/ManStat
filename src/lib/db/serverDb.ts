@@ -61,6 +61,8 @@ import type {
   SchoolSubjectType,
   SubjectLevelGroup,
   SubjectSemesterScope,
+  AcademicDeliverableRecord,
+  DeliverableStatus,
 } from '@/lib/data/timetableTypes';
 import {
   DEFAULT_CURRICULUM_VERSION,
@@ -141,6 +143,7 @@ export interface DatabaseState {
   kindergartenSchedules?: KindergartenSchedule[];
   teachingSubstitutions?: TeachingSubstitution[];
   schoolSubjects?: SchoolSubject[];
+  academicDeliverables?: AcademicDeliverableRecord[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -4245,6 +4248,8 @@ function schoolSubjectFromDb(row: any): SchoolSubject {
     defaultConsecutive: Number(row.default_consecutive) === 2 ? 2 : 1,
     curriculumVersion: String(row.curriculum_version || DEFAULT_CURRICULUM_VERSION),
     description: String(row.description || ''),
+    courseDescription: String(row.course_description || ''),
+    assessmentRatio: String(row.assessment_ratio || ''),
     isActive: row.is_active !== false,
     sortOrder: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 100,
     createdAt: row.created_at || undefined,
@@ -4269,6 +4274,8 @@ function schoolSubjectToDbRow(subject: SchoolSubject, now: string) {
     default_consecutive: subject.defaultConsecutive === 2 ? 2 : 1,
     curriculum_version: (subject.curriculumVersion || DEFAULT_CURRICULUM_VERSION).trim(),
     description: (subject.description || '').trim(),
+    course_description: (subject.courseDescription || '').trim(),
+    assessment_ratio: (subject.assessmentRatio || '').trim(),
     is_active: subject.isActive !== false,
     sort_order: Number.isFinite(Number(subject.sortOrder)) ? Number(subject.sortOrder) : 100,
     updated_at: now,
@@ -4464,6 +4471,107 @@ export async function dbSeedSchoolSubjects(
   db.schoolSubjects = Array.from(nextMap.values());
   saveDatabase(db);
   return { insertedCount, updatedCount, skippedCount };
+}
+
+// ============================================================================
+// PHASE 12.3: ACADEMIC DELIVERABLE TRACKER (ติดตามแผนการสอน / ปพ.5)
+// ============================================================================
+
+function academicDeliverableFromDb(row: any): AcademicDeliverableRecord {
+  const normStatus = (v: unknown): DeliverableStatus =>
+    v === 'reviewing' || v === 'submitted' ? v : 'pending';
+  return {
+    id: String(row.id || ''),
+    academicYear: String(row.academic_year || ''),
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    teacherId: String(row.teacher_id || ''),
+    roomName: String(row.room_name || ''),
+    subjectName: String(row.subject_name || ''),
+    subjectCode: String(row.subject_code || ''),
+    lessonPlanStatus: normStatus(row.lesson_plan_status),
+    gradebookStatus: normStatus(row.gradebook_status),
+    remarks: String(row.remarks || ''),
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+export async function dbGetAcademicDeliverables(
+  academicYear: string,
+  semester: TimetableSemester
+): Promise<AcademicDeliverableRecord[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('academic_deliverables')
+      .select('*')
+      .eq('academic_year', academicYear)
+      .eq('semester', semester);
+    if (error) {
+      throw new Error(`ไม่สามารถโหลดข้อมูลการติดตามงานวิชาการจาก Supabase ได้: ${error.message}`);
+    }
+    return Array.isArray(data) ? data.map(academicDeliverableFromDb) : [];
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return (db.academicDeliverables || []).filter(
+    (d) => d.academicYear === academicYear && d.semester === semester
+  );
+}
+
+export async function dbUpsertAcademicDeliverable(
+  record: AcademicDeliverableRecord
+): Promise<AcademicDeliverableRecord> {
+  const now = new Date().toISOString();
+  const id =
+    (record.id || '').trim() ||
+    `DEL-${record.academicYear}-${record.semester}-${record.teacherId}-${record.roomName}-${Math.random().toString(36).slice(2, 6)}`;
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id,
+      academic_year: record.academicYear,
+      semester: record.semester,
+      teacher_id: record.teacherId,
+      room_name: record.roomName,
+      subject_name: record.subjectName,
+      subject_code: record.subjectCode || '',
+      lesson_plan_status: record.lessonPlanStatus,
+      gradebook_status: record.gradebookStatus,
+      remarks: record.remarks || '',
+      updated_at: now,
+    };
+    const { data, error } = await supabase
+      .from('academic_deliverables')
+      .upsert(row, { onConflict: 'academic_year,semester,teacher_id,room_name,subject_name' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกสถานะการส่งงานวิชาการลง Supabase ได้: ${error.message}`);
+    }
+    return academicDeliverableFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.academicDeliverables || [])];
+  const next: AcademicDeliverableRecord = { ...record, id, updatedAt: now };
+  const idx = list.findIndex(
+    (d) =>
+      d.academicYear === record.academicYear &&
+      d.semester === record.semester &&
+      d.teacherId === record.teacherId &&
+      d.roomName === record.roomName &&
+      d.subjectName.trim().toLowerCase() === record.subjectName.trim().toLowerCase()
+  );
+  if (idx >= 0) list[idx] = { ...next, id: list[idx].id };
+  else list.push(next);
+  db.academicDeliverables = list;
+  saveDatabase(db);
+  return idx >= 0 ? list[idx] : next;
 }
 
 

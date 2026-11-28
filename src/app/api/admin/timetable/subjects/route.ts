@@ -113,6 +113,8 @@ export async function POST(request: Request) {
       defaultConsecutive: defaultConsecutive === 2 ? 2 : 1,
       curriculumVersion: String(body?.curriculumVersion || DEFAULT_CURRICULUM_VERSION).trim(),
       description: String(body?.description || '').trim(),
+      courseDescription: String(body?.courseDescription || '').trim(),
+      assessmentRatio: String(body?.assessmentRatio || '').trim(),
       isActive: body?.isActive !== false,
       sortOrder: Number.isFinite(Number(body?.sortOrder)) ? Number(body.sortOrder) : 100,
     };

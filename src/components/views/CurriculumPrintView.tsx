@@ -177,7 +177,19 @@ export const CurriculumPrintView: React.FC<CurriculumPrintViewProps> = ({
                   <td className="border border-black px-2 py-1 text-center font-mono">
                     {item.subjectCode || '-'}
                   </td>
-                  <td className="border border-black px-2.5 py-1">{item.subjectName}</td>
+                  <td className="border border-black px-2.5 py-1">
+                    <span>{item.subjectName}</span>
+                    {item.assessmentRatio && (
+                      <span className="ml-1.5 font-mono text-[10px] text-slate-700">
+                        [{item.assessmentRatio}]
+                      </span>
+                    )}
+                    {item.courseDescription && (
+                      <div className="text-[10px] text-slate-700 mt-0.5 leading-snug">
+                        {item.courseDescription}
+                      </div>
+                    )}
+                  </td>
                   <td className="border border-black px-2 py-1 text-center font-mono">
                     {item.hoursPerYear || Math.round(item.defaultHoursPerWeek * 40)}
                   </td>
@@ -202,7 +214,19 @@ export const CurriculumPrintView: React.FC<CurriculumPrintViewProps> = ({
                   <td className="border border-black px-2 py-1 text-center font-mono">
                     {item.subjectCode || '-'}
                   </td>
-                  <td className="border border-black px-2.5 py-1">{item.subjectName}</td>
+                  <td className="border border-black px-2.5 py-1">
+                    <span>{item.subjectName}</span>
+                    {item.assessmentRatio && (
+                      <span className="ml-1.5 font-mono text-[10px] text-slate-700">
+                        [{item.assessmentRatio}]
+                      </span>
+                    )}
+                    {item.courseDescription && (
+                      <div className="text-[10px] text-slate-700 mt-0.5 leading-snug">
+                        {item.courseDescription}
+                      </div>
+                    )}
+                  </td>
                   <td className="border border-black px-2 py-1 text-center font-mono">
                     {item.hoursPerYear || Math.round(item.defaultHoursPerWeek * 40)}
                   </td>

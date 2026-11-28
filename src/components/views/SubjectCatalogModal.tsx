@@ -73,6 +73,8 @@ interface SubjectFormState {
   defaultConsecutive: 1 | 2;
   curriculumVersion: string;
   description: string;
+  courseDescription: string;
+  assessmentRatio: string;
   isActive: boolean;
   sortOrder: number;
 }
@@ -94,6 +96,8 @@ function createEmptyForm(levelGroup: SubjectLevelGroup = 'primary'): SubjectForm
     defaultConsecutive: 1,
     curriculumVersion: DEFAULT_CURRICULUM_VERSION,
     description: '',
+    courseDescription: '',
+    assessmentRatio: '',
     isActive: true,
     sortOrder: 100,
   };
@@ -196,6 +200,8 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
       defaultConsecutive: item.defaultConsecutive === 2 ? 2 : 1,
       curriculumVersion: item.curriculumVersion || DEFAULT_CURRICULUM_VERSION,
       description: item.description || '',
+      courseDescription: item.courseDescription || '',
+      assessmentRatio: item.assessmentRatio || '',
       isActive: item.isActive !== false,
       sortOrder: item.sortOrder ?? 100,
     });
@@ -279,6 +285,8 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
           defaultConsecutive: formState.defaultConsecutive,
           curriculumVersion: formState.curriculumVersion.trim() || DEFAULT_CURRICULUM_VERSION,
           description: formState.description.trim(),
+          courseDescription: formState.courseDescription.trim(),
+          assessmentRatio: formState.assessmentRatio.trim(),
           isActive: formState.isActive,
           sortOrder: formState.sortOrder,
         }),
@@ -1102,17 +1110,63 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
                 </label>
               </fieldset>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label htmlFor="sub-assessment-ratio" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                    สัดส่วนคะแนน (เก็บ : สอบ)
+                  </label>
+                  <div className="space-y-1.5">
+                    <input
+                      id="sub-assessment-ratio"
+                      name="assessmentRatio"
+                      type="text"
+                      value={formState.assessmentRatio}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, assessmentRatio: e.target.value }))}
+                      placeholder="เช่น 80:20 หรือ 70:30"
+                      className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {['80:20', '70:30', '60:40'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setFormState((prev) => ({ ...prev, assessmentRatio: preset }))}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-100 hover:bg-sky-100 dark:bg-slate-800 dark:hover:bg-sky-900/50 text-slate-700 dark:text-slate-300 cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="sub-desc" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                    หมายเหตุเพิ่มเติม
+                  </label>
+                  <textarea
+                    id="sub-desc"
+                    name="description"
+                    rows={2}
+                    value={formState.description}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="หมายเหตุสั้น (ถ้ามี)"
+                    className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label htmlFor="sub-desc" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                  คำอธิบายสั้น / หมายเหตุ
+                <label htmlFor="sub-course-desc" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  คำอธิบายรายวิชา (โดยย่อ)
                 </label>
                 <textarea
-                  id="sub-desc"
-                  name="description"
-                  rows={2}
-                  value={formState.description}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="ระบุคำอธิบายรายวิชาหรือหมายเหตุเพิ่มเติม (ถ้ามี)"
+                  id="sub-course-desc"
+                  name="courseDescription"
+                  rows={3}
+                  value={formState.courseDescription}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, courseDescription: e.target.value }))}
+                  placeholder="ระบุคำอธิบายรายวิชา มาตรฐานการเรียนรู้ หรือผลการเรียนรู้ที่คาดหวังโดยย่อ..."
                   className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
                 />
               </div>
