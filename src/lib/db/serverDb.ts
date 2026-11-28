@@ -52,11 +52,15 @@ import type {
   TimetableSettings,
   TimetableAllocation,
   TimetableSlot,
+  KindergartenSchedule,
   TimetableBundle,
   TimetableSemester,
   TimetableSubjectType,
 } from '@/lib/data/timetableTypes';
-import { getDefaultTimetableSettings } from '@/lib/regulations/timetable-utils';
+import {
+  getDefaultTimetableSettings,
+  DEFAULT_KINDERGARTEN_ACTIVITIES,
+} from '@/lib/regulations/timetable-utils';
 
 export type {
   TeacherRecord,
@@ -123,6 +127,7 @@ export interface DatabaseState {
   timetableSettings?: TimetableSettings[];
   timetableAllocations?: TimetableAllocation[];
   timetableSlots?: TimetableSlot[];
+  kindergartenSchedules?: KindergartenSchedule[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -3356,6 +3361,23 @@ function timetableSlotFromDb(row: any): TimetableSlot {
   };
 }
 
+function kindergartenFromDb(row: any): KindergartenSchedule {
+  return {
+    id: row.id,
+    academicYear: row.academic_year || '',
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    roomName: row.room_name || '',
+    homeroomTeacherId: row.homeroom_teacher_id || '',
+    assistantTeacherId: row.assistant_teacher_id || '',
+    weeklyHours: Number(row.weekly_hours) || 25,
+    activitiesJson:
+      Array.isArray(row.activities_json) && row.activities_json.length > 0
+        ? row.activities_json
+        : DEFAULT_KINDERGARTEN_ACTIVITIES.map((a) => ({ ...a })),
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
 export async function dbGetTimetableBundle(
   academicYear: string,
   semester: TimetableSemester
@@ -3365,7 +3387,7 @@ export async function dbGetTimetableBundle(
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const [settingsRes, allocRes, slotsRes] = await Promise.all([
+    const [settingsRes, allocRes, slotsRes, kgRes] = await Promise.all([
       supabase
         .from('timetable_settings')
         .select('*')
@@ -3383,6 +3405,11 @@ export async function dbGetTimetableBundle(
         .select('*')
         .eq('academic_year', academicYear)
         .eq('semester', semester),
+      supabase
+        .from('kindergarten_schedules')
+        .select('*')
+        .eq('academic_year', academicYear)
+        .eq('semester', semester),
     ]);
 
     if (settingsRes.error) {
@@ -3394,6 +3421,9 @@ export async function dbGetTimetableBundle(
     if (slotsRes.error) {
       throw new Error(`ไม่สามารถโหลดคาบเรียนจาก Supabase ได้: ${slotsRes.error.message}`);
     }
+    if (kgRes.error) {
+      throw new Error(`ไม่สามารถโหลดตารางปฐมวัยจาก Supabase ได้: ${kgRes.error.message}`);
+    }
 
     return {
       settings: settingsRes.data
@@ -3401,6 +3431,7 @@ export async function dbGetTimetableBundle(
         : defaults,
       allocations: Array.isArray(allocRes.data) ? allocRes.data.map(timetableAllocationFromDb) : [],
       slots: Array.isArray(slotsRes.data) ? slotsRes.data.map(timetableSlotFromDb) : [],
+      kindergartenSchedules: Array.isArray(kgRes.data) ? kgRes.data.map(kindergartenFromDb) : [],
     };
   }
 
@@ -3415,11 +3446,15 @@ export async function dbGetTimetableBundle(
   const slots = (db.timetableSlots || []).filter(
     (s) => s.academicYear === academicYear && s.semester === semester
   );
+  const kindergartenSchedules = (db.kindergartenSchedules || []).filter(
+    (k) => k.academicYear === academicYear && k.semester === semester
+  );
 
   return {
     settings: savedSettings || defaults,
     allocations,
     slots,
+    kindergartenSchedules,
   };
 }
 
@@ -3806,6 +3841,200 @@ export async function dbSwapTimetableSlots(
   db.timetableSlots = nextTermSlots;
   saveDatabase(db);
   return nextTermSlots.filter((s) => s.academicYear === academicYear && s.semester === semester);
+}
+
+export async function dbUpsertKindergartenSchedule(
+  schedule: KindergartenSchedule
+): Promise<KindergartenSchedule> {
+  const now = new Date().toISOString();
+  const id = schedule.id || `KG-${schedule.academicYear}-${schedule.semester}-${schedule.roomName}`;
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id,
+      academic_year: schedule.academicYear,
+      semester: schedule.semester,
+      room_name: schedule.roomName,
+      homeroom_teacher_id: schedule.homeroomTeacherId,
+      assistant_teacher_id: schedule.assistantTeacherId || '',
+      weekly_hours: Number(schedule.weeklyHours) || 25,
+      activities_json: Array.isArray(schedule.activitiesJson) ? schedule.activitiesJson : [],
+      updated_at: now,
+    };
+    const { data, error } = await supabase
+      .from('kindergarten_schedules')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกตารางปฐมวัยลง Supabase ได้: ${error.message}`);
+    }
+    return kindergartenFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.kindergartenSchedules || [])];
+  const next: KindergartenSchedule = { ...schedule, id, updatedAt: now };
+  const idx = list.findIndex(
+    (k) =>
+      k.id === id ||
+      (k.academicYear === schedule.academicYear &&
+        k.semester === schedule.semester &&
+        k.roomName === schedule.roomName)
+  );
+  if (idx >= 0) list[idx] = next;
+  else list.push(next);
+  db.kindergartenSchedules = list;
+  saveDatabase(db);
+  return next;
+}
+
+export async function dbDeleteKindergartenSchedule(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('kindergarten_schedules').delete().eq('id', id);
+    if (error) {
+      throw new Error(`ไม่สามารถลบตารางปฐมวัยจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.kindergartenSchedules = (db.kindergartenSchedules || []).filter((k) => k.id !== id);
+  saveDatabase(db);
+  return true;
+}
+
+export async function dbApplyTimetableRolloverBatch(params: {
+  settingsToUpsert: TimetableSettings | null;
+  allocationsToCreate: readonly TimetableAllocation[];
+  slotsToCreate: readonly TimetableSlot[];
+  kindergartenToCreate: readonly KindergartenSchedule[];
+}): Promise<void> {
+  if (params.settingsToUpsert) {
+    await dbUpsertTimetableSettings(params.settingsToUpsert);
+  }
+
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+
+    if (params.allocationsToCreate.length > 0) {
+      const allocRows = params.allocationsToCreate.map((a) => ({
+        id: a.id,
+        academic_year: a.academicYear,
+        semester: a.semester,
+        room_name: a.roomName,
+        subject_code: a.subjectCode || '',
+        subject_name: a.subjectName,
+        subject_group: a.subjectGroup,
+        subject_type: a.subjectType,
+        teacher_id: a.teacherId,
+        co_teacher_id: a.coTeacherId || '',
+        periods_per_week: a.periodsPerWeek,
+        prefer_morning: Boolean(a.preferMorning),
+        consecutive_periods: a.consecutivePeriods === 2 ? 2 : 1,
+        created_at: now,
+      }));
+      const { error } = await supabase
+        .from('timetable_allocations')
+        .upsert(allocRows, { onConflict: 'id' });
+      if (error) {
+        throw new Error(`ไม่สามารถคัดลอกแผนการสอนลง Supabase ได้: ${error.message}`);
+      }
+    }
+
+    if (params.slotsToCreate.length > 0) {
+      const slotRows = params.slotsToCreate.map((s) => ({
+        id: s.id,
+        academic_year: s.academicYear,
+        semester: s.semester,
+        room_name: s.roomName,
+        day_of_week: s.dayOfWeek,
+        period_no: s.periodNo,
+        allocation_id: s.allocationId || '',
+        subject_code: s.subjectCode || '',
+        subject_name: s.subjectName,
+        subject_group: s.subjectGroup || '',
+        subject_type: s.subjectType,
+        teacher_id: s.teacherId,
+        co_teacher_id: s.coTeacherId || '',
+        is_locked: Boolean(s.isLocked),
+        updated_at: now,
+      }));
+      const { error } = await supabase
+        .from('timetable_slots')
+        .upsert(slotRows, { onConflict: 'academic_year,semester,room_name,day_of_week,period_no' });
+      if (error) {
+        throw new Error(`ไม่สามารถคัดลอกคาบเรียนลง Supabase ได้: ${error.message}`);
+      }
+    }
+
+    if (params.kindergartenToCreate.length > 0) {
+      const kgRows = params.kindergartenToCreate.map((k) => ({
+        id: k.id,
+        academic_year: k.academicYear,
+        semester: k.semester,
+        room_name: k.roomName,
+        homeroom_teacher_id: k.homeroomTeacherId,
+        assistant_teacher_id: k.assistantTeacherId || '',
+        weekly_hours: Number(k.weeklyHours) || 25,
+        activities_json: Array.isArray(k.activitiesJson) ? k.activitiesJson : [],
+        updated_at: now,
+      }));
+      const { error } = await supabase
+        .from('kindergarten_schedules')
+        .upsert(kgRows, { onConflict: 'id' });
+      if (error) {
+        throw new Error(`ไม่สามารถคัดลอกตารางปฐมวัยลง Supabase ได้: ${error.message}`);
+      }
+    }
+    return;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.timetableAllocations = [
+    ...(db.timetableAllocations || []),
+    ...params.allocationsToCreate.map((a) => ({ ...a, createdAt: now })),
+  ];
+  db.timetableSlots = [
+    ...(db.timetableSlots || []),
+    ...params.slotsToCreate.map((s) => ({ ...s, updatedAt: now })),
+  ];
+  db.kindergartenSchedules = [
+    ...(db.kindergartenSchedules || []),
+    ...params.kindergartenToCreate.map((k) => ({ ...k, updatedAt: now })),
+  ];
+  saveDatabase(db);
+}
+
+export async function dbMigrateLegacyTeachingWorkloads(params: {
+  allocationsToCreate: readonly TimetableAllocation[];
+  legacyWorkloadIdsToDelete?: readonly string[];
+}): Promise<{ createdAllocations: TimetableAllocation[]; deletedLegacyCount: number }> {
+  const createdAllocations: TimetableAllocation[] = [];
+  for (const alloc of params.allocationsToCreate) {
+    const saved = await dbUpsertTimetableAllocation(alloc);
+    createdAllocations.push(saved);
+  }
+
+  let deletedLegacyCount = 0;
+  if (params.legacyWorkloadIdsToDelete && params.legacyWorkloadIdsToDelete.length > 0) {
+    for (const legacyId of params.legacyWorkloadIdsToDelete) {
+      await dbDeleteWorkload(legacyId);
+      deletedLegacyCount += 1;
+    }
+  }
+
+  return { createdAllocations, deletedLegacyCount };
 }
 
 

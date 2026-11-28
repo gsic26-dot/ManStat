@@ -74,6 +74,14 @@ export interface TimetableSlot {
   updatedAt?: string;
 }
 
+export interface KindergartenActivityItem {
+  timeRange: string;
+  activityName: string;
+  durationMinutes?: number;
+  note?: string;
+  isBreak?: boolean;
+}
+
 export interface KindergartenSchedule {
   id: string;
   academicYear: string;
@@ -82,7 +90,7 @@ export interface KindergartenSchedule {
   homeroomTeacherId: string;
   assistantTeacherId?: string;
   weeklyHours: number;
-  activitiesJson: Array<Record<string, unknown>>;
+  activitiesJson: KindergartenActivityItem[];
   updatedAt?: string;
 }
 
@@ -90,4 +98,5 @@ export interface TimetableBundle {
   settings: TimetableSettings;
   allocations: TimetableAllocation[];
   slots: TimetableSlot[];
+  kindergartenSchedules: KindergartenSchedule[];
 }

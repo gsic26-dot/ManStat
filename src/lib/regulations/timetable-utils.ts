@@ -9,6 +9,8 @@
 
 import type { TeacherRecord } from '@/lib/data/schoolData';
 import type {
+  KindergartenActivityItem,
+  KindergartenSchedule,
   PeriodConfigItem,
   TimetableSemester,
   TimetableSettings,
@@ -16,6 +18,60 @@ import type {
   TimetableSubjectType,
 } from '@/lib/data/timetableTypes';
 import { getStaffBranch } from '@/lib/regulations/staff-sorting';
+
+export const KINDERGARTEN_ROOMS = ['อ.1', 'อ.2', 'อ.3'] as const;
+
+export const DEFAULT_KINDERGARTEN_ACTIVITIES: readonly KindergartenActivityItem[] = [
+  {
+    timeRange: '08.30 - 09.00',
+    activityName: 'กิจกรรมเคลื่อนไหวและจังหวะ',
+    durationMinutes: 30,
+    note: 'ฝึกทักษะการเคลื่อนไหวร่างกายตามจังหวะและเสียงเพลง',
+  },
+  {
+    timeRange: '09.00 - 09.40',
+    activityName: 'กิจกรรมเสริมประสบการณ์',
+    durationMinutes: 40,
+    note: 'เรียนรู้หน่วยการจัดประสบการณ์ สนทนา เล่านิทาน และทดลองง่ายๆ',
+  },
+  {
+    timeRange: '09.40 - 10.20',
+    activityName: 'กิจกรรมสร้างสรรค์',
+    durationMinutes: 40,
+    note: 'วาดภาพ ระบายสี ปั้น ฉีก ตัด ปะ และงานประดิษฐ์',
+  },
+  {
+    timeRange: '10.20 - 11.00',
+    activityName: 'กิจกรรมเสรี (เล่นตามมุม)',
+    durationMinutes: 40,
+    note: 'เลือกเล่นตามมุมประสบการณ์อย่างอิสระตามความสนใจ',
+  },
+  {
+    timeRange: '11.00 - 11.30',
+    activityName: 'กิจกรรมกลางแจ้ง',
+    durationMinutes: 30,
+    note: 'เล่นเครื่องเล่นสนาม เกมการละเล่นพื้นบ้าน และออกกำลังกาย',
+  },
+  {
+    timeRange: '11.30 - 14.00',
+    activityName: 'พักรับประทานอาหารกลางวัน / แปรงฟัน / นอนพักผ่อน',
+    durationMinutes: 150,
+    note: 'ฝึกสุขนิสัยและพักผ่อนกลางวัน',
+    isBreak: true,
+  },
+  {
+    timeRange: '14.00 - 14.40',
+    activityName: 'เกมการศึกษา',
+    durationMinutes: 40,
+    note: 'จับคู่ เรียงลำดับ ต่อภาพ ฝึกทักษะการคิดและคณิตศาสตร์พื้นฐาน',
+  },
+  {
+    timeRange: '14.40 - 15.30',
+    activityName: 'เตรียมความพร้อม / ทบทวน / เตรียมกลับบ้าน',
+    durationMinutes: 50,
+    note: 'สรุปกิจกรรมประจำวัน เก็บของใช้ส่วนตัว และเตรียมตัวกลับบ้าน',
+  },
+];
 
 export const STANDARD_ROOMS = [
   'ป.1',
@@ -222,6 +278,7 @@ export interface TeacherWeeklyLoadSummary {
   coreAndElectiveHours: number;
   activityHours: number;
   homeroomHours: number;
+  kindergartenHours: number;
   totalPeriods: number;
   teachingHoursExclHomeroom: number;
   totalHoursInclHomeroom: number;
@@ -234,13 +291,15 @@ function roundHours(val: number): number {
 
 /**
  * Calculates weekly teaching hours per teacher per ก.ค.ศ. ว 9/2564.
- * Counts slots where the staff member is either primary teacherId OR coTeacherId.
+ * Counts slots where the staff member is either primary teacherId OR coTeacherId,
+ * plus Kindergarten weekly experience hours for homeroom teachers (อ.1–อ.3).
  * Distinguishes 60-minute periods (1.0 hr) from Period 7 homeroom (0.5 hr).
  */
 export function calculateTeacherWeeklyLoads(
   slots: readonly TimetableSlot[],
   teachers: readonly TeacherRecord[],
-  periodsConfig: readonly PeriodConfigItem[] = DEFAULT_PERIODS_CONFIG
+  periodsConfig: readonly PeriodConfigItem[] = DEFAULT_PERIODS_CONFIG,
+  kindergartenSchedules: readonly KindergartenSchedule[] = []
 ): TeacherWeeklyLoadSummary[] {
   const periodMap = new Map<number, PeriodConfigItem>();
   for (const p of periodsConfig) {
@@ -264,6 +323,14 @@ export function calculateTeacherWeeklyLoads(
     if (slot.coTeacherId && slot.coTeacherId !== slot.teacherId) {
       addForTeacher(slot.coTeacherId, slot);
     }
+  }
+
+  const kgHoursByTeacher = new Map<string, number>();
+  for (const kg of kindergartenSchedules) {
+    const homeroomId = (kg.homeroomTeacherId || '').trim();
+    if (!homeroomId) continue;
+    const hrs = Number(kg.weeklyHours) || 0;
+    kgHoursByTeacher.set(homeroomId, (kgHoursByTeacher.get(homeroomId) || 0) + hrs);
   }
 
   return teachers.map((teacher) => {
@@ -299,7 +366,8 @@ export function calculateTeacherWeeklyLoads(
     const roundedCore = roundHours(coreAndElectiveHours);
     const roundedActivity = roundHours(activityHours);
     const roundedHomeroom = roundHours(homeroomHours);
-    const teachingHoursExclHomeroom = roundHours(roundedCore + roundedActivity);
+    const roundedKg = roundHours(kgHoursByTeacher.get(teacher.id) || 0);
+    const teachingHoursExclHomeroom = roundHours(roundedCore + roundedActivity + roundedKg);
     const totalHoursInclHomeroom = roundHours(teachingHoursExclHomeroom + roundedHomeroom);
 
     return {
@@ -309,6 +377,7 @@ export function calculateTeacherWeeklyLoads(
       coreAndElectiveHours: roundedCore,
       activityHours: roundedActivity,
       homeroomHours: roundedHomeroom,
+      kindergartenHours: roundedKg,
       totalPeriods: teacherSlots.length,
       teachingHoursExclHomeroom,
       totalHoursInclHomeroom,

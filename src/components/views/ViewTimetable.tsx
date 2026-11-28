@@ -39,9 +39,16 @@ import {
   Sparkles,
   ArrowLeftRight,
   ChevronDown,
+  Printer,
+  Copy,
+  Baby,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
-import type { TeacherRecord } from '@/lib/data/schoolData';
+import type { TeacherRecord, WorkloadItem } from '@/lib/data/schoolData';
 import type {
+  KindergartenActivityItem,
+  KindergartenSchedule,
   PeriodConfigItem,
   TimetableAllocation,
   TimetableSemester,
@@ -49,6 +56,10 @@ import type {
   TimetableSlot,
   TimetableSubjectType,
 } from '@/lib/data/timetableTypes';
+import {
+  TimetablePrintView,
+  type TimetablePrintMode,
+} from '@/components/views/TimetablePrintView';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
@@ -56,6 +67,8 @@ import { isAdminRole } from '@/lib/auth/roles';
 import { getCurrentThaiAcademicYear } from '@/lib/regulations/obec-admin-roles';
 import {
   STANDARD_ROOMS,
+  KINDERGARTEN_ROOMS,
+  DEFAULT_KINDERGARTEN_ACTIVITIES,
   DAYS_OF_WEEK,
   LUNCH_BREAK_LABEL,
   LUNCH_BREAK_TIME,
@@ -71,8 +84,12 @@ import {
   type SlotCoord,
   type UnplacedAllocationItem,
 } from '@/lib/regulations/auto-scheduler';
+import {
+  mapLegacyWorkloadToAllocation,
+  type TimetableRolloverMode,
+} from '@/lib/regulations/timetable-rollover';
 
-type TimetableTab = 'room' | 'teacher' | 'allocations' | 'summary';
+type TimetableTab = 'room' | 'teacher' | 'allocations' | 'kindergarten' | 'summary';
 
 function getSubjectTypeBadgeStyle(type: TimetableSubjectType): string {
   switch (type) {
@@ -102,6 +119,8 @@ export const ViewTimetable: React.FC = () => {
   );
   const [allocations, setAllocations] = useState<TimetableAllocation[]>([]);
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
+  const [kindergartenSchedules, setKindergartenSchedules] = useState<KindergartenSchedule[]>([]);
+  const [legacyTeachingWorkloads, setLegacyTeachingWorkloads] = useState<WorkloadItem[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -163,6 +182,42 @@ export const ViewTimetable: React.FC = () => {
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
   const [togglingLockId, setTogglingLockId] = useState<string | null>(null);
 
+  // Phase 9.3: Kindergarten, Cross-Term Rollover, Print A4 & Legacy Migration State
+  const [selectedKgRoom, setSelectedKgRoom] = useState<string>(KINDERGARTEN_ROOMS[0]);
+  const [isKgModalOpen, setIsKgModalOpen] = useState<boolean>(false);
+  const [kgHomeroomTeacherId, setKgHomeroomTeacherId] = useState<string>('');
+  const [kgAssistantTeacherId, setKgAssistantTeacherId] = useState<string>('');
+  const [kgWeeklyHours, setKgWeeklyHours] = useState<number>(25);
+  const [kgActivities, setKgActivities] = useState<KindergartenActivityItem[]>([]);
+
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState<boolean>(false);
+  const [rolloverSourceYear, setRolloverSourceYear] = useState<string>(defaultAcademicYear);
+  const [rolloverSourceSem, setRolloverSourceSem] = useState<TimetableSemester>('1');
+  const [rolloverTargetYear, setRolloverTargetYear] = useState<string>(defaultAcademicYear);
+  const [rolloverTargetSem, setRolloverTargetSem] = useState<TimetableSemester>('2');
+  const [rolloverMode, setRolloverMode] = useState<TimetableRolloverMode>('all');
+  const [isRollingOver, setIsRollingOver] = useState<boolean>(false);
+
+  const [printMode, setPrintMode] = useState<TimetablePrintMode | null>(null);
+
+  const [isMigrateModalOpen, setIsMigrateModalOpen] = useState<boolean>(false);
+  const [migrateDrafts, setMigrateDrafts] = useState<
+    Array<{
+      legacyWorkloadId: string;
+      selected: boolean;
+      subjectName: string;
+      subjectCode: string;
+      subjectGroup: string;
+      subjectType: TimetableSubjectType;
+      roomName: string;
+      teacherId: string;
+      periodsPerWeek: number;
+      preferMorning: boolean;
+    }>
+  >([]);
+  const [removeLegacyAfterMigrate, setRemoveLegacyAfterMigrate] = useState<boolean>(false);
+  const [isMigratingLegacy, setIsMigratingLegacy] = useState<boolean>(false);
+
   const canManage = isAdminRole(currentRole);
 
   const showNotice = (type: 'success' | 'error', text: string) => {
@@ -196,6 +251,16 @@ export const ViewTimetable: React.FC = () => {
           }
         })
         .catch(() => {}),
+      fetch('/api/admin/workload', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (isMounted && res.success && Array.isArray(res.data)) {
+            setLegacyTeachingWorkloads(
+              res.data.filter((w: WorkloadItem) => w.category === 'งานสอนและการจัดการเรียนรู้')
+            );
+          }
+        })
+        .catch(() => {}),
     ]);
     return () => {
       isMounted = false;
@@ -215,15 +280,20 @@ export const ViewTimetable: React.FC = () => {
         setSettings(json.data.settings || getDefaultTimetableSettings(yr, sem));
         setAllocations(Array.isArray(json.data.allocations) ? json.data.allocations : []);
         setSlots(Array.isArray(json.data.slots) ? json.data.slots : []);
+        setKindergartenSchedules(
+          Array.isArray(json.data.kindergartenSchedules) ? json.data.kindergartenSchedules : []
+        );
       } else {
         setSettings(getDefaultTimetableSettings(yr, sem));
         setAllocations([]);
         setSlots([]);
+        setKindergartenSchedules([]);
       }
     } catch {
       setSettings(getDefaultTimetableSettings(yr, sem));
       setAllocations([]);
       setSlots([]);
+      setKindergartenSchedules([]);
     } finally {
       setIsLoading(false);
     }
@@ -279,8 +349,8 @@ export const ViewTimetable: React.FC = () => {
   // Real-time Conflict Detection & ว 9/2564 Loads
   const conflictResult = useMemo(() => detectTimetableConflicts(slots), [slots]);
   const teacherLoads = useMemo(
-    () => calculateTeacherWeeklyLoads(slots, sortedTeachers, periodsConfig),
-    [slots, sortedTeachers, periodsConfig]
+    () => calculateTeacherWeeklyLoads(slots, sortedTeachers, periodsConfig, kindergartenSchedules),
+    [slots, sortedTeachers, periodsConfig, kindergartenSchedules]
   );
   const teacherLoadMap = useMemo(() => {
     const map = new Map(teacherLoads.map((l) => [l.teacherId, l]));
@@ -862,6 +932,202 @@ export const ViewTimetable: React.FC = () => {
     }
   };
 
+  // Phase 9.3: Kindergarten Schedule Handlers
+  const selectedKgSchedule = useMemo(
+    () => kindergartenSchedules.find((k) => k.roomName === selectedKgRoom),
+    [kindergartenSchedules, selectedKgRoom]
+  );
+
+  const handleOpenKgModal = () => {
+    if (!canManage) return;
+    if (selectedKgSchedule) {
+      setKgHomeroomTeacherId(selectedKgSchedule.homeroomTeacherId);
+      setKgAssistantTeacherId(selectedKgSchedule.assistantTeacherId || '');
+      setKgWeeklyHours(selectedKgSchedule.weeklyHours || 25);
+      setKgActivities(
+        selectedKgSchedule.activitiesJson.length > 0
+          ? selectedKgSchedule.activitiesJson.map((a) => ({ ...a }))
+          : DEFAULT_KINDERGARTEN_ACTIVITIES.map((a) => ({ ...a }))
+      );
+    } else {
+      setKgHomeroomTeacherId(sortedTeachers[0]?.id || '');
+      setKgAssistantTeacherId('');
+      setKgWeeklyHours(25);
+      setKgActivities(DEFAULT_KINDERGARTEN_ACTIVITIES.map((a) => ({ ...a })));
+    }
+    setIsKgModalOpen(true);
+  };
+
+  const handleSaveKindergarten = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canManage || !kgHomeroomTeacherId) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/timetable/kindergarten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear,
+          semester,
+          roomName: selectedKgRoom,
+          homeroomTeacherId: kgHomeroomTeacherId,
+          assistantTeacherId: kgAssistantTeacherId === kgHomeroomTeacherId ? '' : kgAssistantTeacherId,
+          weeklyHours: Number(kgWeeklyHours) || 25,
+          activitiesJson: kgActivities,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถบันทึกตารางจัดประสบการณ์ปฐมวัยได้');
+      }
+      const saved: KindergartenSchedule = json.data;
+      setKindergartenSchedules((prev) => {
+        const filtered = prev.filter((k) => k.roomName !== saved.roomName);
+        return [...filtered, saved];
+      });
+      setIsKgModalOpen(false);
+      showNotice('success', `บันทึกตารางปฐมวัยห้อง ${selectedKgRoom} เรียบร้อยแล้ว`);
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกตารางปฐมวัย');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Phase 9.3: Cross-Term Rollover Handlers
+  const handleOpenRolloverModal = () => {
+    if (!canManage) return;
+    setRolloverSourceYear(academicYear);
+    setRolloverSourceSem(semester);
+    if (semester === '1') {
+      setRolloverTargetYear(academicYear);
+      setRolloverTargetSem('2');
+      setRolloverMode('all');
+    } else {
+      setRolloverTargetYear(String((Number(academicYear) || 2569) + 1));
+      setRolloverTargetSem('1');
+      setRolloverMode('fixed_only');
+    }
+    setIsRolloverModalOpen(true);
+  };
+
+  const handleExecuteTimetableRollover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !canManage ||
+      isRollingOver ||
+      (rolloverSourceYear === rolloverTargetYear && rolloverSourceSem === rolloverTargetSem)
+    ) {
+      return;
+    }
+
+    setIsRollingOver(true);
+    try {
+      const res = await fetch('/api/admin/timetable/rollover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceYear: rolloverSourceYear,
+          sourceSemester: rolloverSourceSem,
+          targetYear: rolloverTargetYear,
+          targetSemester: rolloverTargetSem,
+          mode: rolloverMode,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถคัดลอกตารางสอนข้ามเทอม/ข้ามปีได้');
+      }
+
+      const d = json.data || {};
+      setIsRolloverModalOpen(false);
+      setAcademicYear(rolloverTargetYear);
+      setSemester(rolloverTargetSem);
+      await loadBundle(rolloverTargetYear, rolloverTargetSem);
+
+      const parts = [
+        `คาบเรียน ${Number(d.slotsCreated || 0)} คาบ`,
+        d.allocationsCreated ? `แผนการสอน ${d.allocationsCreated} วิชา` : '',
+        d.kindergartenCreated ? `ปฐมวัย ${d.kindergartenCreated} ห้อง` : '',
+        d.skippedDuplicates ? `ข้ามซ้ำ ${d.skippedDuplicates}` : '',
+      ].filter(Boolean);
+
+      showNotice(
+        'success',
+        `คัดลอกตารางสอนไปยัง ${rolloverTargetYear}/${rolloverTargetSem} สำเร็จ (${parts.join(' · ')})`
+      );
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการคัดลอกตารางสอน');
+    } finally {
+      setIsRollingOver(false);
+    }
+  };
+
+  // Phase 9.3: Legacy Category 1 Migration Handlers
+  const handleOpenMigrateModal = () => {
+    if (!canManage || legacyTeachingWorkloads.length === 0) return;
+    const drafts = legacyTeachingWorkloads.map((w) => {
+      const mapped = mapLegacyWorkloadToAllocation(w, academicYear, semester);
+      return {
+        legacyWorkloadId: w.id,
+        selected: true,
+        subjectName: mapped.subjectName,
+        subjectCode: mapped.subjectCode || '',
+        subjectGroup: mapped.subjectGroup,
+        subjectType: mapped.subjectType,
+        roomName: mapped.roomName,
+        teacherId: mapped.teacherId,
+        periodsPerWeek: mapped.periodsPerWeek,
+        preferMorning: mapped.preferMorning,
+      };
+    });
+    setMigrateDrafts(drafts);
+    setRemoveLegacyAfterMigrate(false);
+    setIsMigrateModalOpen(true);
+  };
+
+  const handleExecuteLegacyMigration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const chosen = migrateDrafts.filter((d) => d.selected);
+    if (!canManage || isMigratingLegacy || chosen.length === 0) return;
+
+    setIsMigratingLegacy(true);
+    try {
+      const res = await fetch('/api/admin/timetable/migrate-legacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear,
+          semester,
+          items: chosen,
+          removeLegacyAfterMigrate,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถโอนย้ายรายการงานสอนเดิมได้');
+      }
+
+      if (Array.isArray(json.data?.createdAllocations)) {
+        setAllocations((prev) => [...prev, ...json.data.createdAllocations]);
+      }
+      if (removeLegacyAfterMigrate) {
+        const deletedIds = new Set(chosen.map((c) => c.legacyWorkloadId));
+        setLegacyTeachingWorkloads((prev) => prev.filter((w) => !deletedIds.has(w.id)));
+      }
+      setIsMigrateModalOpen(false);
+      showNotice(
+        'success',
+        `โอนย้ายรายการงานสอนเดิมเข้าสู่แผนการสอนสำเร็จ ${Number(json.data?.migratedCount || chosen.length)} รายการ`
+      );
+    } catch (err: unknown) {
+      showNotice('error', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการโอนย้ายรายการงานสอนเดิม');
+    } finally {
+      setIsMigratingLegacy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header Bar */}
@@ -901,14 +1167,24 @@ export const ViewTimetable: React.FC = () => {
           </select>
 
           {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenSettingsModal}
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span>ตั้งค่าคาบเรียน</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleOpenRolloverModal}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                <Copy className="w-4 h-4 shrink-0" />
+                <span>คัดลอกข้ามเทอม/ข้ามปี</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenSettingsModal}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                <Settings className="w-4 h-4 shrink-0" />
+                <span>ตั้งค่าคาบเรียน</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -997,6 +1273,7 @@ export const ViewTimetable: React.FC = () => {
             { id: 'room', label: 'ตารางเรียนรายห้อง', icon: CalendarRange },
             { id: 'teacher', label: 'ตารางสอนรายบุคคล', icon: User },
             { id: 'allocations', label: 'แผนการสอน', icon: BookOpen },
+            { id: 'kindergarten', label: 'ระดับปฐมวัย (อ.1–อ.3)', icon: Baby },
             { id: 'summary', label: 'สรุปชั่วโมงสอน (ว 9/2564)', icon: BarChart3 },
           ] as const
         ).map((tab) => {
@@ -1084,35 +1361,54 @@ export const ViewTimetable: React.FC = () => {
                     </p>
                   </div>
 
-                  {canManage && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsSmartSwapMode((prev) => !prev)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                          isSmartSwapMode
-                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600'
-                            : 'bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
-                        <span>{isSmartSwapMode ? 'กำลังใช้โหมดสลับคาบ' : 'โหมดสลับคาบ'}</span>
-                      </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('room_single')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                      <span>พิมพ์ห้องนี้ A4</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('room_all')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                      <span>พิมพ์ทุกห้อง A4</span>
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAutoScopeMode('all');
-                          setAutoRespectLocked(true);
-                          setIsAutoModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                        <span>จัดตารางสอนอัตโนมัติ</span>
-                      </button>
-                    </div>
-                  )}
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setIsSmartSwapMode((prev) => !prev)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                            isSmartSwapMode
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600'
+                              : 'bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isSmartSwapMode ? 'กำลังใช้โหมดสลับคาบ' : 'โหมดสลับคาบ'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAutoScopeMode('all');
+                            setAutoRespectLocked(true);
+                            setIsAutoModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                          <span>จัดตารางสอนอัตโนมัติ</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Smart Swap Inline Instruction Bar */}
@@ -1603,6 +1899,14 @@ export const ViewTimetable: React.FC = () => {
                           : 'ต่ำกว่า 12 ชม./สัปดาห์'}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('teacher')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                      <span>พิมพ์ตารางสอน A4</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1811,6 +2115,26 @@ export const ViewTimetable: React.FC = () => {
               </div>
 
               {/* Pre-check Counter Bar */}
+              {canManage && legacyTeachingWorkloads.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-medium">
+                    <Archive className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>
+                      พบรายการงานสอนเดิม (หมวด 1) จำนวน{' '}
+                      <strong className="font-mono">{legacyTeachingWorkloads.length}</strong> รายการ — สามารถโอนย้ายเข้าสู่แผนการสอนภาคเรียนนี้ได้
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenMigrateModal}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition-colors cursor-pointer shrink-0"
+                  >
+                    <Archive className="w-3.5 h-3.5 shrink-0" />
+                    <span>โอนย้ายรายการงานสอนเดิม</span>
+                  </button>
+                </div>
+              )}
+
               <div
                 className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
                   roomAllocationTotals.total > 35
@@ -1964,7 +2288,136 @@ export const ViewTimetable: React.FC = () => {
           )}
 
           {/* =============================================================== */}
-          {/* TAB 4: สรุปชั่วโมงสอน (ว 9/2564)                                 */}
+          {/* TAB 4: ระดับปฐมวัย (อ.1–อ.3)                                      */}
+          {/* =============================================================== */}
+          {activeTab === 'kindergarten' && (
+            <div className="space-y-4">
+              {/* Kindergarten Room Selector Pills */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {KINDERGARTEN_ROOMS.map((room) => {
+                    const found = kindergartenSchedules.find((k) => k.roomName === room);
+                    const active = selectedKgRoom === room;
+                    return (
+                      <button
+                        key={room}
+                        type="button"
+                        onClick={() => setSelectedKgRoom(room)}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          active
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                            : 'bg-white dark:bg-[#121822] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-sky-400'
+                        }`}
+                      >
+                        <span>{room}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                            active
+                              ? 'bg-sky-500/80 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {found ? `${found.weeklyHours} ชม.` : 'ยังไม่ตั้งค่า'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode('kindergarten')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 shrink-0" />
+                    <span>พิมพ์ตารางปฐมวัย A4</span>
+                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={handleOpenKgModal}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5 shrink-0" />
+                      <span>ตั้งค่า / แก้ไขตารางปฐมวัย</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Homeroom & Assistant Summary Card */}
+              <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      ตารางการจัดประสบการณ์ระดับปฐมวัย ห้อง {selectedKgRoom} · ปีการศึกษา {academicYear} ภาคเรียนที่ {semester}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300 mt-1">
+                      <span>
+                        ครูประจำชั้น:{' '}
+                        <strong>
+                          {selectedKgSchedule
+                            ? getCleanName(selectedKgSchedule.homeroomTeacherId)
+                            : 'ยังไม่ระบุ'}
+                        </strong>
+                      </span>
+                      {selectedKgSchedule?.assistantTeacherId && (
+                        <span>
+                          ผู้ช่วย/พี่เลี้ยง:{' '}
+                          <strong>{getCleanName(selectedKgSchedule.assistantTeacherId)}</strong>
+                        </span>
+                      )}
+                      <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold">
+                        ชั่วโมงจัดประสบการณ์: {selectedKgSchedule?.weeklyHours ?? 25} ชม./สัปดาห์
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Daily 6 Core Experience Activities Table */}
+                <div tabIndex={0} role="region" aria-label={`ตารางกิจกรรมปฐมวัย ${selectedKgRoom}`} className="overflow-x-auto w-full">
+                  <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                    <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
+                      <tr>
+                        <th scope="col" className="w-36 px-4 py-3 text-center">เวลา</th>
+                        <th scope="col" className="px-4 py-3">กิจกรรมหลักประจำวัน (จันทร์ – ศุกร์)</th>
+                        <th scope="col" className="px-4 py-3">รายละเอียด / หมายเหตุ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
+                      {(selectedKgSchedule && selectedKgSchedule.activitiesJson.length > 0
+                        ? selectedKgSchedule.activitiesJson
+                        : DEFAULT_KINDERGARTEN_ACTIVITIES
+                      ).map((act, idx) => (
+                        <tr
+                          key={idx}
+                          className={
+                            act.isBreak
+                              ? 'bg-amber-50/70 dark:bg-amber-950/25 font-medium text-amber-900 dark:text-amber-200'
+                              : 'hover:bg-slate-50 dark:hover:bg-[#1a2636]/40'
+                          }
+                        >
+                          <td className="px-4 py-3 text-center font-mono whitespace-nowrap">
+                            {act.timeRange}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                            {act.activityName}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                            {act.note || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =============================================================== */}
+          {/* TAB 5: สรุปชั่วโมงสอน (ว 9/2564)                                 */}
           {/* =============================================================== */}
           {activeTab === 'summary' && (
             <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm space-y-4">
@@ -1974,7 +2427,7 @@ export const ViewTimetable: React.FC = () => {
                     สรุปชั่วโมงสอนรายสัปดาห์ตามเกณฑ์ ก.ค.ศ. ว 9/2564
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    คำนวณจากตารางสอนจริง (นับรวมคาบสอนร่วม • คาบ 1–6 = 1 ชม., คาบ 7 พบครูประจำชั้น = 0.5 ชม.)
+                    คำนวณจากตารางสอนจริง (รวมคาบสอนร่วม และชั่วโมงจัดประสบการณ์ปฐมวัย อ.1–อ.3 • คาบ 1–6 = 1 ชม., คาบ 7 = 0.5 ชม.)
                   </p>
                 </div>
 
@@ -1996,8 +2449,9 @@ export const ViewTimetable: React.FC = () => {
                       <th scope="col" className="w-12 px-3 py-3 text-center font-mono">ลำดับ</th>
                       <th scope="col" className="px-4 py-3">ชื่อ-สกุล</th>
                       <th scope="col" className="px-3 py-3 text-center">พื้นฐาน/เพิ่มเติม (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">กิจกรรมพัฒนาผู้เรียน (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">พบครูประจำชั้น (ชม.)</th>
+                      <th scope="col" className="px-3 py-3 text-center">กิจกรรม (ชม.)</th>
+                      <th scope="col" className="px-3 py-3 text-center">ปฐมวัย (ชม.)</th>
+                      <th scope="col" className="px-3 py-3 text-center">ประจำชั้น (ชม.)</th>
                       <th scope="col" className="px-3 py-3 text-center">รวมคาบ</th>
                       <th scope="col" className="px-3 py-3 text-center">ชั่วโมงสอน/สัปดาห์</th>
                       <th scope="col" className="px-4 py-3 text-center">เกณฑ์ ว 9/2564 (&gt;= 12 ชม.)</th>
@@ -2007,7 +2461,7 @@ export const ViewTimetable: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
                     {summaryRows.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-10 text-center text-slate-400">
+                        <td colSpan={10} className="px-4 py-10 text-center text-slate-400">
                           ยังไม่มีข้อมูลชั่วโมงสอนในภาคเรียนนี้
                         </td>
                       </tr>
@@ -2023,6 +2477,9 @@ export const ViewTimetable: React.FC = () => {
                           </td>
                           <td className="px-3 py-3 text-center font-mono">{load.coreAndElectiveHours}</td>
                           <td className="px-3 py-3 text-center font-mono">{load.activityHours}</td>
+                          <td className="px-3 py-3 text-center font-mono">
+                            {load.kindergartenHours > 0 ? load.kindergartenHours : '-'}
+                          </td>
                           <td className="px-3 py-3 text-center font-mono">{load.homeroomHours}</td>
                           <td className="px-3 py-3 text-center font-mono font-semibold">
                             {load.totalPeriods}
@@ -2813,6 +3270,547 @@ export const ViewTimetable: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 5: Kindergarten Experience Editor Modal (Close-Locked)        */}
+      {/* =================================================================== */}
+      {isKgModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kg-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 dark:bg-black/75 backdrop-blur-xs p-3 sm:p-4"
+        >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/90 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <Baby className="w-5 h-5 text-sky-500 shrink-0" />
+                <h3 id="kg-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                  ตั้งค่าตารางจัดประสบการณ์ปฐมวัย ห้อง {selectedKgRoom} ({academicYear}/{semester})
+                </h3>
+              </div>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setIsKgModalOpen(false)}
+                aria-label="ปิดหน้าต่าง"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              id="kg-schedule-form"
+              aria-labelledby="kg-modal-title"
+              onSubmit={handleSaveKindergarten}
+              className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label
+                    htmlFor="kg-homeroom-teacher"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
+                    ครูประจำชั้น <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="kg-homeroom-teacher"
+                    required
+                    value={kgHomeroomTeacherId}
+                    onChange={(e) => setKgHomeroomTeacherId(e.target.value)}
+                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    <option value="">-- เลือกครูประจำชั้น --</option>
+                    {sortedTeachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {formatStaffName(t)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="kg-assistant-teacher"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
+                    ผู้ช่วย / พี่เลี้ยง
+                  </label>
+                  <select
+                    id="kg-assistant-teacher"
+                    value={kgAssistantTeacherId}
+                    onChange={(e) => setKgAssistantTeacherId(e.target.value)}
+                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    <option value="">-- ไม่มี --</option>
+                    {sortedTeachers
+                      .filter((t) => t.id !== kgHomeroomTeacherId)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {formatStaffName(t)}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="kg-weekly-hours"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
+                    ชั่วโมงจัดประสบการณ์ / สัปดาห์ <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="kg-weekly-hours"
+                    type="number"
+                    min={1}
+                    max={40}
+                    step="0.5"
+                    required
+                    value={kgWeeklyHours}
+                    onChange={(e) => setKgWeeklyHours(Number(e.target.value) || 25)}
+                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    รายการกิจกรรมหลักประจำวัน
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setKgActivities(DEFAULT_KINDERGARTEN_ACTIVITIES.map((a) => ({ ...a })))
+                    }
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>คืนค่ากิจกรรมมาตรฐานปฐมวัย</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {kgActivities.map((act, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-12 gap-2 items-center bg-slate-50 dark:bg-[#101822] p-2 rounded-xl border border-slate-200/80 dark:border-slate-800"
+                    >
+                      <input
+                        type="text"
+                        aria-label={`เวลาแถวที่ ${idx + 1}`}
+                        value={act.timeRange}
+                        onChange={(e) =>
+                          setKgActivities((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, timeRange: e.target.value } : item
+                            )
+                          )
+                        }
+                        className="col-span-3 h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
+                      />
+                      <input
+                        type="text"
+                        aria-label={`ชื่อกิจกรรมแถวที่ ${idx + 1}`}
+                        value={act.activityName}
+                        onChange={(e) =>
+                          setKgActivities((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, activityName: e.target.value } : item
+                            )
+                          )
+                        }
+                        className="col-span-4 h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs"
+                      />
+                      <input
+                        type="text"
+                        aria-label={`หมายเหตุแถวที่ ${idx + 1}`}
+                        value={act.note || ''}
+                        onChange={(e) =>
+                          setKgActivities((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, note: e.target.value } : item))
+                          )
+                        }
+                        placeholder="รายละเอียด..."
+                        className="col-span-5 h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </form>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setIsKgModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                form="kg-schedule-form"
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                <span>บันทึกตารางปฐมวัย</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 6: Cross-Term Timetable Rollover Modal (Close-Locked)         */}
+      {/* =================================================================== */}
+      {isRolloverModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tt-rollover-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 dark:bg-black/75 backdrop-blur-xs p-3 sm:p-4"
+        >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl text-slate-800 dark:text-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/90 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Copy className="w-5 h-5 text-sky-500 shrink-0" />
+                <h3 id="tt-rollover-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                  คัดลอกตารางสอนข้ามเทอม / ข้ามปีการศึกษา
+                </h3>
+              </div>
+              <button
+                type="button"
+                disabled={isRollingOver}
+                onClick={() => setIsRolloverModalOpen(false)}
+                aria-label="ปิดหน้าต่าง"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              id="tt-rollover-form"
+              aria-labelledby="tt-rollover-modal-title"
+              onSubmit={handleExecuteTimetableRollover}
+              className="px-6 py-5 space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="tt-roll-src-yr"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1"
+                  >
+                    ต้นทาง: ปีการศึกษา
+                  </label>
+                  <select
+                    id="tt-roll-src-yr"
+                    value={rolloverSourceYear}
+                    onChange={(e) => setRolloverSourceYear(e.target.value)}
+                    className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs font-mono cursor-pointer"
+                  >
+                    {academicYearOptions.map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="tt-roll-src-sem"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1"
+                  >
+                    ต้นทาง: ภาคเรียน
+                  </label>
+                  <select
+                    id="tt-roll-src-sem"
+                    value={rolloverSourceSem}
+                    onChange={(e) => setRolloverSourceSem(e.target.value === '2' ? '2' : '1')}
+                    className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs cursor-pointer"
+                  >
+                    <option value="1">ภาคเรียนที่ 1</option>
+                    <option value="2">ภาคเรียนที่ 2</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="tt-roll-tgt-yr"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1"
+                  >
+                    ปลายทาง: ปีการศึกษา
+                  </label>
+                  <select
+                    id="tt-roll-tgt-yr"
+                    value={rolloverTargetYear}
+                    onChange={(e) => setRolloverTargetYear(e.target.value)}
+                    className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs font-mono cursor-pointer"
+                  >
+                    {academicYearOptions.map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="tt-roll-tgt-sem"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1"
+                  >
+                    ปลายทาง: ภาคเรียน
+                  </label>
+                  <select
+                    id="tt-roll-tgt-sem"
+                    value={rolloverTargetSem}
+                    onChange={(e) => setRolloverTargetSem(e.target.value === '2' ? '2' : '1')}
+                    className="w-full h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs cursor-pointer"
+                  >
+                    <option value="1">ภาคเรียนที่ 1</option>
+                    <option value="2">ภาคเรียนที่ 2</option>
+                  </select>
+                </div>
+              </div>
+
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  เลือกรูปแบบการคัดลอก
+                </legend>
+                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-[#101822] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ttRolloverMode"
+                    checked={rolloverMode === 'all'}
+                    onChange={() => setRolloverMode('all')}
+                    className="mt-0.5 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-white">
+                      โหมด 1: คัดลอกทั้งหมด (แนะนำสำหรับ เทอม 1 → เทอม 2)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      คัดลอกตั้งค่าคาบเรียน แผนการสอน ตารางเรียนทั้งหมด (คงสถานะล็อก) และตารางปฐมวัย อ.1–อ.3
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-[#101822] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="ttRolloverMode"
+                    checked={rolloverMode === 'fixed_only'}
+                    onChange={() => setRolloverMode('fixed_only')}
+                    className="mt-0.5 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-white">
+                      โหมด 2: คัดลอกเฉพาะคาบประจำโรงเรียน (แนะนำสำหรับขึ้นปีการศึกษาใหม่)
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      คัดลอกเฉพาะตั้งค่าคาบเรียนและคาบประจำ (ชุมนุม, ลูกเสือ, สวดมนต์, พบครูประจำชั้น หรือคาบที่ล็อกไว้)
+                    </div>
+                  </div>
+                </label>
+              </fieldset>
+
+              {rolloverSourceYear === rolloverTargetYear && rolloverSourceSem === rolloverTargetSem && (
+                <p className="text-xs text-rose-600 dark:text-rose-400">
+                  กรุณาเลือกภาคเรียนปลายทางที่แตกต่างจากภาคเรียนต้นทาง
+                </p>
+              )}
+            </form>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isRollingOver}
+                onClick={() => setIsRolloverModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                form="tt-rollover-form"
+                disabled={
+                  isRollingOver ||
+                  (rolloverSourceYear === rolloverTargetYear && rolloverSourceSem === rolloverTargetSem)
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium cursor-pointer disabled:opacity-50"
+              >
+                {isRollingOver && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                <span>เริ่มคัดลอกตารางสอน</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 7: Legacy Category 1 Migration Modal (Close-Locked)           */}
+      {/* =================================================================== */}
+      {isMigrateModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="migrate-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 dark:bg-black/75 backdrop-blur-xs p-3 sm:p-4"
+        >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/90 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <Archive className="w-5 h-5 text-amber-500 shrink-0" />
+                <h3 id="migrate-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                  โอนย้ายรายการงานสอนเดิมเข้าสู่แผนการสอน ({academicYear}/{semester})
+                </h3>
+              </div>
+              <button
+                type="button"
+                disabled={isMigratingLegacy}
+                onClick={() => setIsMigrateModalOpen(false)}
+                aria-label="ปิดหน้าต่าง"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              id="migrate-legacy-form"
+              aria-labelledby="migrate-modal-title"
+              onSubmit={handleExecuteLegacyMigration}
+              className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
+            >
+              <div className="space-y-2">
+                {migrateDrafts.map((item, idx) => (
+                  <div
+                    key={item.legacyWorkloadId}
+                    className="grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-800 text-xs"
+                  >
+                    <div className="col-span-1 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={(e) =>
+                          setMigrateDrafts((prev) =>
+                            prev.map((d, i) => (i === idx ? { ...d, selected: e.target.checked } : d))
+                          )
+                        }
+                        className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="col-span-5 min-w-0">
+                      <div className="font-semibold text-slate-900 dark:text-white truncate">
+                        {item.subjectName}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {getCleanName(item.teacherId)}
+                      </div>
+                    </div>
+                    <div className="col-span-3">
+                      <select
+                        aria-label={`ห้องเรียนสำหรับ ${item.subjectName}`}
+                        value={item.roomName}
+                        onChange={(e) =>
+                          setMigrateDrafts((prev) =>
+                            prev.map((d, i) => (i === idx ? { ...d, roomName: e.target.value } : d))
+                          )
+                        }
+                        className="w-full h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs cursor-pointer"
+                      >
+                        {STANDARD_ROOMS.map((r) => (
+                          <option key={r} value={r}>
+                            ห้อง {r}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-3 flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={35}
+                        aria-label={`จำนวนคาบต่อสัปดาห์สำหรับ ${item.subjectName}`}
+                        value={item.periodsPerWeek}
+                        onChange={(e) =>
+                          setMigrateDrafts((prev) =>
+                            prev.map((d, i) =>
+                              i === idx
+                                ? { ...d, periodsPerWeek: Math.max(1, Number(e.target.value) || 1) }
+                                : d
+                            )
+                          )
+                        }
+                        className="w-16 h-8 bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs font-mono text-center"
+                      />
+                      <span className="text-[11px] text-slate-500">คาบ/สัปดาห์</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={removeLegacyAfterMigrate}
+                  onChange={(e) => setRemoveLegacyAfterMigrate(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                />
+                <span className="text-amber-900 dark:text-amber-200">
+                  ลบรายการงานสอนเดิมที่เลือกออกจากตารางภาระงานเดิมหลังโอนย้ายสำเร็จ (หากไม่ติ๊ก ระบบจะคงรายการเดิมไว้ปลอดภัย)
+                </span>
+              </label>
+            </form>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
+              <button
+                type="button"
+                disabled={isMigratingLegacy}
+                onClick={() => setIsMigrateModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                form="migrate-legacy-form"
+                disabled={isMigratingLegacy || !migrateDrafts.some((d) => d.selected)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium cursor-pointer disabled:opacity-50"
+              >
+                {isMigratingLegacy && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                <span>โอนย้ายเข้าสู่แผนการสอน</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Landscape A4 Print Overlay */}
+      {printMode && (
+        <TimetablePrintView
+          mode={printMode}
+          academicYear={academicYear}
+          semester={semester}
+          settings={settings}
+          periodsConfig={periodsConfig}
+          slots={slots}
+          kindergartenSchedules={kindergartenSchedules}
+          selectedRoom={selectedRoom}
+          selectedTeacherId={selectedTeacherId}
+          selectedKindergartenRoom={selectedKgRoom}
+          teacherLoad={activeTeacherLoad}
+          getCleanName={getCleanName}
+          onClose={() => setPrintMode(null)}
+        />
       )}
 
       {/* Shared Subject Presets Datalist */}

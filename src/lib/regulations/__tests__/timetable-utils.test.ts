@@ -202,4 +202,26 @@ describe('Timetable Conflict Detection & ว 9/2564 Calculator (timetable-utils.
     assert.equal(dir.totalPeriods, 1);
     assert.equal(dir.coreAndElectiveHours, 1);
   });
+
+  it('includes Kindergarten weekly experience hours in ว 9/2564 threshold evaluation', () => {
+    const loads = calculateTeacherWeeklyLoads([], MOCK_TEACHERS, DEFAULT_PERIODS_CONFIG, [
+      {
+        id: 'KG-2569-1-อ.1',
+        academicYear: '2569',
+        semester: '1',
+        roomName: 'อ.1',
+        homeroomTeacherId: 'TCH-02',
+        assistantTeacherId: 'TCH-01',
+        weeklyHours: 25,
+        activitiesJson: [],
+      },
+    ]);
+
+    const kgTeacher = loads.find((l) => l.teacherId === 'TCH-02');
+    assert.ok(kgTeacher);
+    assert.equal(kgTeacher.kindergartenHours, 25);
+    assert.equal(kgTeacher.teachingHoursExclHomeroom, 25);
+    assert.equal(kgTeacher.totalHoursInclHomeroom, 25);
+    assert.equal(kgTeacher.meetsW9Threshold, true);
+  });
 });
