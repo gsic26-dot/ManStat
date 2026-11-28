@@ -703,11 +703,11 @@ export default function DashboardPage() {
                         ? 'bg-sky-50 text-sky-900 border-l-2 border-sky-600 font-semibold dark:bg-slate-800/70 dark:text-white dark:border-sky-500'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30'
                     }`}
-                    title="งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ"
+                    title="ภาระงาน"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Briefcase className="w-4 h-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
-                      <span className="truncate">งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ</span>
+                      <span className="truncate">ภาระงาน</span>
                     </div>
                   </button>
 
@@ -719,11 +719,11 @@ export default function DashboardPage() {
                         ? 'bg-sky-50 text-sky-900 border-l-2 border-sky-600 font-semibold dark:bg-slate-800/70 dark:text-white dark:border-sky-500'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30'
                     }`}
-                    title="ตารางสอนและชั่วโมงสอน"
+                    title="ตารางสอน"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <CalendarRange className="w-4 h-4 shrink-0 text-sky-500 dark:text-sky-400" />
-                      <span className="truncate">ตารางสอนและชั่วโมงสอน</span>
+                      <span className="truncate">ตารางสอน</span>
                     </div>
                   </button>
                 </div>
@@ -1026,10 +1026,10 @@ export default function DashboardPage() {
                           ? 'bg-sky-50 text-sky-900 font-semibold dark:bg-slate-800 dark:text-white'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
-                      title="งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ"
+                      title="ภาระงาน"
                     >
                       <Briefcase className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
-                      <span className="truncate">งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ</span>
+                      <span className="truncate">ภาระงาน</span>
                     </button>
                     <button
                       type="button"
@@ -1039,10 +1039,10 @@ export default function DashboardPage() {
                           ? 'bg-sky-50 text-sky-900 font-semibold dark:bg-slate-800 dark:text-white'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
-                      title="ตารางสอนและชั่วโมงสอน"
+                      title="ตารางสอน"
                     >
                       <CalendarRange className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
-                      <span className="truncate">ตารางสอนและชั่วโมงสอน</span>
+                      <span className="truncate">ตารางสอน</span>
                     </button>
                   </div>
                 </div>

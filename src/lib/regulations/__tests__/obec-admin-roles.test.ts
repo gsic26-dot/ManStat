@@ -80,4 +80,18 @@ describe('OBEC Administrative Roles & Reporting Systems Catalog (obec-admin-role
     assert.deepEqual(restored.obecSystems, ['DMC', 'EMIS', 'OBECict']);
     assert.deepEqual(restored.coResponsibleIds, ['TCH-003', 'TCH-004']);
   });
+
+  it('includes งานการศึกษาปฐมวัย under ฝ่ายบริหารวิชาการ with valid OBEC systems and zero parentheses', () => {
+    const validCodes = new Set(OBEC_SYSTEM_CATALOG.map((s) => s.code));
+    const earlyChildhood = OBEC_ADMIN_ROLE_PRESETS.find(
+      (p) => p.roleTitle === 'งานการศึกษาปฐมวัย'
+    );
+    assert.ok(earlyChildhood, 'งานการศึกษาปฐมวัย preset must exist');
+    assert.equal(earlyChildhood.division, 'ฝ่ายบริหารวิชาการ');
+    assert.ok(!/[()]/.test(earlyChildhood.roleTitle));
+    assert.ok(earlyChildhood.defaultScope.length >= 20);
+    for (const code of earlyChildhood.obecSystems) {
+      assert.ok(validCodes.has(code), `System code ${code} must exist in OBEC_SYSTEM_CATALOG`);
+    }
+  });
 });

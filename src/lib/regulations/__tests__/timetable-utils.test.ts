@@ -4,6 +4,7 @@ import {
   DEFAULT_PERIODS_CONFIG,
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
+  isEligibleForTeaching,
 } from '../timetable-utils';
 import type { TimetableSlot } from '@/lib/data/timetableTypes';
 import type { TeacherRecord } from '@/lib/data/schoolData';
@@ -223,5 +224,47 @@ describe('Timetable Conflict Detection & ว 9/2564 Calculator (timetable-utils.
     assert.equal(kgTeacher.teachingHoursExclHomeroom, 25);
     assert.equal(kgTeacher.totalHoursInclHomeroom, 25);
     assert.equal(kgTeacher.meetsW9Threshold, true);
+    assert.equal(kgTeacher.w9StatusLabel, 'ผ่านเกณฑ์');
+  });
+
+  it('excludes janitor from teaching eligibility and separates Executive vs Support badges', () => {
+    assert.equal(isEligibleForTeaching({ position: 'นักการภารโรง' }), false);
+    assert.equal(isEligibleForTeaching({ position: 'พนักงานบริการ' }), false);
+    assert.equal(isEligibleForTeaching({ position: 'ผู้อำนวยการสถานศึกษา' }), true);
+    assert.equal(isEligibleForTeaching({ position: 'ครู' }), true);
+    assert.equal(isEligibleForTeaching({ position: 'เจ้าหน้าที่ธุรการ' }), true);
+    assert.equal(
+      isEligibleForTeaching({ position: 'พี่เลี้ยงเด็กพิการโรงเรียนทั่วไปจัดการเรียนรวม' }),
+      true
+    );
+
+    const mixedStaff: TeacherRecord[] = [
+      ...MOCK_TEACHERS,
+      {
+        id: 'TCH-SUP',
+        name: 'นางสาวสุภาวดี ธุรการ',
+        position: 'เจ้าหน้าที่ธุรการ',
+        department: 'สายงานบริหารและสนับสนุนการศึกษา',
+        employmentType: 'ลูกจ้างชั่วคราว',
+      } as unknown as TeacherRecord,
+      {
+        id: 'TCH-JAN',
+        name: 'นายประเสริฐ ภารโรง',
+        position: 'นักการภารโรง',
+        department: 'สายงานบริหารและสนับสนุนการศึกษา',
+        employmentType: 'ลูกจ้างชั่วคราว',
+      } as unknown as TeacherRecord,
+    ];
+
+    const loads = calculateTeacherWeeklyLoads([], mixedStaff, DEFAULT_PERIODS_CONFIG);
+    assert.equal(loads.some((l) => l.teacherId === 'TCH-JAN'), false);
+
+    const dirLoad = loads.find((l) => l.teacherId === 'TCH-DIR');
+    const supLoad = loads.find((l) => l.teacherId === 'TCH-SUP');
+    const teacherLoad = loads.find((l) => l.teacherId === 'TCH-01');
+
+    assert.equal(dirLoad?.w9StatusLabel, 'ผู้บริหารสถานศึกษา');
+    assert.equal(supLoad?.w9StatusLabel, 'สายสนับสนุน');
+    assert.equal(teacherLoad?.w9StatusLabel, 'ต่ำกว่าเกณฑ์');
   });
 });

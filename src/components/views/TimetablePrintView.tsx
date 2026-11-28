@@ -94,7 +94,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
         <table className="w-full border-collapse border border-black text-[11px]">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-black px-2 py-1.5 w-20 text-center">วัน / คาบ</th>
+              <th className="border border-black px-2 py-1.5 w-20 text-center">วัน / ชั่วโมง</th>
               {morningPeriods.map((p) => (
                 <th key={p.periodNo} className="border border-black px-1.5 py-1 text-center">
                   <div className="font-bold">{p.label}</div>
@@ -103,7 +103,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                   </div>
                 </th>
               ))}
-              <th className="border border-black px-1 py-1 w-9 text-center">พัก</th>
+              <th aria-label="พักกลางวัน" className="border border-black px-1 py-1 w-8 bg-slate-50" />
               {afternoonPeriods.map((p) => (
                 <th key={p.periodNo} className="border border-black px-1.5 py-1 text-center">
                   <div className="font-bold">{p.label}</div>
@@ -206,7 +206,11 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
           <p className="text-xs font-medium mt-0.5">
             โรงเรียนชุมชนบ้านตะขบ · ภาคเรียนที่ {semester} ปีการศึกษา {academicYear}
             {teacherLoad
-              ? ` · รวม ${teacherLoad.totalPeriods} คาบ · สอน ${teacherLoad.teachingHoursExclHomeroom} ชม./สัปดาห์`
+              ? ` · สอน ${teacherLoad.teachingHoursExclHomeroom} ชม./สัปดาห์${
+                  teacherLoad.homeroomHours > 0
+                    ? ` · พบครูประจำชั้น ${teacherLoad.homeroomHours} ชม.`
+                    : ''
+                }`
               : ''}
           </p>
         </header>
@@ -214,7 +218,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
         <table className="w-full border-collapse border border-black text-[11px]">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-black px-2 py-1.5 w-20 text-center">วัน / คาบ</th>
+              <th className="border border-black px-2 py-1.5 w-20 text-center">วัน / ชั่วโมง</th>
               {morningPeriods.map((p) => (
                 <th key={p.periodNo} className="border border-black px-1.5 py-1 text-center">
                   <div className="font-bold">{p.label}</div>
@@ -223,7 +227,7 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                   </div>
                 </th>
               ))}
-              <th className="border border-black px-1 py-1 w-9 text-center">พัก</th>
+              <th aria-label="พักกลางวัน" className="border border-black px-1 py-1 w-8 bg-slate-50" />
               {afternoonPeriods.map((p) => (
                 <th key={p.periodNo} className="border border-black px-1.5 py-1 text-center">
                   <div className="font-bold">{p.label}</div>

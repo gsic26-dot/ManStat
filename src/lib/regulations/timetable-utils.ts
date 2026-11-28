@@ -97,12 +97,12 @@ export const LUNCH_BREAK_LABEL = 'พักกลางวัน';
 export const LUNCH_BREAK_TIME = '11.30 - 12.30';
 
 export const DEFAULT_PERIODS_CONFIG: readonly PeriodConfigItem[] = [
-  { periodNo: 1, label: 'คาบที่ 1', startTime: '08.30', endTime: '09.30', durationMinutes: 60, durationHours: 1.0 },
-  { periodNo: 2, label: 'คาบที่ 2', startTime: '09.30', endTime: '10.30', durationMinutes: 60, durationHours: 1.0 },
-  { periodNo: 3, label: 'คาบที่ 3', startTime: '10.30', endTime: '11.30', durationMinutes: 60, durationHours: 1.0 },
-  { periodNo: 4, label: 'คาบที่ 4', startTime: '12.30', endTime: '13.30', durationMinutes: 60, durationHours: 1.0 },
-  { periodNo: 5, label: 'คาบที่ 5', startTime: '13.30', endTime: '14.30', durationMinutes: 60, durationHours: 1.0 },
-  { periodNo: 6, label: 'คาบที่ 6', startTime: '14.30', endTime: '15.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 1, label: 'ชั่วโมงที่ 1', startTime: '08.30', endTime: '09.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 2, label: 'ชั่วโมงที่ 2', startTime: '09.30', endTime: '10.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 3, label: 'ชั่วโมงที่ 3', startTime: '10.30', endTime: '11.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 4, label: 'ชั่วโมงที่ 4', startTime: '12.30', endTime: '13.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 5, label: 'ชั่วโมงที่ 5', startTime: '13.30', endTime: '14.30', durationMinutes: 60, durationHours: 1.0 },
+  { periodNo: 6, label: 'ชั่วโมงที่ 6', startTime: '14.30', endTime: '15.30', durationMinutes: 60, durationHours: 1.0 },
   {
     periodNo: 7,
     label: 'พบครูประจำชั้น',
@@ -113,6 +113,24 @@ export const DEFAULT_PERIODS_CONFIG: readonly PeriodConfigItem[] = [
     isHomeroom: true,
   },
 ];
+
+const NON_TEACHING_CUSTODIAL_KEYWORDS = [
+  'นักการภารโรง',
+  'ภารโรง',
+  'พนักงานบริการ',
+  'ยาม',
+  'ลูกจ้างชั่วคราวภารโรง',
+] as const;
+
+/**
+ * Determines whether a staff member is eligible for instructional/teaching assignment.
+ * Excludes custodial/janitorial roles while keeping executives, teachers, and instructional support staff.
+ */
+export function isEligibleForTeaching(staff: Pick<TeacherRecord, 'position'>): boolean {
+  const pos = (staff.position || '').trim();
+  if (!pos) return true;
+  return !NON_TEACHING_CUSTODIAL_KEYWORDS.some((kw) => pos.includes(kw));
+}
 
 export const DEFAULT_FOOTER_NOTE =
   'เวลา 07.00-08.05 น. กิจกรรม 5ส | เวลา 08.05-08.30 น. กิจกรรมหน้าเสาธง | เวลา 11.30-12.30 น. พักกลางวัน | เวลา 15.30-15.50 น. พบครูประจำชั้น (ท่องสูตรคูณ บทอาขยาน ทำความสะอาดห้องเรียน) | เวลา 15.30-16.00 น. ทุกวันพุธและวันพฤหัสบดี PLC | เวลา 15.50-16.00 น. เข้าแถวกลับบ้าน';
@@ -271,10 +289,17 @@ export function detectTimetableConflicts(
   };
 }
 
+export type W9StatusLabel =
+  | 'ผู้บริหารสถานศึกษา'
+  | 'สายสนับสนุน'
+  | 'ผ่านเกณฑ์'
+  | 'ต่ำกว่าเกณฑ์';
+
 export interface TeacherWeeklyLoadSummary {
   teacherId: string;
   isDirector: boolean;
   isSupport: boolean;
+  w9StatusLabel: W9StatusLabel;
   coreAndElectiveHours: number;
   activityHours: number;
   homeroomHours: number;
@@ -333,55 +358,75 @@ export function calculateTeacherWeeklyLoads(
     kgHoursByTeacher.set(homeroomId, (kgHoursByTeacher.get(homeroomId) || 0) + hrs);
   }
 
-  return teachers.map((teacher) => {
-    const isDirector = (teacher.position || '').includes('ผู้อำนวยการ');
-    const isSupport = getStaffBranch(teacher) === 'support';
-    const teacherSlots = slotMapByTeacher.get(teacher.id) || [];
+  return teachers
+    .filter((teacher) => {
+      if (isEligibleForTeaching(teacher)) return true;
+      // Preserve data integrity if a legacy slot explicitly references an ineligible staff member
+      return (
+        (slotMapByTeacher.get(teacher.id)?.length || 0) > 0 ||
+        (kgHoursByTeacher.get(teacher.id) || 0) > 0
+      );
+    })
+    .map((teacher) => {
+      const pos = teacher.position || '';
+      const isDirector = pos.includes('ผู้อำนวยการ');
+      const isSupport = !isDirector && getStaffBranch(teacher) === 'support';
+      const teacherSlots = slotMapByTeacher.get(teacher.id) || [];
 
-    let coreAndElectiveHours = 0;
-    let activityHours = 0;
-    let homeroomHours = 0;
+      let coreAndElectiveHours = 0;
+      let activityHours = 0;
+      let homeroomHours = 0;
 
-    for (const slot of teacherSlots) {
-      const pCfg = periodMap.get(slot.periodNo);
-      const durationHours =
-        pCfg !== undefined
-          ? Number(pCfg.durationHours)
-          : slot.periodNo === 7
-          ? 0.5
-          : 1.0;
+      for (const slot of teacherSlots) {
+        const pCfg = periodMap.get(slot.periodNo);
+        const durationHours =
+          pCfg !== undefined
+            ? Number(pCfg.durationHours)
+            : slot.periodNo === 7
+            ? 0.5
+            : 1.0;
 
-      const isHomeroomSlot =
-        slot.subjectType === 'ประจำชั้น' || Boolean(pCfg?.isHomeroom) || slot.periodNo === 7;
+        const isHomeroomSlot =
+          slot.subjectType === 'ประจำชั้น' || Boolean(pCfg?.isHomeroom) || slot.periodNo === 7;
 
-      if (isHomeroomSlot) {
-        homeroomHours += durationHours;
-      } else if (slot.subjectType === 'กิจกรรมพัฒนาผู้เรียน') {
-        activityHours += durationHours;
-      } else {
-        coreAndElectiveHours += durationHours;
+        if (isHomeroomSlot) {
+          homeroomHours += durationHours;
+        } else if (slot.subjectType === 'กิจกรรมพัฒนาผู้เรียน') {
+          activityHours += durationHours;
+        } else {
+          coreAndElectiveHours += durationHours;
+        }
       }
-    }
 
-    const roundedCore = roundHours(coreAndElectiveHours);
-    const roundedActivity = roundHours(activityHours);
-    const roundedHomeroom = roundHours(homeroomHours);
-    const roundedKg = roundHours(kgHoursByTeacher.get(teacher.id) || 0);
-    const teachingHoursExclHomeroom = roundHours(roundedCore + roundedActivity + roundedKg);
-    const totalHoursInclHomeroom = roundHours(teachingHoursExclHomeroom + roundedHomeroom);
+      const roundedCore = roundHours(coreAndElectiveHours);
+      const roundedActivity = roundHours(activityHours);
+      const roundedHomeroom = roundHours(homeroomHours);
+      const roundedKg = roundHours(kgHoursByTeacher.get(teacher.id) || 0);
+      const teachingHoursExclHomeroom = roundHours(roundedCore + roundedActivity + roundedKg);
+      const totalHoursInclHomeroom = roundHours(teachingHoursExclHomeroom + roundedHomeroom);
+      const meetsW9Threshold = teachingHoursExclHomeroom >= 12;
 
-    return {
-      teacherId: teacher.id,
-      isDirector,
-      isSupport,
-      coreAndElectiveHours: roundedCore,
-      activityHours: roundedActivity,
-      homeroomHours: roundedHomeroom,
-      kindergartenHours: roundedKg,
-      totalPeriods: teacherSlots.length,
-      teachingHoursExclHomeroom,
-      totalHoursInclHomeroom,
-      meetsW9Threshold: teachingHoursExclHomeroom >= 12,
-    };
-  });
+      const w9StatusLabel: W9StatusLabel = isDirector
+        ? 'ผู้บริหารสถานศึกษา'
+        : isSupport
+        ? 'สายสนับสนุน'
+        : meetsW9Threshold
+        ? 'ผ่านเกณฑ์'
+        : 'ต่ำกว่าเกณฑ์';
+
+      return {
+        teacherId: teacher.id,
+        isDirector,
+        isSupport,
+        w9StatusLabel,
+        coreAndElectiveHours: roundedCore,
+        activityHours: roundedActivity,
+        homeroomHours: roundedHomeroom,
+        kindergartenHours: roundedKg,
+        totalPeriods: teacherSlots.length,
+        teachingHoursExclHomeroom,
+        totalHoursInclHomeroom,
+        meetsW9Threshold,
+      };
+    });
 }

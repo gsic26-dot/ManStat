@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   CalendarRange,
   Settings,
@@ -78,6 +78,7 @@ import {
   getDefaultTimetableSettings,
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
+  isEligibleForTeaching,
 } from '@/lib/regulations/timetable-utils';
 import {
   evaluateSmartSwapTargets,
@@ -199,6 +200,19 @@ export const ViewTimetable: React.FC = () => {
   const [isRollingOver, setIsRollingOver] = useState<boolean>(false);
 
   const [printMode, setPrintMode] = useState<TimetablePrintMode | null>(null);
+  const [isPrintMenuOpen, setIsPrintMenuOpen] = useState<boolean>(false);
+  const printMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isPrintMenuOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (printMenuRef.current && !printMenuRef.current.contains(event.target as Node)) {
+        setIsPrintMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isPrintMenuOpen]);
 
   const [isMigrateModalOpen, setIsMigrateModalOpen] = useState<boolean>(false);
   const [migrateDrafts, setMigrateDrafts] = useState<
@@ -310,12 +324,16 @@ export const ViewTimetable: React.FC = () => {
   }, [selectedRoom, activeTab, isSmartSwapMode]);
 
   const sortedTeachers = useMemo(() => sortTeachersByBranch(teachersList), [teachersList]);
+  const eligibleTeachingStaff = useMemo(
+    () => sortedTeachers.filter(isEligibleForTeaching),
+    [sortedTeachers]
+  );
 
   useEffect(() => {
-    if (!selectedTeacherId && sortedTeachers.length > 0) {
-      setSelectedTeacherId(sortedTeachers[0].id);
+    if (!selectedTeacherId && eligibleTeachingStaff.length > 0) {
+      setSelectedTeacherId(eligibleTeachingStaff[0].id);
     }
-  }, [selectedTeacherId, sortedTeachers]);
+  }, [selectedTeacherId, eligibleTeachingStaff]);
 
   const teacherMap = useMemo(() => {
     const map = new Map<string, TeacherRecord>();
@@ -338,9 +356,19 @@ export const ViewTimetable: React.FC = () => {
   }, [defaultAcademicYear]);
 
   const periodsConfig = useMemo(() => {
-    return settings.periodsConfig.length === 7
-      ? settings.periodsConfig
-      : getDefaultTimetableSettings(academicYear, semester).periodsConfig;
+    const raw =
+      settings.periodsConfig.length === 7
+        ? settings.periodsConfig
+        : getDefaultTimetableSettings(academicYear, semester).periodsConfig;
+    return raw.map((p) => {
+      if (p.periodNo === 7 || p.isHomeroom) {
+        return { ...p, label: p.label === 'คาบที่ 7' || p.label === 'ชั่วโมงที่ 7' ? 'พบครูประจำชั้น' : p.label, isHomeroom: true };
+      }
+      return {
+        ...p,
+        label: p.label.startsWith('คาบที่ ') ? p.label.replace('คาบที่ ', 'ชั่วโมงที่ ') : p.label,
+      };
+    });
   }, [settings, academicYear, semester]);
 
   const morningPeriods = useMemo(() => periodsConfig.filter((p) => p.periodNo <= 3), [periodsConfig]);
@@ -421,7 +449,8 @@ export const ViewTimetable: React.FC = () => {
       if (a.subjectType === 'ประจำชั้น') homeroomPeriods += a.periodsPerWeek;
       else learningPeriods += a.periodsPerWeek;
     }
-    return { learningPeriods, homeroomPeriods, total: learningPeriods + homeroomPeriods };
+    const homeroomHours = Math.round(homeroomPeriods * 0.5 * 100) / 100;
+    return { learningPeriods, homeroomPeriods, homeroomHours, total: learningPeriods + homeroomPeriods };
   }, [selectedRoomAllocations]);
 
   // Slot Modal handlers
@@ -715,8 +744,24 @@ export const ViewTimetable: React.FC = () => {
   );
 
   const summaryRows = useMemo(() => {
-    return teacherLoads.filter((load) => showAllStaffInSummary || load.totalPeriods > 0);
+    return teacherLoads.filter((load) => showAllStaffInSummary || load.totalPeriods > 0 || load.kindergartenHours > 0);
   }, [teacherLoads, showAllStaffInSummary]);
+
+  const w9SummaryStats = useMemo(() => {
+    let passed = 0;
+    let below = 0;
+    let execAndSupport = 0;
+    for (const l of teacherLoads) {
+      if (l.w9StatusLabel === 'ผู้บริหารสถานศึกษา' || l.w9StatusLabel === 'สายสนับสนุน') {
+        execAndSupport += 1;
+      } else if (l.w9StatusLabel === 'ผ่านเกณฑ์') {
+        passed += 1;
+      } else {
+        below += 1;
+      }
+    }
+    return { passed, below, execAndSupport };
+  }, [teacherLoads]);
 
   // Phase 9.2: Teacher name map & Smart Swap evaluation map
   const teacherNamesMap = useMemo(() => {
@@ -1182,7 +1227,7 @@ export const ViewTimetable: React.FC = () => {
                 className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
               >
                 <Settings className="w-4 h-4 shrink-0" />
-                <span>ตั้งค่าคาบเรียน</span>
+                <span>ตั้งค่าเวลาเรียน</span>
               </button>
             </>
           )}
@@ -1361,37 +1406,67 @@ export const ViewTimetable: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPrintMode('room_single')}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 shrink-0" />
-                      <span>พิมพ์ห้องนี้ A4</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPrintMode('room_all')}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 shrink-0" />
-                      <span>พิมพ์ทุกห้อง A4</span>
-                    </button>
+                  <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                    {/* Compact Print A4 Dropdown */}
+                    <div ref={printMenuRef} className="relative">
+                      <button
+                        type="button"
+                        aria-haspopup="menu"
+                        aria-expanded={isPrintMenuOpen}
+                        onClick={() => setIsPrintMenuOpen((prev) => !prev)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        <Printer className="w-3.5 h-3.5 shrink-0" />
+                        <span>พิมพ์ A4</span>
+                        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                      </button>
+
+                      {isPrintMenuOpen && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 shadow-lg py-1 z-30"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setIsPrintMenuOpen(false);
+                              setPrintMode('room_single');
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                            <span>พิมพ์ห้องนี้ ({selectedRoom}) A4</span>
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setIsPrintMenuOpen(false);
+                              setPrintMode('room_all');
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                            <span>พิมพ์ทุกห้อง (ป.1–ม.3) A4</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     {canManage && (
                       <>
                         <button
                           type="button"
                           onClick={() => setIsSmartSwapMode((prev) => !prev)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer whitespace-nowrap ${
                             isSmartSwapMode
                               ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600'
                               : 'bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                           }`}
                         >
                           <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
-                          <span>{isSmartSwapMode ? 'กำลังใช้โหมดสลับคาบ' : 'โหมดสลับคาบ'}</span>
+                          <span>{isSmartSwapMode ? 'กำลังสลับชั่วโมง' : 'สลับชั่วโมง'}</span>
                         </button>
 
                         <button
@@ -1401,10 +1476,10 @@ export const ViewTimetable: React.FC = () => {
                             setAutoRespectLocked(true);
                             setIsAutoModalOpen(true);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
                         >
                           <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                          <span>จัดตารางสอนอัตโนมัติ</span>
+                          <span>จัดตารางอัตโนมัติ</span>
                         </button>
                       </>
                     )}
@@ -1449,22 +1524,22 @@ export const ViewTimetable: React.FC = () => {
                   aria-label={`ตารางเรียนชั้น ${selectedRoom}`}
                   className="overflow-x-auto w-full"
                 >
-                  <table className="w-full min-w-[920px] border-separate border-spacing-0 text-xs">
+                  <table className="table-fixed w-full min-w-[780px] border-separate border-spacing-0 text-xs">
                     <thead>
                       <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-600 dark:text-slate-300">
                         <th
                           scope="col"
-                          className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-24 px-3 py-3 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
+                          className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[82px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
                         >
-                          วัน / คาบ
+                          วัน / ชั่วโมง
                         </th>
                         {morningPeriods.map((p) => (
                           <th
                             key={p.periodNo}
                             scope="col"
-                            className="px-2 py-2.5 text-center border border-slate-200 dark:border-slate-800"
+                            className="px-1.5 py-2 text-center border border-slate-200 dark:border-slate-800"
                           >
-                            <div className="font-semibold text-slate-800 dark:text-slate-100">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                               {p.label}
                             </div>
                             <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1474,20 +1549,18 @@ export const ViewTimetable: React.FC = () => {
                         ))}
                         <th
                           scope="col"
-                          className="w-12 px-1 py-2.5 text-center bg-amber-50/80 dark:bg-amber-950/30 border border-slate-200 dark:border-slate-800 text-amber-700 dark:text-amber-300"
-                        >
-                          <div className="text-[10px] font-semibold">พัก</div>
-                          <div className="text-[9px] font-mono">11.30</div>
-                        </th>
+                          aria-label="พักกลางวัน"
+                          className="w-7 px-0.5 py-2 bg-amber-50/80 dark:bg-amber-950/30 border border-slate-200 dark:border-slate-800"
+                        />
                         {afternoonPeriods.map((p, idx) => (
                           <th
                             key={p.periodNo}
                             scope="col"
-                            className={`px-2 py-2.5 text-center border border-slate-200 dark:border-slate-800 ${
+                            className={`px-1.5 py-2 text-center border border-slate-200 dark:border-slate-800 ${
                               idx === afternoonPeriods.length - 1 ? 'rounded-tr-xl' : ''
                             }`}
                           >
-                            <div className="font-semibold text-slate-800 dark:text-slate-100">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                               {p.label}
                             </div>
                             <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1591,7 +1664,7 @@ export const ViewTimetable: React.FC = () => {
                                         ) : (
                                           <>
                                             {canManage && !isSmartSwapMode && <Plus className="w-3 h-3" />}
-                                            <span>{canManage && !isSmartSwapMode ? 'เพิ่มคาบ' : '-'}</span>
+                                            <span>{canManage && !isSmartSwapMode ? 'เพิ่มวิชา' : '-'}</span>
                                           </>
                                         )}
                                       </div>
@@ -1728,7 +1801,7 @@ export const ViewTimetable: React.FC = () => {
                                         ) : (
                                           <>
                                             {canManage && !isSmartSwapMode && <Plus className="w-3 h-3" />}
-                                            <span>{canManage && !isSmartSwapMode ? 'เพิ่มคาบ' : '-'}</span>
+                                            <span>{canManage && !isSmartSwapMode ? 'เพิ่มวิชา' : '-'}</span>
                                           </>
                                         )}
                                       </div>
@@ -1864,7 +1937,7 @@ export const ViewTimetable: React.FC = () => {
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
                     className="h-9 min-w-[240px] bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
-                    {sortedTeachers.map((t) => (
+                    {eligibleTeachingStaff.map((t) => (
                       <option key={t.id} value={t.id}>
                         {formatStaffName(t)}
                       </option>
@@ -1877,15 +1950,12 @@ export const ViewTimetable: React.FC = () => {
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono">
                       <Clock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                       <span>
-                        จำนวน {activeTeacherLoad.totalPeriods} คาบ • สอน{' '}
-                        {activeTeacherLoad.teachingHoursExclHomeroom} ชม./สัปดาห์
+                        สอน {activeTeacherLoad.teachingHoursExclHomeroom} ชม./สัปดาห์
+                        {activeTeacherLoad.homeroomHours > 0
+                          ? ` • พบครูประจำชั้น ${activeTeacherLoad.homeroomHours} ชม.`
+                          : ''}
                       </span>
                     </span>
-                    {activeTeacherLoad.homeroomHours > 0 && (
-                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-mono border border-amber-200 dark:border-amber-800/70">
-                        ประจำชั้น {activeTeacherLoad.homeroomHours} ชม.
-                      </span>
-                    )}
                     {!activeTeacherLoad.isDirector && !activeTeacherLoad.isSupport && (
                       <span
                         className={`px-2.5 py-1 rounded-lg font-medium border ${
@@ -1917,22 +1987,22 @@ export const ViewTimetable: React.FC = () => {
                 aria-label={`ตารางสอนของ ${getCleanName(selectedTeacherId)}`}
                 className="overflow-x-auto w-full"
               >
-                <table className="w-full min-w-[920px] border-separate border-spacing-0 text-xs">
+                <table className="table-fixed w-full min-w-[780px] border-separate border-spacing-0 text-xs">
                   <thead>
                     <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-600 dark:text-slate-300">
                       <th
                         scope="col"
-                        className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-24 px-3 py-3 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
+                        className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[82px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
                       >
-                        วัน / คาบ
+                        วัน / ชั่วโมง
                       </th>
                       {morningPeriods.map((p) => (
                         <th
                           key={p.periodNo}
                           scope="col"
-                          className="px-2 py-2.5 text-center border border-slate-200 dark:border-slate-800"
+                          className="px-1.5 py-2 text-center border border-slate-200 dark:border-slate-800"
                         >
-                          <div className="font-semibold text-slate-800 dark:text-slate-100">
+                          <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                             {p.label}
                           </div>
                           <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1942,20 +2012,18 @@ export const ViewTimetable: React.FC = () => {
                       ))}
                       <th
                         scope="col"
-                        className="w-12 px-1 py-2.5 text-center bg-amber-50/80 dark:bg-amber-950/30 border border-slate-200 dark:border-slate-800 text-amber-700 dark:text-amber-300"
-                      >
-                        <div className="text-[10px] font-semibold">พัก</div>
-                        <div className="text-[9px] font-mono">11.30</div>
-                      </th>
+                        aria-label="พักกลางวัน"
+                        className="w-7 px-0.5 py-2 bg-amber-50/80 dark:bg-amber-950/30 border border-slate-200 dark:border-slate-800"
+                      />
                       {afternoonPeriods.map((p, idx) => (
                         <th
                           key={p.periodNo}
                           scope="col"
-                          className={`px-2 py-2.5 text-center border border-slate-200 dark:border-slate-800 ${
+                          className={`px-1.5 py-2 text-center border border-slate-200 dark:border-slate-800 ${
                             idx === afternoonPeriods.length - 1 ? 'rounded-tr-xl' : ''
                           }`}
                         >
-                          <div className="font-semibold text-slate-800 dark:text-slate-100">
+                          <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                             {p.label}
                           </div>
                           <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
@@ -2137,7 +2205,7 @@ export const ViewTimetable: React.FC = () => {
 
               <div
                 className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
-                  roomAllocationTotals.total > 35
+                  roomAllocationTotals.learningPeriods > 30 || roomAllocationTotals.homeroomPeriods > 5
                     ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
                     : 'bg-white dark:bg-[#121822] border-slate-200/90 dark:border-slate-800/80 text-slate-700 dark:text-slate-200'
                 }`}
@@ -2146,15 +2214,14 @@ export const ViewTimetable: React.FC = () => {
                   <BookOpen className="w-4 h-4 text-sky-500 shrink-0" />
                   <span>
                     แผนการสอนห้อง <strong>{selectedRoom}</strong>: จัดสรรแล้ว{' '}
-                    <span className="font-mono font-bold">{roomAllocationTotals.learningPeriods}</span> / 30 คาบเรียน +{' '}
-                    <span className="font-mono font-bold">{roomAllocationTotals.homeroomPeriods}</span> คาบประจำชั้น (รวม{' '}
-                    <span className="font-mono font-bold">{roomAllocationTotals.total}</span> / 35 คาบ)
+                    <span className="font-mono font-bold">{roomAllocationTotals.learningPeriods}</span> / 30 ชม.เรียน + ประจำชั้น{' '}
+                    <span className="font-mono font-bold">{roomAllocationTotals.homeroomHours}</span> ชม.
                   </span>
                 </div>
-                {roomAllocationTotals.total > 35 && (
+                {(roomAllocationTotals.learningPeriods > 30 || roomAllocationTotals.homeroomPeriods > 5) && (
                   <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>จำนวนคาบรวมเกิน 35 คาบ/สัปดาห์</span>
+                    <span>จำนวนชั่วโมงเรียนเกินโควต้าประจำสัปดาห์</span>
                   </span>
                 )}
               </div>
@@ -2251,7 +2318,7 @@ export const ViewTimetable: React.FC = () => {
                                       : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70'
                                   }`}
                                 >
-                                  {placed}/{alloc.periodsPerWeek} คาบ
+                                  {placed}/{alloc.periodsPerWeek} ชม.
                                 </span>
                               </td>
                               {canManage && (
@@ -2350,9 +2417,16 @@ export const ViewTimetable: React.FC = () => {
               <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      ตารางการจัดประสบการณ์ระดับปฐมวัย ห้อง {selectedKgRoom} · ปีการศึกษา {academicYear} ภาคเรียนที่ {semester}
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        ตารางการจัดประสบการณ์ระดับปฐมวัย ห้อง {selectedKgRoom} · ปีการศึกษา {academicYear} ภาคเรียนที่ {semester}
+                      </h3>
+                      {!selectedKgSchedule && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/80">
+                          ตัวอย่างค่าเริ่มต้น (ยังไม่บันทึก)
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300 mt-1">
                       <span>
                         ครูประจำชั้น:{' '}
@@ -2442,20 +2516,36 @@ export const ViewTimetable: React.FC = () => {
                 </label>
               </div>
 
+              {/* Compact Summary Stats Bar */}
+              <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>ผ่านเกณฑ์ {w9SummaryStats.passed} คน</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/70 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>ต่ำกว่าเกณฑ์ {w9SummaryStats.below} คน</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium">
+                  <Users className="w-3.5 h-3.5 shrink-0" />
+                  <span>ผู้บริหารและสายสนับสนุน {w9SummaryStats.execAndSupport} คน</span>
+                </span>
+              </div>
+
               <div tabIndex={0} role="region" aria-label="ตารางสรุปชั่วโมงสอน ว 9/2564" className="overflow-x-auto w-full">
                 <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                  <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
+                  <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                     <tr>
-                      <th scope="col" className="w-12 px-3 py-3 text-center font-mono">ลำดับ</th>
-                      <th scope="col" className="px-4 py-3">ชื่อ-สกุล</th>
-                      <th scope="col" className="px-3 py-3 text-center">พื้นฐาน/เพิ่มเติม (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">กิจกรรม (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">ปฐมวัย (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">ประจำชั้น (ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-center">รวมคาบ</th>
-                      <th scope="col" className="px-3 py-3 text-center">ชั่วโมงสอน/สัปดาห์</th>
-                      <th scope="col" className="px-4 py-3 text-center">เกณฑ์ ว 9/2564 (&gt;= 12 ชม.)</th>
-                      <th scope="col" className="px-3 py-3 text-right">ตารางสอน</th>
+                      <th scope="col" className="w-12 px-2.5 py-3 text-center font-mono">ลำดับ</th>
+                      <th scope="col" className="min-w-[180px] px-4 py-3 whitespace-nowrap">ชื่อ-สกุล</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">พื้นฐาน/เพิ่มเติม (ชม.)</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">กิจกรรม (ชม.)</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">ปฐมวัย (ชม.)</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">ประจำชั้น (ชม.)</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">รวมทั้งหมด (ชม.)</th>
+                      <th scope="col" className="px-2.5 py-3 text-center whitespace-nowrap">ชั่วโมงสอน/สัปดาห์</th>
+                      <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">เกณฑ์ ว 9/2564 (&gt;= 12 ชม.)</th>
+                      <th scope="col" className="px-3 py-3 text-right whitespace-nowrap">ตารางสอน</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
@@ -2471,28 +2561,32 @@ export const ViewTimetable: React.FC = () => {
                           key={load.teacherId}
                           className="hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors"
                         >
-                          <td className="px-3 py-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                          <td className="px-2.5 py-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                             {getCleanName(load.teacherId)}
                           </td>
-                          <td className="px-3 py-3 text-center font-mono">{load.coreAndElectiveHours}</td>
-                          <td className="px-3 py-3 text-center font-mono">{load.activityHours}</td>
-                          <td className="px-3 py-3 text-center font-mono">
+                          <td className="px-2.5 py-3 text-center font-mono">{load.coreAndElectiveHours}</td>
+                          <td className="px-2.5 py-3 text-center font-mono">{load.activityHours}</td>
+                          <td className="px-2.5 py-3 text-center font-mono">
                             {load.kindergartenHours > 0 ? load.kindergartenHours : '-'}
                           </td>
-                          <td className="px-3 py-3 text-center font-mono">{load.homeroomHours}</td>
-                          <td className="px-3 py-3 text-center font-mono font-semibold">
-                            {load.totalPeriods}
+                          <td className="px-2.5 py-3 text-center font-mono">{load.homeroomHours}</td>
+                          <td className="px-2.5 py-3 text-center font-mono font-semibold text-slate-800 dark:text-slate-100">
+                            {load.totalHoursInclHomeroom}
                           </td>
-                          <td className="px-3 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400">
+                          <td className="px-2.5 py-3 text-center font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">
                             {load.teachingHoursExclHomeroom} ชม.
                           </td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            {load.isDirector || load.isSupport ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                ผู้บริหาร/สายสนับสนุน
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            {load.w9StatusLabel === 'ผู้บริหารสถานศึกษา' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70">
+                                ผู้บริหารสถานศึกษา
                               </span>
-                            ) : load.meetsW9Threshold ? (
+                            ) : load.w9StatusLabel === 'สายสนับสนุน' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                สายสนับสนุน
+                              </span>
+                            ) : load.w9StatusLabel === 'ผ่านเกณฑ์' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70">
                                 <CheckCircle2 className="w-3 h-3 shrink-0" />
                                 <span>ผ่านเกณฑ์</span>
@@ -2686,7 +2780,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- เลือกครูผู้สอนหลัก --</option>
-                    {sortedTeachers.map((t) => (
+                    {eligibleTeachingStaff.map((t) => (
                       <option key={t.id} value={t.id}>
                         {formatStaffName(t)}
                       </option>
@@ -2708,7 +2802,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- ไม่มีครูร่วมสอน --</option>
-                    {sortedTeachers
+                    {eligibleTeachingStaff
                       .filter((t) => t.id !== slotTeacherId)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
@@ -2907,7 +3001,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- เลือกครูผู้สอนหลัก --</option>
-                    {sortedTeachers.map((t) => (
+                    {eligibleTeachingStaff.map((t) => (
                       <option key={t.id} value={t.id}>
                         {formatStaffName(t)}
                       </option>
@@ -2929,7 +3023,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- ไม่มีครูร่วมสอน --</option>
-                    {sortedTeachers
+                    {eligibleTeachingStaff
                       .filter((t) => t.id !== allocTeacherId)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
@@ -2946,7 +3040,7 @@ export const ViewTimetable: React.FC = () => {
                     htmlFor="alloc-periods"
                     className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
                   >
-                    จำนวนคาบ / สัปดาห์ <span className="text-rose-500">*</span>
+                    จำนวนชั่วโมง / สัปดาห์ <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="alloc-periods"
@@ -3323,7 +3417,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- เลือกครูประจำชั้น --</option>
-                    {sortedTeachers.map((t) => (
+                    {eligibleTeachingStaff.map((t) => (
                       <option key={t.id} value={t.id}>
                         {formatStaffName(t)}
                       </option>
@@ -3345,7 +3439,7 @@ export const ViewTimetable: React.FC = () => {
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                   >
                     <option value="">-- ไม่มี --</option>
-                    {sortedTeachers
+                    {eligibleTeachingStaff
                       .filter((t) => t.id !== kgHomeroomTeacherId)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
