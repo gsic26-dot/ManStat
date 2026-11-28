@@ -125,3 +125,36 @@ export interface TimetableBundle {
   slots: TimetableSlot[];
   kindergartenSchedules: KindergartenSchedule[];
 }
+
+export type SubjectLevelGroup = 'kindergarten' | 'primary' | 'secondary';
+
+export type SubjectSemesterScope = 'both' | '1' | '2';
+
+export type SchoolSubjectType =
+  | 'พื้นฐาน'
+  | 'เพิ่มเติม'
+  | 'กิจกรรมพัฒนาผู้เรียน'
+  | 'ประจำชั้น'
+  | 'ประสบการณ์ปฐมวัย';
+
+export interface SchoolSubject {
+  id: string;
+  subjectCode: string;
+  subjectName: string;
+  subjectGroup: string;
+  subjectType: SchoolSubjectType;
+  levelGroup: SubjectLevelGroup;
+  gradeLevels: string[];
+  semesterScope: SubjectSemesterScope;
+  defaultHoursPerWeek: number;
+  hoursPerYear: number;
+  credits: number;
+  preferMorning: boolean;
+  defaultConsecutive: 1 | 2;
+  curriculumVersion: string;
+  description: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}

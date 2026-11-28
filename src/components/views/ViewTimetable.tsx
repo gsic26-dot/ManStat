@@ -67,6 +67,7 @@ import {
 } from '@/components/views/TimetablePrintView';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { SubjectCatalogModal } from '@/components/views/SubjectCatalogModal';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
@@ -185,6 +186,7 @@ export const ViewTimetable: React.FC = () => {
 
   // Settings Modal State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isSubjectCatalogOpen, setIsSubjectCatalogOpen] = useState<boolean>(false);
   const [draftPeriods, setDraftPeriods] = useState<PeriodConfigItem[]>([]);
   const [draftLunchConfig, setDraftLunchConfig] = useState<LunchBreakConfig>({ ...DEFAULT_LUNCH_CONFIG });
   const [draftFooterNote, setDraftFooterNote] = useState<string>('');
@@ -1488,6 +1490,15 @@ export const ViewTimetable: React.FC = () => {
               <span>{isMasterLocked ? 'ปลดล็อกตารางสอน' : 'ล็อกตารางสอน'}</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsSubjectCatalogOpen(true)}
+            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+          >
+            <BookOpen className="w-4 h-4 shrink-0 text-sky-600 dark:text-sky-400" />
+            <span>คลังรายวิชา</span>
+          </button>
 
           {canManage && (
             <>
@@ -4573,6 +4584,13 @@ export const ViewTimetable: React.FC = () => {
         isLoading={isSaving}
         onConfirm={handleConfirmDeleteAllocation}
         onCancel={() => setDeletingAlloc(null)}
+      />
+
+      {/* Phase 11.1: School Subject Catalog Modal */}
+      <SubjectCatalogModal
+        isOpen={isSubjectCatalogOpen}
+        canManage={canManageTimetable}
+        onClose={() => setIsSubjectCatalogOpen(false)}
       />
     </div>
   );

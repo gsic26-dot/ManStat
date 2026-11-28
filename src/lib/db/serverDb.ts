@@ -57,7 +57,15 @@ import type {
   TimetableBundle,
   TimetableSemester,
   TimetableSubjectType,
+  SchoolSubject,
+  SchoolSubjectType,
+  SubjectLevelGroup,
+  SubjectSemesterScope,
 } from '@/lib/data/timetableTypes';
+import {
+  DEFAULT_CURRICULUM_VERSION,
+  getSubjectDedupeKey,
+} from '@/lib/regulations/school-curriculum-presets';
 import {
   getDefaultTimetableSettings,
   DEFAULT_KINDERGARTEN_ACTIVITIES,
@@ -132,6 +140,7 @@ export interface DatabaseState {
   timetableSlots?: TimetableSlot[];
   kindergartenSchedules?: KindergartenSchedule[];
   teachingSubstitutions?: TeachingSubstitution[];
+  schoolSubjects?: SchoolSubject[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -4205,6 +4214,239 @@ export async function dbDeleteTeachingSubstitution(id: string): Promise<boolean>
   db.teachingSubstitutions = (db.teachingSubstitutions || []).filter((s) => s.id !== id);
   saveDatabase(db);
   return true;
+}
+
+// ============================================================================
+// PHASE 11.1: SCHOOL SUBJECT CATALOG (คลังรายวิชา อ.1–ม.3)
+// ============================================================================
+
+function schoolSubjectFromDb(row: any): SchoolSubject {
+  const rawGrades = Array.isArray(row.grade_levels) ? row.grade_levels : [];
+  const levelGroup: SubjectLevelGroup =
+    row.level_group === 'kindergarten' || row.level_group === 'secondary'
+      ? row.level_group
+      : 'primary';
+  const semesterScope: SubjectSemesterScope =
+    row.semester_scope === '1' || row.semester_scope === '2' ? row.semester_scope : 'both';
+
+  return {
+    id: String(row.id || ''),
+    subjectCode: String(row.subject_code || ''),
+    subjectName: String(row.subject_name || ''),
+    subjectGroup: String(row.subject_group || 'วิชาเฉพาะโรงเรียน'),
+    subjectType: (row.subject_type || 'พื้นฐาน') as SchoolSubjectType,
+    levelGroup,
+    gradeLevels: rawGrades.map((g: unknown) => String(g)).filter(Boolean),
+    semesterScope,
+    defaultHoursPerWeek: Number(row.default_hours_per_week) || 1,
+    hoursPerYear: Number(row.hours_per_year) || 0,
+    credits: Number(row.credits) || 0,
+    preferMorning: Boolean(row.prefer_morning),
+    defaultConsecutive: Number(row.default_consecutive) === 2 ? 2 : 1,
+    curriculumVersion: String(row.curriculum_version || DEFAULT_CURRICULUM_VERSION),
+    description: String(row.description || ''),
+    isActive: row.is_active !== false,
+    sortOrder: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 100,
+    createdAt: row.created_at || undefined,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+function schoolSubjectToDbRow(subject: SchoolSubject, now: string) {
+  return {
+    id: subject.id,
+    subject_code: (subject.subjectCode || '').trim(),
+    subject_name: subject.subjectName.trim(),
+    subject_group: subject.subjectGroup.trim(),
+    subject_type: subject.subjectType,
+    level_group: subject.levelGroup,
+    grade_levels: subject.gradeLevels,
+    semester_scope: subject.semesterScope,
+    default_hours_per_week: Number(subject.defaultHoursPerWeek) || 1,
+    hours_per_year: Math.max(0, Math.round(Number(subject.hoursPerYear) || 0)),
+    credits: Math.max(0, Math.round((Number(subject.credits) || 0) * 10) / 10),
+    prefer_morning: Boolean(subject.preferMorning),
+    default_consecutive: subject.defaultConsecutive === 2 ? 2 : 1,
+    curriculum_version: (subject.curriculumVersion || DEFAULT_CURRICULUM_VERSION).trim(),
+    description: (subject.description || '').trim(),
+    is_active: subject.isActive !== false,
+    sort_order: Number.isFinite(Number(subject.sortOrder)) ? Number(subject.sortOrder) : 100,
+    updated_at: now,
+  };
+}
+
+function sortSchoolSubjectsList(list: SchoolSubject[]): SchoolSubject[] {
+  return [...list].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    const codeCmp = (a.subjectCode || '').localeCompare(b.subjectCode || '', 'th');
+    if (codeCmp !== 0) return codeCmp;
+    return a.subjectName.localeCompare(b.subjectName, 'th');
+  });
+}
+
+export async function dbGetSchoolSubjects(): Promise<SchoolSubject[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('school_subjects')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('subject_code', { ascending: true });
+    if (error) {
+      throw new Error(`ไม่สามารถโหลดคลังรายวิชาจาก Supabase ได้: ${error.message}`);
+    }
+    return sortSchoolSubjectsList(Array.isArray(data) ? data.map(schoolSubjectFromDb) : []);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  return sortSchoolSubjectsList(db.schoolSubjects || []);
+}
+
+export async function dbUpsertSchoolSubject(subject: SchoolSubject): Promise<SchoolSubject> {
+  const now = new Date().toISOString();
+  const id =
+    (subject.id || '').trim() ||
+    `SUB-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const normalized: SchoolSubject = {
+    ...subject,
+    id,
+    subjectCode: (subject.subjectCode || '').trim(),
+    subjectName: subject.subjectName.trim(),
+    subjectGroup: subject.subjectGroup.trim(),
+    curriculumVersion: (subject.curriculumVersion || DEFAULT_CURRICULUM_VERSION).trim(),
+    description: (subject.description || '').trim(),
+    defaultConsecutive: subject.defaultConsecutive === 2 ? 2 : 1,
+    isActive: subject.isActive !== false,
+    updatedAt: now,
+    createdAt: subject.createdAt || now,
+  };
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = schoolSubjectToDbRow(normalized, now);
+    const { data, error } = await supabase
+      .from('school_subjects')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกรายวิชาลง Supabase ได้: ${error.message}`);
+    }
+    return schoolSubjectFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.schoolSubjects || [])];
+  const idx = list.findIndex((s) => s.id === id);
+  if (idx >= 0) list[idx] = normalized;
+  else list.push(normalized);
+  db.schoolSubjects = list;
+  saveDatabase(db);
+  return normalized;
+}
+
+export async function dbToggleSchoolSubjectActive(
+  id: string,
+  isActive: boolean
+): Promise<SchoolSubject | null> {
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('school_subjects')
+      .update({ is_active: Boolean(isActive), updated_at: now })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    if (error) {
+      throw new Error(`ไม่สามารถเปลี่ยนสถานะรายวิชาใน Supabase ได้: ${error.message}`);
+    }
+    return data ? schoolSubjectFromDb(data) : null;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.schoolSubjects || [])];
+  const idx = list.findIndex((s) => s.id === id);
+  if (idx < 0) return null;
+  const updated: SchoolSubject = { ...list[idx], isActive: Boolean(isActive), updatedAt: now };
+  list[idx] = updated;
+  db.schoolSubjects = list;
+  saveDatabase(db);
+  return updated;
+}
+
+export async function dbDeleteSchoolSubject(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('school_subjects').delete().eq('id', id);
+    if (error) {
+      throw new Error(`ไม่สามารถลบรายวิชาจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.schoolSubjects = (db.schoolSubjects || []).filter((s) => s.id !== id);
+  saveDatabase(db);
+  return true;
+}
+
+export async function dbSeedSchoolSubjects(
+  presets: SchoolSubject[]
+): Promise<{ insertedCount: number; skippedCount: number }> {
+  const existing = await dbGetSchoolSubjects();
+  const existingKeys = new Set(existing.map((s) => getSubjectDedupeKey(s)));
+  const existingIds = new Set(existing.map((s) => s.id));
+  const now = new Date().toISOString();
+
+  const toInsert: SchoolSubject[] = [];
+  let skippedCount = 0;
+
+  for (const preset of presets) {
+    const key = getSubjectDedupeKey(preset);
+    if (existingKeys.has(key) || existingIds.has(preset.id)) {
+      skippedCount += 1;
+      continue;
+    }
+    existingKeys.add(key);
+    existingIds.add(preset.id);
+    toInsert.push({ ...preset, createdAt: now, updatedAt: now });
+  }
+
+  if (toInsert.length === 0) {
+    return { insertedCount: 0, skippedCount };
+  }
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const rows = toInsert.map((s) => ({
+      ...schoolSubjectToDbRow(s, now),
+      created_at: now,
+    }));
+    const { error } = await supabase
+      .from('school_subjects')
+      .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+    if (error) {
+      throw new Error(`ไม่สามารถนำเข้าหลักสูตรมาตรฐานลง Supabase ได้: ${error.message}`);
+    }
+    return { insertedCount: toInsert.length, skippedCount };
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.schoolSubjects = [...(db.schoolSubjects || []), ...toInsert];
+  saveDatabase(db);
+  return { insertedCount: toInsert.length, skippedCount };
 }
 
 
