@@ -3597,4 +3597,215 @@ export async function dbDeleteTimetableSlot(id: string): Promise<boolean> {
   return true;
 }
 
+export async function dbToggleTimetableSlotLock(
+  id: string,
+  isLocked: boolean
+): Promise<TimetableSlot | null> {
+  const now = new Date().toISOString();
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .update({ is_locked: Boolean(isLocked), updated_at: now })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถเปลี่ยนสถานะล็อกคาบเรียนบน Supabase ได้: ${error.message}`);
+    }
+    return data ? timetableSlotFromDb(data) : null;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.timetableSlots || [])];
+  const idx = list.findIndex((s) => s.id === id);
+  if (idx < 0) return null;
+  const updated: TimetableSlot = { ...list[idx], isLocked: Boolean(isLocked), updatedAt: now };
+  list[idx] = updated;
+  db.timetableSlots = list;
+  saveDatabase(db);
+  return updated;
+}
+
+export async function dbReplaceTimetableSlotsForRooms(
+  academicYear: string,
+  semester: TimetableSemester,
+  rooms: readonly string[],
+  newScopedSlots: readonly TimetableSlot[]
+): Promise<TimetableSlot[]> {
+  if (rooms.length === 0) return [];
+  const now = new Date().toISOString();
+  const roomList = Array.from(new Set(rooms));
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+
+    // 1. Delete existing slots in the target rooms for this term to avoid unique collisions
+    const { error: delErr } = await supabase
+      .from('timetable_slots')
+      .delete()
+      .eq('academic_year', academicYear)
+      .eq('semester', semester)
+      .in('room_name', roomList);
+
+    if (delErr) {
+      throw new Error(`ไม่สามารถล้างคาบเรียนเดิมก่อนจัดตารางอัตโนมัติได้: ${delErr.message}`);
+    }
+
+    if (newScopedSlots.length === 0) return [];
+
+    // 2. Batch insert/upsert the freshly computed slots
+    const rows = newScopedSlots.map((slot) => ({
+      id: slot.id,
+      academic_year: academicYear,
+      semester,
+      room_name: slot.roomName,
+      day_of_week: slot.dayOfWeek,
+      period_no: slot.periodNo,
+      allocation_id: slot.allocationId || '',
+      subject_code: slot.subjectCode || '',
+      subject_name: slot.subjectName,
+      subject_group: slot.subjectGroup || '',
+      subject_type: slot.subjectType,
+      teacher_id: slot.teacherId,
+      co_teacher_id: slot.coTeacherId || '',
+      is_locked: Boolean(slot.isLocked),
+      updated_at: now,
+    }));
+
+    const { data, error: insErr } = await supabase
+      .from('timetable_slots')
+      .upsert(rows, { onConflict: 'academic_year,semester,room_name,day_of_week,period_no' })
+      .select();
+
+    if (insErr) {
+      throw new Error(`ไม่สามารถบันทึกผลจัดตารางอัตโนมัติลง Supabase ได้: ${insErr.message}`);
+    }
+    return Array.isArray(data) ? data.map(timetableSlotFromDb) : [...newScopedSlots];
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const roomSet = new Set(roomList);
+  const preserved = (db.timetableSlots || []).filter(
+    (s) => !(s.academicYear === academicYear && s.semester === semester && roomSet.has(s.roomName))
+  );
+  const stamped = newScopedSlots.map((s) => ({ ...s, updatedAt: now }));
+  db.timetableSlots = [...preserved, ...stamped];
+  saveDatabase(db);
+  return stamped;
+}
+
+export async function dbSwapTimetableSlots(
+  academicYear: string,
+  semester: TimetableSemester,
+  roomName: string,
+  source: { dayOfWeek: number; periodNo: number },
+  target: { dayOfWeek: number; periodNo: number }
+): Promise<TimetableSlot[]> {
+  const now = new Date().toISOString();
+  const bundle = await dbGetTimetableBundle(academicYear, semester);
+
+  const sourceSlot = bundle.slots.find(
+    (s) =>
+      s.roomName === roomName &&
+      s.dayOfWeek === source.dayOfWeek &&
+      s.periodNo === source.periodNo
+  );
+  if (!sourceSlot) {
+    throw new Error('ไม่พบคาบเรียนต้นทางที่ต้องการสลับ');
+  }
+
+  const targetSlot = bundle.slots.find(
+    (s) =>
+      s.roomName === roomName &&
+      s.dayOfWeek === target.dayOfWeek &&
+      s.periodNo === target.periodNo
+  );
+
+  const movedSource: TimetableSlot = {
+    ...sourceSlot,
+    id: `SLOT-${academicYear}-${semester}-${roomName}-D${target.dayOfWeek}-P${target.periodNo}`,
+    dayOfWeek: target.dayOfWeek,
+    periodNo: target.periodNo,
+    updatedAt: now,
+  };
+
+  const movedTarget: TimetableSlot | null = targetSlot
+    ? {
+        ...targetSlot,
+        id: `SLOT-${academicYear}-${semester}-${roomName}-D${source.dayOfWeek}-P${source.periodNo}`,
+        dayOfWeek: source.dayOfWeek,
+        periodNo: source.periodNo,
+        updatedAt: now,
+      }
+    : null;
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+
+    // Delete both old rows first so UNIQUE(academic_year,semester,room_name,day_of_week,period_no) never collides
+    const idsToDelete = targetSlot ? [sourceSlot.id, targetSlot.id] : [sourceSlot.id];
+    const { error: delErr } = await supabase
+      .from('timetable_slots')
+      .delete()
+      .in('id', idsToDelete);
+    if (delErr) {
+      throw new Error(`ไม่สามารถลบตำแหน่งเดิมระหว่างสลับคาบได้: ${delErr.message}`);
+    }
+
+    const toInsert = movedTarget ? [movedSource, movedTarget] : [movedSource];
+    const rows = toInsert.map((slot) => ({
+      id: slot.id,
+      academic_year: academicYear,
+      semester,
+      room_name: slot.roomName,
+      day_of_week: slot.dayOfWeek,
+      period_no: slot.periodNo,
+      allocation_id: slot.allocationId || '',
+      subject_code: slot.subjectCode || '',
+      subject_name: slot.subjectName,
+      subject_group: slot.subjectGroup || '',
+      subject_type: slot.subjectType,
+      teacher_id: slot.teacherId,
+      co_teacher_id: slot.coTeacherId || '',
+      is_locked: Boolean(slot.isLocked),
+      updated_at: now,
+    }));
+
+    const { error: insErr } = await supabase
+      .from('timetable_slots')
+      .upsert(rows, { onConflict: 'academic_year,semester,room_name,day_of_week,period_no' });
+    if (insErr) {
+      throw new Error(`ไม่สามารถบันทึกคาบเรียนที่สลับแล้วได้: ${insErr.message}`);
+    }
+
+    const refreshed = await dbGetTimetableBundle(academicYear, semester);
+    return refreshed.slots;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const remaining = (db.timetableSlots || []).filter(
+    (s) =>
+      !(
+        s.academicYear === academicYear &&
+        s.semester === semester &&
+        s.roomName === roomName &&
+        ((s.dayOfWeek === source.dayOfWeek && s.periodNo === source.periodNo) ||
+          (s.dayOfWeek === target.dayOfWeek && s.periodNo === target.periodNo))
+      )
+  );
+  const nextTermSlots = movedTarget
+    ? [...remaining, movedSource, movedTarget]
+    : [...remaining, movedSource];
+  db.timetableSlots = nextTermSlots;
+  saveDatabase(db);
+  return nextTermSlots.filter((s) => s.academicYear === academicYear && s.semester === semester);
+}
+
 

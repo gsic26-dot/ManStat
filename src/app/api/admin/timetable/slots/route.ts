@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   dbUpsertTimetableSlot,
   dbDeleteTimetableSlot,
+  dbToggleTimetableSlotLock,
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { verifyAdminSession } from '@/lib/auth/serverAuth';
@@ -116,6 +117,50 @@ export async function DELETE(request: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลบคาบเรียน';
     console.error('[API /api/admin/timetable/slots DELETE Error]', err);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const adminSession = await verifyAdminSession();
+    if (!adminSession.authorized) {
+      return NextResponse.json(
+        { success: false, error: adminSession.error || 'ไม่มีสิทธิ์เข้าถึง (สำหรับผู้ดูแลระบบเท่านั้น)' },
+        { status: adminSession.status }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const id = String(body?.id || '').trim();
+    const isLocked = Boolean(body?.isLocked);
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Missing slot id' }, { status: 400 });
+    }
+
+    const updated = await dbToggleTimetableSlotLock(id, isLocked);
+    if (!updated) {
+      return NextResponse.json({ success: false, error: 'ไม่พบคาบเรียนที่ต้องการปรับสถานะล็อก' }, { status: 404 });
+    }
+
+    const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
+    const actorRole = adminSession.user?.role || 'hr_admin';
+    recordAuditLog(
+      'TOGGLE_TIMETABLE_LOCK',
+      actorName,
+      actorRole,
+      id,
+      `${isLocked ? 'ปักหมุดล็อก' : 'ปลดล็อก'}คาบเรียนรหัส ${id}`
+    );
+
+    return NextResponse.json(
+      { success: true, data: updated },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะล็อกคาบเรียน';
+    console.error('[API /api/admin/timetable/slots PATCH Error]', err);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
