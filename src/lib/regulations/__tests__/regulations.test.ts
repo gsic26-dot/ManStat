@@ -16,6 +16,10 @@ import {
   calculateRetirementInfo,
   calculateTenure,
   calculateLeaveDays,
+  calculateLeaveDuration,
+  evaluateLeaveApprovalAuthority,
+  getLeaveCountingRule,
+  LEAVE_COUNTING_RULES_2555,
   validateLeaveQuotaAndRules,
   getLicenseValidityYears,
   evaluateLicenseHealth,
@@ -319,5 +323,172 @@ describe('7. Master 13 Leave Types & School Exit / Official Mission (สพฐ. 
     assert.equal(missionValidation.isValid, true);
     assert.equal(missionValidation.isPromotionRisk, false);
     assert.equal(missionValidation.errors.length, 0);
+  });
+});
+
+describe('8. Phase 12.5: Official 2555 Leave Day Counting Matrix (All 11 Leave Types)', () => {
+  // Range: Thu 2026-04-02 -> Tue 2026-04-07
+  // Calendar days = 6 (Thu, Fri, Sat, Sun, Mon [Chakri Day holiday], Tue)
+  // Working days  = 3 (Thu 02, Fri 03, Tue 07)
+  // Excluded      = 3 (Sat 04, Sun 05, Mon 06 holiday)
+  const START = '2026-04-02';
+  const END = '2026-04-07';
+  const HOLIDAYS = ['2026-04-06'];
+
+  const WORKING_DAYS_ONLY_TYPES = [
+    'ลาป่วย',
+    'ลาไปช่วยเหลือภริยาที่คลอดบุตร',
+    'ลากิจส่วนตัว',
+    'ลาพักผ่อน',
+  ] as const;
+
+  const CONTINUOUS_CALENDAR_TYPES = [
+    'ลาคลอดบุตร',
+    'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์',
+    'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
+    'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน',
+    'ลาไปปฏิบัติงานในองค์การระหว่างประเทศ',
+    'ลาติดตามคู่สมรส',
+    'ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ',
+  ] as const;
+
+  it('defines all 11 statutory leave types in LEAVE_COUNTING_RULES_2555 (4 working-days, 7 continuous)', () => {
+    const keys = Object.keys(LEAVE_COUNTING_RULES_2555);
+    assert.equal(keys.length, 11);
+    const workingCount = Object.values(LEAVE_COUNTING_RULES_2555).filter(
+      (r) => r.calculationCountingMode === 'working_days_only'
+    ).length;
+    const continuousCount = Object.values(LEAVE_COUNTING_RULES_2555).filter(
+      (r) => r.calculationCountingMode === 'continuous'
+    ).length;
+    assert.equal(workingCount, 4);
+    assert.equal(continuousCount, 7);
+    assert.equal(
+      Object.values(LEAVE_COUNTING_RULES_2555).every((r) => r.submissionCountingMode === 'continuous'),
+      true
+    );
+  });
+
+  it('counts WORKING DAYS ONLY (3) for all 4 working-day leave types while submissionCalendarDays = 6', () => {
+    for (const leaveType of WORKING_DAYS_ONLY_TYPES) {
+      const res = calculateLeaveDuration({
+        leaveType,
+        startDate: START,
+        endDate: END,
+        holidays: HOLIDAYS,
+      });
+      assert.equal(res.calculationCountingMode, 'working_days_only', `${leaveType} mode`);
+      assert.equal(res.calculatedLeaveDays, 3, `${leaveType} calculatedLeaveDays`);
+      assert.equal(res.submissionCalendarDays, 6, `${leaveType} submissionCalendarDays`);
+      assert.equal(res.workingDaysCount, 3, `${leaveType} workingDaysCount`);
+      assert.equal(res.excludedWeekendOrHolidayCount, 3, `${leaveType} excluded`);
+    }
+  });
+
+  it('counts CONTINUOUS CALENDAR DAYS (6) for all 7 continuous leave types including intl_org, spouse & rehab', () => {
+    for (const leaveType of CONTINUOUS_CALENDAR_TYPES) {
+      const res = calculateLeaveDuration({
+        leaveType,
+        startDate: START,
+        endDate: END,
+        holidays: HOLIDAYS,
+      });
+      assert.equal(res.calculationCountingMode, 'continuous', `${leaveType} mode`);
+      assert.equal(res.calculatedLeaveDays, 6, `${leaveType} calculatedLeaveDays`);
+      assert.equal(res.submissionCalendarDays, 6, `${leaveType} submissionCalendarDays`);
+      assert.equal(res.allowHalfDay, false, `${leaveType} allowHalfDay`);
+    }
+  });
+
+  it('handles half-day leave, single-day holiday, reversed dates, and suffixed/code-key lookups safely', () => {
+    // Half-day on working day -> 0.5
+    const halfSick = calculateLeaveDuration({
+      leaveType: 'ลาป่วย',
+      startDate: '2026-04-02',
+      endDate: '2026-04-02',
+      halfDayPeriod: 'morning',
+      holidays: HOLIDAYS,
+    });
+    assert.equal(halfSick.calculatedLeaveDays, 0.5);
+    assert.equal(halfSick.submissionCalendarDays, 1);
+
+    const halfVacation = calculateLeaveDuration({
+      leaveType: 'ลาพักผ่อน',
+      startDate: '2026-04-02',
+      endDate: '2026-04-02',
+      halfDayPeriod: 'afternoon',
+      holidays: HOLIDAYS,
+    });
+    assert.equal(halfVacation.calculatedLeaveDays, 0.5);
+
+    // Half-day on a Thai public holiday -> 0 (not 0.5!)
+    const halfOnHoliday = calculateLeaveDuration({
+      leaveType: 'ลาป่วย',
+      startDate: '2026-04-06',
+      endDate: '2026-04-06',
+      halfDayPeriod: 'morning',
+      holidays: HOLIDAYS,
+    });
+    assert.equal(halfOnHoliday.calculatedLeaveDays, 0);
+    assert.equal(halfOnHoliday.submissionCalendarDays, 1);
+
+    // Single-day leave on holiday: 0 for working-day type, 1 for continuous type
+    assert.equal(
+      calculateLeaveDuration({
+        leaveType: 'ลากิจส่วนตัว',
+        startDate: '2026-04-06',
+        endDate: '2026-04-06',
+        holidays: HOLIDAYS,
+      }).calculatedLeaveDays,
+      0
+    );
+    assert.equal(
+      calculateLeaveDuration({
+        leaveType: 'ลาติดตามคู่สมรส',
+        startDate: '2026-04-06',
+        endDate: '2026-04-06',
+        holidays: HOLIDAYS,
+      }).calculatedLeaveDays,
+      1
+    );
+
+    // Reversed date range -> 0 safely
+    const reversed = calculateLeaveDuration({
+      leaveType: 'ลาป่วย',
+      startDate: '2026-04-07',
+      endDate: '2026-04-02',
+      holidays: HOLIDAYS,
+    });
+    assert.equal(reversed.calculatedLeaveDays, 0);
+    assert.equal(reversed.submissionCalendarDays, 0);
+
+    // Lookup by code key and retroactive suffix
+    assert.equal(getLeaveCountingRule('spouse')?.calculationCountingMode, 'continuous');
+    assert.equal(getLeaveCountingRule('rehab')?.calculationCountingMode, 'continuous');
+    assert.equal(getLeaveCountingRule('intl_org')?.calculationCountingMode, 'continuous');
+    assert.equal(
+      getLeaveCountingRule('ลาติดตามคู่สมรส (บันทึกย้อนหลัง)')?.calculationCountingMode,
+      'continuous'
+    );
+  });
+
+  it('routes approval authority using submissionCalendarDays (continuous calendar days)', () => {
+    const withinDirector = evaluateLeaveApprovalAuthority({
+      leaveType: 'ลากิจส่วนตัว',
+      submissionCalendarDays: 30,
+    });
+    assert.equal(withinDirector.approverLevel, 'director');
+
+    const escalateObec = evaluateLeaveApprovalAuthority({
+      leaveType: 'ลากิจส่วนตัว',
+      submissionCalendarDays: 31,
+    });
+    assert.equal(escalateObec.approverLevel, 'obec_area');
+
+    const ordinationObec = evaluateLeaveApprovalAuthority({
+      leaveType: 'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์',
+      submissionCalendarDays: 15,
+    });
+    assert.equal(ordinationObec.approverLevel, 'obec_area');
   });
 });

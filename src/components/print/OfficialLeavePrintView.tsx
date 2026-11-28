@@ -25,6 +25,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Printer, ArrowLeft, Languages } from 'lucide-react';
 import { formatNumberText, formatOfficialThaiDate } from '@/lib/regulations/thai-numerals';
 import { isSchoolExitPermit, isOfficialMission } from '@/lib/regulations/leaveTypes';
+import { getLeaveCountingRule } from '@/lib/regulations/leave-calculator';
 import type { LeaveType, LeaveStatusEnum } from '@/types/database.types';
 
 export interface LeavePrintData {
@@ -115,6 +116,16 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
   const priorPers = data.stats.personalUsedBefore;
   const curPers = isPersonal ? data.totalDays : 0;
   const totPers = priorPers + curPers;
+
+  const priorMat = data.stats.maternityUsedBefore || 0;
+  const curMat = isMaternity ? data.totalDays : 0;
+  const totMat = priorMat + curMat;
+
+  const countingRule = getLeaveCountingRule(String(data.leaveType || ''));
+  const dayUnitText =
+    countingRule?.calculationCountingMode === 'continuous'
+      ? 'วัน (นับต่อเนื่อง)'
+      : 'วันทำการ';
 
   const schoolTitle = data.schoolName || 'โรงเรียนชุมชนบ้านตะขบ';
   const directorTitle = data.approverName || 'นายธีรศักดิ์ มโนธรรม';
@@ -503,7 +514,7 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
                 <div className="mt-1">
                   ตั้งแต่วันที่ <b>{formatDate(data.startDate)}</b> &nbsp;ถึงวันที่{' '}
                   <b>{formatDate(data.endDate)}</b> &nbsp;มีกำหนด{' '}
-                  <b>{formatNum(data.totalDays)}</b> วัน
+                  <b>{formatNum(data.totalDays)}</b> {dayUnitText}
                 </div>
 
                 {/* Prior Leave Record */}
@@ -571,9 +582,15 @@ export const OfficialLeavePrintView: React.FC<OfficialLeavePrintViewProps> = ({
                             </tr>
                             <tr>
                               <td className="border border-black p-1 text-center">คลอดบุตร</td>
-                              <td className="border border-black p-1">-</td>
-                              <td className="border border-black p-1">-</td>
-                              <td className="border border-black p-1">-</td>
+                              <td className="border border-black p-1">
+                                {priorMat > 0 ? formatNum(priorMat) : '-'}
+                              </td>
+                              <td className="border border-black p-1">
+                                {curMat > 0 ? formatNum(curMat) : '-'}
+                              </td>
+                              <td className="border border-black p-1 font-bold">
+                                {totMat > 0 ? formatNum(totMat) : '-'}
+                              </td>
                             </tr>
                           </tbody>
                         </table>

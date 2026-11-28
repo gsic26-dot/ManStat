@@ -3,11 +3,18 @@ import {
   dbGetLeaveRequests,
   dbUpsertLeaveRequest,
   dbDeleteLeaveRequest,
+  dbGetHolidays,
   recordAuditLog,
 } from '@/lib/db/serverDb';
 import { getSessionUser, verifyAdminSession } from '@/lib/auth/serverAuth';
 import { isAdminRole, sanitizeLeaveForViewer } from '@/lib/auth/roles';
 import type { LeaveRequestRecord } from '@/lib/data/schoolData';
+import {
+  calculateLeaveDuration,
+  evaluateLeaveApprovalAuthority,
+} from '@/lib/regulations/leave-calculator';
+import { isZeroDayLeaveType } from '@/lib/regulations/leaveTypes';
+import type { HalfDayPeriod } from '@/types/database.types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -56,9 +63,28 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { id } = body;
 
-    const currentRequests = await dbGetLeaveRequests();
+    const [currentRequests, holidaysList] = await Promise.all([
+      dbGetLeaveRequests(),
+      dbGetHolidays().catch(() => []),
+    ]);
+    const holidayDates = holidaysList.map((h) => h.date).filter(Boolean);
     let savedRequest: LeaveRequestRecord;
     let actionType = 'CREATE_LEAVE_REQUEST';
+
+    const resolveHalfDayPeriod = (
+      explicitPeriod: unknown,
+      submittedTotalDays: unknown,
+      start: string,
+      end: string
+    ): HalfDayPeriod => {
+      if (explicitPeriod === 'morning' || explicitPeriod === 'afternoon' || explicitPeriod === 'full') {
+        return explicitPeriod;
+      }
+      if (start && end && start === end && Number(submittedTotalDays) === 0.5) {
+        return 'morning';
+      }
+      return 'full';
+    };
 
     const existingIndex = currentRequests.findIndex((r) => r.id === id);
 
@@ -89,9 +115,45 @@ export async function POST(request: Request) {
         );
       }
 
+      const nextStartDate = body.startDate ?? existing.startDate;
+      const nextEndDate = body.endDate ?? existing.endDate;
+      const nextLeaveTypeRaw = body.leaveTypeName || body.leaveType || existing.leaveTypeName || existing.leaveType;
+      const isDateOrTypeModified =
+        body.startDate !== undefined ||
+        body.endDate !== undefined ||
+        body.leaveType !== undefined ||
+        body.leaveTypeName !== undefined ||
+        body.halfDay !== undefined ||
+        body.halfDayPeriod !== undefined;
+
+      let recomputedTotalDays = existing.totalDays;
+      if (isDateOrTypeModified && nextStartDate && nextEndDate) {
+        const halfDayPeriod = resolveHalfDayPeriod(
+          body.halfDayPeriod ?? body.halfDay,
+          body.totalDays,
+          nextStartDate,
+          nextEndDate
+        );
+        const duration = calculateLeaveDuration({
+          leaveType: nextLeaveTypeRaw,
+          startDate: nextStartDate,
+          endDate: nextEndDate,
+          halfDayPeriod,
+          holidays: holidayDates,
+        });
+        if (!isZeroDayLeaveType(nextLeaveTypeRaw) && duration.calculatedLeaveDays <= 0) {
+          return NextResponse.json(
+            { success: false, error: 'ช่วงวันที่ลาไม่ถูกต้องหรือตรงกับวันหยุดทั้งหมด (จำนวนวันลาต้องมากกว่า 0 วัน)' },
+            { status: 400 }
+          );
+        }
+        recomputedTotalDays = duration.calculatedLeaveDays;
+      }
+
       savedRequest = {
         ...existing,
         ...body,
+        totalDays: recomputedTotalDays,
         // Prevent non-admin from escalating status
         status: isUserAdmin ? (body.status || existing.status) : existing.status,
       };
@@ -126,6 +188,38 @@ export async function POST(request: Request) {
         );
       }
 
+      const effectiveStartDate = body.startDate || new Date().toISOString().split('T')[0];
+      const effectiveEndDate = body.endDate || effectiveStartDate;
+      const resolvedLeaveTypeName =
+        body.leaveTypeName || (body.leaveType === 'personal' ? 'ลากิจส่วนตัว' : 'ลาป่วย');
+      const halfDayPeriod = resolveHalfDayPeriod(
+        body.halfDayPeriod ?? body.halfDay,
+        body.totalDays,
+        effectiveStartDate,
+        effectiveEndDate
+      );
+
+      // Server-side authoritative calculation (NEVER trust client-submitted totalDays)
+      const duration = calculateLeaveDuration({
+        leaveType: resolvedLeaveTypeName || body.leaveType || 'ลาป่วย',
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+        halfDayPeriod,
+        holidays: holidayDates,
+      });
+
+      if (!isZeroDayLeaveType(resolvedLeaveTypeName) && duration.calculatedLeaveDays <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'ช่วงวันที่ลาไม่ถูกต้องหรือตรงกับวันหยุดทั้งหมด (จำนวนวันลาต้องมากกว่า 0 วัน)' },
+          { status: 400 }
+        );
+      }
+
+      const approvalRouting = evaluateLeaveApprovalAuthority({
+        leaveType: resolvedLeaveTypeName,
+        submissionCalendarDays: duration.submissionCalendarDays,
+      });
+
       const newId =
         id || `LEV-${new Date().getFullYear() + 543}-${String(currentRequests.length + 1).padStart(3, '0')}`;
       savedRequest = {
@@ -136,10 +230,10 @@ export async function POST(request: Request) {
         position: body.position || sessionUser.position || 'ครู',
         department: body.department || sessionUser.department || 'ทั่วไป',
         leaveType: body.leaveType || 'sick',
-        leaveTypeName: body.leaveTypeName || (body.leaveType === 'personal' ? 'ลากิจส่วนตัว' : 'ลาป่วย'),
-        startDate: body.startDate || new Date().toISOString().split('T')[0],
-        endDate: body.endDate || new Date().toISOString().split('T')[0],
-        totalDays: body.totalDays ?? 1,
+        leaveTypeName: resolvedLeaveTypeName,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+        totalDays: duration.calculatedLeaveDays,
         startTime: body.startTime || '',
         endTime: body.endTime || '',
         totalHours: body.totalHours ?? 0,
@@ -149,7 +243,9 @@ export async function POST(request: Request) {
         workloadJson: body.workloadJson || body.workloads || [],
         status: isUserAdmin ? requestedStatus : 'pending',
         submittedAt: body.submittedAt || new Date().toISOString(),
-        supervisorRemark: body.supervisorRemark || '',
+        supervisorRemark:
+          body.supervisorRemark ||
+          (approvalRouting.approverLevel === 'obec_area' ? `[เสนอ ผอ.สพป.] ${approvalRouting.note}` : ''),
         directorRemark: body.directorRemark || '',
         currentStep: body.currentStep ?? 1,
       };

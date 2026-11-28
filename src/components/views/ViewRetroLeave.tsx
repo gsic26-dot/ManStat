@@ -44,8 +44,11 @@ import {
   isZeroDayLeaveType,
   isSchoolExitPermit,
   isOfficialMission,
-  getLeaveTypeDefinition,
 } from '@/lib/regulations/leaveTypes';
+import {
+  calculateLeaveDuration,
+  evaluateLeaveApprovalAuthority,
+} from '@/lib/regulations/leave-calculator';
 import type { LeaveType } from '@/types/database.types';
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 import { CheckCircle2 } from 'lucide-react';
@@ -69,7 +72,7 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
   const [startDate, setStartDate] = useState(() => formatLocalDateBangkok());
   const [endDate, setEndDate] = useState(() => formatLocalDateBangkok());
   const [isHalfDay, setIsHalfDay] = useState(false);
-  const [totalDays, setTotalDays] = useState('1');
+  const [officialHolidays, setOfficialHolidays] = useState<string[]>([]);
   const [reason, setReason] = useState('');
   const [retroReason, setRetroReason] = useState('');
   const [medicalCertNo, setMedicalCertNo] = useState('');
@@ -109,6 +112,16 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
         }
       })
       .catch(() => {});
+    fetch('/api/admin/holidays', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          const dates = data.data.map((h: any) => h.date).filter(Boolean);
+          if (dates.length > 0) setOfficialHolidays(dates);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -134,6 +147,34 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
   const isExit = isSchoolExitPermit(leaveType);
   const isMission = isOfficialMission(leaveType);
   const isZeroDays = isZeroDayLeaveType(leaveType);
+
+  // Authoritative 2555 Leave Duration Calculation
+  const durationResult = useMemo(
+    () =>
+      calculateLeaveDuration({
+        leaveType,
+        startDate,
+        endDate: endDate || startDate,
+        halfDayPeriod: isHalfDay ? 'morning' : 'full',
+        holidays: officialHolidays,
+      }),
+    [leaveType, startDate, endDate, isHalfDay, officialHolidays]
+  );
+
+  const approvalAuthority = useMemo(
+    () =>
+      evaluateLeaveApprovalAuthority({
+        leaveType,
+        submissionCalendarDays: durationResult.submissionCalendarDays,
+      }),
+    [leaveType, durationResult.submissionCalendarDays]
+  );
+
+  useEffect(() => {
+    if ((!durationResult.allowHalfDay || startDate !== (endDate || startDate)) && isHalfDay) {
+      setIsHalfDay(false);
+    }
+  }, [durationResult.allowHalfDay, startDate, endDate, isHalfDay]);
 
   // Calculate duration in hours
   const calculatedHours = useMemo(() => {
@@ -204,6 +245,10 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
         setValidationError('กรุณากรอกวันที่และเหตุผลการลา');
         return;
       }
+      if (durationResult.calculatedLeaveDays <= 0) {
+        setValidationError('ช่วงวันที่ลาไม่ถูกต้องหรือตรงกับวันหยุดทั้งหมด (จำนวนวันลาต้องมากกว่า 0 วัน)');
+        return;
+      }
       if (!retroReason.trim()) {
         setValidationError('กรุณากรอกเหตุผลความจำเป็นในการยื่นใบลาย้อนหลัง');
         return;
@@ -219,7 +264,7 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
     setSubmitSuccessMsg(null);
 
     try {
-      const leaveDaysCount = isZeroDays ? 0 : parseFloat(totalDays) || 1;
+      const leaveDaysCount = isZeroDays ? 0 : durationResult.calculatedLeaveDays;
       const effectiveStartDate = isExit ? startDate : missionMode === 'single_day_time' ? startDate : startDate;
       const effectiveEndDate = isExit ? startDate : missionMode === 'single_day_time' ? startDate : endDate || startDate;
 
@@ -253,6 +298,7 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
           leaveTypeName: `${leaveType} (บันทึกย้อนหลัง)`,
           startDate: effectiveStartDate,
           endDate: effectiveEndDate,
+          halfDayPeriod: !isZeroDays && durationResult.allowHalfDay && isHalfDay && effectiveStartDate === effectiveEndDate ? 'morning' : 'full',
           totalDays: leaveDaysCount,
           startTime: (isExit || (isMission && missionMode === 'single_day_time')) ? startTime : null,
           endTime: (isExit || (isMission && missionMode === 'single_day_time')) ? endTime : null,
@@ -762,49 +808,6 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
             {/* =============================================================== */}
             {!isZeroDays && (
               <div className="space-y-4 pt-1 border-t border-slate-200/80 dark:border-slate-800">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      จำนวนวันลา (วันทำการ)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0.5"
-                        value={totalDays}
-                        onChange={(e) => setTotalDays(e.target.value)}
-                        className="w-24 h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono transition-all"
-                      />
-                      <label className="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isHalfDay}
-                          onChange={(e) => {
-                            setIsHalfDay(e.target.checked);
-                            if (e.target.checked) setTotalDays('0.5');
-                          }}
-                          className="rounded border-slate-700 text-sky-500 focus:ring-sky-500"
-                        />
-                        <span>ลาครึ่งวัน (0.5 วัน)</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      เลขที่ใบรับรองแพทย์ / เอกสารแนบ
-                    </label>
-                    <input
-                      type="text"
-                      value={medicalCertNo}
-                      onChange={(e) => setMedicalCertNo(e.target.value)}
-                      placeholder="เช่น รพ.ปักธงชัย เล่ม 12 เลขที่ 450"
-                      className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                </div>
-
                 {/* Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -813,7 +816,12 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
                     </label>
                     <ThaiDatePicker
                       value={startDate}
-                      onChange={(dateStr) => setStartDate(dateStr)}
+                      onChange={(dateStr) => {
+                        setStartDate(dateStr);
+                        if (endDate && dateStr > endDate) {
+                          setEndDate(dateStr);
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -827,6 +835,72 @@ export function ViewRetroLeave({ onSuccess }: ViewRetroLeaveProps = {}) {
                       min={startDate}
                       onChange={(dateStr) => setEndDate(dateStr)}
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* Live Calculated Days Summary (2555 Regulatory Breakdown) */}
+                <div className="bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-3.5 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-sky-500 shrink-0" />
+                      <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                        {durationResult.calculationCountingMode === 'working_days_only'
+                          ? 'นับเฉพาะวันทำการ:'
+                          : 'นับต่อเนื่อง (รวมวันหยุด):'}
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400">
+                      {durationResult.calculatedLeaveDays} {durationResult.unitLabel}
+                    </span>
+                  </div>
+                  {durationResult.calculationCountingMode === 'working_days_only' &&
+                    durationResult.submissionCalendarDays !== durationResult.calculatedLeaveDays &&
+                    durationResult.submissionCalendarDays > 0 && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-6">
+                        รวมวันหยุดเพื่อเสนอใบลา:{' '}
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+                          {durationResult.submissionCalendarDays} วันต่อเนื่อง
+                        </span>
+                      </div>
+                    )}
+                  {approvalAuthority.approverLevel === 'obec_area' && (
+                    <div className="text-[11px] text-amber-700 dark:text-amber-300 pl-6">
+                      อำนาจการอนุญาต: {approvalAuthority.note}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center">
+                    <label
+                      className={`inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 ${
+                        !durationResult.allowHalfDay || startDate !== (endDate || startDate)
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isHalfDay}
+                        disabled={!durationResult.allowHalfDay || startDate !== (endDate || startDate)}
+                        onChange={(e) => setIsHalfDay(e.target.checked)}
+                        className="rounded border-slate-700 text-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed"
+                      />
+                      <span>ลาครึ่งวัน (0.5 วันทำการ)</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      เลขที่ใบรับรองแพทย์ / เอกสารแนบ
+                    </label>
+                    <input
+                      type="text"
+                      value={medicalCertNo}
+                      onChange={(e) => setMedicalCertNo(e.target.value)}
+                      placeholder="เช่น รพ.ปักธงชัย เล่ม 12 เลขที่ 450"
+                      className="w-full h-10 bg-slate-50 dark:bg-[#16202c] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                     />
                   </div>
                 </div>

@@ -24,7 +24,8 @@ import {
   Calendar,
   Info,
 } from 'lucide-react';
-import { MASTER_LEAVE_TYPES, LeaveTypeDefinition } from '@/lib/regulations/leaveTypes';
+import { MASTER_LEAVE_TYPES } from '@/lib/regulations/leaveTypes';
+import { getLeaveCountingRule } from '@/lib/regulations/leave-calculator';
 
 interface LeaveCriteriaModalProps {
   isOpen: boolean;
@@ -35,20 +36,15 @@ export function LeaveCriteriaModal({ isOpen, onClose }: LeaveCriteriaModalProps)
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'statutory' | 'special_permission'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Close on Escape key press
+  // Lock body scroll while modal is open (Close-Locked: X or ปิด only)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
     if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -72,12 +68,8 @@ export function LeaveCriteriaModal({ isOpen, onClose }: LeaveCriteriaModalProps)
       role="dialog"
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={onClose}
     >
-      <div
-        className="w-full max-w-4xl max-h-[90vh] bg-white dark:bg-[#121822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full max-w-4xl max-h-[90vh] bg-white dark:bg-[#121822] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/40 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -177,11 +169,31 @@ export function LeaveCriteriaModal({ isOpen, onClose }: LeaveCriteriaModalProps)
                           <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 whitespace-nowrap">
                             วันลา = 0 วัน (ไม่ตัดโควตา)
                           </span>
-                        ) : item.maxDays ? (
-                          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
-                            สูงสุด {item.maxDays} วัน
-                          </span>
-                        ) : null}
+                        ) : (
+                          <>
+                            {(() => {
+                              const rule = getLeaveCountingRule(item.value);
+                              if (!rule) return null;
+                              const isContinuous = rule.calculationCountingMode === 'continuous';
+                              return (
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[11px] font-medium border whitespace-nowrap ${
+                                    isContinuous
+                                      ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200/60 dark:border-violet-800/60'
+                                      : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/60'
+                                  }`}
+                                >
+                                  {rule.regulationLabel}
+                                </span>
+                              );
+                            })()}
+                            {item.maxDays ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                                สูงสุด {item.maxDays} วัน
+                              </span>
+                            ) : null}
+                          </>
+                        )}
 
                         {item.affectsSalaryPromotion ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 whitespace-nowrap">

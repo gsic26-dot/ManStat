@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { LeaveRequestRecord, TeacherRecord } from '@/lib/data/schoolData';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
+import { getLeaveCountingRule } from '@/lib/regulations/leave-calculator';
+import { isZeroDayLeaveType } from '@/lib/regulations/leaveTypes';
 import { formatPDPAProtectedLeaveReason, isCivilServantForSalary, isAdminRole } from '@/lib/auth/roles';
 
 interface ViewLeaveRequestsProps {
@@ -391,7 +393,15 @@ export function ViewLeaveRequests({ onOpenSubmitModal, onLeaveMutated }: ViewLea
                             {new Date(req.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} – {new Date(req.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                           </div>
                           <div className="text-sky-400 font-semibold mt-0.5 text-[11px]">
-                            {req.totalDays} วันทำการ
+                            {(() => {
+                              const rawType = req.leaveTypeName || req.leaveType;
+                              if (isZeroDayLeaveType(rawType)) return '0 วัน (ไม่ตัดโควตา)';
+                              const rule = getLeaveCountingRule(rawType);
+                              if (rule?.calculationCountingMode === 'continuous') {
+                                return `${req.totalDays} วัน (นับต่อเนื่อง)`;
+                              }
+                              return `${req.totalDays} วันทำการ`;
+                            })()}
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-center whitespace-nowrap">
@@ -639,18 +649,14 @@ export function ViewLeaveRequests({ onOpenSubmitModal, onLeaveMutated }: ViewLea
         </div>
       )}
 
-      {/* Reject Reason Modal (Admin Only) */}
+      {/* Reject Reason Modal (Admin Only — Close-Locked) */}
       {rejectModalReq && canManage && (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={() => !isActionLoading && setRejectModalReq(null)}
         >
-          <div
-            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
               <XCircle className="w-5 h-5 shrink-0" />
               <span>ระบุเหตุผลการไม่อนุมัติ ({rejectModalReq.docNo})</span>
@@ -684,18 +690,14 @@ export function ViewLeaveRequests({ onOpenSubmitModal, onLeaveMutated }: ViewLea
         </div>
       )}
 
-      {/* Delete Confirmation Modal (Admin Only) */}
+      {/* Delete Confirmation Modal (Admin Only — Close-Locked) */}
       {deleteModalReq && canManage && (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={() => !isActionLoading && setDeleteModalReq(null)}
         >
-          <div
-            className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-200">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>ยืนยันการลบคำร้องขอลา</span>

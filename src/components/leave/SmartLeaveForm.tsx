@@ -33,7 +33,11 @@ import {
   Info,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { calculateLeaveDays, validateLeaveQuotaAndRules } from '@/lib/regulations/leave-calculator';
+import {
+  calculateLeaveDuration,
+  evaluateLeaveApprovalAuthority,
+  validateLeaveQuotaAndRules,
+} from '@/lib/regulations/leave-calculator';
 import { getFiscalYearBE, getEvalRound } from '@/lib/regulations/fiscal-and-retirement';
 import {
   MASTER_LEAVE_TYPES,
@@ -185,11 +189,35 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
   // Enforce <= 3 hours rule for School Exit (ธุระส่วนตัว)
   const isExitHoursExceeded = isExit && calculatedHours > 3;
 
-  // Real-time calculation of leave days for statutory leave
-  const calculatedDays = useMemo(() => {
-    if (isZeroDays) return 0;
-    return calculateLeaveDays(startDate, endDate, leaveType, halfDay, officialHolidays);
-  }, [startDate, endDate, leaveType, halfDay, officialHolidays, isZeroDays]);
+  // Real-time calculation of leave days & submission calendar days (ระเบียบฯ 2555)
+  const durationResult = useMemo(
+    () =>
+      calculateLeaveDuration({
+        leaveType,
+        startDate,
+        endDate,
+        halfDayPeriod: halfDay,
+        holidays: officialHolidays,
+      }),
+    [startDate, endDate, leaveType, halfDay, officialHolidays]
+  );
+
+  const calculatedDays = isZeroDays ? 0 : durationResult.calculatedLeaveDays;
+  const approvalAuthority = useMemo(
+    () =>
+      evaluateLeaveApprovalAuthority({
+        leaveType,
+        submissionCalendarDays: durationResult.submissionCalendarDays,
+      }),
+    [leaveType, durationResult.submissionCalendarDays]
+  );
+
+  // Reset half-day automatically if switching to a continuous leave type or multi-day range
+  useEffect(() => {
+    if ((!durationResult.allowHalfDay || startDate !== endDate) && halfDay !== 'full') {
+      setHalfDay('full');
+    }
+  }, [durationResult.allowHalfDay, startDate, endDate, halfDay]);
 
   // Real-time prior approved leave usage for this staff member
   const priorUsage = useMemo(() => {
@@ -393,6 +421,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
           leaveTypeName: leaveType,
           startDate: effectiveStartDate,
           endDate: effectiveEndDate,
+          halfDayPeriod: !isZeroDays && durationResult.allowHalfDay && effectiveStartDate === effectiveEndDate ? halfDay : 'full',
           totalDays: isZeroDays ? 0 : calculatedDays,
           startTime: (isExit || (isMission && missionMode === 'single_day_time')) ? startTime : null,
           endTime: (isExit || (isMission && missionMode === 'single_day_time')) ? endTime : null,
@@ -944,7 +973,7 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                   <select
                     value={halfDay}
                     onChange={(e) => setHalfDay(e.target.value as HalfDayPeriod)}
-                    disabled={startDate !== endDate || (leaveType !== 'ลาป่วย' && leaveType !== 'ลากิจส่วนตัว')}
+                    disabled={startDate !== endDate || !durationResult.allowHalfDay}
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     <option value="full" className="bg-white dark:bg-[#171a21] text-slate-900 dark:text-slate-100">
@@ -960,17 +989,38 @@ export const SmartLeaveForm: React.FC<SmartLeaveFormProps> = ({
                 </div>
               </div>
 
-              {/* Live Calculated Days Banner */}
-              <div className="bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-sky-500 shrink-0" />
-                  <span className="text-xs text-slate-600 dark:text-slate-300">
-                    จำนวนวันลาที่คำนวณได้จริง (หักวันหยุดราชการ/เสาร์-อาทิตย์):
+              {/* Live Calculated Days Banner (2555 Regulatory Breakdown) */}
+              <div className="bg-slate-50 dark:bg-[#101822] border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-3.5 space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-sky-500 shrink-0" />
+                    <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">
+                      {durationResult.calculationCountingMode === 'working_days_only'
+                        ? 'นับเฉพาะวันทำการ (หักเสาร์-อาทิตย์และวันหยุดราชการ):'
+                        : 'นับต่อเนื่อง (รวมวันหยุดเสาร์-อาทิตย์และวันหยุดราชการ):'}
+                    </span>
+                  </div>
+                  <span className="font-mono text-base font-bold text-sky-600 dark:text-sky-400">
+                    {calculatedDays} {durationResult.unitLabel}
                   </span>
                 </div>
-                <span className="font-mono text-base font-bold text-sky-600 dark:text-sky-400">
-                  {calculatedDays} วันทำการ
-                </span>
+                {durationResult.calculationCountingMode === 'working_days_only' &&
+                  durationResult.submissionCalendarDays !== calculatedDays &&
+                  durationResult.submissionCalendarDays > 0 && (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-6">
+                      รวมวันหยุดเพื่อเสนอใบลา (ระเบียบฯ พ.ศ. 2555):{' '}
+                      <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+                        {durationResult.submissionCalendarDays} วันต่อเนื่อง
+                      </span>
+                      {durationResult.excludedWeekendOrHolidayCount > 0 &&
+                        ` (หักวันหยุด ${durationResult.excludedWeekendOrHolidayCount} วัน)`}
+                    </div>
+                  )}
+                {approvalAuthority.approverLevel === 'obec_area' && (
+                  <div className="text-[11px] text-amber-700 dark:text-amber-300 pl-6">
+                    อำนาจการอนุญาต: {approvalAuthority.note}
+                  </div>
+                )}
               </div>
 
               {/* Pre-submission Warnings & Regulatory Alerts */}
