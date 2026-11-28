@@ -38,6 +38,7 @@ import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { AppLogoIcon } from '@/components/brand/AppLogo';
 import {
   Calendar,
+  CalendarRange,
   PlusCircle,
   ShieldCheck,
   Bell,
@@ -87,6 +88,7 @@ import { ViewPersonnelHub, type PersonnelTab } from '@/components/views/ViewPers
 import { ViewOrgChart } from '@/components/views/ViewOrgChart';
 import { ViewSchoolBoard } from '@/components/views/ViewSchoolBoard';
 import { ViewWorkload } from '@/components/views/ViewWorkload';
+import { ViewTimetable } from '@/components/views/ViewTimetable';
 import { ViewLeaveHub } from '@/components/views/ViewLeaveHub';
 import { ViewLeaveReportsHub } from '@/components/views/ViewLeaveReportsHub';
 import { ViewRetroLeave } from '@/components/views/ViewRetroLeave';
@@ -107,6 +109,7 @@ export type ActiveView =
   | 'org_chart'
   | 'school_board'
   | 'workload'
+  | 'timetable'
   | 'staff_directory'
   | 'dir_standing'
   | 'dir_scout'
@@ -124,7 +127,7 @@ export default function DashboardPage() {
     const validViews: ActiveView[] = [
       'dashboard', 'leave', 'tracking_requests', 'requests', 'tracking',
       'retro_leave', 'leave_reports', 'analytics', 'official_reports',
-      'org_chart', 'school_board', 'workload', 'staff_directory',
+      'org_chart', 'school_board', 'workload', 'timetable', 'staff_directory',
       'dir_standing', 'dir_scout', 'dir_license', 'salary_history', 'feedback',
     ];
     if (viewParam && (validViews as string[]).includes(viewParam)) {
@@ -707,6 +710,22 @@ export default function DashboardPage() {
                       <span className="truncate">งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ</span>
                     </div>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('timetable')}
+                    className={`w-full flex items-center justify-between py-2 px-3 text-sm rounded-md transition-all ${
+                      activeView === 'timetable'
+                        ? 'bg-sky-50 text-sky-900 border-l-2 border-sky-600 font-semibold dark:bg-slate-800/70 dark:text-white dark:border-sky-500'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/30'
+                    }`}
+                    title="ตารางสอนและชั่วโมงสอน"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CalendarRange className="w-4 h-4 shrink-0 text-sky-500 dark:text-sky-400" />
+                      <span className="truncate">ตารางสอนและชั่วโมงสอน</span>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1012,6 +1031,19 @@ export default function DashboardPage() {
                       <Briefcase className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
                       <span className="truncate">งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectView('timetable')}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                        activeView === 'timetable'
+                          ? 'bg-sky-50 text-sky-900 font-semibold dark:bg-slate-800 dark:text-white'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200'
+                      }`}
+                      title="ตารางสอนและชั่วโมงสอน"
+                    >
+                      <CalendarRange className="w-4 h-4 text-sky-500 dark:text-sky-400 shrink-0" />
+                      <span className="truncate">ตารางสอนและชั่วโมงสอน</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1259,6 +1291,9 @@ export default function DashboardPage() {
 
           {/* View: Teacher Teaching Hours & PA Workload */}
           {activeView === 'workload' && <ViewWorkload />}
+
+          {/* View: Timetable & Weekly Teaching Hours (Phase 9) */}
+          {activeView === 'timetable' && <ViewTimetable />}
 
           {/* View: Category 3 Personnel Registries Hub */}
           {activeView === 'staff_directory' && (

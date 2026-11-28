@@ -48,6 +48,15 @@ import { getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/admin';
 import type { PerformanceEvaluationRecord } from '@/types/database.types';
 import { mapAccessLevelToRole } from '@/lib/auth/roles';
 import { formatStaffName, parseThaiName } from '@/lib/regulations/staff-formatting';
+import type {
+  TimetableSettings,
+  TimetableAllocation,
+  TimetableSlot,
+  TimetableBundle,
+  TimetableSemester,
+  TimetableSubjectType,
+} from '@/lib/data/timetableTypes';
+import { getDefaultTimetableSettings } from '@/lib/regulations/timetable-utils';
 
 export type {
   TeacherRecord,
@@ -111,6 +120,9 @@ export interface DatabaseState {
   studentCensusSnapshots?: StudentCensusSnapshotRecord[];
   fiscalPeriods?: FiscalPeriodRecord[];
   salaryPromotionRecords?: SalaryPromotionRecord[];
+  timetableSettings?: TimetableSettings[];
+  timetableAllocations?: TimetableAllocation[];
+  timetableSlots?: TimetableSlot[];
 }
 
 export const BOARD_POSITIONS_MAP: Record<string, string> = {
@@ -3281,6 +3293,308 @@ export async function dbSavePerformanceEvaluation(
 
   inMemoryPerformanceEvaluations.push(created);
   return created;
+}
+
+// ============================================================================
+// 15. TIMETABLE & WEEKLY TEACHING HOURS ENGINE (Phase 9.1)
+// ============================================================================
+
+function timetableSettingsFromDb(row: any, academicYear: string, semester: TimetableSemester): TimetableSettings {
+  const defaults = getDefaultTimetableSettings(academicYear, semester);
+  return {
+    id: row.id || defaults.id,
+    academicYear: row.academic_year || academicYear,
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    periodsConfig:
+      Array.isArray(row.periods_config) && row.periods_config.length > 0
+        ? row.periods_config
+        : defaults.periodsConfig,
+    fixedSlotsConfig: Array.isArray(row.fixed_slots_config) ? row.fixed_slots_config : [],
+    footerNote: typeof row.footer_note === 'string' && row.footer_note.length > 0
+      ? row.footer_note
+      : defaults.footerNote,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+function timetableAllocationFromDb(row: any): TimetableAllocation {
+  return {
+    id: row.id,
+    academicYear: row.academic_year || '',
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    roomName: row.room_name || '',
+    subjectCode: row.subject_code || '',
+    subjectName: row.subject_name || '',
+    subjectGroup: row.subject_group || '',
+    subjectType: (row.subject_type || 'พื้นฐาน') as TimetableSubjectType,
+    teacherId: row.teacher_id || '',
+    coTeacherId: row.co_teacher_id || '',
+    periodsPerWeek: Number(row.periods_per_week) || 1,
+    preferMorning: Boolean(row.prefer_morning),
+    consecutivePeriods: Number(row.consecutive_periods) === 2 ? 2 : 1,
+    createdAt: row.created_at || undefined,
+  };
+}
+
+function timetableSlotFromDb(row: any): TimetableSlot {
+  return {
+    id: row.id,
+    academicYear: row.academic_year || '',
+    semester: (row.semester === '2' ? '2' : '1') as TimetableSemester,
+    roomName: row.room_name || '',
+    dayOfWeek: Number(row.day_of_week) || 1,
+    periodNo: Number(row.period_no) || 1,
+    allocationId: row.allocation_id || '',
+    subjectCode: row.subject_code || '',
+    subjectName: row.subject_name || '',
+    subjectGroup: row.subject_group || '',
+    subjectType: (row.subject_type || 'พื้นฐาน') as TimetableSubjectType,
+    teacherId: row.teacher_id || '',
+    coTeacherId: row.co_teacher_id || '',
+    isLocked: Boolean(row.is_locked),
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+export async function dbGetTimetableBundle(
+  academicYear: string,
+  semester: TimetableSemester
+): Promise<TimetableBundle> {
+  const defaults = getDefaultTimetableSettings(academicYear, semester);
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const [settingsRes, allocRes, slotsRes] = await Promise.all([
+      supabase
+        .from('timetable_settings')
+        .select('*')
+        .eq('academic_year', academicYear)
+        .eq('semester', semester)
+        .maybeSingle(),
+      supabase
+        .from('timetable_allocations')
+        .select('*')
+        .eq('academic_year', academicYear)
+        .eq('semester', semester)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('timetable_slots')
+        .select('*')
+        .eq('academic_year', academicYear)
+        .eq('semester', semester),
+    ]);
+
+    if (settingsRes.error) {
+      throw new Error(`ไม่สามารถโหลดตั้งค่าตารางสอนจาก Supabase ได้: ${settingsRes.error.message}`);
+    }
+    if (allocRes.error) {
+      throw new Error(`ไม่สามารถโหลดแผนการสอนจาก Supabase ได้: ${allocRes.error.message}`);
+    }
+    if (slotsRes.error) {
+      throw new Error(`ไม่สามารถโหลดคาบเรียนจาก Supabase ได้: ${slotsRes.error.message}`);
+    }
+
+    return {
+      settings: settingsRes.data
+        ? timetableSettingsFromDb(settingsRes.data, academicYear, semester)
+        : defaults,
+      allocations: Array.isArray(allocRes.data) ? allocRes.data.map(timetableAllocationFromDb) : [],
+      slots: Array.isArray(slotsRes.data) ? slotsRes.data.map(timetableSlotFromDb) : [],
+    };
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const savedSettings = (db.timetableSettings || []).find(
+    (s) => s.academicYear === academicYear && s.semester === semester
+  );
+  const allocations = (db.timetableAllocations || []).filter(
+    (a) => a.academicYear === academicYear && a.semester === semester
+  );
+  const slots = (db.timetableSlots || []).filter(
+    (s) => s.academicYear === academicYear && s.semester === semester
+  );
+
+  return {
+    settings: savedSettings || defaults,
+    allocations,
+    slots,
+  };
+}
+
+export async function dbUpsertTimetableSettings(settings: TimetableSettings): Promise<TimetableSettings> {
+  const now = new Date().toISOString();
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id: settings.id || `${settings.academicYear}-${settings.semester}`,
+      academic_year: settings.academicYear,
+      semester: settings.semester,
+      periods_config: settings.periodsConfig,
+      fixed_slots_config: settings.fixedSlotsConfig || [],
+      footer_note: settings.footerNote || '',
+      updated_at: now,
+    };
+    const { data, error } = await supabase
+      .from('timetable_settings')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกตั้งค่าตารางสอนลง Supabase ได้: ${error.message}`);
+    }
+    return timetableSettingsFromDb(data, settings.academicYear, settings.semester);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.timetableSettings || [])];
+  const next: TimetableSettings = { ...settings, updatedAt: now };
+  const idx = list.findIndex(
+    (s) => s.academicYear === settings.academicYear && s.semester === settings.semester
+  );
+  if (idx >= 0) list[idx] = next;
+  else list.push(next);
+  db.timetableSettings = list;
+  saveDatabase(db);
+  return next;
+}
+
+export async function dbUpsertTimetableAllocation(
+  allocation: TimetableAllocation
+): Promise<TimetableAllocation> {
+  const now = new Date().toISOString();
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id: allocation.id,
+      academic_year: allocation.academicYear,
+      semester: allocation.semester,
+      room_name: allocation.roomName,
+      subject_code: allocation.subjectCode || '',
+      subject_name: allocation.subjectName,
+      subject_group: allocation.subjectGroup,
+      subject_type: allocation.subjectType,
+      teacher_id: allocation.teacherId,
+      co_teacher_id: allocation.coTeacherId || '',
+      periods_per_week: allocation.periodsPerWeek,
+      prefer_morning: Boolean(allocation.preferMorning),
+      consecutive_periods: allocation.consecutivePeriods === 2 ? 2 : 1,
+      created_at: allocation.createdAt || now,
+    };
+    const { data, error } = await supabase
+      .from('timetable_allocations')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกแผนการสอนลง Supabase ได้: ${error.message}`);
+    }
+    return timetableAllocationFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.timetableAllocations || [])];
+  const next: TimetableAllocation = { ...allocation, createdAt: allocation.createdAt || now };
+  const idx = list.findIndex((a) => a.id === allocation.id);
+  if (idx >= 0) list[idx] = next;
+  else list.push(next);
+  db.timetableAllocations = list;
+  saveDatabase(db);
+  return next;
+}
+
+export async function dbDeleteTimetableAllocation(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('timetable_allocations').delete().eq('id', id);
+    if (error) {
+      throw new Error(`ไม่สามารถลบแผนการสอนจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.timetableAllocations = (db.timetableAllocations || []).filter((a) => a.id !== id);
+  saveDatabase(db);
+  return true;
+}
+
+export async function dbUpsertTimetableSlot(slot: TimetableSlot): Promise<TimetableSlot> {
+  const now = new Date().toISOString();
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const row = {
+      id: slot.id,
+      academic_year: slot.academicYear,
+      semester: slot.semester,
+      room_name: slot.roomName,
+      day_of_week: slot.dayOfWeek,
+      period_no: slot.periodNo,
+      allocation_id: slot.allocationId || '',
+      subject_code: slot.subjectCode || '',
+      subject_name: slot.subjectName,
+      subject_group: slot.subjectGroup || '',
+      subject_type: slot.subjectType,
+      teacher_id: slot.teacherId,
+      co_teacher_id: slot.coTeacherId || '',
+      is_locked: Boolean(slot.isLocked),
+      updated_at: now,
+    };
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .upsert(row, { onConflict: 'academic_year,semester,room_name,day_of_week,period_no' })
+      .select()
+      .single();
+    if (error) {
+      throw new Error(`ไม่สามารถบันทึกคาบเรียนลง Supabase ได้: ${error.message}`);
+    }
+    return timetableSlotFromDb(data);
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const list = [...(db.timetableSlots || [])];
+  const next: TimetableSlot = { ...slot, updatedAt: now };
+  const idx = list.findIndex(
+    (s) =>
+      s.id === slot.id ||
+      (s.academicYear === slot.academicYear &&
+        s.semester === slot.semester &&
+        s.roomName === slot.roomName &&
+        s.dayOfWeek === slot.dayOfWeek &&
+        s.periodNo === slot.periodNo)
+  );
+  if (idx >= 0) list[idx] = next;
+  else list.push(next);
+  db.timetableSlots = list;
+  saveDatabase(db);
+  return next;
+}
+
+export async function dbDeleteTimetableSlot(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
+    if (error) {
+      throw new Error(`ไม่สามารถลบคาบเรียนจาก Supabase ได้: ${error.message}`);
+    }
+    return true;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  db.timetableSlots = (db.timetableSlots || []).filter((s) => s.id !== id);
+  saveDatabase(db);
+  return true;
 }
 
 
