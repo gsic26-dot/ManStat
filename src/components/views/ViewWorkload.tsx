@@ -4,14 +4,14 @@
  * ============================================================================
  * ManStat: View School Administration Roles & Special Duties (งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ)
  * ============================================================================
- * Phase 8 Architecture:
- * - Separates School Administration (4 Standard OBEC Divisions) & Ad-hoc Projects/Committees
- *   from Teaching Schedules (upcoming Phase 9).
- * - Preserves `workload` route/view key and `WORKLOAD_ADMIN_CATEGORY` so `getStaffDivisions()`
- *   and `ViewOrgChart` remain 100% synchronized.
+ * Phase 8.1 Refinements:
+ * - Clean labels & staff names (zero redundant parenthetical clutter).
+ * - 2-Step Cascading Selection (สังกัดฝ่ายงาน -> ตำแหน่ง/หน้าที่รับผิดชอบ -> auto-fill).
+ * - Smart Academic Year Rollover (คัดลอกโครงสร้างงานข้ามปีการศึกษา) with history preservation,
+ *   fresh-year reset, active staff filtering, and idempotent deduplication.
  * - Non-destructive: Legacy Category 1 (teaching) records are preserved and shown read-only.
  * - Zero emojis: pure Lucide SVG icons, dual Light/Dark mode, Arabic numerals (0-9).
- * - Modal close lock: Form modal closes ONLY via X or ยกเลิก (no backdrop click / Escape close).
+ * - Modal close lock: Form & Rollover modals close ONLY via X or ยกเลิก.
  * ============================================================================
  */
 
@@ -36,6 +36,9 @@ import {
   Calendar,
   Archive,
   Check,
+  Copy,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import {
   type TeacherRecord,
@@ -65,6 +68,8 @@ const ADMIN_DIVISION_CATEGORY: WorkloadCategory = WORKLOAD_ADMIN_CATEGORY;
 const ADHOC_PROJECT_CATEGORY: WorkloadCategory = 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ';
 const LEGACY_TEACHING_CATEGORY: WorkloadCategory = 'งานสอนและการจัดการเรียนรู้';
 const LEGACY_CARE_CATEGORY: WorkloadCategory = 'งานดูแลช่วยเหลือนักเรียน งานครูที่ปรึกษา และเวรปฏิบัติหน้าที่';
+
+const CUSTOM_ROLE_OPTION = '__CUSTOM__';
 
 const PRIMARY_STATUS_OPTIONS: WorkloadItem['status'][] = [
   'กำลังดำเนินการ',
@@ -115,20 +120,21 @@ export const ViewWorkload: React.FC = () => {
   const [divisionFilter, setDivisionFilter] = useState<string>('ALL');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
 
-  // Modal & CRUD State
+  // Add/Edit Modal & CRUD State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingWorkloadId, setEditingWorkloadId] = useState<string | null>(null);
   const [deletingWorkload, setDeletingWorkload] = useState<WorkloadItem | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // Form State
+  // Add/Edit Form State
   const [formTeacherId, setFormTeacherId] = useState<string>('');
   const [formAcademicYear, setFormAcademicYear] = useState<string>(defaultAcademicYear);
   const [formCategory, setFormCategory] = useState<WorkloadCategory>(ADMIN_DIVISION_CATEGORY);
-  const [formSelectedPresetId, setFormSelectedPresetId] = useState<string>('');
   const [formSubGroup, setFormSubGroup] = useState<string>(STANDARD_DIVISIONS[0]);
+  const [formRoleDropdownValue, setFormRoleDropdownValue] = useState<string>('');
   const [formTitle, setFormTitle] = useState<string>('');
   const [formScopeDescription, setFormScopeDescription] = useState<string>('');
+  const [isScopeAutoFilled, setIsScopeAutoFilled] = useState<boolean>(false);
   const [formObecSystems, setFormObecSystems] = useState<string[]>([]);
   const [formCustomSystem, setFormCustomSystem] = useState<string>('');
   const [showAllObecSystems, setShowAllObecSystems] = useState<boolean>(false);
@@ -139,6 +145,16 @@ export const ViewWorkload: React.FC = () => {
   const [formCoResponsibleIds, setFormCoResponsibleIds] = useState<string[]>([]);
   const [formCoEmpLegacy, setFormCoEmpLegacy] = useState<string>('');
   const [coSearchTerm, setCoSearchTerm] = useState<string>('');
+
+  // Academic Year Rollover Modal State
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState<boolean>(false);
+  const [rolloverSourceYear, setRolloverSourceYear] = useState<string>(defaultAcademicYear);
+  const [rolloverTargetYear, setRolloverTargetYear] = useState<string>(
+    String((Number(defaultAcademicYear) || 2569) + 1)
+  );
+  const [rolloverIncludeAdmin, setRolloverIncludeAdmin] = useState<boolean>(true);
+  const [rolloverIncludeAdhoc, setRolloverIncludeAdhoc] = useState<boolean>(false);
+  const [isRollingOver, setIsRollingOver] = useState<boolean>(false);
 
   const canManage = isAdminRole(currentRole);
 
@@ -202,12 +218,28 @@ export const ViewWorkload: React.FC = () => {
     return map;
   }, []);
 
-  // Academic years available for filter & form
+  // Years with existing admin or ad-hoc records (for rollover source dropdown)
+  const yearsWithData = useMemo(() => {
+    const set = new Set<string>();
+    for (const w of workloads) {
+      if (
+        (w.category === ADMIN_DIVISION_CATEGORY || w.category === ADHOC_PROJECT_CATEGORY) &&
+        w.academicYear &&
+        w.academicYear.trim()
+      ) {
+        set.add(w.academicYear.trim());
+      }
+    }
+    return Array.from(set).sort((a, b) => b.localeCompare(a, 'en'));
+  }, [workloads]);
+
+  // Academic years available for filter & forms
   const academicYearOptions = useMemo(() => {
     const set = new Set<string>([defaultAcademicYear]);
     const currentNum = Number(defaultAcademicYear);
     if (!Number.isNaN(currentNum)) {
       set.add(String(currentNum + 1));
+      set.add(String(currentNum + 2));
       set.add(String(currentNum - 1));
       set.add(String(currentNum - 2));
     }
@@ -219,15 +251,34 @@ export const ViewWorkload: React.FC = () => {
     return Array.from(set).sort((a, b) => b.localeCompare(a, 'en'));
   }, [workloads, defaultAcademicYear]);
 
-  // Workloads filtered by academic year (when a specific year is selected, keep records matching that year)
+  // Workloads filtered by academic year
   const yearFilteredWorkloads = useMemo(() => {
     if (academicYearFilter === 'ALL') return workloads;
     return workloads.filter((w) => (w.academicYear || '').trim() === academicYearFilter);
   }, [workloads, academicYearFilter]);
 
+  // Active division presets filtered strictly for cascading dropdown
+  const divisionRolePresets = useMemo(() => {
+    const normalizedDiv = normalizeDivisionName(formSubGroup);
+    if (!normalizedDiv) return [];
+    return OBEC_ADMIN_ROLE_PRESETS.filter((p) => p.division === normalizedDiv);
+  }, [formSubGroup]);
+
+  // Rollover live counts for selected sourceYear
+  const rolloverSourceCounts = useMemo(() => {
+    let adminCount = 0;
+    let adhocCount = 0;
+    for (const w of workloads) {
+      if ((w.academicYear || '').trim() !== rolloverSourceYear) continue;
+      if (w.category === ADMIN_DIVISION_CATEGORY) adminCount += 1;
+      else if (w.category === ADHOC_PROJECT_CATEGORY) adhocCount += 1;
+    }
+    return { adminCount, adhocCount };
+  }, [workloads, rolloverSourceYear]);
+
   const showNotice = (type: 'success' | 'error', text: string) => {
     setStatusNotice({ type, text });
-    setTimeout(() => setStatusNotice(null), 4000);
+    setTimeout(() => setStatusNotice(null), 5000);
   };
 
   const toggleExpand = (teacherId: string) => {
@@ -245,10 +296,11 @@ export const ViewWorkload: React.FC = () => {
     setFormTeacherId(targetTeacherId);
     setFormAcademicYear(academicYearFilter !== 'ALL' ? academicYearFilter : defaultAcademicYear);
     setFormCategory(targetCat);
-    setFormSelectedPresetId('');
     setFormSubGroup(targetCat === ADMIN_DIVISION_CATEGORY ? STANDARD_DIVISIONS[0] : '');
+    setFormRoleDropdownValue('');
     setFormTitle('');
     setFormScopeDescription('');
+    setIsScopeAutoFilled(false);
     setFormObecSystems([]);
     setFormCustomSystem('');
     setShowAllObecSystems(false);
@@ -266,24 +318,38 @@ export const ViewWorkload: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Open Edit Modal
+  // Open Edit Modal (preserves exact saved roleTitle, scopeDescription, obecSystems)
   const handleOpenEditModal = (item: WorkloadItem) => {
     if (!canManage) return;
     const normalizedCat: WorkloadCategory =
       item.category === ADMIN_DIVISION_CATEGORY ? ADMIN_DIVISION_CATEGORY : ADHOC_PROJECT_CATEGORY;
+    const resolvedSub =
+      normalizedCat === ADMIN_DIVISION_CATEGORY
+        ? normalizeDivisionName(item.subGroupOrLevel) || item.subGroupOrLevel || STANDARD_DIVISIONS[0]
+        : item.subGroupOrLevel || '';
+
+    let matchedDropdownValue = CUSTOM_ROLE_OPTION;
+    const trimmedTitle = (item.title || '').trim();
+    if (normalizedCat === ADMIN_DIVISION_CATEGORY) {
+      const normalizedDiv = normalizeDivisionName(resolvedSub);
+      const found = OBEC_ADMIN_ROLE_PRESETS.find(
+        (p) => p.division === normalizedDiv && p.roleTitle === trimmedTitle
+      );
+      if (found) matchedDropdownValue = found.id;
+    } else {
+      const found = ADHOC_PROJECT_PRESETS.find((p) => p.roleTitle === trimmedTitle);
+      if (found) matchedDropdownValue = found.id;
+    }
 
     setEditingWorkloadId(item.id);
     setFormTeacherId(item.teacherId);
     setFormAcademicYear((item.academicYear || '').trim() || defaultAcademicYear);
     setFormCategory(normalizedCat);
-    setFormSelectedPresetId('');
-    setFormSubGroup(
-      normalizedCat === ADMIN_DIVISION_CATEGORY
-        ? normalizeDivisionName(item.subGroupOrLevel) || item.subGroupOrLevel || STANDARD_DIVISIONS[0]
-        : item.subGroupOrLevel || ''
-    );
-    setFormTitle(item.title || '');
+    setFormSubGroup(resolvedSub);
+    setFormRoleDropdownValue(matchedDropdownValue);
+    setFormTitle(trimmedTitle);
     setFormScopeDescription(item.scopeDescription || '');
+    setIsScopeAutoFilled(false);
     setFormObecSystems(Array.isArray(item.obecSystems) ? [...item.obecSystems] : []);
     setFormCustomSystem('');
     setShowAllObecSystems(false);
@@ -304,8 +370,10 @@ export const ViewWorkload: React.FC = () => {
   };
 
   const handleCategorySwitch = (newCat: WorkloadCategory) => {
+    if (newCat === formCategory) return;
     setFormCategory(newCat);
-    setFormSelectedPresetId('');
+    setFormRoleDropdownValue('');
+    setIsScopeAutoFilled(false);
     if (!editingWorkloadId) {
       setFormTitle('');
       setFormScopeDescription('');
@@ -321,37 +389,53 @@ export const ViewWorkload: React.FC = () => {
       if (!normalized) {
         setFormSubGroup(STANDARD_DIVISIONS[0]);
       }
+      setFormRoleDropdownValue(CUSTOM_ROLE_OPTION);
+    } else {
+      setFormRoleDropdownValue(CUSTOM_ROLE_OPTION);
     }
   };
 
-  const handlePresetChange = (presetId: string) => {
-    setFormSelectedPresetId(presetId);
-    if (!presetId || presetId === '__CUSTOM__') {
-      if (presetId === '__CUSTOM__') {
-        setFormTitle('');
-        setFormScopeDescription('');
-        setFormObecSystems([]);
-      }
+  const handleDivisionChange = (newDivision: string) => {
+    setFormSubGroup(newDivision);
+    setFormRoleDropdownValue('');
+    setFormTitle('');
+    setIsScopeAutoFilled(false);
+  };
+
+  const handleRoleDropdownChange = (selectedValue: string) => {
+    setFormRoleDropdownValue(selectedValue);
+
+    if (!selectedValue) {
+      setFormTitle('');
+      setIsScopeAutoFilled(false);
+      return;
+    }
+
+    if (selectedValue === CUSTOM_ROLE_OPTION) {
+      setFormTitle('');
+      setIsScopeAutoFilled(false);
       return;
     }
 
     if (formCategory === ADMIN_DIVISION_CATEGORY) {
-      const found = OBEC_ADMIN_ROLE_PRESETS.find((p) => p.id === presetId);
+      const found = OBEC_ADMIN_ROLE_PRESETS.find((p) => p.id === selectedValue);
       if (found) {
         setFormSubGroup(found.division);
         setFormTitle(found.roleTitle);
         setFormRole(found.defaultRoleInTask);
         setFormScopeDescription(found.defaultScope);
         setFormObecSystems([...found.obecSystems]);
+        setIsScopeAutoFilled(true);
       }
     } else {
-      const found = ADHOC_PROJECT_PRESETS.find((p) => p.id === presetId);
+      const found = ADHOC_PROJECT_PRESETS.find((p) => p.id === selectedValue);
       if (found) {
         setFormSubGroup(found.defaultSubGroup);
         setFormTitle(found.roleTitle);
         setFormRole(found.defaultRoleInTask);
         setFormScopeDescription(found.defaultScope);
         setFormObecSystems([...found.obecSystems]);
+        setIsScopeAutoFilled(true);
       }
     }
   };
@@ -464,6 +548,90 @@ export const ViewWorkload: React.FC = () => {
     }
   };
 
+  // Open Academic Year Rollover Modal
+  const handleOpenRolloverModal = (preferredTargetYear?: string) => {
+    if (!canManage) return;
+    const latestSource = yearsWithData[0] || defaultAcademicYear;
+    const computedTarget =
+      preferredTargetYear && preferredTargetYear !== latestSource
+        ? preferredTargetYear
+        : String((Number(latestSource) || Number(defaultAcademicYear) || 2569) + 1);
+
+    setRolloverSourceYear(latestSource);
+    setRolloverTargetYear(computedTarget);
+    setRolloverIncludeAdmin(true);
+    setRolloverIncludeAdhoc(false);
+    setIsRolloverModalOpen(true);
+  };
+
+  const handleCloseRolloverModal = () => {
+    if (isRollingOver) return;
+    setIsRolloverModalOpen(false);
+  };
+
+  const handleExecuteRollover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !canManage ||
+      !rolloverSourceYear ||
+      !rolloverTargetYear ||
+      rolloverSourceYear === rolloverTargetYear ||
+      (!rolloverIncludeAdmin && !rolloverIncludeAdhoc)
+    ) {
+      return;
+    }
+
+    setIsRollingOver(true);
+    try {
+      const res = await fetch('/api/admin/workload/rollover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceYear: rolloverSourceYear,
+          targetYear: rolloverTargetYear,
+          includeAdminRoles: rolloverIncludeAdmin,
+          includeAdhocProjects: rolloverIncludeAdhoc,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถคัดลอกโครงสร้างงานข้ามปีการศึกษาได้');
+      }
+
+      // Refresh workloads from server so client state is 100% synced
+      const refreshRes = await fetch('/api/admin/workload', { cache: 'no-store' });
+      const refreshJson = await refreshRes.json().catch(() => ({}));
+      if (refreshRes.ok && refreshJson.success && Array.isArray(refreshJson.data)) {
+        setWorkloads(refreshJson.data);
+      } else if (Array.isArray(json.data?.created)) {
+        setWorkloads((prev) => [...prev, ...json.data.created]);
+      }
+
+      const createdCount = Number(json.data?.createdCount ?? 0);
+      const skippedDuplicates = Number(json.data?.skippedDuplicates ?? 0);
+      const skippedInactiveStaff = Number(json.data?.skippedInactiveStaff ?? 0);
+
+      const skippedParts: string[] = [];
+      if (skippedDuplicates > 0) skippedParts.push(`ข้ามรายการซ้ำ ${skippedDuplicates} รายการ`);
+      if (skippedInactiveStaff > 0) skippedParts.push(`ข้ามบุคลากรพ้นสภาพ ${skippedInactiveStaff} รายการ`);
+
+      setAcademicYearFilter(rolloverTargetYear);
+      setIsRolloverModalOpen(false);
+      showNotice(
+        'success',
+        skippedParts.length > 0
+          ? `คัดลอกโครงสร้างงานไปยังปีการศึกษา ${rolloverTargetYear} สำเร็จ ${createdCount} รายการ (${skippedParts.join(', ')})`
+          : `คัดลอกโครงสร้างงานไปยังปีการศึกษา ${rolloverTargetYear} สำเร็จ ${createdCount} รายการ`
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการคัดลอกโครงสร้างงาน';
+      console.error('Failed to rollover workloads:', err);
+      showNotice('error', message);
+    } finally {
+      setIsRollingOver(false);
+    }
+  };
+
   // Aggregate per teacher
   const staffRows = useMemo(() => {
     return sortedTeachers.map((teacher) => {
@@ -479,7 +647,6 @@ export const ViewWorkload: React.FC = () => {
         (w) => w.category === LEGACY_TEACHING_CATEGORY
       );
 
-      // Divisions derived from standardized admin workloads (fallback to teacher.division when yearFilter === ALL)
       const derivedDivisions =
         academicYearFilter === 'ALL'
           ? getStaffDivisions(teacher, workloads)
@@ -491,7 +658,6 @@ export const ViewWorkload: React.FC = () => {
               )
             );
 
-      // Unique OBEC reporting systems handled by this staff member
       const obecSystems = Array.from(
         new Set(
           [...adminItems, ...adhocItems].flatMap((item) =>
@@ -517,7 +683,6 @@ export const ViewWorkload: React.FC = () => {
     });
   }, [sortedTeachers, yearFilteredWorkloads, workloads, academicYearFilter]);
 
-  // Division KPI counts across current year filter
   const divisionSummary = useMemo(() => {
     return STANDARD_DIVISIONS.map((div) => {
       const roleCount = yearFilteredWorkloads.filter(
@@ -561,7 +726,6 @@ export const ViewWorkload: React.FC = () => {
     });
   }, [staffRows, searchTerm, divisionFilter]);
 
-  // OBEC Systems displayed in modal picker
   const visibleObecSystems = useMemo(() => {
     if (showAllObecSystems || formCategory !== ADMIN_DIVISION_CATEGORY) {
       return OBEC_SYSTEM_CATALOG;
@@ -572,20 +736,21 @@ export const ViewWorkload: React.FC = () => {
     return divMatched.length > 0 ? divMatched : OBEC_SYSTEM_CATALOG;
   }, [showAllObecSystems, formCategory, formSubGroup]);
 
-  // Co-responsible candidates (exclude main assignee)
   const coResponsibleCandidates = useMemo(() => {
     const q = coSearchTerm.trim().toLowerCase();
     return sortedTeachers.filter((t) => {
       if (t.id === formTeacherId) return false;
       if (!q) return true;
-      const fullName = formatStaffName(t).toLowerCase();
-      return (
-        fullName.includes(q) ||
-        (t.position || '').toLowerCase().includes(q) ||
-        (t.department || '').toLowerCase().includes(q)
-      );
+      return formatStaffName(t).toLowerCase().includes(q);
     });
   }, [sortedTeachers, formTeacherId, coSearchTerm]);
+
+  const isSelectedYearEmpty =
+    !isLoading &&
+    academicYearFilter !== 'ALL' &&
+    yearFilteredWorkloads.filter(
+      (w) => w.category === ADMIN_DIVISION_CATEGORY || w.category === ADHOC_PROJECT_CATEGORY
+    ).length === 0;
 
   const resolveCoResponsibleNames = (item: WorkloadItem): string[] => {
     const names: string[] = [];
@@ -639,7 +804,7 @@ export const ViewWorkload: React.FC = () => {
               </span>
               {isLegacyCat4 && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  รายการเดิม (หมวดดูแลนักเรียน/เวร)
+                  รายการเดิม
                 </span>
               )}
             </div>
@@ -649,7 +814,12 @@ export const ViewWorkload: React.FC = () => {
             </h5>
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              <span>บทบาท: <strong className="font-medium text-slate-700 dark:text-slate-200">{item.roleInTask || '-'}</strong></span>
+              <span>
+                บทบาท:{' '}
+                <strong className="font-medium text-slate-700 dark:text-slate-200">
+                  {item.roleInTask || '-'}
+                </strong>
+              </span>
               {item.orderOrRef && (
                 <span className="inline-flex items-center gap-1">
                   <FileText className="w-3.5 h-3.5 shrink-0 text-slate-400" />
@@ -687,14 +857,12 @@ export const ViewWorkload: React.FC = () => {
           )}
         </div>
 
-        {/* Job Description / Scope */}
         {item.scopeDescription && (
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50/90 dark:bg-[#0e151f] px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800/80">
             {item.scopeDescription}
           </p>
         )}
 
-        {/* OBEC Reporting Systems */}
         {systems.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-1">
@@ -716,7 +884,6 @@ export const ViewWorkload: React.FC = () => {
           </div>
         )}
 
-        {/* Co-Responsibles */}
         {coNames.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1 font-medium">
@@ -732,7 +899,7 @@ export const ViewWorkload: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header & Primary Action */}
+      {/* Header & Primary Actions */}
       <div className="bg-white dark:bg-[#121822] p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -740,12 +907,20 @@ export const ViewWorkload: React.FC = () => {
             <span>งานบริหาร 4 ฝ่ายและหน้าที่พิเศษ</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            บริหารจัดการโครงสร้างงาน 4 ฝ่ายมาตรฐาน สพฐ. ขอบข่ายภาระงาน ระบบรายงานอิเล็กทรอนิกส์ (DMC, SET, e-GP, e-SAR ฯลฯ) และคำสั่งคณะกรรมการเฉพาะกิจ
+            บริหารจัดการโครงสร้างงาน 4 ฝ่ายมาตรฐาน สพฐ. ขอบข่ายภาระงาน ระบบรายงานอิเล็กทรอนิกส์ และคำสั่งคณะกรรมการเฉพาะกิจ
           </p>
         </div>
 
         {canManage && (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleOpenRolloverModal()}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors duration-200 cursor-pointer"
+            >
+              <Copy className="w-4 h-4 shrink-0" />
+              <span>คัดลอกโครงสร้างข้ามปี</span>
+            </button>
             <button
               type="button"
               onClick={() => handleOpenAssignModal()}
@@ -761,6 +936,8 @@ export const ViewWorkload: React.FC = () => {
       {/* Status Notice */}
       {statusNotice && (
         <div
+          role="status"
+          aria-live="polite"
           className={`px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-2 ${
             statusNotice.type === 'success'
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
@@ -812,15 +989,15 @@ export const ViewWorkload: React.FC = () => {
         })}
       </div>
 
-      {/* Filter Bar: Search + Academic Year + Division */}
+      {/* Filter Bar */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
         <div className="relative md:col-span-6">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
           <input
-            type="text"
+            type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ค้นหาชื่อบุคลากร, ตำแหน่งหน้าที่, ระบบรายงาน สพฐ. (DMC, e-GP...), ฝ่ายงาน..."
+            placeholder="ค้นหาชื่อบุคลากร, ตำแหน่งหน้าที่, ระบบรายงาน สพฐ., ฝ่ายงาน..."
             className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition-all"
           />
         </div>
@@ -848,7 +1025,7 @@ export const ViewWorkload: React.FC = () => {
             onChange={(e) => setDivisionFilter(e.target.value)}
             className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
           >
-            <option value="ALL">สังกัดฝ่ายงาน: ทั้งหมด (4 ฝ่าย)</option>
+            <option value="ALL">สังกัดฝ่ายงาน: ทั้งหมด</option>
             {STANDARD_DIVISIONS.map((div) => (
               <option key={div} value={div}>
                 {div}
@@ -857,6 +1034,33 @@ export const ViewWorkload: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {/* Empty Selected Academic Year CTA Banner */}
+      {isSelectedYearEmpty && (
+        <div className="bg-sky-50/70 dark:bg-sky-950/30 border border-dashed border-sky-300 dark:border-sky-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Calendar className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                ยังไม่มีโครงสร้างงานบริหารในปีการศึกษา {academicYearFilter}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                สามารถคัดลอกโครงสร้างงาน 4 ฝ่ายจากปีการศึกษาก่อนหน้ามาตั้งต้นได้ทันที โดยไม่กระทบข้อมูลประวัติปีเดิม
+              </p>
+            </div>
+          </div>
+          {canManage && yearsWithData.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleOpenRolloverModal(academicYearFilter)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer shrink-0"
+            >
+              <Copy className="w-4 h-4 shrink-0" />
+              <span>คัดลอกโครงสร้างจากปีก่อนหน้า</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Staff Administration Table (Master-Detail Accordion) */}
       <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 space-y-4 shadow-sm transition-colors duration-200">
@@ -871,7 +1075,7 @@ export const ViewWorkload: React.FC = () => {
                   บุคลากร / ตำแหน่ง
                 </th>
                 <th scope="col" className="w-[24%] px-4 py-3.5">
-                  สังกัดฝ่ายงาน (4 ฝ่าย)
+                  สังกัดฝ่ายงาน
                 </th>
                 <th scope="col" className="w-[16%] px-4 py-3.5 text-center">
                   งานบริหาร / โครงการ
@@ -999,7 +1203,6 @@ export const ViewWorkload: React.FC = () => {
                         <tr className="bg-slate-50/90 dark:bg-[#0b1016]/90 border-y border-slate-200/90 dark:border-slate-800/80">
                           <td colSpan={6} className="p-4 sm:p-6">
                             <div className="space-y-6">
-                              {/* Expanded Header */}
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -1010,7 +1213,10 @@ export const ViewWorkload: React.FC = () => {
                                       ? 'แสดงทุกปีการศึกษา'
                                       : `ปีการศึกษา ${academicYearFilter}`}
                                     {' · '}
-                                    สังกัดฝ่าย: {row.derivedDivisions.length > 0 ? row.derivedDivisions.join(', ') : 'ยังไม่ระบุ'}
+                                    สังกัดฝ่าย:{' '}
+                                    {row.derivedDivisions.length > 0
+                                      ? row.derivedDivisions.join(', ')
+                                      : 'ยังไม่ระบุ'}
                                   </p>
                                 </div>
                                 {canManage && (
@@ -1045,7 +1251,7 @@ export const ViewWorkload: React.FC = () => {
                               <div className="space-y-3">
                                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
                                   <Building2 className="w-4 h-4 text-sky-500 shrink-0" />
-                                  <span>งานบริหารและงานประจำฝ่าย (4 ฝ่ายมาตรฐาน สพฐ.)</span>
+                                  <span>งานบริหารและงานประจำฝ่าย</span>
                                   <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                     {row.adminItems.length}
                                   </span>
@@ -1097,7 +1303,7 @@ export const ViewWorkload: React.FC = () => {
                                       </span>
                                     </div>
                                     <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                                      แสดงแบบอ่านอย่างเดียว (ไม่ลบข้อมูลเดิม)
+                                      แสดงแบบอ่านอย่างเดียว
                                     </span>
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1165,16 +1371,22 @@ export const ViewWorkload: React.FC = () => {
             {/* Scrollable Body */}
             <form
               id="admin-workload-form"
+              aria-labelledby="workload-modal-title"
               onSubmit={handleSaveWorkload}
               className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
             >
-              {/* Row 1: Main Assignee + Academic Year */}
+              {/* Row 1: Main Assignee (Clean Full Name) + Academic Year */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="wl-teacher-id"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
                     บุคลากรผู้รับผิดชอบหลัก <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="wl-teacher-id"
+                    name="teacherId"
                     required
                     value={formTeacherId}
                     onChange={(e) => {
@@ -1187,17 +1399,22 @@ export const ViewWorkload: React.FC = () => {
                     <option value="">-- เลือกบุคลากร --</option>
                     {sortedTeachers.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {formatStaffName(t)} ({t.position || '-'})
+                        {formatStaffName(t)}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="wl-academic-year"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
                     ปีการศึกษา <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="wl-academic-year"
+                    name="academicYear"
                     required
                     value={formAcademicYear}
                     onChange={(e) => setFormAcademicYear(e.target.value)}
@@ -1212,11 +1429,11 @@ export const ViewWorkload: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 2: Workload Type (2 choices) */}
+              {/* Row 2: Workload Type (2 clean choices) */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                <span className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
                   ประเภทภาระงาน <span className="text-rose-500">*</span>
-                </label>
+                </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"
@@ -1228,7 +1445,7 @@ export const ViewWorkload: React.FC = () => {
                     }`}
                   >
                     <Building2 className="w-4 h-4 shrink-0" />
-                    <span>งานบริหารและงานประจำฝ่าย (4 ฝ่ายมาตรฐาน สพฐ.)</span>
+                    <span>งานบริหารและงานประจำฝ่าย</span>
                   </button>
                   <button
                     type="button"
@@ -1245,114 +1462,196 @@ export const ViewWorkload: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 3: Standardized OBEC Role Preset Picker */}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                  เลือกจากแม่แบบตำแหน่งงานมาตรฐาน สพฐ. (เติมข้อมูลอัตโนมัติ)
-                </label>
-                <select
-                  value={formSelectedPresetId}
-                  onChange={(e) => handlePresetChange(e.target.value)}
-                  className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
-                >
-                  <option value="">-- เลือกแม่แบบเพื่อกรอกฝ่ายงาน ขอบข่าย และระบบรายงานอัตโนมัติ --</option>
-                  {formCategory === ADMIN_DIVISION_CATEGORY ? (
-                    STANDARD_DIVISIONS.map((div) => (
-                      <optgroup key={div} label={div}>
-                        {OBEC_ADMIN_ROLE_PRESETS.filter((p) => p.division === div).map((preset) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.roleTitle}
-                            {preset.obecSystems.length > 0
-                              ? ` [${preset.obecSystems.slice(0, 3).join(', ')}]`
-                              : ''}
+              {/* Row 3: 2-Step Cascading Selection */}
+              {formCategory === ADMIN_DIVISION_CATEGORY ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Step 1: Division */}
+                    <div>
+                      <label
+                        htmlFor="wl-division"
+                        className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                      >
+                        สังกัดฝ่ายงาน <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        id="wl-division"
+                        name="division"
+                        required
+                        value={formSubGroup}
+                        onChange={(e) => handleDivisionChange(e.target.value)}
+                        className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                      >
+                        {STANDARD_DIVISIONS.map((div) => (
+                          <option key={div} value={div}>
+                            {div}
                           </option>
                         ))}
-                      </optgroup>
-                    ))
-                  ) : (
-                    ADHOC_PROJECT_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.roleTitle}
-                      </option>
-                    ))
-                  )}
-                  <option value="__CUSTOM__">กำหนดตำแหน่ง / หน้าที่งานเอง (Custom)</option>
-                </select>
-              </div>
+                        {formSubGroup &&
+                          !(STANDARD_DIVISIONS as readonly string[]).includes(formSubGroup) && (
+                            <option value={formSubGroup}>{formSubGroup}</option>
+                          )}
+                      </select>
+                    </div>
 
-              {/* Row 4: Division + Role Title */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                    {formCategory === ADMIN_DIVISION_CATEGORY
-                      ? 'สังกัดฝ่ายงาน (4 ฝ่ายมาตรฐาน สพฐ.)'
-                      : 'กลุ่มงาน / คณะทำงาน / โครงการ'}{' '}
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  {formCategory === ADMIN_DIVISION_CATEGORY ? (
+                    {/* Step 2: Role filtered strictly to chosen Division */}
+                    <div>
+                      <label
+                        htmlFor="wl-role-select"
+                        className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                      >
+                        ตำแหน่ง / หน้าที่รับผิดชอบ <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        id="wl-role-select"
+                        name="roleSelect"
+                        required
+                        value={formRoleDropdownValue}
+                        onChange={(e) => handleRoleDropdownChange(e.target.value)}
+                        className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="">-- เลือกตำแหน่ง / หน้าที่ในฝ่าย --</option>
+                        {divisionRolePresets.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.roleTitle}
+                          </option>
+                        ))}
+                        <option value={CUSTOM_ROLE_OPTION}>+ ระบุตำแหน่ง / หน้าที่เอง...</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Custom Role Title Input (revealed only when Custom option is active) */}
+                  {formRoleDropdownValue === CUSTOM_ROLE_OPTION && (
+                    <div>
+                      <label
+                        htmlFor="wl-custom-title"
+                        className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                      >
+                        ระบุชื่อตำแหน่ง / หน้าที่รับผิดชอบ <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        id="wl-custom-title"
+                        name="customTitle"
+                        type="text"
+                        required
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        placeholder="กรอกชื่อตำแหน่งหรือหน้าที่รับผิดชอบ..."
+                        className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label
+                      htmlFor="wl-project-select"
+                      className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                    >
+                      ชื่อโครงการ / คณะกรรมการ <span className="text-rose-500">*</span>
+                    </label>
                     <select
+                      id="wl-project-select"
+                      name="projectSelect"
                       required
-                      value={formSubGroup}
-                      onChange={(e) => setFormSubGroup(e.target.value)}
+                      value={formRoleDropdownValue}
+                      onChange={(e) => handleRoleDropdownChange(e.target.value)}
                       className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
                     >
-                      {STANDARD_DIVISIONS.map((div) => (
-                        <option key={div} value={div}>
-                          {div}
+                      <option value="">-- เลือกโครงการ / คณะกรรมการ --</option>
+                      {ADHOC_PROJECT_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.roleTitle}
                         </option>
                       ))}
-                      {formSubGroup &&
-                        !(STANDARD_DIVISIONS as readonly string[]).includes(formSubGroup) && (
-                          <option value={formSubGroup}>{formSubGroup} (ข้อมูลเดิม)</option>
-                        )}
+                      <option value={CUSTOM_ROLE_OPTION}>+ ระบุชื่อโครงการ / คณะกรรมการเอง...</option>
                     </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={formSubGroup}
-                      onChange={(e) => setFormSubGroup(e.target.value)}
-                      placeholder="เช่น งานพัสดุ, กิจกรรมวันสำคัญ, กีฬาสี"
-                      className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
-                    />
+                  </div>
+
+                  {formRoleDropdownValue === CUSTOM_ROLE_OPTION && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          htmlFor="wl-custom-project-title"
+                          className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                        >
+                          ระบุชื่อโครงการ / คณะกรรมการ <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          id="wl-custom-project-title"
+                          name="customProjectTitle"
+                          type="text"
+                          required
+                          value={formTitle}
+                          onChange={(e) => setFormTitle(e.target.value)}
+                          placeholder="กรอกชื่อโครงการหรือคณะกรรมการ..."
+                          className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="wl-custom-project-subgroup"
+                          className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                        >
+                          กลุ่มงาน / คณะทำงาน
+                        </label>
+                        <input
+                          id="wl-custom-project-subgroup"
+                          name="customProjectSubGroup"
+                          type="text"
+                          value={formSubGroup}
+                          onChange={(e) => setFormSubGroup(e.target.value)}
+                          placeholder="เช่น กิจกรรมวันสำคัญ, กีฬาสี"
+                          className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                    ตำแหน่ง / หน้าที่รับผิดชอบ <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="เช่น หัวหน้าเจ้าหน้าที่พัสดุ, งานสารสนเทศ DMC"
-                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 5: Scope Description (Job Description) */}
+              {/* Row 4: Scope Description */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                  ขอบข่ายภาระงาน (Job Description)
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <label
+                    htmlFor="wl-scope"
+                    className="text-xs font-medium text-slate-600 dark:text-slate-300"
+                  >
+                    ขอบข่ายภาระงาน
+                  </label>
+                  {isScopeAutoFilled && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/70">
+                      <Sparkles className="w-3 h-3 shrink-0" />
+                      <span>เติมข้อมูลอัตโนมัติ</span>
+                    </span>
+                  )}
+                </div>
                 <textarea
+                  id="wl-scope"
+                  name="scopeDescription"
                   rows={3}
                   value={formScopeDescription}
-                  onChange={(e) => setFormScopeDescription(e.target.value)}
+                  onChange={(e) => {
+                    setFormScopeDescription(e.target.value);
+                    if (isScopeAutoFilled) setIsScopeAutoFilled(false);
+                  }}
                   placeholder="ระบุขอบข่ายหน้าที่ความรับผิดชอบหลัก งานที่ต้องดำเนินการ และผลลัพธ์ที่คาดหวัง..."
                   className="w-full bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 leading-relaxed"
                 />
               </div>
 
-              {/* Row 6: OBEC Reporting Systems Multi-Select Pills + Custom Tag */}
+              {/* Row 5: OBEC Reporting Systems Multi-Select Pills + Custom Tag */}
               <div className="space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                     <Database className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                    <span>ระบบรายงาน สพฐ. ที่รับผิดชอบ ({formObecSystems.length} ระบบ)</span>
-                  </label>
+                    <span>ระบบรายงาน สพฐ. ที่รับผิดชอบ</span>
+                    <span className="font-mono text-[11px] text-slate-400">
+                      ({formObecSystems.length})
+                    </span>
+                  </span>
                   {formCategory === ADMIN_DIVISION_CATEGORY && (
                     <button
                       type="button"
@@ -1361,12 +1660,11 @@ export const ViewWorkload: React.FC = () => {
                     >
                       {showAllObecSystems
                         ? 'แสดงเฉพาะระบบของฝ่ายที่เลือก'
-                        : `แสดงระบบทั้งหมด (${OBEC_SYSTEM_CATALOG.length} ระบบ)`}
+                        : `แสดงระบบทั้งหมด (${OBEC_SYSTEM_CATALOG.length})`}
                     </button>
                   )}
                 </div>
 
-                {/* Selected Tags */}
                 {formObecSystems.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60">
                     {formObecSystems.map((code) => (
@@ -1388,7 +1686,6 @@ export const ViewWorkload: React.FC = () => {
                   </div>
                 )}
 
-                {/* Quick Toggle Pills */}
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2.5 rounded-xl bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80">
                   {visibleObecSystems.map((sys) => {
                     const selected = formObecSystems.includes(sys.code);
@@ -1411,19 +1708,18 @@ export const ViewWorkload: React.FC = () => {
                   })}
                 </div>
 
-                {/* Add Custom OBEC System */}
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={formCustomSystem}
                     onChange={(e) => setFormCustomSystem(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         handleAddCustomSystem();
                       }
                     }}
-                    placeholder="เพิ่มชื่อระบบรายงานอื่นเพิ่มเติม (เช่น ระบบเฉพาะของเขตพื้นที่ฯ)"
+                    placeholder="เพิ่มชื่อระบบรายงานอื่นเพิ่มเติม..."
                     className="flex-1 h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
                   />
                   <button
@@ -1437,13 +1733,18 @@ export const ViewWorkload: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 7: Role in Task + Order/Ref + Status */}
+              {/* Row 6: Role in Task + Order/Ref + Status */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="wl-role-in-task"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
                     บทบาทในงาน
                   </label>
                   <select
+                    id="wl-role-in-task"
+                    name="roleInTask"
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
@@ -1460,10 +1761,15 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="wl-order-ref"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
                     คำสั่งที่ / หนังสืออ้างอิง
                   </label>
                   <input
+                    id="wl-order-ref"
+                    name="orderOrRef"
                     type="text"
                     value={formOrderRef}
                     onChange={(e) => setFormOrderRef(e.target.value)}
@@ -1473,10 +1779,15 @@ export const ViewWorkload: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+                  <label
+                    htmlFor="wl-status"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
                     สถานะการดำเนินงาน
                   </label>
                   <select
+                    id="wl-status"
+                    name="status"
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as WorkloadItem['status'])}
                     className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
@@ -1493,14 +1804,18 @@ export const ViewWorkload: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 8: Co-Responsibles Multi-Select Staff Picker */}
+              {/* Row 7: Co-Responsibles Multi-Select Staff Picker (Clean Full Names Only) */}
               <div className="space-y-2.5">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                  <span>ผู้ร่วมรับผิดชอบ (เลือกได้หลายคน · {formCoResponsibleIds.length} คน)</span>
-                </label>
+                  <span>ผู้ร่วมรับผิดชอบ</span>
+                  {formCoResponsibleIds.length > 0 && (
+                    <span className="font-mono text-[11px] text-sky-600 dark:text-sky-400">
+                      ({formCoResponsibleIds.length})
+                    </span>
+                  )}
+                </span>
 
-                {/* Selected Co-Responsibles Chips */}
                 {formCoResponsibleIds.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/60">
                     {formCoResponsibleIds.map((id) => {
@@ -1528,7 +1843,7 @@ export const ViewWorkload: React.FC = () => {
 
                 {formCoEmpLegacy && (
                   <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-800 dark:text-amber-200">
-                    <span>ผู้ร่วมเดิม (ข้อความอิสระ): {formCoEmpLegacy}</span>
+                    <span>ผู้ร่วมเดิม: {formCoEmpLegacy}</span>
                     <button
                       type="button"
                       onClick={() => setFormCoEmpLegacy('')}
@@ -1543,10 +1858,10 @@ export const ViewWorkload: React.FC = () => {
                   <div className="relative border-b border-slate-200 dark:border-slate-700/80">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
                     <input
-                      type="text"
+                      type="search"
                       value={coSearchTerm}
                       onChange={(e) => setCoSearchTerm(e.target.value)}
-                      placeholder="ค้นหาชื่อบุคลากรเพื่อเพิ่มเป็นผู้ร่วมรับผิดชอบ..."
+                      placeholder="ค้นหาชื่อบุคลากร..."
                       className="w-full h-9 bg-transparent pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
                     />
                   </div>
@@ -1561,21 +1876,16 @@ export const ViewWorkload: React.FC = () => {
                         return (
                           <label
                             key={staff.id}
-                            className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer"
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggleCoResponsible(staff.id)}
-                                className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-                              />
-                              <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
-                                {formatStaffName(staff)}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[45%]">
-                              {staff.position || '-'}
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleCoResponsible(staff.id)}
+                              className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                            />
+                            <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                              {formatStaffName(staff)}
                             </span>
                           </label>
                         );
@@ -1599,11 +1909,193 @@ export const ViewWorkload: React.FC = () => {
               <button
                 type="submit"
                 form="admin-workload-form"
-                disabled={isSaving || !formTeacherId || !formTitle.trim()}
+                disabled={isSaving}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
                 <span>{editingWorkloadId ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึกการมอบหมายงาน'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Academic Year Rollover Modal (Locked against backdrop click & Escape key) */}
+      {isRolloverModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rollover-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 dark:bg-black/75 backdrop-blur-xs p-3 sm:p-4"
+        >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl text-slate-800 dark:text-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/90 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Copy className="w-5 h-5 text-sky-500 shrink-0" />
+                <h3 id="rollover-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                  คัดลอกโครงสร้างงานข้ามปีการศึกษา
+                </h3>
+              </div>
+              <button
+                type="button"
+                disabled={isRollingOver}
+                onClick={handleCloseRolloverModal}
+                aria-label="ปิดหน้าต่าง"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <form
+              id="workload-rollover-form"
+              aria-labelledby="rollover-modal-title"
+              onSubmit={handleExecuteRollover}
+              className="px-6 py-5 space-y-5"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="rollover-source-year"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
+                    คัดลอกจากปีการศึกษา <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="rollover-source-year"
+                    name="sourceYear"
+                    required
+                    value={rolloverSourceYear}
+                    onChange={(e) => {
+                      const nextSource = e.target.value;
+                      setRolloverSourceYear(nextSource);
+                      if (nextSource === rolloverTargetYear) {
+                        const num = Number(nextSource);
+                        if (!Number.isNaN(num)) {
+                          setRolloverTargetYear(String(num + 1));
+                        }
+                      }
+                    }}
+                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    {(yearsWithData.length > 0 ? yearsWithData : academicYearOptions).map((yr) => (
+                      <option key={yr} value={yr}>
+                        ปีการศึกษา {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="rollover-target-year"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5"
+                  >
+                    ไปยังปีการศึกษา <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="rollover-target-year"
+                    name="targetYear"
+                    required
+                    value={rolloverTargetYear}
+                    onChange={(e) => setRolloverTargetYear(e.target.value)}
+                    className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    {academicYearOptions.map((yr) => (
+                      <option key={yr} value={yr} disabled={yr === rolloverSourceYear}>
+                        ปีการศึกษา {yr}
+                        {yr === rolloverSourceYear ? ' (ปีต้นทาง)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Category Checkboxes */}
+              <fieldset className="space-y-2.5">
+                <legend className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  เลือกประเภทภาระงานที่ต้องการคัดลอก
+                </legend>
+
+                <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-[#101822] cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={rolloverIncludeAdmin}
+                      onChange={(e) => setRolloverIncludeAdmin(e.target.checked)}
+                      className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
+                      คัดลอกงานบริหารและงานประจำฝ่าย
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/70">
+                    {rolloverSourceCounts.adminCount} รายการ
+                  </span>
+                </label>
+
+                <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-[#101822] cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={rolloverIncludeAdhoc}
+                      onChange={(e) => setRolloverIncludeAdhoc(e.target.checked)}
+                      className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
+                      คัดลอกงานโครงการและคณะกรรมการเฉพาะกิจ
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/70">
+                    {rolloverSourceCounts.adhocCount} รายการ
+                  </span>
+                </label>
+              </fieldset>
+
+              {/* Safety Summary Note */}
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                <Info className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+                <span>
+                  ระบบจะเก็บข้อมูลปีการศึกษา {rolloverSourceYear} ไว้ครบถ้วนสำหรับตรวจย้อนหลัง PA/SAR, ล้างเลขที่คำสั่งเดิมออกอัตโนมัติ, รีเซ็ตสถานะเป็นกำลังดำเนินการ, คัดกรองเฉพาะบุคลากรที่ยังปฏิบัติงานอยู่ และข้ามรายการที่มีอยู่แล้วในปีการศึกษา {rolloverTargetYear}
+                </span>
+              </div>
+
+              {rolloverSourceYear === rolloverTargetYear && (
+                <p className="text-xs text-rose-600 dark:text-rose-400">
+                  กรุณาเลือกปีการศึกษาปลายทางที่แตกต่างจากปีต้นทาง
+                </p>
+              )}
+              {!rolloverIncludeAdmin && !rolloverIncludeAdhoc && (
+                <p className="text-xs text-rose-600 dark:text-rose-400">
+                  กรุณาเลือกประเภทภาระงานอย่างน้อย 1 ประเภท
+                </p>
+              )}
+            </form>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200/90 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isRollingOver}
+                onClick={handleCloseRolloverModal}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                form="workload-rollover-form"
+                disabled={
+                  isRollingOver ||
+                  rolloverSourceYear === rolloverTargetYear ||
+                  (!rolloverIncludeAdmin && !rolloverIncludeAdhoc)
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isRollingOver && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                <span>คัดลอกโครงสร้างงาน</span>
               </button>
             </div>
           </div>

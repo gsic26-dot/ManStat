@@ -2148,6 +2148,41 @@ export async function dbUpsertWorkload(workload: WorkloadItem): Promise<Workload
   return workload;
 }
 
+export async function dbInsertWorkloadsBatch(workloads: WorkloadItem[]): Promise<WorkloadItem[]> {
+  if (!workloads || workloads.length === 0) return [];
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const supabase = getSupabaseAdmin();
+    const dbRows = workloads.map(workloadToDb);
+    const { data, error } = await supabase
+      .from('staff_workloads')
+      .upsert(dbRows, { onConflict: 'workload_id' })
+      .select();
+
+    if (error) {
+      console.error('[dbInsertWorkloadsBatch] Supabase batch upsert error:', error);
+      throw new Error(`ไม่สามารถคัดลอกโครงสร้างงานลง Supabase ได้: ${error.message}`);
+    }
+    return Array.isArray(data) ? data.map(workloadFromDb) : workloads;
+  }
+
+  verifyVercelConfiguration();
+  const db = loadDatabase();
+  const currentWorkloads = db.workloads && db.workloads.length > 0 ? [...db.workloads] : [...INITIAL_WORKLOAD_ITEMS];
+  for (const item of workloads) {
+    const existingIdx = currentWorkloads.findIndex((w) => w.id === item.id);
+    if (existingIdx >= 0) {
+      currentWorkloads[existingIdx] = item;
+    } else {
+      currentWorkloads.push(item);
+    }
+  }
+  db.workloads = currentWorkloads;
+  saveDatabase(db);
+  return workloads;
+}
+
 export async function dbDeleteWorkload(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();

@@ -31,15 +31,11 @@ describe('OBEC Administrative Roles & Reporting Systems Catalog (obec-admin-role
     }
   });
 
-  it('contains no duplicated parenthetical labels such as (งานแนะแนว) (งานแนะแนว)', () => {
+  it('contains no redundant parenthetical suffixes in preset roleTitle values', () => {
     for (const preset of [...OBEC_ADMIN_ROLE_PRESETS, ...ADHOC_PROJECT_PRESETS]) {
       assert.ok(
-        !/\([^)]+\)\s*\([^)]+\)/.test(preset.roleTitle),
-        `Potential duplicate parenthetical in: ${preset.roleTitle}`
-      );
-      assert.ok(
-        !preset.roleTitle.includes('(งานแนะแนว) (งานแนะแนว)'),
-        `Duplicate guidance text in: ${preset.roleTitle}`
+        !/[()]/.test(preset.roleTitle),
+        `Redundant parentheses found in roleTitle: ${preset.roleTitle}`
       );
     }
   });

@@ -126,7 +126,7 @@ export const OBEC_ADMIN_ROLE_PRESETS: readonly AdminRolePreset[] = [
   {
     id: 'ACA-04',
     division: 'ฝ่ายบริหารวิชาการ',
-    roleTitle: 'งานประกันคุณภาพการศึกษาภายใน (SAR / สมศ.)',
+    roleTitle: 'งานประกันคุณภาพการศึกษาภายใน',
     defaultRoleInTask: 'ผู้รับผิดชอบหลัก / เจ้าหน้าที่',
     defaultScope: 'กำหนดค่าเป้าหมายมาตรฐานการศึกษา จัดเก็บร่องรอยหลักฐาน จัดทำรายงานการประเมินตนเอง (SAR) และรองรับการประเมินภายนอก สมศ.',
     obecSystems: ['e-SAR', 'สมศ.'],
@@ -150,7 +150,7 @@ export const OBEC_ADMIN_ROLE_PRESETS: readonly AdminRolePreset[] = [
   {
     id: 'ACA-07',
     division: 'ฝ่ายบริหารวิชาการ',
-    roleTitle: 'งานทดสอบระดับชาติ (RT / NT / O-NET)',
+    roleTitle: 'งานทดสอบระดับชาติ',
     defaultRoleInTask: 'ผู้รับผิดชอบหลัก / เจ้าหน้าที่',
     defaultScope: 'วางแผนยกระดับผลสัมฤทธิ์ ตรวจสอบรายชื่อผู้มีสิทธิ์สอบ ประสานการจัดสอบ RT (ป.1), NT (ป.3), O-NET (ป.6/ม.3) และวิเคราะห์ผลสอบ',
     obecSystems: ['RT', 'NT', 'O-NET'],
@@ -246,7 +246,7 @@ export const OBEC_ADMIN_ROLE_PRESETS: readonly AdminRolePreset[] = [
   {
     id: 'PER-03',
     division: 'ฝ่ายบริหารงานบุคคล',
-    roleTitle: 'งานวิทยฐานะและการประเมินผลการปฏิบัติงาน (PA / DPA)',
+    roleTitle: 'งานวิทยฐานะและการประเมินผลการปฏิบัติงาน',
     defaultRoleInTask: 'ผู้รับผิดชอบหลัก / เจ้าหน้าที่',
     defaultScope: 'ประสานจัดทำข้อตกลงในการพัฒนางาน (PA) ดำเนินการประเมินผลการปฏิบัติงานและเลื่อนเงินเดือน พร้อมดูแลการยื่นขอวิทยฐานะในระบบ DPA',
     obecSystems: ['DPA'],
@@ -298,7 +298,7 @@ export const OBEC_ADMIN_ROLE_PRESETS: readonly AdminRolePreset[] = [
   {
     id: 'GEN-03',
     division: 'ฝ่ายบริหารทั่วไป',
-    roleTitle: 'งานสารสนเทศ ข้อมูลนักเรียนรายบุคคล และเทคโนโลยี (ICT)',
+    roleTitle: 'งานสารสนเทศ ข้อมูลนักเรียนรายบุคคล และเทคโนโลยี',
     defaultRoleInTask: 'ผู้รับผิดชอบหลัก / เจ้าหน้าที่',
     defaultScope: 'จัดเก็บและยืนยันข้อมูลนักเรียนรายบุคคล DMC (10 มิ.ย. / 10 พ.ย.), ปรับปรุงข้อมูล EMIS และดูแลระบบเครือข่ายเทคโนโลยีสารสนเทศ',
     obecSystems: ['DMC', 'EMIS', 'OBECict'],
@@ -330,7 +330,7 @@ export const OBEC_ADMIN_ROLE_PRESETS: readonly AdminRolePreset[] = [
   {
     id: 'GEN-07',
     division: 'ฝ่ายบริหารทั่วไป',
-    roleTitle: 'งานคุณธรรมและความโปร่งใสในสถานศึกษา (ITA)',
+    roleTitle: 'งานคุณธรรมและความโปร่งใสในสถานศึกษา',
     defaultRoleInTask: 'ผู้รับผิดชอบหลัก / เจ้าหน้าที่',
     defaultScope: 'รวบรวมและเผยแพร่ข้อมูลสาธารณะ (OIT) จัดเตรียมเอกสารและประสานการประเมินคุณธรรมและความโปร่งใสของสถานศึกษาในระบบ ITA Online',
     obecSystems: ['ITA Online'],
