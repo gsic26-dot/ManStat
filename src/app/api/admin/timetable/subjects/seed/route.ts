@@ -21,7 +21,7 @@ export async function POST() {
     }
 
     const presets = buildDefaultObecCurriculumPresets();
-    const { insertedCount, skippedCount } = await dbSeedSchoolSubjects(presets);
+    const { insertedCount, updatedCount, skippedCount } = await dbSeedSchoolSubjects(presets);
     const allSubjects = await dbGetSchoolSubjects();
 
     const actorName = `${adminSession.user?.name || 'ผู้ดูแลระบบ'} (${adminSession.user?.position || 'Admin'})`;
@@ -31,13 +31,14 @@ export async function POST() {
       actorName,
       actorRole,
       'คลังรายวิชา อ.1–ม.3',
-      `นำเข้าโครงสร้างหลักสูตรมาตรฐาน สพฐ. เพิ่มใหม่ ${insertedCount} รายวิชา (ข้ามซ้ำ ${skippedCount} รายวิชา)`
+      `นำเข้า/อัปเดตหลักสูตรโรงเรียนชุมชนบ้านตะขบ เพิ่มใหม่ ${insertedCount} รายวิชา, อัปเดต ${updatedCount} รายวิชา (ข้ามซ้ำ ${skippedCount} รายวิชา)`
     );
 
     return NextResponse.json(
       {
         success: true,
         insertedCount,
+        updatedCount,
         skippedCount,
         totalCount: allSubjects.length,
         subjects: allSubjects,

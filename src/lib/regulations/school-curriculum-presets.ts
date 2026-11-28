@@ -234,64 +234,26 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
   }
 
   // ==========================================================================
-  // 2. PRIMARY (ประถมศึกษา ป.1–ป.6) — 8 OBEC Core Groups
+  // 2. PRIMARY (ประถมศึกษา ป.1–ป.6) — Official Ban Takhop Curriculum (1,120 ชม./ปี)
+  //    พื้นฐาน 840 + เพิ่มเติม 160 + กิจกรรมพัฒนาผู้เรียน 120 = 1,120 ชม./ปี
   // ==========================================================================
-  const primaryGrades = [
-    { grade: 'ป.1', digit: 1, thaiHrs: 5, mathHrs: 5, sciHrs: 2, socHrs: 2, histHrs: 1, engHrs: 5 },
-    { grade: 'ป.2', digit: 2, thaiHrs: 5, mathHrs: 5, sciHrs: 2, socHrs: 2, histHrs: 1, engHrs: 5 },
-    { grade: 'ป.3', digit: 3, thaiHrs: 5, mathHrs: 5, sciHrs: 2, socHrs: 2, histHrs: 1, engHrs: 5 },
-    { grade: 'ป.4', digit: 4, thaiHrs: 4, mathHrs: 4, sciHrs: 3, socHrs: 2, histHrs: 1, engHrs: 3 },
-    { grade: 'ป.5', digit: 5, thaiHrs: 4, mathHrs: 4, sciHrs: 3, socHrs: 2, histHrs: 1, engHrs: 3 },
-    { grade: 'ป.6', digit: 6, thaiHrs: 4, mathHrs: 4, sciHrs: 3, socHrs: 2, histHrs: 1, engHrs: 3 },
+  const primaryLowerGrades = [
+    { grade: 'ป.1', digit: 1, civCode: 'ส11231', engCode: 'อ11201', engName: 'ภาษาอังกฤษ 1' },
+    { grade: 'ป.2', digit: 2, civCode: 'ส12232', engCode: 'อ12201', engName: 'ภาษาอังกฤษ 2' },
+    { grade: 'ป.3', digit: 3, civCode: 'ส13233', engCode: 'อ13201', engName: 'ภาษาอังกฤษ 3' },
   ];
 
-  for (const g of primaryGrades) {
-    const coreList: Array<{
-      code: string;
-      name: string;
-      group: string;
-      hrs: number;
-      preferMorning: boolean;
-    }> = [
-      { code: `ท1${g.digit}101`, name: 'ภาษาไทย', group: 'ภาษาไทย', hrs: g.thaiHrs, preferMorning: true },
-      { code: `ค1${g.digit}101`, name: 'คณิตศาสตร์', group: 'คณิตศาสตร์', hrs: g.mathHrs, preferMorning: true },
-      {
-        code: `ว1${g.digit}101`,
-        name: 'วิทยาศาสตร์และเทคโนโลยี',
-        group: 'วิทยาศาสตร์และเทคโนโลยี',
-        hrs: g.sciHrs,
-        preferMorning: true,
-      },
-      {
-        code: `ส1${g.digit}101`,
-        name: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-        group: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-        hrs: g.socHrs,
-        preferMorning: false,
-      },
-      {
-        code: `ส1${g.digit}102`,
-        name: 'ประวัติศาสตร์',
-        group: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-        hrs: g.histHrs,
-        preferMorning: false,
-      },
-      {
-        code: `พ1${g.digit}101`,
-        name: 'สุขศึกษาและพลศึกษา',
-        group: 'สุขศึกษาและพลศึกษา',
-        hrs: 2,
-        preferMorning: false,
-      },
-      { code: `ศ1${g.digit}101`, name: 'ศิลปะ', group: 'ศิลปะ', hrs: 2, preferMorning: false },
+  for (const g of primaryLowerGrades) {
+    const coreList: Array<{ code: string; name: string; group: string; hrs: number; preferMorning: boolean }> = [
+      { code: `ท1${g.digit}101`, name: 'ภาษาไทย', group: 'ภาษาไทย', hrs: 5, preferMorning: true },
+      { code: `ค1${g.digit}101`, name: 'คณิตศาสตร์', group: 'คณิตศาสตร์', hrs: 5, preferMorning: true },
+      { code: `ว1${g.digit}101`, name: 'วิทยาศาสตร์และเทคโนโลยี', group: 'วิทยาศาสตร์และเทคโนโลยี', hrs: 2, preferMorning: true },
+      { code: `ส1${g.digit}101`, name: 'สังคมศึกษา ศาสนาและวัฒนธรรม', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 2, preferMorning: false },
+      { code: `ส1${g.digit}102`, name: 'ประวัติศาสตร์', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1, preferMorning: false },
+      { code: `พ1${g.digit}101`, name: 'สุขศึกษาและพลศึกษา', group: 'สุขศึกษาและพลศึกษา', hrs: 1, preferMorning: false },
+      { code: `ศ1${g.digit}101`, name: 'ศิลปะ', group: 'ศิลปะ', hrs: 1, preferMorning: false },
       { code: `ง1${g.digit}101`, name: 'การงานอาชีพ', group: 'การงานอาชีพ', hrs: 1, preferMorning: false },
-      {
-        code: `อ1${g.digit}101`,
-        name: 'ภาษาอังกฤษ',
-        group: 'ภาษาต่างประเทศ',
-        hrs: g.engHrs,
-        preferMorning: true,
-      },
+      { code: `อ1${g.digit}101`, name: 'ภาษาอังกฤษ', group: 'ภาษาต่างประเทศ', hrs: 3, preferMorning: true },
     ];
 
     for (const c of coreList) {
@@ -309,22 +271,129 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
         credits: 0,
         preferMorning: c.preferMorning,
         defaultConsecutive: 1,
-        description: `รายวิชาพื้นฐานระดับชั้น ${g.grade} ตามโครงสร้างหลักสูตร สพฐ.`,
+        description: `รายวิชาพื้นฐานระดับชั้น ${g.grade} โรงเรียนชุมชนบ้านตะขบ`,
+      });
+    }
+
+    const extraList: Array<{ code: string; name: string; group: string; hrs: number }> = [
+      { code: g.civCode, name: 'หน้าที่พลเมือง', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1 },
+      { code: `ส1${g.digit}201`, name: 'การป้องกันการทุจริต', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1 },
+      { code: g.engCode, name: g.engName, group: 'ภาษาต่างประเทศ', hrs: 2 },
+    ];
+
+    for (const ex of extraList) {
+      pushSubject({
+        id: `SUB-P${g.digit}-${ex.code}`,
+        subjectCode: ex.code,
+        subjectName: ex.name,
+        subjectGroup: ex.group,
+        subjectType: 'เพิ่มเติม',
+        levelGroup: 'primary',
+        gradeLevels: [g.grade],
+        semesterScope: 'both',
+        defaultHoursPerWeek: ex.hrs,
+        hoursPerYear: calculatePrimaryHoursPerYear(ex.hrs),
+        credits: 0,
+        preferMorning: false,
+        defaultConsecutive: 1,
+        description: `รายวิชาเพิ่มเติมระดับชั้น ${g.grade} โรงเรียนชุมชนบ้านตะขบ`,
       });
     }
   }
 
-  // Primary shared activities (ป.1–ป.6)
+  const primaryUpperGrades = [
+    { grade: 'ป.4', digit: 4, civCode: 'ส14234', extra3Code: 'อ14201', extra3Name: 'ภาษาอังกฤษ 4', extra3Group: 'ภาษาต่างประเทศ' },
+    { grade: 'ป.5', digit: 5, civCode: 'ส15235', extra3Code: 'อ15201', extra3Name: 'ภาษาอังกฤษ 5', extra3Group: 'ภาษาต่างประเทศ' },
+    { grade: 'ป.6', digit: 6, civCode: 'ส16236', extra3Code: 'ว16201', extra3Name: 'ปัญญาประดิษฐ์', extra3Group: 'วิทยาศาสตร์และเทคโนโลยี' },
+  ];
+
+  for (const g of primaryUpperGrades) {
+    const coreList: Array<{ code: string; name: string; group: string; hrs: number; preferMorning: boolean }> = [
+      { code: `ท1${g.digit}101`, name: 'ภาษาไทย', group: 'ภาษาไทย', hrs: 4, preferMorning: true },
+      { code: `ค1${g.digit}101`, name: 'คณิตศาสตร์', group: 'คณิตศาสตร์', hrs: 4, preferMorning: true },
+      { code: `ว1${g.digit}101`, name: 'วิทยาศาสตร์และเทคโนโลยี', group: 'วิทยาศาสตร์และเทคโนโลยี', hrs: 3, preferMorning: true },
+      { code: `ส1${g.digit}101`, name: 'สังคมศึกษา ศาสนาและวัฒนธรรม', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 2, preferMorning: false },
+      { code: `ส1${g.digit}102`, name: 'ประวัติศาสตร์', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1, preferMorning: false },
+      { code: `พ1${g.digit}101`, name: 'สุขศึกษาและพลศึกษา', group: 'สุขศึกษาและพลศึกษา', hrs: 2, preferMorning: false },
+      { code: `ศ1${g.digit}101`, name: 'ศิลปะ', group: 'ศิลปะ', hrs: 2, preferMorning: false },
+      { code: `ง1${g.digit}101`, name: 'การงานอาชีพ', group: 'การงานอาชีพ', hrs: 1, preferMorning: false },
+      { code: `อ1${g.digit}101`, name: 'ภาษาอังกฤษ', group: 'ภาษาต่างประเทศ', hrs: 2, preferMorning: true },
+    ];
+
+    for (const c of coreList) {
+      pushSubject({
+        id: `SUB-P${g.digit}-${c.code}`,
+        subjectCode: c.code,
+        subjectName: c.name,
+        subjectGroup: c.group,
+        subjectType: 'พื้นฐาน',
+        levelGroup: 'primary',
+        gradeLevels: [g.grade],
+        semesterScope: 'both',
+        defaultHoursPerWeek: c.hrs,
+        hoursPerYear: calculatePrimaryHoursPerYear(c.hrs),
+        credits: 0,
+        preferMorning: c.preferMorning,
+        defaultConsecutive: 1,
+        description: `รายวิชาพื้นฐานระดับชั้น ${g.grade} โรงเรียนชุมชนบ้านตะขบ`,
+      });
+    }
+
+    const extraList: Array<{ code: string; name: string; group: string; hrs: number }> = [
+      { code: g.civCode, name: 'หน้าที่พลเมือง', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1 },
+      { code: `ส1${g.digit}201`, name: 'การป้องกันการทุจริต', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1 },
+      { code: g.extra3Code, name: g.extra3Name, group: g.extra3Group, hrs: 2 },
+    ];
+
+    for (const ex of extraList) {
+      pushSubject({
+        id: `SUB-P${g.digit}-${ex.code}`,
+        subjectCode: ex.code,
+        subjectName: ex.name,
+        subjectGroup: ex.group,
+        subjectType: 'เพิ่มเติม',
+        levelGroup: 'primary',
+        gradeLevels: [g.grade],
+        semesterScope: 'both',
+        defaultHoursPerWeek: ex.hrs,
+        hoursPerYear: calculatePrimaryHoursPerYear(ex.hrs),
+        credits: 0,
+        preferMorning: false,
+        defaultConsecutive: 1,
+        description: `รายวิชาเพิ่มเติมระดับชั้น ${g.grade} โรงเรียนชุมชนบ้านตะขบ`,
+      });
+    }
+  }
+
+  // Primary shared activities (ป.1–ป.6): 120 ชม./ปี
   const primaryActivities: Array<{
     id: string;
     name: string;
     type: SchoolSubjectType;
     hrs: number;
+    desc: string;
   }> = [
-    { id: 'SUB-PRI-ACT-GUIDE', name: 'แนะแนว', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-PRI-ACT-SCOUT', name: 'ลูกเสือ-เนตรนารี', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-PRI-ACT-CLUB', name: 'ชุมนุม', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-PRI-ACT-HOME', name: 'พบครูประจำชั้น', type: 'ประจำชั้น', hrs: 2.5 },
+    {
+      id: 'SUB-PRI-ACT-GUIDE',
+      name: 'กิจกรรมแนะแนว',
+      type: 'กิจกรรมพัฒนาผู้เรียน',
+      hrs: 1,
+      desc: 'กิจกรรมพัฒนาผู้เรียน 40 ชม./ปี',
+    },
+    {
+      id: 'SUB-PRI-ACT-SCOUT',
+      name: 'ลูกเสือ/เนตรนารี',
+      type: 'กิจกรรมพัฒนาผู้เรียน',
+      hrs: 1,
+      desc: 'ลูกเสือ/เนตรนารี 30 ชม./ปี บูรณาการกิจกรรมเพื่อสังคมและสาธารณประโยชน์ 10 ชม./ปี (รวม 40 ชม./ปี)',
+    },
+    {
+      id: 'SUB-PRI-ACT-CLUB',
+      name: 'ชมรม/ชุมนุม',
+      type: 'กิจกรรมพัฒนาผู้เรียน',
+      hrs: 1,
+      desc: 'กิจกรรมพัฒนาผู้เรียน 40 ชม./ปี',
+    },
   ];
 
   for (const act of primaryActivities) {
@@ -342,95 +411,100 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
       credits: 0,
       preferMorning: false,
       defaultConsecutive: 1,
-      description: 'กิจกรรมพัฒนาผู้เรียนระดับประถมศึกษา',
+      description: act.desc,
     });
   }
 
   // ==========================================================================
-  // 3. LOWER SECONDARY (มัธยมศึกษาตอนต้น ม.1–ม.3) — Semester 1 & Semester 2
+  // 3. LOWER SECONDARY (มัธยมศึกษาตอนต้น ม.1–ม.3) — Official Ban Takhop Curriculum
+  //    ภาคเรียนละ: พื้นฐาน 11.0 นก. (440 ชม.) + เพิ่มเติม 2.5 นก. (100 ชม.) + กิจกรรม 60 ชม. = 600 ชม.
   // ==========================================================================
   const secondaryGrades = [
-    { grade: 'ม.1', digit: 1 },
-    { grade: 'ม.2', digit: 2 },
-    { grade: 'ม.3', digit: 3 },
+    {
+      grade: 'ม.1',
+      digit: 1,
+      sem1Extras: [
+        { code: 'ส21231', name: 'หน้าที่พลเมือง 1', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว21201', name: 'วิทยาการคำนวณ 1', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส21201', name: 'การป้องกันการทุจริต 1', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ21201', name: 'อังกฤษเพื่อการสื่อสาร 1', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง21201', name: 'ขนมและเบเกอรี่ 1', group: 'การงานอาชีพ' },
+      ],
+      sem2Extras: [
+        { code: 'ส21232', name: 'หน้าที่พลเมือง 2', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว21202', name: 'วิทยาการคำนวณ 2', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส21202', name: 'การป้องกันการทุจริต 2', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ21202', name: 'อังกฤษเพื่อการสื่อสาร 2', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง21202', name: 'การผูกผ้าประดับอาคาร', group: 'การงานอาชีพ' },
+      ],
+    },
+    {
+      grade: 'ม.2',
+      digit: 2,
+      sem1Extras: [
+        { code: 'ส22233', name: 'หน้าที่พลเมือง 3', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว22201', name: 'วิทยาการคำนวณ 3', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส22201', name: 'การป้องกันการทุจริต 3', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ22201', name: 'อังกฤษเพื่อการสื่อสาร 3', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง22201', name: 'ขนมและเบเกอรี่ 2', group: 'การงานอาชีพ' },
+      ],
+      sem2Extras: [
+        { code: 'ส22234', name: 'หน้าที่พลเมือง 4', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว22202', name: 'วิทยาการคำนวณ 4', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส22202', name: 'การป้องกันการทุจริต 4', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ22202', name: 'อังกฤษเพื่อการสื่อสาร 4', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง22202', name: 'การเลี้ยงปลาดุกในบ่อซีเมนต์', group: 'การงานอาชีพ' },
+      ],
+    },
+    {
+      grade: 'ม.3',
+      digit: 3,
+      sem1Extras: [
+        { code: 'ส23235', name: 'หน้าที่พลเมือง 5', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว23203', name: 'ปัญญาประดิษฐ์ 1', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส23201', name: 'การป้องกันการทุจริต 5', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ23201', name: 'อังกฤษเพื่อการสื่อสาร 5', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง23201', name: 'ขนมและเบเกอรี่ 3', group: 'การงานอาชีพ' },
+      ],
+      sem2Extras: [
+        { code: 'ส23236', name: 'หน้าที่พลเมือง 6', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'ว23204', name: 'ปัญญาประดิษฐ์ 2', group: 'วิทยาศาสตร์และเทคโนโลยี' },
+        { code: 'ส23202', name: 'การป้องกันการทุจริต 6', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม' },
+        { code: 'อ23202', name: 'อังกฤษเพื่อการสื่อสาร 6', group: 'ภาษาต่างประเทศ' },
+        { code: 'ง23202', name: 'ช่างเดินสายไฟในอาคาร', group: 'การงานอาชีพ' },
+      ],
+    },
   ];
 
-  const secondaryTemplates: Array<{
+  const secondaryCoreTemplates: Array<{
     prefix: string;
-    codeOffset: number;
+    sem1Suffix: string;
+    sem2Suffix: string;
     name: string;
     group: string;
     hrs: number;
     preferMorning: boolean;
-    consecutive: 1 | 2;
   }> = [
-    { prefix: 'ท', codeOffset: 1, name: 'ภาษาไทย', group: 'ภาษาไทย', hrs: 3, preferMorning: true, consecutive: 1 },
-    { prefix: 'ค', codeOffset: 1, name: 'คณิตศาสตร์', group: 'คณิตศาสตร์', hrs: 3, preferMorning: true, consecutive: 1 },
-    {
-      prefix: 'ว',
-      codeOffset: 1,
-      name: 'วิทยาศาสตร์และเทคโนโลยี',
-      group: 'วิทยาศาสตร์และเทคโนโลยี',
-      hrs: 3,
-      preferMorning: true,
-      consecutive: 1,
-    },
-    {
-      prefix: 'ส',
-      codeOffset: 1,
-      name: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-      group: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-      hrs: 3,
-      preferMorning: false,
-      consecutive: 1,
-    },
-    {
-      prefix: 'ส',
-      codeOffset: 2,
-      name: 'ประวัติศาสตร์',
-      group: 'สังคมศึกษา ศาสนา และวัฒนธรรม',
-      hrs: 1,
-      preferMorning: false,
-      consecutive: 1,
-    },
-    {
-      prefix: 'พ',
-      codeOffset: 1,
-      name: 'สุขศึกษาและพลศึกษา',
-      group: 'สุขศึกษาและพลศึกษา',
-      hrs: 2,
-      preferMorning: false,
-      consecutive: 1,
-    },
-    { prefix: 'ศ', codeOffset: 1, name: 'ศิลปะ', group: 'ศิลปะ', hrs: 2, preferMorning: false, consecutive: 1 },
-    { prefix: 'ง', codeOffset: 1, name: 'การงานอาชีพ', group: 'การงานอาชีพ', hrs: 1, preferMorning: false, consecutive: 1 },
-    {
-      prefix: 'อ',
-      codeOffset: 1,
-      name: 'ภาษาอังกฤษ',
-      group: 'ภาษาต่างประเทศ',
-      hrs: 3,
-      preferMorning: true,
-      consecutive: 1,
-    },
+    { prefix: 'ท', sem1Suffix: '101', sem2Suffix: '102', name: 'ภาษาไทย', group: 'ภาษาไทย', hrs: 3, preferMorning: true },
+    { prefix: 'ค', sem1Suffix: '101', sem2Suffix: '102', name: 'คณิตศาสตร์', group: 'คณิตศาสตร์', hrs: 3, preferMorning: true },
+    { prefix: 'ว', sem1Suffix: '101', sem2Suffix: '102', name: 'วิทยาศาสตร์และเทคโนโลยี', group: 'วิทยาศาสตร์และเทคโนโลยี', hrs: 3, preferMorning: true },
+    { prefix: 'ส', sem1Suffix: '101', sem2Suffix: '102', name: 'สังคมศึกษา ศาสนาและวัฒนธรรม', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 3, preferMorning: false },
+    { prefix: 'ส', sem1Suffix: '103', sem2Suffix: '104', name: 'ประวัติศาสตร์', group: 'สังคมศึกษา ศาสนา และวัฒนธรรม', hrs: 1, preferMorning: false },
+    { prefix: 'พ', sem1Suffix: '101', sem2Suffix: '102', name: 'สุขศึกษาและพลศึกษา', group: 'สุขศึกษาและพลศึกษา', hrs: 2, preferMorning: false },
+    { prefix: 'ศ', sem1Suffix: '101', sem2Suffix: '102', name: 'ศิลปะ', group: 'ศิลปะ', hrs: 2, preferMorning: false },
+    { prefix: 'ง', sem1Suffix: '101', sem2Suffix: '102', name: 'การงานอาชีพ', group: 'การงานอาชีพ', hrs: 2, preferMorning: false },
+    { prefix: 'อ', sem1Suffix: '101', sem2Suffix: '102', name: 'ภาษาอังกฤษ', group: 'ภาษาต่างประเทศ', hrs: 3, preferMorning: true },
   ];
 
   for (const g of secondaryGrades) {
     for (const sem of ['1', '2'] as const) {
       const semNum = sem === '1' ? 1 : 2;
-      for (const tpl of secondaryTemplates) {
-        // Standard Thai OBEC secondary code:
-        // Semester 1: e.g. ท21101, ส21101, ส21102 (ประวัติศาสตร์ เทอม 1)
-        // Semester 2: e.g. ท21102, ส21103, ส21104 (ประวัติศาสตร์ เทอม 2)
-        const suffixNum =
-          tpl.prefix === 'ส'
-            ? sem === '1'
-              ? tpl.codeOffset
-              : tpl.codeOffset + 2
-            : semNum;
-        const code = `${tpl.prefix}2${g.digit}10${suffixNum}`;
-        const termOrdinal = (g.digit - 1) * 2 + semNum;
+      const termOrdinal = (g.digit - 1) * 2 + semNum;
 
+      // Core subjects (11.0 credits / 440 hrs per semester)
+      for (const tpl of secondaryCoreTemplates) {
+        const code = `${tpl.prefix}2${g.digit}${sem === '1' ? tpl.sem1Suffix : tpl.sem2Suffix}`;
+        const credits = calculateSecondaryCredits(tpl.hrs);
         pushSubject({
           id: `SUB-M${g.digit}-S${sem}-${code}`,
           subjectCode: code,
@@ -441,27 +515,62 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
           gradeLevels: [g.grade],
           semesterScope: sem,
           defaultHoursPerWeek: tpl.hrs,
-          hoursPerYear: 0,
-          credits: calculateSecondaryCredits(tpl.hrs),
+          hoursPerYear: Math.round(tpl.hrs * 20),
+          credits,
           preferMorning: tpl.preferMorning,
-          defaultConsecutive: tpl.consecutive,
-          description: `รายวิชาพื้นฐานระดับชั้น ${g.grade} ภาคเรียนที่ ${sem} (${calculateSecondaryCredits(tpl.hrs)} หน่วยกิต)`,
+          defaultConsecutive: tpl.prefix === 'ง' ? 2 : 1,
+          description: `รายวิชาพื้นฐานระดับชั้น ${g.grade} ภาคเรียนที่ ${sem} (${credits.toFixed(1)} หน่วยกิต)`,
+        });
+      }
+
+      // Additional subjects (5 x 0.5 = 2.5 credits / 100 hrs per semester)
+      const extras = sem === '1' ? g.sem1Extras : g.sem2Extras;
+      for (const ex of extras) {
+        pushSubject({
+          id: `SUB-M${g.digit}-S${sem}-${ex.code}`,
+          subjectCode: ex.code,
+          subjectName: ex.name,
+          subjectGroup: ex.group,
+          subjectType: 'เพิ่มเติม',
+          levelGroup: 'secondary',
+          gradeLevels: [g.grade],
+          semesterScope: sem,
+          defaultHoursPerWeek: 1,
+          hoursPerYear: 20,
+          credits: 0.5,
+          preferMorning: false,
+          defaultConsecutive: 1,
+          description: `รายวิชาเพิ่มเติมระดับชั้น ${g.grade} ภาคเรียนที่ ${sem} (0.5 หน่วยกิต)`,
         });
       }
     }
   }
 
-  // Secondary shared activities (ม.1–ม.3)
+  // Secondary shared activities (ม.1–ม.3): 60 ชม./เทอม
   const secondaryActivities: Array<{
     id: string;
     name: string;
-    type: SchoolSubjectType;
     hrs: number;
+    desc: string;
   }> = [
-    { id: 'SUB-SEC-ACT-GUIDE', name: 'แนะแนว', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-SEC-ACT-SCOUT', name: 'ลูกเสือ-เนตรนารี', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-SEC-ACT-CLUB', name: 'ชุมนุม', type: 'กิจกรรมพัฒนาผู้เรียน', hrs: 1 },
-    { id: 'SUB-SEC-ACT-HOME', name: 'พบครูประจำชั้น', type: 'ประจำชั้น', hrs: 2.5 },
+    {
+      id: 'SUB-SEC-ACT-GUIDE',
+      name: 'กิจกรรมแนะแนว',
+      hrs: 1,
+      desc: 'กิจกรรมพัฒนาผู้เรียน 20 ชม./ภาคเรียน',
+    },
+    {
+      id: 'SUB-SEC-ACT-SCOUT',
+      name: 'ลูกเสือ/เนตรนารี',
+      hrs: 1,
+      desc: 'เทอม 1: 12 ชม. + เพื่อสังคมฯ 8 ชม. / เทอม 2: 13 ชม. + เพื่อสังคมฯ 7 ชม. (รวม 20 ชม./ภาคเรียน)',
+    },
+    {
+      id: 'SUB-SEC-ACT-CLUB',
+      name: 'ชมรม/ชุมนุม',
+      hrs: 1,
+      desc: 'กิจกรรมพัฒนาผู้เรียน 20 ชม./ภาคเรียน',
+    },
   ];
 
   for (const act of secondaryActivities) {
@@ -470,16 +579,16 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
       subjectCode: '',
       subjectName: act.name,
       subjectGroup: 'กิจกรรมพัฒนาผู้เรียน',
-      subjectType: act.type,
+      subjectType: 'กิจกรรมพัฒนาผู้เรียน',
       levelGroup: 'secondary',
       gradeLevels: ['ม.1', 'ม.2', 'ม.3'],
       semesterScope: 'both',
       defaultHoursPerWeek: act.hrs,
-      hoursPerYear: 0,
+      hoursPerYear: 20,
       credits: 0,
       preferMorning: false,
       defaultConsecutive: 1,
-      description: 'กิจกรรมพัฒนาผู้เรียนระดับมัธยมศึกษาตอนต้น',
+      description: act.desc,
     });
   }
 
@@ -531,9 +640,40 @@ export function getMissingCatalogSubjectsForRoom(params: {
     });
 }
 
+const TIMETABLE_SUBJECT_SYNONYMS: Readonly<Record<string, string>> = {
+  วิทยาศาสตร์: 'วิทยาศาสตร์และเทคโนโลยี',
+  สังคมศึกษา: 'สังคมศึกษา ศาสนาและวัฒนธรรม',
+  'ศิลปะ/ดนตรี': 'ศิลปะ',
+  สุขศึกษา: 'สุขศึกษาและพลศึกษา',
+  พลศึกษา: 'สุขศึกษาและพลศึกษา',
+  'สุขศึกษา/พละ': 'สุขศึกษาและพลศึกษา',
+  ป้องกันการทุจริต: 'การป้องกันการทุจริต',
+  ภาษาอังกฤษเพื่อการสื่อสาร: 'อังกฤษเพื่อการสื่อสาร',
+  การเดินสายไฟภายในอาคาร: 'ช่างเดินสายไฟในอาคาร',
+  ผูกผ้าประดับอาคาร: 'การผูกผ้าประดับอาคาร',
+};
+
+function stripTrailingNumber(name: string): string {
+  return name.replace(/\s*\d+\s*$/, '').trim();
+}
+
+function normalizeForCodeMatch(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+let cachedDefaultPresets: SchoolSubject[] | null = null;
+function getCachedDefaultPresets(): SchoolSubject[] {
+  if (!cachedDefaultPresets) {
+    cachedDefaultPresets = buildDefaultObecCurriculumPresets();
+  }
+  return cachedDefaultPresets;
+}
+
 /**
- * Returns explicit subjectCode if already present; otherwise performs a deterministic
- * fallback lookup against catalogSubjects matching (subjectName, roomName, semester).
+ * Returns explicit subjectCode if already present; otherwise performs smart
+ * deterministic matching against catalogSubjects (and official presets fallback)
+ * using exact name, base-name (stripping trailing semester digits), and verified
+ * short-label synonyms.
  */
 export function resolveSubjectCodeForDisplay(params: {
   subjectCode?: string;
@@ -545,25 +685,65 @@ export function resolveSubjectCodeForDisplay(params: {
   const explicit = (params.subjectCode || '').trim();
   if (explicit) return explicit;
 
-  const catalog = params.catalogSubjects;
-  if (!catalog || catalog.length === 0) return '';
-
-  const cleanName = (params.subjectName || '').trim().toLowerCase();
+  const cleanName = (params.subjectName || '').trim();
   const cleanRoom = (params.roomName || '').trim();
-  if (!cleanName) return '';
+  if (!cleanName || !cleanRoom) return '';
 
-  const candidates = catalog.filter(
-    (s) =>
-      (s.subjectCode || '').trim() !== '' &&
-      (s.subjectName || '').trim().toLowerCase() === cleanName &&
-      s.gradeLevels.includes(cleanRoom) &&
-      (s.semesterScope === 'both' || s.semesterScope === params.semester)
-  );
+  const findInPool = (pool: readonly SchoolSubject[]): string => {
+    const roomPool = pool.filter(
+      (s) =>
+        (s.subjectCode || '').trim() !== '' &&
+        s.gradeLevels.includes(cleanRoom) &&
+        (s.semesterScope === 'both' || s.semesterScope === params.semester)
+    );
+    if (roomPool.length === 0) return '';
 
-  if (candidates.length === 0) return '';
-  const exactSem = candidates.find((s) => s.isActive && s.semesterScope === params.semester);
-  const activeAny = candidates.find((s) => s.isActive);
-  return (exactSem || activeAny || candidates[0]).subjectCode.trim();
+    const pickBest = (matches: SchoolSubject[]): string => {
+      if (matches.length === 0) return '';
+      const exactSem = matches.find((s) => s.isActive && s.semesterScope === params.semester);
+      const activeAny = matches.find((s) => s.isActive);
+      return (exactSem || activeAny || matches[0]).subjectCode.trim();
+    };
+
+    const normInput = normalizeForCodeMatch(cleanName);
+
+    // 1. Exact normalized name match
+    const exactMatches = roomPool.filter((s) => normalizeForCodeMatch(s.subjectName) === normInput);
+    if (exactMatches.length > 0) return pickBest(exactMatches);
+
+    // 2. Synonym resolution (exact or base without trailing digits)
+    const inputBaseRaw = stripTrailingNumber(cleanName);
+    const synonymTarget =
+      TIMETABLE_SUBJECT_SYNONYMS[cleanName] || TIMETABLE_SUBJECT_SYNONYMS[inputBaseRaw];
+
+    if (synonymTarget) {
+      const normSyn = normalizeForCodeMatch(synonymTarget);
+      const synMatches = roomPool.filter((s) => {
+        const normCand = normalizeForCodeMatch(s.subjectName);
+        const normCandBase = normalizeForCodeMatch(stripTrailingNumber(s.subjectName));
+        return normCand === normSyn || normCandBase === normSyn;
+      });
+      if (synMatches.length > 0) return pickBest(synMatches);
+    }
+
+    // 3. Base-name match stripping trailing semester/level digits (e.g. 'ภาษาไทย' -> 'ภาษาไทย 6')
+    const normInputBase = normalizeForCodeMatch(inputBaseRaw);
+    if (normInputBase) {
+      const baseMatches = roomPool.filter(
+        (s) => normalizeForCodeMatch(stripTrailingNumber(s.subjectName)) === normInputBase
+      );
+      if (baseMatches.length > 0) return pickBest(baseMatches);
+    }
+
+    return '';
+  };
+
+  if (params.catalogSubjects && params.catalogSubjects.length > 0) {
+    const fromCatalog = findInPool(params.catalogSubjects);
+    if (fromCatalog) return fromCatalog;
+  }
+
+  return findInPool(getCachedDefaultPresets());
 }
 
 export interface RoomCurriculumComplianceResult {

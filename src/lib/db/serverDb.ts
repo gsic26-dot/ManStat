@@ -4402,51 +4402,68 @@ export async function dbDeleteSchoolSubject(id: string): Promise<boolean> {
 
 export async function dbSeedSchoolSubjects(
   presets: SchoolSubject[]
-): Promise<{ insertedCount: number; skippedCount: number }> {
+): Promise<{ insertedCount: number; updatedCount: number; skippedCount: number }> {
   const existing = await dbGetSchoolSubjects();
-  const existingKeys = new Set(existing.map((s) => getSubjectDedupeKey(s)));
-  const existingIds = new Set(existing.map((s) => s.id));
+  const existingById = new Map(existing.map((s) => [s.id, s]));
+  const existingKeyToId = new Map(existing.map((s) => [getSubjectDedupeKey(s), s.id]));
   const now = new Date().toISOString();
 
-  const toInsert: SchoolSubject[] = [];
+  const toUpsert: SchoolSubject[] = [];
+  let insertedCount = 0;
+  let updatedCount = 0;
   let skippedCount = 0;
 
   for (const preset of presets) {
     const key = getSubjectDedupeKey(preset);
-    if (existingKeys.has(key) || existingIds.has(preset.id)) {
+    const byId = existingById.get(preset.id);
+    if (byId) {
+      toUpsert.push({
+        ...preset,
+        isActive: byId.isActive,
+        createdAt: byId.createdAt || now,
+        updatedAt: now,
+      });
+      updatedCount += 1;
+      continue;
+    }
+    if (existingKeyToId.has(key)) {
       skippedCount += 1;
       continue;
     }
-    existingKeys.add(key);
-    existingIds.add(preset.id);
-    toInsert.push({ ...preset, createdAt: now, updatedAt: now });
+    existingKeyToId.set(key, preset.id);
+    toUpsert.push({ ...preset, createdAt: now, updatedAt: now });
+    insertedCount += 1;
   }
 
-  if (toInsert.length === 0) {
-    return { insertedCount: 0, skippedCount };
+  if (toUpsert.length === 0) {
+    return { insertedCount: 0, updatedCount: 0, skippedCount };
   }
 
   if (isSupabaseConfigured()) {
     await ensureSupabaseSeeded();
     const supabase = getSupabaseAdmin();
-    const rows = toInsert.map((s) => ({
+    const rows = toUpsert.map((s) => ({
       ...schoolSubjectToDbRow(s, now),
-      created_at: now,
+      created_at: s.createdAt || now,
     }));
     const { error } = await supabase
       .from('school_subjects')
-      .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+      .upsert(rows, { onConflict: 'id' });
     if (error) {
-      throw new Error(`ไม่สามารถนำเข้าหลักสูตรมาตรฐานลง Supabase ได้: ${error.message}`);
+      throw new Error(`ไม่สามารถนำเข้า/อัปเดตหลักสูตรโรงเรียนลง Supabase ได้: ${error.message}`);
     }
-    return { insertedCount: toInsert.length, skippedCount };
+    return { insertedCount, updatedCount, skippedCount };
   }
 
   verifyVercelConfiguration();
   const db = loadDatabase();
-  db.schoolSubjects = [...(db.schoolSubjects || []), ...toInsert];
+  const nextMap = new Map((db.schoolSubjects || []).map((s) => [s.id, s]));
+  for (const item of toUpsert) {
+    nextMap.set(item.id, item);
+  }
+  db.schoolSubjects = Array.from(nextMap.values());
   saveDatabase(db);
-  return { insertedCount: toInsert.length, skippedCount };
+  return { insertedCount, updatedCount, skippedCount };
 }
 
 

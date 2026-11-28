@@ -56,7 +56,7 @@ import {
   normalizeDivisionName,
   type StandardDivisionName,
 } from '@/lib/staffDivisions';
-import { getCurrentThaiAcademicYear } from '@/lib/regulations/obec-admin-roles';
+import { getCurrentThaiAcademicTerm } from '@/lib/regulations/timetable-utils';
 import { formatStaffName, formatOfficialPosition } from '@/lib/regulations/staff-formatting';
 
 const DIVISION_KEY_TO_STANDARD: Record<DivisionKey, StandardDivisionName> = {
@@ -221,7 +221,7 @@ export interface ActiveDivisionModalData extends DivisionCardConfig {
 }
 
 export const ViewOrgChart: React.FC = () => {
-  const defaultAcademicYear = useMemo(() => getCurrentThaiAcademicYear(), []);
+  const defaultAcademicYear = useMemo(() => getCurrentThaiAcademicTerm().academicYear, []);
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [workloadsList, setWorkloadsList] = useState<WorkloadItem[]>([]);
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);

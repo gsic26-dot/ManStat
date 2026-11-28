@@ -27,7 +27,9 @@ import {
   Loader2,
   Sun,
   Link2,
+  Printer,
 } from 'lucide-react';
+import { CurriculumPrintView } from '@/components/views/CurriculumPrintView';
 import type {
   SchoolSubject,
   SchoolSubjectType,
@@ -121,6 +123,8 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
   const [formState, setFormState] = useState<SubjectFormState>(createEmptyForm('primary'));
   const [isSeedConfirmOpen, setIsSeedConfirmOpen] = useState<boolean>(false);
   const [deletingSubject, setDeletingSubject] = useState<SchoolSubject | null>(null);
+  const [printCurriculumGrade, setPrintCurriculumGrade] = useState<string | null>(null);
+  const [selectedPrintGrade, setSelectedPrintGrade] = useState<string>('ป.1');
 
   const showNotice = (type: 'success' | 'error', text: string) => {
     setNotice({ type, text });
@@ -349,7 +353,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
       onCatalogChanged?.();
       showNotice(
         'success',
-        `นำเข้าโครงสร้างหลักสูตรมาตรฐาน (อ.1–ม.3) สำเร็จ: เพิ่มใหม่ ${json.insertedCount} รายวิชา (ข้ามรายการที่มีอยู่แล้ว ${json.skippedCount} รายวิชา)`
+        `นำเข้า/อัปเดตหลักสูตรโรงเรียน (อ.1–ม.3) สำเร็จ: เพิ่มใหม่ ${json.insertedCount ?? 0} รายวิชา, อัปเดต ${json.updatedCount ?? 0} รายวิชา`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการนำเข้าหลักสูตร';
@@ -416,6 +420,39 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5">
+              <select
+                aria-label="เลือกระดับชั้นสำหรับพิมพ์โครงสร้างหลักสูตร A4"
+                value={
+                  gradeFilter !== 'ALL' && !gradeFilter.startsWith('อ.')
+                    ? gradeFilter
+                    : selectedPrintGrade
+                }
+                onChange={(e) => setSelectedPrintGrade(e.target.value)}
+                className="h-7 bg-transparent px-2 text-xs font-mono text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              >
+                {['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6', 'ม.1', 'ม.2', 'ม.3'].map((g) => (
+                  <option key={g} value={g} className="bg-white dark:bg-[#141d27]">
+                    {g}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() =>
+                  setPrintCurriculumGrade(
+                    gradeFilter !== 'ALL' && !gradeFilter.startsWith('อ.')
+                      ? gradeFilter
+                      : selectedPrintGrade
+                  )
+                }
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-white dark:bg-[#141d27] hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>พิมพ์โครงสร้างหลักสูตร A4</span>
+              </button>
+            </div>
+
             {canManage && (
               <>
                 <button
@@ -425,7 +462,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <Download className="w-4 h-4 shrink-0" />
-                  <span>นำเข้าหลักสูตรมาตรฐาน (อ.1–ม.3)</span>
+                  <span>นำเข้า/อัปเดตหลักสูตรโรงเรียน (อ.1–ม.3)</span>
                 </button>
                 <button
                   type="button"
@@ -1132,6 +1169,15 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeletingSubject(null)}
       />
+
+      {/* Official A4 Portrait Curriculum Structure Print Overlay */}
+      {printCurriculumGrade && (
+        <CurriculumPrintView
+          grade={printCurriculumGrade}
+          subjects={subjects}
+          onClose={() => setPrintCurriculumGrade(null)}
+        />
+      )}
     </div>
   );
 };

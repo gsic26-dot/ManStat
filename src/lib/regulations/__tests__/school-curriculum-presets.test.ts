@@ -11,6 +11,7 @@ import {
   getSubjectDedupeKey,
   resolveSubjectCodeForDisplay,
 } from '../school-curriculum-presets';
+import { getCurrentThaiAcademicTerm } from '../timetable-utils';
 import type { TimetableAllocation } from '@/lib/data/timetableTypes';
 
 describe('Phase 11.1: School Curriculum Presets & Calculation Engine', () => {
@@ -78,7 +79,7 @@ describe('Phase 11.1: School Curriculum Presets & Calculation Engine', () => {
       semesterScope: '1',
     });
     assert.ok(m1Sem1.some((s) => s.subjectCode === 'ท21101'));
-    assert.ok(m1Sem1.some((s) => s.subjectName === 'แนะแนว' && s.semesterScope === 'both'));
+    assert.ok(m1Sem1.some((s) => s.subjectName === 'กิจกรรมแนะแนว' && s.semesterScope === 'both'));
     assert.ok(!m1Sem1.some((s) => s.subjectCode === 'ท21102'));
 
     // Search + Subject Group filter
@@ -277,5 +278,103 @@ describe('Phase 11.1: School Curriculum Presets & Calculation Engine', () => {
       }),
       'ท21102'
     );
+  });
+
+  it('Test 7: getCurrentThaiAcademicTerm resolves May-Oct (Sem 1), Nov-Dec (Sem 2 same B.E.) & Jan-Apr (Sem 2 prev B.E.)', () => {
+    assert.deepEqual(getCurrentThaiAcademicTerm(new Date(2026, 4, 16)), {
+      academicYear: '2569',
+      semester: '1',
+    });
+    assert.deepEqual(getCurrentThaiAcademicTerm(new Date(2026, 9, 31)), {
+      academicYear: '2569',
+      semester: '1',
+    });
+    assert.deepEqual(getCurrentThaiAcademicTerm(new Date(2026, 10, 28)), {
+      academicYear: '2569',
+      semester: '2',
+    });
+    assert.deepEqual(getCurrentThaiAcademicTerm(new Date(2027, 1, 15)), {
+      academicYear: '2569',
+      semester: '2',
+    });
+  });
+
+  it('Test 8: official Ban Takhop curriculum totals 1,120 hrs/yr (ป.1–ป.6) & 11.0+2.5 credits / 600 hrs/term (ม.1–ม.3) with exact verified codes', () => {
+    const presets = buildDefaultObecCurriculumPresets();
+
+    for (const grade of ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6']) {
+      const list = presets.filter((s) => s.gradeLevels.includes(grade));
+      const coreHrs = list
+        .filter((s) => s.subjectType === 'พื้นฐาน')
+        .reduce((sum, s) => sum + s.hoursPerYear, 0);
+      const extraHrs = list
+        .filter((s) => s.subjectType === 'เพิ่มเติม')
+        .reduce((sum, s) => sum + s.hoursPerYear, 0);
+      const actHrs = list
+        .filter((s) => s.subjectType === 'กิจกรรมพัฒนาผู้เรียน')
+        .reduce((sum, s) => sum + s.hoursPerYear, 0);
+      assert.equal(coreHrs, 840, `${grade} core hours should be 840`);
+      assert.equal(extraHrs, 160, `${grade} extra hours should be 160`);
+      assert.equal(actHrs, 120, `${grade} activity hours should be 120`);
+      assert.equal(coreHrs + extraHrs + actHrs, 1120, `${grade} total should be 1,120`);
+    }
+
+    for (const grade of ['ม.1', 'ม.2', 'ม.3']) {
+      for (const sem of ['1', '2'] as const) {
+        const list = presets.filter(
+          (s) => s.gradeLevels.includes(grade) && (s.semesterScope === sem || s.semesterScope === 'both')
+        );
+        const coreCr = list
+          .filter((s) => s.subjectType === 'พื้นฐาน')
+          .reduce((sum, s) => sum + s.credits, 0);
+        const extraCr = list
+          .filter((s) => s.subjectType === 'เพิ่มเติม')
+          .reduce((sum, s) => sum + s.credits, 0);
+        const coreHrs = list
+          .filter((s) => s.subjectType === 'พื้นฐาน')
+          .reduce((sum, s) => sum + s.defaultHoursPerWeek * 20, 0);
+        const extraHrs = list
+          .filter((s) => s.subjectType === 'เพิ่มเติม')
+          .reduce((sum, s) => sum + s.defaultHoursPerWeek * 20, 0);
+        const actHrs = list
+          .filter((s) => s.subjectType === 'กิจกรรมพัฒนาผู้เรียน')
+          .reduce((sum, s) => sum + s.defaultHoursPerWeek * 20, 0);
+
+        assert.equal(Math.round(coreCr * 10) / 10, 11.0, `${grade} sem ${sem} core credits should be 11.0`);
+        assert.equal(Math.round(extraCr * 10) / 10, 2.5, `${grade} sem ${sem} extra credits should be 2.5`);
+        assert.equal(coreHrs + extraHrs + actHrs, 600, `${grade} sem ${sem} total hours should be 600`);
+      }
+    }
+
+    const codes = new Set(presets.map((s) => s.subjectCode));
+    for (const expectedCode of ['ส11231', 'ส16236', 'ว16201', 'ง21202', 'ง22202', 'ง23202']) {
+      assert.ok(codes.has(expectedCode), `Expected verified school code ${expectedCode}`);
+    }
+  });
+
+  it('Test 9: resolveSubjectCodeForDisplay resolves short timetable labels in ม.3 Semester 2 to exact OBEC codes', () => {
+    const presets = buildDefaultObecCurriculumPresets();
+    const cases: Array<[string, string]> = [
+      ['ศิลปะ/ดนตรี', 'ศ23102'],
+      ['สุขศึกษา', 'พ23102'],
+      ['ภาษาไทย', 'ท23102'],
+      ['ป้องกันการทุจริต 6', 'ส23202'],
+      ['ภาษาอังกฤษเพื่อการสื่อสาร', 'อ23202'],
+      ['การเดินสายไฟภายในอาคาร', 'ง23202'],
+    ];
+
+    for (const [shortName, expectedCode] of cases) {
+      assert.equal(
+        resolveSubjectCodeForDisplay({
+          subjectCode: '',
+          subjectName: shortName,
+          roomName: 'ม.3',
+          semester: '2',
+          catalogSubjects: presets,
+        }),
+        expectedCode,
+        `Expected ${shortName} in ม.3/2 to resolve to ${expectedCode}`
+      );
+    }
   });
 });

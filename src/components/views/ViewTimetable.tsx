@@ -77,7 +77,6 @@ import { SubjectCatalogModal } from '@/components/views/SubjectCatalogModal';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
-import { getCurrentThaiAcademicYear } from '@/lib/regulations/obec-admin-roles';
 import {
   STANDARD_ROOMS,
   KINDERGARTEN_ROOMS,
@@ -88,6 +87,7 @@ import {
   STANDARD_SUBJECT_GROUPS,
   SUBJECT_TYPES,
   COMMON_SUBJECT_PRESETS,
+  getCurrentThaiAcademicTerm,
   getDefaultTimetableSettings,
   detectTimetableConflicts,
   calculateTeacherWeeklyLoads,
@@ -128,15 +128,16 @@ function getSubjectTypeBadgeStyle(type: TimetableSubjectType): string {
 }
 
 export const ViewTimetable: React.FC = () => {
-  const defaultAcademicYear = useMemo(() => getCurrentThaiAcademicYear(), []);
+  const defaultTerm = useMemo(() => getCurrentThaiAcademicTerm(), []);
+  const defaultAcademicYear = defaultTerm.academicYear;
 
-  const [academicYear, setAcademicYear] = useState<string>(defaultAcademicYear);
-  const [semester, setSemester] = useState<TimetableSemester>('1');
+  const [academicYear, setAcademicYear] = useState<string>(defaultTerm.academicYear);
+  const [semester, setSemester] = useState<TimetableSemester>(defaultTerm.semester);
   const [activeTab, setActiveTab] = useState<TimetableTab>('room');
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [settings, setSettings] = useState<TimetableSettings>(() =>
-    getDefaultTimetableSettings(defaultAcademicYear, '1')
+    getDefaultTimetableSettings(defaultTerm.academicYear, defaultTerm.semester)
   );
   const [allocations, setAllocations] = useState<TimetableAllocation[]>([]);
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
@@ -1811,7 +1812,7 @@ export const ViewTimetable: React.FC = () => {
           { id: 'room', label: 'ตารางรายห้อง', icon: CalendarRange },
           { id: 'teacher', label: 'ตารางรายบุคคล', icon: User },
           { id: 'allocations', label: 'แผนการสอน', icon: BookOpen },
-          { id: 'kindergarten', label: 'ปฐมวัย (อ.1–อ.3)', icon: Baby },
+          { id: 'kindergarten', label: 'ระดับปฐมวัย', icon: Baby },
           { id: 'substitutes', label: 'จัดสอนแทน', icon: UserCheck },
           { id: 'summary', label: 'สรุป ว 9/2564', icon: BarChart3 },
         ]}

@@ -449,3 +449,25 @@ export function calculateTeacherWeeklyLoads(
       };
     });
 }
+
+/**
+ * Computes the current Thai OBEC academic year (B.E.) and semester from date:
+ * - May 1 – Oct 31  => Semester '1' of current B.E. year
+ * - Nov 1 – Dec 31  => Semester '2' of current B.E. year
+ * - Jan 1 – Apr 30  => Semester '2' of (current B.E. year - 1)
+ */
+export function getCurrentThaiAcademicTerm(now: Date = new Date()): {
+  academicYear: string;
+  semester: TimetableSemester;
+} {
+  const beYear = now.getFullYear() + 543;
+  const month = now.getMonth() + 1; // 1..12
+
+  if (month >= 5 && month <= 10) {
+    return { academicYear: String(beYear), semester: '1' };
+  }
+  if (month >= 11) {
+    return { academicYear: String(beYear), semester: '2' };
+  }
+  return { academicYear: String(beYear - 1), semester: '2' };
+}

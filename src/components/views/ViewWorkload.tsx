@@ -73,8 +73,8 @@ import {
   ADHOC_PROJECT_PRESETS,
   OBEC_SYSTEM_CATALOG,
   ADMIN_TASK_ROLES,
-  getCurrentThaiAcademicYear,
 } from '@/lib/regulations/obec-admin-roles';
+import { getCurrentThaiAcademicTerm } from '@/lib/regulations/timetable-utils';
 import {
   buildObecSystemDirectory,
   buildPaStaffSummary,
@@ -128,7 +128,8 @@ function getStatusBadgeStyle(status: string): string {
 }
 
 export const ViewWorkload: React.FC = () => {
-  const defaultAcademicYear = useMemo(() => getCurrentThaiAcademicYear(), []);
+  const defaultTerm = useMemo(() => getCurrentThaiAcademicTerm(), []);
+  const defaultAcademicYear = defaultTerm.academicYear;
 
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [workloads, setWorkloads] = useState<WorkloadItem[]>([]);
@@ -142,7 +143,7 @@ export const ViewWorkload: React.FC = () => {
   const [obecDivisionFilter, setObecDivisionFilter] = useState<string>('ALL');
   const [obecStatusFilter, setObecStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
 
-  const [paSemester, setPaSemester] = useState<TimetableSemester>('1');
+  const [paSemester, setPaSemester] = useState<TimetableSemester>(defaultTerm.semester);
   const [paSlots, setPaSlots] = useState<TimetableSlot[]>([]);
   const [paKindergarten, setPaKindergarten] = useState<KindergartenSchedule[]>([]);
   const [paSubstitutions, setPaSubstitutions] = useState<TeachingSubstitution[]>([]);
