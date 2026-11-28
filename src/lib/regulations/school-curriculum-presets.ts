@@ -15,6 +15,8 @@ import type {
   SchoolSubjectType,
   SubjectLevelGroup,
   SubjectSemesterScope,
+  TimetableAllocation,
+  TimetableSemester,
 } from '@/lib/data/timetableTypes';
 
 export const DEFAULT_CURRICULUM_VERSION = 'หลักสูตรสถานศึกษา 2555 (ปรับปรุงล่าสุด)';
@@ -482,4 +484,202 @@ export function buildDefaultObecCurriculumPresets(): SchoolSubject[] {
   }
 
   return presets;
+}
+
+// ============================================================================
+// PHASE 11.2: ROOM CURRICULUM INTEGRATION & OBEC COMPLIANCE HELPERS
+// ============================================================================
+
+/**
+ * Returns active catalog subjects matching (roomName, semester) that are NOT yet
+ * allocated in that room (deduped by normalized subjectCode or subjectName).
+ */
+export function getMissingCatalogSubjectsForRoom(params: {
+  catalogSubjects: readonly SchoolSubject[];
+  existingAllocations: readonly TimetableAllocation[];
+  roomName: string;
+  semester: TimetableSemester;
+}): SchoolSubject[] {
+  const { catalogSubjects, existingAllocations, roomName, semester } = params;
+  const cleanRoom = (roomName || '').trim();
+  const roomAllocs = existingAllocations.filter((a) => (a.roomName || '').trim() === cleanRoom);
+
+  const existingCodes = new Set<string>();
+  const existingNames = new Set<string>();
+  for (const a of roomAllocs) {
+    const code = (a.subjectCode || '').trim().toLowerCase();
+    const name = (a.subjectName || '').trim().toLowerCase();
+    if (code) existingCodes.add(code);
+    if (name) existingNames.add(name);
+  }
+
+  return catalogSubjects
+    .filter((s) => {
+      if (!s.isActive) return false;
+      if (!s.gradeLevels.includes(cleanRoom)) return false;
+      if (s.semesterScope !== 'both' && s.semesterScope !== semester) return false;
+
+      const code = (s.subjectCode || '').trim().toLowerCase();
+      const name = (s.subjectName || '').trim().toLowerCase();
+      if (code && existingCodes.has(code)) return false;
+      if (name && existingNames.has(name)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return (a.subjectCode || '').localeCompare(b.subjectCode || '', 'th');
+    });
+}
+
+/**
+ * Returns explicit subjectCode if already present; otherwise performs a deterministic
+ * fallback lookup against catalogSubjects matching (subjectName, roomName, semester).
+ */
+export function resolveSubjectCodeForDisplay(params: {
+  subjectCode?: string;
+  subjectName: string;
+  roomName: string;
+  semester: TimetableSemester;
+  catalogSubjects?: readonly SchoolSubject[];
+}): string {
+  const explicit = (params.subjectCode || '').trim();
+  if (explicit) return explicit;
+
+  const catalog = params.catalogSubjects;
+  if (!catalog || catalog.length === 0) return '';
+
+  const cleanName = (params.subjectName || '').trim().toLowerCase();
+  const cleanRoom = (params.roomName || '').trim();
+  if (!cleanName) return '';
+
+  const candidates = catalog.filter(
+    (s) =>
+      (s.subjectCode || '').trim() !== '' &&
+      (s.subjectName || '').trim().toLowerCase() === cleanName &&
+      s.gradeLevels.includes(cleanRoom) &&
+      (s.semesterScope === 'both' || s.semesterScope === params.semester)
+  );
+
+  if (candidates.length === 0) return '';
+  const exactSem = candidates.find((s) => s.isActive && s.semesterScope === params.semester);
+  const activeAny = candidates.find((s) => s.isActive);
+  return (exactSem || activeAny || candidates[0]).subjectCode.trim();
+}
+
+export interface RoomCurriculumComplianceResult {
+  roomName: string;
+  level: 'primary' | 'secondary';
+  coreHours: number;
+  additionalHours: number;
+  activityHours: number;
+  homeroomHours: number;
+  totalLearningHours: number;
+  estimatedAnnualHours: number;
+  estimatedSemesterCredits: number;
+  obecTarget: {
+    minAnnualHours: number;
+    targetWeeklyHours: number;
+    maxWeeklyHours: number;
+    label: string;
+  };
+  status: 'meets_target' | 'below_target' | 'exceeds_capacity';
+  catalogTotalForRoom: number;
+  catalogAllocatedCount: number;
+  missingCatalogSubjects: SchoolSubject[];
+}
+
+/**
+ * Evaluates a room's course allocations against OBEC curriculum benchmarks
+ * (ป.1–ป.6: >= 1,000 hrs/yr [25 hrs/wk]; ม.1–ม.3: >= 1,200 hrs/yr [30 hrs/wk]).
+ */
+export function evaluateRoomCurriculumCompliance(params: {
+  roomName: string;
+  semester: TimetableSemester;
+  allocations: readonly TimetableAllocation[];
+  catalogSubjects: readonly SchoolSubject[];
+}): RoomCurriculumComplianceResult {
+  const { roomName, semester, allocations, catalogSubjects } = params;
+  const cleanRoom = (roomName || '').trim();
+  const level: 'primary' | 'secondary' = cleanRoom.startsWith('ม.') ? 'secondary' : 'primary';
+
+  const roomAllocs = allocations.filter((a) => (a.roomName || '').trim() === cleanRoom);
+
+  let coreHours = 0;
+  let additionalHours = 0;
+  let activityHours = 0;
+  let homeroomHours = 0;
+
+  for (const a of roomAllocs) {
+    const hrs = Number(a.periodsPerWeek) || 0;
+    if (a.subjectType === 'พื้นฐาน') coreHours += hrs;
+    else if (a.subjectType === 'เพิ่มเติม') additionalHours += hrs;
+    else if (a.subjectType === 'กิจกรรมพัฒนาผู้เรียน') activityHours += hrs;
+    else if (a.subjectType === 'ประจำชั้น') homeroomHours += hrs * 0.5;
+  }
+
+  const round1 = (v: number) => Math.round(v * 10) / 10;
+  coreHours = round1(coreHours);
+  additionalHours = round1(additionalHours);
+  activityHours = round1(activityHours);
+  homeroomHours = round1(homeroomHours);
+
+  const totalLearningHours = round1(coreHours + additionalHours + activityHours);
+  const estimatedAnnualHours =
+    level === 'primary'
+      ? calculatePrimaryHoursPerYear(totalLearningHours)
+      : Math.round(totalLearningHours * 40);
+  const estimatedSemesterCredits =
+    level === 'secondary' ? calculateSecondaryCredits(coreHours + additionalHours) : 0;
+
+  const obecTarget =
+    level === 'secondary'
+      ? {
+          minAnnualHours: 1200,
+          targetWeeklyHours: 30,
+          maxWeeklyHours: 30,
+          label: 'เกณฑ์ สพฐ. ม.ต้น (ไม่น้อยกว่า 1,200 ชม./ปี หรือ 30 ชม./สัปดาห์)',
+        }
+      : {
+          minAnnualHours: 1000,
+          targetWeeklyHours: 25,
+          maxWeeklyHours: 30,
+          label: 'เกณฑ์ สพฐ. ประถมศึกษา (ไม่น้อยกว่า 1,000 ชม./ปี หรือ 25 ชม./สัปดาห์)',
+        };
+
+  const status: RoomCurriculumComplianceResult['status'] =
+    totalLearningHours > 30
+      ? 'exceeds_capacity'
+      : totalLearningHours >= obecTarget.targetWeeklyHours
+        ? 'meets_target'
+        : 'below_target';
+
+  const activeCatalogForRoom = catalogSubjects.filter(
+    (s) =>
+      s.isActive &&
+      s.gradeLevels.includes(cleanRoom) &&
+      (s.semesterScope === 'both' || s.semesterScope === semester)
+  );
+  const missingCatalogSubjects = getMissingCatalogSubjectsForRoom({
+    catalogSubjects,
+    existingAllocations: roomAllocs,
+    roomName: cleanRoom,
+    semester,
+  });
+
+  return {
+    roomName: cleanRoom,
+    level,
+    coreHours,
+    additionalHours,
+    activityHours,
+    homeroomHours,
+    totalLearningHours,
+    estimatedAnnualHours,
+    estimatedSemesterCredits,
+    obecTarget,
+    status,
+    catalogTotalForRoom: activeCatalogForRoom.length,
+    catalogAllocatedCount: Math.max(0, activeCatalogForRoom.length - missingCatalogSubjects.length),
+    missingCatalogSubjects,
+  };
 }

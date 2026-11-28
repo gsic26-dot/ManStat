@@ -18,10 +18,12 @@ import { Printer, X } from 'lucide-react';
 import type {
   KindergartenSchedule,
   PeriodConfigItem,
+  SchoolSubject,
   TimetableSemester,
   TimetableSettings,
   TimetableSlot,
 } from '@/lib/data/timetableTypes';
+import { resolveSubjectCodeForDisplay } from '@/lib/regulations/school-curriculum-presets';
 import {
   DAYS_OF_WEEK,
   DEFAULT_FOOTER_NOTE,
@@ -47,6 +49,8 @@ export interface TimetablePrintViewProps {
   selectedKindergartenRoom: string;
   teacherLoad?: TeacherWeeklyLoadSummary;
   getCleanName: (id?: string) => string;
+  showSubjectCode?: boolean;
+  schoolSubjects?: readonly SchoolSubject[];
   onClose: () => void;
 }
 
@@ -63,8 +67,20 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
   selectedKindergartenRoom,
   teacherLoad,
   getCleanName,
+  showSubjectCode = true,
+  schoolSubjects,
   onClose,
 }) => {
+  const getDisplayCode = (slot: TimetableSlot): string => {
+    if (!showSubjectCode) return '';
+    return resolveSubjectCodeForDisplay({
+      subjectCode: slot.subjectCode,
+      subjectName: slot.subjectName,
+      roomName: slot.roomName,
+      semester,
+      catalogSubjects: schoolSubjects,
+    });
+  };
   const lunchCfg = settings.lunchConfig || DEFAULT_LUNCH_CONFIG;
   const lunchAfter = Math.max(2, Math.min(4, Number(lunchCfg.afterPeriod) || 3));
   const lunchTimeText = `${lunchCfg.startTime || '11.30'} - ${lunchCfg.endTime || '12.30'}`;
@@ -129,6 +145,11 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                     <td key={p.periodNo} className="border border-black px-1.5 py-1.5 text-center align-middle h-14">
                       {slot ? (
                         <div>
+                          {getDisplayCode(slot) && (
+                            <div className="text-[9px] font-mono text-slate-700 leading-none mb-0.5">
+                              {getDisplayCode(slot)}
+                            </div>
+                          )}
                           <div className="font-bold leading-tight">{slot.subjectName}</div>
                           <div className="text-[10px] mt-0.5">{getCleanName(slot.teacherId)}</div>
                           {slot.coTeacherId && (
@@ -156,6 +177,11 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                     <td key={p.periodNo} className="border border-black px-1.5 py-1.5 text-center align-middle h-14">
                       {slot ? (
                         <div>
+                          {getDisplayCode(slot) && (
+                            <div className="text-[9px] font-mono text-slate-700 leading-none mb-0.5">
+                              {getDisplayCode(slot)}
+                            </div>
+                          )}
                           <div className="font-bold leading-tight">{slot.subjectName}</div>
                           <div className="text-[10px] mt-0.5">{getCleanName(slot.teacherId)}</div>
                           {slot.coTeacherId && (
@@ -252,14 +278,20 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                   return (
                     <td key={p.periodNo} className="border border-black px-1.5 py-1.5 text-center align-middle h-14">
                       {list.length > 0 ? (
-                        list.map((s) => (
-                          <div key={s.id}>
-                            <div className="font-bold">{s.roomName} · {s.subjectName}</div>
-                            {s.coTeacherId === selectedTeacherId && (
-                              <div className="text-[9px]">(ร่วมสอน)</div>
-                            )}
-                          </div>
-                        ))
+                        list.map((s) => {
+                          const code = getDisplayCode(s);
+                          return (
+                            <div key={s.id}>
+                              <div className="font-bold">
+                                {s.roomName} · {code ? `${code} ` : ''}
+                                {s.subjectName}
+                              </div>
+                              {s.coTeacherId === selectedTeacherId && (
+                                <div className="text-[9px]">(ร่วมสอน)</div>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}
@@ -278,14 +310,20 @@ export const TimetablePrintView: React.FC<TimetablePrintViewProps> = ({
                   return (
                     <td key={p.periodNo} className="border border-black px-1.5 py-1.5 text-center align-middle h-14">
                       {list.length > 0 ? (
-                        list.map((s) => (
-                          <div key={s.id}>
-                            <div className="font-bold">{s.roomName} · {s.subjectName}</div>
-                            {s.coTeacherId === selectedTeacherId && (
-                              <div className="text-[9px]">(ร่วมสอน)</div>
-                            )}
-                          </div>
-                        ))
+                        list.map((s) => {
+                          const code = getDisplayCode(s);
+                          return (
+                            <div key={s.id}>
+                              <div className="font-bold">
+                                {s.roomName} · {code ? `${code} ` : ''}
+                                {s.subjectName}
+                              </div>
+                              {s.coTeacherId === selectedTeacherId && (
+                                <div className="text-[9px]">(ร่วมสอน)</div>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}

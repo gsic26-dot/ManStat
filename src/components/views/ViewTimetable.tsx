@@ -43,6 +43,7 @@ import {
   Copy,
   Baby,
   Archive,
+  Download,
   RotateCcw,
   UserCheck,
   ClipboardCopy,
@@ -54,6 +55,7 @@ import type {
   KindergartenSchedule,
   LunchBreakConfig,
   PeriodConfigItem,
+  SchoolSubject,
   TeachingSubstitution,
   TimetableAllocation,
   TimetableSemester,
@@ -61,6 +63,10 @@ import type {
   TimetableSlot,
   TimetableSubjectType,
 } from '@/lib/data/timetableTypes';
+import {
+  evaluateRoomCurriculumCompliance,
+  resolveSubjectCodeForDisplay,
+} from '@/lib/regulations/school-curriculum-presets';
 import {
   TimetablePrintView,
   type TimetablePrintMode,
@@ -187,6 +193,28 @@ export const ViewTimetable: React.FC = () => {
   // Settings Modal State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isSubjectCatalogOpen, setIsSubjectCatalogOpen] = useState<boolean>(false);
+
+  // Phase 11.2: School Subject Catalog Integration, Bulk Pull & Code Display Toggle
+  const [schoolSubjects, setSchoolSubjects] = useState<SchoolSubject[]>([]);
+  const [showSubjectCode, setShowSubjectCode] = useState<boolean>(true);
+  const [allocCatalogSelectedId, setAllocCatalogSelectedId] = useState<string>('');
+  const [isBulkPullModalOpen, setIsBulkPullModalOpen] = useState<boolean>(false);
+  const [bulkPullDefaultTeacherId, setBulkPullDefaultTeacherId] = useState<string>('');
+  const [bulkPullDrafts, setBulkPullDrafts] = useState<
+    Array<{
+      subjectId: string;
+      selected: boolean;
+      subjectCode: string;
+      subjectName: string;
+      subjectGroup: string;
+      subjectType: TimetableSubjectType;
+      periodsPerWeek: number;
+      preferMorning: boolean;
+      consecutivePeriods: 1 | 2;
+      teacherId: string;
+    }>
+  >([]);
+  const [isBulkPulling, setIsBulkPulling] = useState<boolean>(false);
   const [draftPeriods, setDraftPeriods] = useState<PeriodConfigItem[]>([]);
   const [draftLunchConfig, setDraftLunchConfig] = useState<LunchBreakConfig>({ ...DEFAULT_LUNCH_CONFIG });
   const [draftFooterNote, setDraftFooterNote] = useState<string>('');
@@ -342,6 +370,22 @@ export const ViewTimetable: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  const loadSchoolSubjects = useCallback(async () => {
+    try {
+      const res = await fetch('/api/timetable/subjects', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success && Array.isArray(json.subjects)) {
+        setSchoolSubjects(json.subjects);
+      }
+    } catch {
+      // keep existing catalog state
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSchoolSubjects();
+  }, [loadSchoolSubjects]);
 
   // Load timetable bundle whenever academicYear or semester changes
   const loadBundle = useCallback(async (yr: string, sem: TimetableSemester) => {
@@ -729,7 +773,154 @@ export const ViewTimetable: React.FC = () => {
       setAllocPreferMorning(false);
       setAllocConsecutive(1);
     }
+    setAllocCatalogSelectedId('');
     setIsAllocModalOpen(true);
+  };
+
+  // Phase 11.2: Active catalog subjects matching current Allocation modal's (allocRoom, semester)
+  const allocRoomCatalogSubjects = useMemo(() => {
+    return schoolSubjects.filter(
+      (s) =>
+        s.isActive &&
+        s.gradeLevels.includes(allocRoom) &&
+        (s.semesterScope === 'both' || s.semesterScope === semester)
+    );
+  }, [schoolSubjects, allocRoom, semester]);
+
+  // Phase 11.2: OBEC Room Curriculum Compliance for selectedRoom
+  const roomCompliance = useMemo(() => {
+    return evaluateRoomCurriculumCompliance({
+      roomName: selectedRoom,
+      semester,
+      allocations,
+      catalogSubjects: schoolSubjects,
+    });
+  }, [selectedRoom, semester, allocations, schoolSubjects]);
+
+  const getSlotDisplayCode = useCallback(
+    (slot: TimetableSlot): string => {
+      if (!showSubjectCode) return '';
+      return resolveSubjectCodeForDisplay({
+        subjectCode: slot.subjectCode,
+        subjectName: slot.subjectName,
+        roomName: slot.roomName,
+        semester,
+        catalogSubjects: schoolSubjects,
+      });
+    },
+    [showSubjectCode, semester, schoolSubjects]
+  );
+
+  const handleSelectCatalogSubjectForAlloc = (subjectId: string) => {
+    setAllocCatalogSelectedId(subjectId);
+    if (!subjectId) return;
+    const found = schoolSubjects.find((s) => s.id === subjectId);
+    if (!found) return;
+    const mappedType: TimetableSubjectType =
+      found.subjectType === 'เพิ่มเติม' ||
+      found.subjectType === 'กิจกรรมพัฒนาผู้เรียน' ||
+      found.subjectType === 'ประจำชั้น'
+        ? found.subjectType
+        : 'พื้นฐาน';
+    setAllocSubjectCode(found.subjectCode || '');
+    setAllocSubjectName(found.subjectName);
+    setAllocSubjectGroup(found.subjectGroup || STANDARD_SUBJECT_GROUPS[0]);
+    setAllocSubjectType(mappedType);
+    setAllocPeriodsPerWeek(Math.max(1, Math.round(found.defaultHoursPerWeek || 1)));
+    setAllocPreferMorning(Boolean(found.preferMorning));
+    setAllocConsecutive(found.defaultConsecutive === 2 ? 2 : 1);
+  };
+
+  const handleOpenBulkPullModal = () => {
+    if (!canManage) return;
+    const defaultTeacher = bulkPullDefaultTeacherId || eligibleTeachingStaff[0]?.id || '';
+    setBulkPullDefaultTeacherId(defaultTeacher);
+    setBulkPullDrafts(
+      roomCompliance.missingCatalogSubjects.map((s) => {
+        const mappedType: TimetableSubjectType =
+          s.subjectType === 'เพิ่มเติม' ||
+          s.subjectType === 'กิจกรรมพัฒนาผู้เรียน' ||
+          s.subjectType === 'ประจำชั้น'
+            ? s.subjectType
+            : 'พื้นฐาน';
+        return {
+          subjectId: s.id,
+          selected: true,
+          subjectCode: s.subjectCode || '',
+          subjectName: s.subjectName,
+          subjectGroup: s.subjectGroup || STANDARD_SUBJECT_GROUPS[0],
+          subjectType: mappedType,
+          periodsPerWeek: Math.max(1, Math.round(s.defaultHoursPerWeek || 1)),
+          preferMorning: Boolean(s.preferMorning),
+          consecutivePeriods: s.defaultConsecutive === 2 ? 2 : 1,
+          teacherId: defaultTeacher,
+        };
+      })
+    );
+    setIsBulkPullModalOpen(true);
+  };
+
+  const handleApplyBulkDefaultTeacher = (teacherId: string) => {
+    setBulkPullDefaultTeacherId(teacherId);
+    if (!teacherId) return;
+    setBulkPullDrafts((prev) =>
+      prev.map((row) => (row.selected ? { ...row, teacherId } : row))
+    );
+  };
+
+  const handleSubmitBulkPull = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canManage || isBulkPulling) return;
+    const chosen = bulkPullDrafts.filter((r) => r.selected);
+    if (chosen.length === 0) {
+      showNotice('error', 'กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ');
+      return;
+    }
+    const missingTeacher = chosen.find((r) => !r.teacherId);
+    if (missingTeacher) {
+      showNotice('error', `กรุณาเลือกครูผู้สอนสำหรับวิชา "${missingTeacher.subjectName}"`);
+      return;
+    }
+
+    setIsBulkPulling(true);
+    try {
+      const res = await fetch('/api/admin/timetable/allocations/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear,
+          semester,
+          roomName: selectedRoom,
+          items: chosen.map((r) => ({
+            subjectCode: r.subjectCode,
+            subjectName: r.subjectName,
+            subjectGroup: r.subjectGroup,
+            subjectType: r.subjectType,
+            teacherId: r.teacherId,
+            periodsPerWeek: r.periodsPerWeek,
+            preferMorning: r.preferMorning,
+            consecutivePeriods: r.consecutivePeriods,
+          })),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'ไม่สามารถนำเข้าแผนการสอนแบบกลุ่มได้');
+      }
+      setIsBulkPullModalOpen(false);
+      await loadBundle(academicYear, semester);
+      showNotice(
+        'success',
+        `ดึงรายวิชาจากคลังเข้าแผนการสอนห้อง ${selectedRoom} สำเร็จ ${json.insertedCount} วิชา${
+          json.skippedCount > 0 ? ` (ข้ามซ้ำ ${json.skippedCount} วิชา)` : ''
+        }`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการดึงรายวิชาจากคลัง';
+      showNotice('error', msg);
+    } finally {
+      setIsBulkPulling(false);
+    }
   };
 
   const handleAllocSubjectNameChange = (value: string) => {
@@ -1688,7 +1879,16 @@ export const ViewTimetable: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={showSubjectCode}
+                        onChange={(e) => setShowSubjectCode(e.target.checked)}
+                        className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                      />
+                      <span>แสดงรหัสวิชา</span>
+                    </label>
                     {/* Compact Print A4 Dropdown */}
                     <div ref={printMenuRef} className="relative">
                       <button
@@ -1920,9 +2120,9 @@ export const ViewTimetable: React.FC = () => {
                                               <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                                             )}
                                           </div>
-                                          {slot.subjectCode && (
+                                          {getSlotDisplayCode(slot) && (
                                             <div className="text-[10px] font-mono text-slate-400">
-                                              {slot.subjectCode}
+                                              {getSlotDisplayCode(slot)}
                                             </div>
                                           )}
                                         </div>
@@ -2057,9 +2257,9 @@ export const ViewTimetable: React.FC = () => {
                                               <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                                             )}
                                           </div>
-                                          {slot.subjectCode && (
+                                          {getSlotDisplayCode(slot) && (
                                             <div className="text-[10px] font-mono text-slate-400">
-                                              {slot.subjectCode}
+                                              {getSlotDisplayCode(slot)}
                                             </div>
                                           )}
                                         </div>
@@ -2251,6 +2451,15 @@ export const ViewTimetable: React.FC = () => {
                           : 'ต่ำกว่า 12 ชม./สัปดาห์'}
                       </span>
                     )}
+                    <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={showSubjectCode}
+                        onChange={(e) => setShowSubjectCode(e.target.checked)}
+                        className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                      />
+                      <span>แสดงรหัสวิชา</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => setPrintMode('teacher')}
@@ -2370,7 +2579,12 @@ export const ViewTimetable: React.FC = () => {
                                           )}
                                         </div>
                                       </div>
-                                      <div className="font-semibold text-slate-900 dark:text-white mt-1 line-clamp-2 leading-tight">
+                                      {getSlotDisplayCode(slot) && (
+                                        <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1 leading-none">
+                                          {getSlotDisplayCode(slot)}
+                                        </div>
+                                      )}
+                                      <div className="font-semibold text-slate-900 dark:text-white mt-0.5 line-clamp-2 leading-tight">
                                         {slot.subjectName}
                                       </div>
                                     </button>
@@ -2454,6 +2668,19 @@ export const ViewTimetable: React.FC = () => {
                     </button>
                     <button
                       type="button"
+                      onClick={handleOpenBulkPullModal}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                      <span>ดึงวิชาจากคลังลงห้องนี้</span>
+                      {roomCompliance.missingCatalogSubjects.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-sky-600 text-white">
+                          {roomCompliance.missingCatalogSubjects.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleOpenAllocModal()}
                       className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer"
                     >
@@ -2485,27 +2712,75 @@ export const ViewTimetable: React.FC = () => {
                 </div>
               )}
 
+              {/* Phase 11.2: OBEC Room Curriculum Compliance Strip */}
               <div
-                className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
-                  roomAllocationTotals.learningPeriods > 30 || roomAllocationTotals.homeroomPeriods > 5
-                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                className={`p-4 rounded-2xl border space-y-2.5 text-xs ${
+                  roomCompliance.status === 'exceeds_capacity' || roomAllocationTotals.homeroomPeriods > 5
+                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
                     : 'bg-white dark:bg-[#121822] border-slate-200/90 dark:border-slate-800/80 text-slate-700 dark:text-slate-200'
                 }`}
               >
-                <div className="flex items-center gap-2 font-medium">
-                  <BookOpen className="w-4 h-4 text-sky-500 shrink-0" />
-                  <span>
-                    แผนการสอนห้อง <strong>{selectedRoom}</strong>: จัดสรรแล้ว{' '}
-                    <span className="font-mono font-bold">{roomAllocationTotals.learningPeriods}</span> / 30 ชม.เรียน + ประจำชั้น{' '}
-                    <span className="font-mono font-bold">{roomAllocationTotals.homeroomHours}</span> ชม.
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
+                    <BookOpen className="w-4 h-4 text-sky-500 shrink-0" />
+                    <span>
+                      โครงสร้างเวลาเรียนห้อง <strong>{selectedRoom}</strong>: พื้นฐาน{' '}
+                      <strong className="font-mono">{roomCompliance.coreHours}</strong> ชม. · เพิ่มเติม{' '}
+                      <strong className="font-mono">{roomCompliance.additionalHours}</strong> ชม. · กิจกรรม{' '}
+                      <strong className="font-mono">{roomCompliance.activityHours}</strong> ชม. · ประจำชั้น{' '}
+                      <strong className="font-mono">{roomCompliance.homeroomHours}</strong> ชม.
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono font-semibold text-slate-800 dark:text-slate-100">
+                      {roomCompliance.level === 'secondary'
+                        ? `${roomCompliance.estimatedSemesterCredits} หน่วยกิต · ประมาณ ${roomCompliance.estimatedAnnualHours.toLocaleString('en-US')} ชม./ปี`
+                        : `ประมาณ ${roomCompliance.estimatedAnnualHours.toLocaleString('en-US')} ชม./ปี`}
+                    </span>
+
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold border ${
+                        roomCompliance.status === 'meets_target'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/70'
+                          : roomCompliance.status === 'exceeds_capacity'
+                            ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                            : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70'
+                      }`}
+                    >
+                      {roomCompliance.status === 'meets_target'
+                        ? 'ครบตามเกณฑ์ สพฐ.'
+                        : roomCompliance.status === 'exceeds_capacity'
+                          ? 'เกิน 30 ชม.เรียน/สัปดาห์'
+                          : 'ยังไม่ครบเกณฑ์'}
+                    </span>
+
+                    {roomCompliance.catalogTotalForRoom > 0 && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/70 font-mono">
+                        <span>
+                          ครบตามคลัง {roomCompliance.catalogAllocatedCount}/{roomCompliance.catalogTotalForRoom} วิชา
+                        </span>
+                        {canManage && roomCompliance.missingCatalogSubjects.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleOpenBulkPullModal}
+                            className="underline font-sans font-semibold hover:text-indigo-900 dark:hover:text-white cursor-pointer"
+                          >
+                            ดึงเพิ่ม
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {(roomAllocationTotals.learningPeriods > 30 || roomAllocationTotals.homeroomPeriods > 5) && (
-                  <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>จำนวนชั่วโมงเรียนเกินโควต้าประจำสัปดาห์</span>
-                  </span>
-                )}
+
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {roomCompliance.obecTarget.label} · รวมชั่วโมงเรียน{' '}
+                  <strong className="font-mono text-slate-700 dark:text-slate-200">
+                    {roomCompliance.totalLearningHours}
+                  </strong>{' '}
+                  / 30 ชม./สัปดาห์
+                </div>
               </div>
 
               {/* Allocations Table */}
@@ -3409,6 +3684,48 @@ export const ViewTimetable: React.FC = () => {
               onSubmit={handleSaveAllocation}
               className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
             >
+              {/* Phase 11.2: Catalog Subject Quick Picker */}
+              <div className="p-3.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/70 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="alloc-catalog-select"
+                    className="text-xs font-semibold text-sky-800 dark:text-sky-200"
+                  >
+                    เลือกจากคลังรายวิชา ({allocRoom} · ภาคเรียนที่ {semester})
+                  </label>
+                  {allocRoomCatalogSubjects.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAllocModalOpen(false);
+                        setIsSubjectCatalogOpen(true);
+                      }}
+                      className="text-[11px] font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                    >
+                      เปิดคลังรายวิชาเพื่อนำเข้าหลักสูตร
+                    </button>
+                  )}
+                </div>
+                <select
+                  id="alloc-catalog-select"
+                  value={allocCatalogSelectedId}
+                  onChange={(e) => handleSelectCatalogSubjectForAlloc(e.target.value)}
+                  className="w-full h-9 bg-white dark:bg-[#101822] border border-sky-200 dark:border-sky-800 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                >
+                  <option value="">
+                    {allocRoomCatalogSubjects.length > 0
+                      ? '-- เลือกรายวิชาจากคลังเพื่อเติมข้อมูลอัตโนมัติ (หรือกรอกเองด้านล่าง) --'
+                      : '-- ยังไม่มีรายวิชาในคลังสำหรับห้องนี้ (สามารถกรอกเองด้านล่างได้) --'}
+                  </option>
+                  {allocRoomCatalogSubjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.subjectCode ? `${s.subjectCode} — ` : ''}
+                      {s.subjectName} ({s.defaultHoursPerWeek} ชม./สัปดาห์)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label
@@ -4541,8 +4858,248 @@ export const ViewTimetable: React.FC = () => {
           selectedKindergartenRoom={selectedKgRoom}
           teacherLoad={activeTeacherLoad}
           getCleanName={getCleanName}
+          showSubjectCode={showSubjectCode}
+          schoolSubjects={schoolSubjects}
           onClose={() => setPrintMode(null)}
         />
+      )}
+
+      {/* Phase 11.2: Bulk Pull From Subject Catalog Modal (Close-Locked) */}
+      {isBulkPullModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-pull-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 dark:bg-black/75 backdrop-blur-xs p-3 sm:p-4"
+        >
+          <div className="bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl text-slate-800 dark:text-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/90 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-sky-500 shrink-0" />
+                <div>
+                  <h3 id="bulk-pull-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
+                    ดึงรายวิชาจากคลังลงแผนการสอนห้อง {selectedRoom} (ภาคเรียนที่ {semester})
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    แสดงเฉพาะรายวิชาที่เปิดใช้งานในคลังหลักสูตรและยังไม่ได้จัดสรรลงห้อง {selectedRoom}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isBulkPulling}
+                onClick={() => setIsBulkPullModalOpen(false)}
+                aria-label="ปิดหน้าต่าง"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              id="bulk-pull-catalog-form"
+              aria-labelledby="bulk-pull-modal-title"
+              onSubmit={handleSubmitBulkPull}
+              className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+            >
+              {bulkPullDrafts.length === 0 ? (
+                <div className="py-10 text-center space-y-2 text-xs text-slate-500 dark:text-slate-400">
+                  <div>ไม่มีรายวิชาค้างจากคลังสำหรับห้อง {selectedRoom} ในภาคเรียนที่ {semester}</div>
+                  {schoolSubjects.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBulkPullModalOpen(false);
+                        setIsSubjectCatalogOpen(true);
+                      }}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium cursor-pointer"
+                    >
+                      <BookOpen className="w-4 h-4 shrink-0" />
+                      <span>เปิดคลังรายวิชาเพื่อนำเข้าหลักสูตรมาตรฐาน</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Quick Default Teacher Bar */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2 flex-1">
+                      <label
+                        htmlFor="bulk-default-teacher"
+                        className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap"
+                      >
+                        กำหนดครูผู้สอนเริ่มต้นให้ทุกวิชาที่เลือก:
+                      </label>
+                      <select
+                        id="bulk-default-teacher"
+                        value={bulkPullDefaultTeacherId}
+                        onChange={(e) => handleApplyBulkDefaultTeacher(e.target.value)}
+                        className="h-9 min-w-[220px] bg-white dark:bg-[#141d27] border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="">-- เลือกครูผู้สอนเริ่มต้น --</option>
+                        {eligibleTeachingStaff.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {formatStaffName(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 text-xs">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setBulkPullDrafts((prev) => prev.map((r) => ({ ...r, selected: true })))
+                        }
+                        className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                      >
+                        เลือกทั้งหมด
+                      </button>
+                      <span className="text-slate-300 dark:text-slate-700">|</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setBulkPullDrafts((prev) => prev.map((r) => ({ ...r, selected: false })))
+                        }
+                        className="text-slate-500 dark:text-slate-400 hover:underline cursor-pointer"
+                      >
+                        ไม่เลือก
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Missing Subjects Table */}
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-label="ตารางรายวิชาจากคลังที่พร้อมดึงเข้าแผนการสอน"
+                    className="overflow-x-auto w-full rounded-xl border border-slate-200 dark:border-slate-800"
+                  >
+                    <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                      <thead className="bg-slate-100/90 dark:bg-[#101822] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
+                        <tr>
+                          <th scope="col" className="w-10 px-3 py-2.5 text-center">
+                            เลือก
+                          </th>
+                          <th scope="col" className="px-3 py-2.5 whitespace-nowrap">
+                            รหัสวิชา
+                          </th>
+                          <th scope="col" className="px-3 py-2.5">
+                            ชื่อรายวิชา / กลุ่มสาระ
+                          </th>
+                          <th scope="col" className="w-24 px-3 py-2.5 text-center whitespace-nowrap">
+                            ชม./สัปดาห์
+                          </th>
+                          <th scope="col" className="px-3 py-2.5">
+                            ครูผู้สอน
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {bulkPullDrafts.map((row, idx) => (
+                          <tr
+                            key={row.subjectId}
+                            className={!row.selected ? 'opacity-50' : ''}
+                          >
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                aria-label={`เลือกวิชา ${row.subjectName}`}
+                                checked={row.selected}
+                                onChange={(e) =>
+                                  setBulkPullDrafts((prev) =>
+                                    prev.map((r, i) =>
+                                      i === idx ? { ...r, selected: e.target.checked } : r
+                                    )
+                                  )
+                                }
+                                className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-3 py-2 font-mono font-semibold whitespace-nowrap">
+                              {row.subjectCode || '-'}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="font-semibold text-slate-900 dark:text-white">
+                                {row.subjectName}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {row.subjectGroup} · {row.subjectType}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="number"
+                                min={1}
+                                max={30}
+                                aria-label={`ชั่วโมงต่อสัปดาห์วิชา ${row.subjectName}`}
+                                value={row.periodsPerWeek}
+                                onChange={(e) => {
+                                  const val = Math.max(1, Math.min(30, Number(e.target.value) || 1));
+                                  setBulkPullDrafts((prev) =>
+                                    prev.map((r, i) =>
+                                      i === idx ? { ...r, periodsPerWeek: val } : r
+                                    )
+                                  );
+                                }}
+                                className="w-16 h-8 text-center font-mono bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <select
+                                aria-label={`ครูผู้สอนวิชา ${row.subjectName}`}
+                                value={row.teacherId}
+                                onChange={(e) =>
+                                  setBulkPullDrafts((prev) =>
+                                    prev.map((r, i) =>
+                                      i === idx ? { ...r, teacherId: e.target.value } : r
+                                    )
+                                  )
+                                }
+                                className="w-full h-8 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-slate-100 cursor-pointer"
+                              >
+                                <option value="">-- เลือกครูผู้สอน --</option>
+                                {eligibleTeachingStaff.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {formatStaffName(t)}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </form>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200/90 dark:border-slate-800 shrink-0">
+              <button
+                type="button"
+                disabled={isBulkPulling}
+                onClick={() => setIsBulkPullModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              {bulkPullDrafts.length > 0 && (
+                <button
+                  type="submit"
+                  form="bulk-pull-catalog-form"
+                  disabled={isBulkPulling || bulkPullDrafts.filter((r) => r.selected).length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isBulkPulling && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                  <span>
+                    นำเข้าแผนการสอน ({bulkPullDrafts.filter((r) => r.selected).length} วิชา)
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Shared Subject Presets Datalist */}
@@ -4591,6 +5148,7 @@ export const ViewTimetable: React.FC = () => {
         isOpen={isSubjectCatalogOpen}
         canManage={canManageTimetable}
         onClose={() => setIsSubjectCatalogOpen(false)}
+        onCatalogChanged={loadSchoolSubjects}
       />
     </div>
   );

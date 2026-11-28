@@ -52,6 +52,7 @@ export interface SubjectCatalogModalProps {
   isOpen: boolean;
   canManage: boolean;
   onClose: () => void;
+  onCatalogChanged?: () => void;
 }
 
 interface SubjectFormState {
@@ -100,6 +101,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
   isOpen,
   canManage,
   onClose,
+  onCatalogChanged,
 }) => {
   const [subjects, setSubjects] = useState<SchoolSubject[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -288,6 +290,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
         return exists ? prev.map((s) => (s.id === saved.id ? saved : s)) : [...prev, saved];
       });
       setIsFormOpen(false);
+      onCatalogChanged?.();
       showNotice(
         'success',
         formState.id ? `อัปเดตรายวิชา "${saved.subjectName}" เรียบร้อยแล้ว` : `เพิ่มรายวิชา "${saved.subjectName}" เรียบร้อยแล้ว`
@@ -315,6 +318,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
       }
       const updated: SchoolSubject = json.data;
       setSubjects((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      onCatalogChanged?.();
       showNotice(
         'success',
         `${updated.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}รายวิชา "${updated.subjectName}" แล้ว`
@@ -342,6 +346,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
         await loadSubjects();
       }
       setIsSeedConfirmOpen(false);
+      onCatalogChanged?.();
       showNotice(
         'success',
         `นำเข้าโครงสร้างหลักสูตรมาตรฐาน (อ.1–ม.3) สำเร็จ: เพิ่มใหม่ ${json.insertedCount} รายวิชา (ข้ามรายการที่มีอยู่แล้ว ${json.skippedCount} รายวิชา)`
@@ -368,6 +373,7 @@ export const SubjectCatalogModal: React.FC<SubjectCatalogModalProps> = ({
       }
       setSubjects((prev) => prev.filter((s) => s.id !== target.id));
       setDeletingSubject(null);
+      onCatalogChanged?.();
       showNotice('success', `ลบรายวิชา "${target.subjectName}" ออกจากคลังเรียบร้อยแล้ว`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลบรายวิชา';
