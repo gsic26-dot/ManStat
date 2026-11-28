@@ -14,16 +14,25 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'superuser';
 
+-- Use DOMAIN over TEXT instead of ENUM because PostgreSQL ENUM labels are capped at 63 UTF-8 bytes
+-- (Thai UTF-8 characters are 3 bytes each, so long official 2555 leave names exceed 63 bytes).
 DO $$ BEGIN
-    CREATE TYPE leave_type_enum AS ENUM (
-        'ลาป่วย',
-        'ลากิจส่วนตัว',
-        'ลาคลอดบุตร',
-        'ลาไปช่วยเหลือภริยาที่คลอดบุตร',
-        'ลาพักผ่อน',
-        'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์',
-        'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
-        'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน'
+    CREATE DOMAIN leave_type_enum AS TEXT CHECK (
+        VALUE IN (
+            'ลาป่วย',
+            'ลากิจส่วนตัว',
+            'ลาคลอดบุตร',
+            'ลาไปช่วยเหลือภริยาที่คลอดบุตร',
+            'ลาพักผ่อน',
+            'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์',
+            'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
+            'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน',
+            'ลาไปปฏิบัติงานในองค์การระหว่างประเทศ',
+            'ลาติดตามคู่สมรส',
+            'ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ',
+            'ขออนุญาตออกนอกบริเวณโรงเรียน',
+            'ขออนุญาตไปราชการ'
+        )
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -209,7 +218,7 @@ RETURNS INT LANGUAGE sql IMMUTABLE AS $$
            END;
 $$;
 
--- 4.3 ฟังก์ชันคำนวณวันลา (แยกวันทำการ vs วันปฏิทิน และรองรับลาครึ่งวัน 0.5)
+-- 4.3 ฟังก์ชันคำนวณวันลา (แยกวันทำการ 4 ประเภท vs วันปฏิทินต่อเนื่อง 7 ประเภท ตามระเบียบฯ พ.ศ. 2555)
 CREATE OR REPLACE FUNCTION public.fn_calculate_leave_days(
     p_start_date DATE,
     p_end_date DATE,
@@ -224,28 +233,46 @@ BEGIN
         RAISE EXCEPTION 'วันสิ้นสุดการลาต้องไม่น้อยกว่าวันเริ่มต้น';
     END IF;
 
-    -- กรณีลาครึ่งวัน (ใช้ได้เฉพาะลาป่วยและลากิจส่วนตัวในวันเดียวกันตามระเบียบ ข้อ 10 วรรค 6)
-    IF p_half_day IN ('morning', 'afternoon') AND p_start_date = p_end_date THEN
-        RETURN 0.5;
+    -- การขออนุญาตออกนอกบริเวณโรงเรียนและไปราชการ ไม่นับเป็นวันลา (0 วัน)
+    IF p_leave_type IN (
+        'ขออนุญาตออกนอกบริเวณโรงเรียน',
+        'ขออนุญาตไปราชการ'
+    ) THEN
+        RETURN 0;
     END IF;
 
-    -- ประเภทการลาที่นับตาม "วันปฏิทิน" (รวมวันหยุดเสาร์-อาทิตย์และนักขัตฤกษ์)
+    -- ประเภทการลา 7 ประเภทที่นับตาม "วันปฏิทินต่อเนื่อง" (รวมวันหยุดเสาร์-อาทิตย์และนักขัตฤกษ์)
     IF p_leave_type IN (
         'ลาคลอดบุตร',
         'ลาอุปสมบทหรือการลาไปประกอบพิธีฮัจย์',
         'ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
-        'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน'
+        'ลาไปศึกษา ฝึกอบรม ปฏิบัติการวิจัย หรือดูงาน',
+        'ลาไปปฏิบัติงานในองค์การระหว่างประเทศ',
+        'ลาติดตามคู่สมรส',
+        'ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ'
     ) THEN
         RETURN (p_end_date - p_start_date + 1)::NUMERIC(4, 1);
     END IF;
 
-    -- ประเภทการลาที่นับเฉพาะ "วันทำการ" (หักเสาร์-อาทิตย์ และหักตาราง holidays)
+    -- ประเภทการลา 4 ประเภทที่นับเฉพาะ "วันทำการ" (หักเสาร์-อาทิตย์ และหักตาราง holidays)
+    -- ได้แก่: ลาป่วย, ลากิจส่วนตัว, ลาไปช่วยเหลือภริยาที่คลอดบุตร, ลาพักผ่อน
     SELECT COUNT(*)::NUMERIC(4, 1) INTO v_days
     FROM generate_series(p_start_date, p_end_date, '1 day'::interval) AS d(day)
     WHERE EXTRACT(ISODOW FROM d.day) NOT IN (6, 7) -- 6 = Saturday, 7 = Sunday
       AND NOT EXISTS (
           SELECT 1 FROM public.holidays h WHERE h.holiday_date = d.day::DATE
       );
+
+    -- กรณีลาครึ่งวันในวันทำการเดียวกัน (อนุญาตเฉพาะ ลาป่วย, ลากิจส่วนตัว, ลาพักผ่อน)
+    IF p_half_day IN ('morning', 'afternoon')
+       AND p_start_date = p_end_date
+       AND p_leave_type IN ('ลาป่วย', 'ลากิจส่วนตัว', 'ลาพักผ่อน') THEN
+        IF v_days = 1 THEN
+            RETURN 0.5;
+        ELSE
+            RETURN 0;
+        END IF;
+    END IF;
 
     RETURN v_days;
 END;
