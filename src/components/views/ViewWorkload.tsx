@@ -57,6 +57,7 @@ import type {
   TimetableSlot,
 } from '@/lib/data/timetableTypes';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
@@ -1133,66 +1134,22 @@ export const ViewWorkload: React.FC = () => {
         </div>
       )}
 
-      {/* Sub-Tabs Navigation (Phase 10: 3-in-1 Executive Workload Suite) */}
-      <div
-        role="tablist"
-        aria-label="มุมมองจัดการภาระงานและรายงาน"
-        className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-[#121822] p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'list'}
-          onClick={() => setActiveTab('list')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'list'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
-          }`}
-        >
-          <Briefcase className="w-4 h-4 shrink-0" />
-          <span>รายการภาระงาน</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'obec_directory'}
-          onClick={() => setActiveTab('obec_directory')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'obec_directory'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
-          }`}
-        >
-          <Database className="w-4 h-4 shrink-0" />
-          <span>ทำเนียบระบบ สพฐ. (38 ระบบ)</span>
-          <span
-            className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
-              activeTab === 'obec_directory'
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-            }`}
-          >
-            {obecDirectory.assignedCount}/{obecDirectory.totalSystems}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'pa_summary'}
-          onClick={() => setActiveTab('pa_summary')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'pa_summary'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
-          }`}
-        >
-          <ClipboardList className="w-4 h-4 shrink-0" />
-          <span>สรุปภาระงานรวม (PA)</span>
-        </button>
-      </div>
+      {/* Sub-Tabs Navigation (Phase 10.1: Unified Equal-Width 3-Column SegmentedTabs) */}
+      <SegmentedTabs
+        ariaLabel="มุมมองจัดการภาระงานและรายงาน"
+        activeId={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { id: 'list', label: 'รายการภาระงาน', icon: Briefcase },
+          {
+            id: 'obec_directory',
+            label: 'ทำเนียบระบบ สพฐ. (38 ระบบ)',
+            icon: Database,
+            badge: `${obecDirectory.assignedCount}/${obecDirectory.totalSystems}`,
+          },
+          { id: 'pa_summary', label: 'สรุปภาระงานรวม (PA)', icon: ClipboardList },
+        ]}
+      />
 
       {activeTab === 'list' && (
         <>

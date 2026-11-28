@@ -66,6 +66,7 @@ import {
   type TimetablePrintMode,
 } from '@/components/views/TimetablePrintView';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { sortTeachersByBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
 import { isAdminRole } from '@/lib/auth/roles';
@@ -1599,43 +1600,20 @@ export const ViewTimetable: React.FC = () => {
         </div>
       )}
 
-      {/* 4 Sub-Tabs Bar */}
-      <div
-        role="tablist"
-        aria-label="มุมมองตารางสอนและชั่วโมงสอน"
-        className="flex flex-wrap gap-2 bg-white dark:bg-[#121822] p-2 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs"
-      >
-        {(
-          [
-            { id: 'room', label: 'ตารางเรียนรายห้อง', icon: CalendarRange },
-            { id: 'teacher', label: 'ตารางสอนรายบุคคล', icon: User },
-            { id: 'allocations', label: 'แผนการสอน', icon: BookOpen },
-            { id: 'kindergarten', label: 'ระดับปฐมวัย (อ.1–อ.3)', icon: Baby },
-            { id: 'substitutes', label: 'จัดสอนแทน', icon: UserCheck },
-            { id: 'summary', label: 'สรุปชั่วโมงสอน (ว 9/2564)', icon: BarChart3 },
-          ] as const
-        ).map((tab) => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                active
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* 6 Equal-Width Single-Row Sub-Tabs (Phase 10.1 SegmentedTabs) */}
+      <SegmentedTabs
+        ariaLabel="มุมมองตารางสอนและชั่วโมงสอน"
+        activeId={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { id: 'room', label: 'ตารางรายห้อง', icon: CalendarRange },
+          { id: 'teacher', label: 'ตารางรายบุคคล', icon: User },
+          { id: 'allocations', label: 'แผนการสอน', icon: BookOpen },
+          { id: 'kindergarten', label: 'ปฐมวัย (อ.1–อ.3)', icon: Baby },
+          { id: 'substitutes', label: 'จัดสอนแทน', icon: UserCheck },
+          { id: 'summary', label: 'สรุป ว 9/2564', icon: BarChart3 },
+        ]}
+      />
 
       {/* Loading State */}
       {isLoading ? (
@@ -1694,7 +1672,7 @@ export const ViewTimetable: React.FC = () => {
                       {canManage
                         ? isSmartSwapMode
                           ? 'โหมดสลับคาบอัจฉริยะกำลังเปิดใช้งาน'
-                          : 'คลิกที่ช่องคาบเรียนเพื่อเพิ่มหรือแก้ไข หรือคลิกไอคอนแม่กุญแจเพื่อปักหมุดล็อกคาบ'
+                          : 'คลิกที่ช่องเวลาเรียนเพื่อเพิ่มหรือแก้ไข หรือคลิกไอคอนแม่กุญแจเพื่อปักหมุดล็อกชั่วโมง'
                         : 'มุมมองอ่านอย่างเดียว'}
                     </p>
                   </div>
@@ -1822,7 +1800,7 @@ export const ViewTimetable: React.FC = () => {
                       <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-600 dark:text-slate-300">
                         <th
                           scope="col"
-                          className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[82px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
+                          className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[96px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl whitespace-nowrap"
                         >
                           วัน / ชั่วโมง
                         </th>
@@ -1868,7 +1846,7 @@ export const ViewTimetable: React.FC = () => {
                         <tr key={day.dayOfWeek}>
                           <th
                             scope="row"
-                            className="sticky left-0 z-10 bg-slate-50 dark:bg-[#101822] px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800"
+                            className="sticky left-0 z-10 bg-slate-50 dark:bg-[#101822] px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 whitespace-nowrap"
                           >
                             <div>{day.fullLabel}</div>
                           </th>
@@ -2285,7 +2263,7 @@ export const ViewTimetable: React.FC = () => {
                     <tr className="bg-slate-100/90 dark:bg-[#101822] text-slate-600 dark:text-slate-300">
                       <th
                         scope="col"
-                        className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[82px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl"
+                        className="sticky left-0 z-10 bg-slate-100 dark:bg-[#101822] w-[96px] px-2 py-2.5 text-center font-semibold border border-slate-200 dark:border-slate-800 rounded-tl-xl whitespace-nowrap"
                       >
                         วัน / ชั่วโมง
                       </th>
@@ -2397,7 +2375,7 @@ export const ViewTimetable: React.FC = () => {
                         <tr key={day.dayOfWeek}>
                           <th
                             scope="row"
-                            className="sticky left-0 z-10 bg-slate-50 dark:bg-[#101822] px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800"
+                            className="sticky left-0 z-10 bg-slate-50 dark:bg-[#101822] px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 whitespace-nowrap"
                           >
                             {day.fullLabel}
                           </th>
