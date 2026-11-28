@@ -34,6 +34,9 @@ import {
   ChevronRight,
   X,
   Loader2,
+  Calendar,
+  Database,
+  Crown,
 } from 'lucide-react';
 import {
   INITIAL_SCHOOL_INFO,
@@ -47,8 +50,31 @@ import {
   getDirectorInfo,
   type DivisionKey,
 } from '@/lib/regulations/org-chart';
-import { getDivisionMembers } from '@/lib/staffDivisions';
+import {
+  WORKLOAD_ADMIN_CATEGORY,
+  getDivisionMembers,
+  normalizeDivisionName,
+  type StandardDivisionName,
+} from '@/lib/staffDivisions';
+import { getCurrentThaiAcademicYear } from '@/lib/regulations/obec-admin-roles';
 import { formatStaffName, formatOfficialPosition } from '@/lib/regulations/staff-formatting';
+
+const DIVISION_KEY_TO_STANDARD: Record<DivisionKey, StandardDivisionName> = {
+  academic: 'ฝ่ายบริหารวิชาการ',
+  budget: 'ฝ่ายบริหารงบประมาณ',
+  personnel: 'ฝ่ายบริหารงานบุคคล',
+  general: 'ฝ่ายบริหารทั่วไป',
+};
+
+const LEGACY_TEACHING_CATEGORY = 'งานสอนและการจัดการเรียนรู้';
+
+export interface DivisionMemberDetail {
+  teacher: TeacherRecord;
+  name: string;
+  isHead: boolean;
+  roleTitles: string[];
+  obecSystemCount: number;
+}
 
 interface DivisionCardConfig {
   id: DivisionKey;
@@ -189,14 +215,18 @@ const STATIC_DIVISIONS: DivisionCardConfig[] = [
 export interface ActiveDivisionModalData extends DivisionCardConfig {
   headName: string;
   headPositionFormatted: string;
-  members: TeacherRecord[];
+  headFromWorkload: boolean;
+  members: DivisionMemberDetail[];
+  totalObecSystems: number;
 }
 
 export const ViewOrgChart: React.FC = () => {
+  const defaultAcademicYear = useMemo(() => getCurrentThaiAcademicYear(), []);
   const [teachersList, setTeachersList] = useState<TeacherRecord[]>([]);
   const [workloadsList, setWorkloadsList] = useState<WorkloadItem[]>([]);
   const [boardList, setBoardList] = useState<BoardMemberRecord[]>([]);
   const [school, setSchool] = useState<SchoolInfoRecord>(INITIAL_SCHOOL_INFO);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>(defaultAcademicYear);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeModalDivision, setActiveModalDivision] = useState<ActiveDivisionModalData | null>(null);
 
@@ -278,29 +308,174 @@ export const ViewOrgChart: React.FC = () => {
 
   const totalBoardMembers = boardList.length;
 
-  // 3. Bind real division heads & multi-division members dynamically from Workload Category 2
+  // Academic year options derived from workloads + current Thai academic year
+  const academicYearOptions = useMemo(() => {
+    const set = new Set<string>([defaultAcademicYear]);
+    for (const w of workloadsList) {
+      if (w.category === LEGACY_TEACHING_CATEGORY) continue;
+      const yr = (w.academicYear || '').trim();
+      if (yr) set.add(yr);
+    }
+    return Array.from(set).sort((a, b) => b.localeCompare(a, 'en'));
+  }, [workloadsList, defaultAcademicYear]);
+
+  const filteredWorkloads = useMemo(() => {
+    return workloadsList.filter((w) => {
+      if (w.category === LEGACY_TEACHING_CATEGORY) return false;
+      if (selectedAcademicYear === 'ALL') return true;
+      return (w.academicYear || '').trim() === selectedAcademicYear;
+    });
+  }, [workloadsList, selectedAcademicYear]);
+
+  // 3. Bind real division heads, roles & OBEC systems dynamically from staff_workloads (by selected academic year)
   const divisions = useMemo(() => {
+    const teacherMap = new Map<string, TeacherRecord>(teachersList.map((t) => [t.id, t]));
+
     return STATIC_DIVISIONS.map((div) => {
-      const head = findDivisionHead(teachersList, div.id);
-      const members = getDivisionMembers(teachersList, workloadsList, div.id);
+      const stdDivision = DIVISION_KEY_TO_STANDARD[div.id];
+      const divWorkloads = filteredWorkloads.filter(
+        (w) =>
+          w.category === WORKLOAD_ADMIN_CATEGORY &&
+          normalizeDivisionName(w.subGroupOrLevel) === stdDivision
+      );
+
+      // Prefer Division Head directly from filtered workloads (roleInTask / title)
+      const headWorkload = divWorkloads.find((w) => {
+        const role = (w.roleInTask || '').trim();
+        const title = (w.title || '').trim();
+        return (
+          role.includes('หัวหน้าฝ่าย') ||
+          role.includes('หัวหน้ากลุ่มบริหาร') ||
+          title.includes('หัวหน้าฝ่าย') ||
+          title.includes('หัวหน้ากลุ่มบริหาร')
+        );
+      });
+      const headTeacher = headWorkload ? teacherMap.get(headWorkload.teacherId) : undefined;
+      const fallbackHead = findDivisionHead(teachersList, div.id);
+
+      const headName = headTeacher ? formatStaffName(headTeacher) : fallbackHead.name;
+      const headPositionFormatted = headTeacher
+        ? formatOfficialPosition(headTeacher)
+        : fallbackHead.positionFormatted;
+
+      // Combine members from getDivisionMembers + any primary/co-responsible staff in divWorkloads
+      const memberMap = new Map<string, TeacherRecord>();
+      for (const m of getDivisionMembers(teachersList, filteredWorkloads, div.id)) {
+        memberMap.set(m.id, m);
+      }
+      for (const w of divWorkloads) {
+        const primary = teacherMap.get(w.teacherId);
+        if (primary) memberMap.set(primary.id, primary);
+        if (Array.isArray(w.coResponsibleIds)) {
+          for (const coId of w.coResponsibleIds) {
+            const coStaff = teacherMap.get(coId);
+            if (coStaff) memberMap.set(coStaff.id, coStaff);
+          }
+        }
+      }
+
+      const divObecSet = new Set<string>();
+      for (const w of divWorkloads) {
+        if (Array.isArray(w.obecSystems)) {
+          for (const code of w.obecSystems) {
+            if (code && code.trim()) divObecSet.add(code.trim());
+          }
+        }
+      }
+
+      const memberDetails: DivisionMemberDetail[] = Array.from(memberMap.values()).map((teacher) => {
+        const primaryRoles = divWorkloads
+          .filter((w) => w.teacherId === teacher.id && w.title?.trim())
+          .map((w) => w.title.trim());
+        const coRoles = divWorkloads
+          .filter(
+            (w) =>
+              w.teacherId !== teacher.id &&
+              Array.isArray(w.coResponsibleIds) &&
+              w.coResponsibleIds.includes(teacher.id) &&
+              w.title?.trim()
+          )
+          .map((w) => `${w.title.trim()} (ร่วม)`);
+
+        const roleTitles = Array.from(new Set([...primaryRoles, ...coRoles]));
+
+        const staffObecSet = new Set<string>();
+        for (const w of divWorkloads) {
+          const isInvolved =
+            w.teacherId === teacher.id ||
+            (Array.isArray(w.coResponsibleIds) && w.coResponsibleIds.includes(teacher.id));
+          if (isInvolved && Array.isArray(w.obecSystems)) {
+            for (const code of w.obecSystems) {
+              if (code && code.trim()) staffObecSet.add(code.trim());
+            }
+          }
+        }
+
+        const formattedName = formatStaffName(teacher);
+        const isHead = headTeacher
+          ? teacher.id === headTeacher.id
+          : formattedName === formatStaffName(fallbackHead.name);
+
+        return {
+          teacher,
+          name: formattedName,
+          isHead,
+          roleTitles,
+          obecSystemCount: staffObecSet.size,
+        };
+      });
+
+      // Keep Division Head first, then sort by number of assigned roles descending
+      memberDetails.sort((a, b) => {
+        if (a.isHead !== b.isHead) return a.isHead ? -1 : 1;
+        if (b.roleTitles.length !== a.roleTitles.length) {
+          return b.roleTitles.length - a.roleTitles.length;
+        }
+        return a.name.localeCompare(b.name, 'th');
+      });
+
       return {
         ...div,
-        headName: head.name,
-        headPositionFormatted: head.positionFormatted,
-        members,
+        headName,
+        headPositionFormatted,
+        headFromWorkload: Boolean(headTeacher),
+        members: memberDetails,
+        totalObecSystems: divObecSet.size,
       };
     });
-  }, [teachersList, workloadsList]);
+  }, [teachersList, filteredWorkloads]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 1. Header Strip (Minimal & Clean, no duplicate pill) */}
-      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors duration-200">
+      {/* 1. Header Strip with Academic Year Selector */}
+      <div className="bg-white dark:bg-[#141b24] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors duration-200">
         <div className="flex items-center gap-2.5">
           <Layers className="w-5 h-5 text-sky-500 shrink-0" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            ผังโครงสร้างการบริหารงานสถานศึกษา
-          </h2>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              ผังโครงสร้างการบริหารงานสถานศึกษา
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              เชื่อมโยงโครงสร้าง 4 ฝ่ายงานและหน้าที่ความรับผิดชอบจากฐานข้อมูลภาระงานแบบเรียลไทม์
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+          <select
+            aria-label="เลือกปีการศึกษาผังโครงสร้างองค์กร"
+            value={selectedAcademicYear}
+            onChange={(e) => setSelectedAcademicYear(e.target.value)}
+            className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs font-mono text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            <option value="ALL">ทุกปีการศึกษา</option>
+            {academicYearOptions.map((yr) => (
+              <option key={yr} value={yr}>
+                ปีการศึกษา {yr}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -453,38 +628,101 @@ export const ViewOrgChart: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Division Head Sub-Card (Equal min-h to prevent awkward word wrapping) */}
+                  {/* Division Head Sub-Card */}
                   <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 min-h-[76px] flex flex-col justify-center transition-colors duration-200">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                        <Crown className="w-3 h-3 shrink-0" />
+                        <span>หัวหน้ากลุ่มบริหารงาน</span>
+                      </span>
+                      {div.totalObecSystems > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/70 shrink-0">
+                          <Database className="w-2.5 h-2.5 shrink-0" />
+                          <span>{div.totalObecSystems} ระบบ</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-snug break-words" title={formatStaffName(div.headName)}>
                       {formatStaffName(div.headName)}
                     </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate" title={div.headPositionFormatted}>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 truncate" title={div.headPositionFormatted}>
                       {div.headPositionFormatted}
                     </div>
                   </div>
 
-                  {/* Core Scopes Preview (Fixed 3 items) */}
-                  <div className="mt-3.5 space-y-1.5 flex-1">
+                  {/* Live Assigned Members & Roles Preview (from staff_workloads) */}
+                  <div className="mt-3.5 space-y-2 flex-1">
                     <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      <span>ขอบข่ายภารกิจ · {div.duties.length} งาน</span>
-                      {div.members.length > 0 && (
-                        <span className="font-mono text-slate-500 dark:text-slate-400">
-                          {div.members.length} ท่าน
-                        </span>
-                      )}
+                      <span>บุคลากรและหน้าที่ในฝ่าย</span>
+                      <span className="font-mono text-slate-500 dark:text-slate-400">
+                        {div.members.length} ท่าน
+                      </span>
                     </div>
-                    <div className="space-y-1.5">
-                      {div.duties.slice(0, 3).map((duty, idx) => (
-                        <div
-                          key={idx}
-                          className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
-                          title={duty}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
-                          <span className="truncate leading-relaxed">{duty}</span>
-                        </div>
-                      ))}
-                    </div>
+
+                    {div.members.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {div.members.slice(0, 4).map((m) => (
+                          <div
+                            key={`${div.id}-card-${m.teacher.id}`}
+                            className="p-2 rounded-lg bg-slate-50 dark:bg-[#101723] border border-slate-200/60 dark:border-slate-800/60 space-y-1"
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                {m.name}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {m.isHead && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                    หัวหน้า
+                                  </span>
+                                )}
+                                {m.obecSystemCount > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                    {m.obecSystemCount} ระบบ
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {m.roleTitles.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {m.roleTitles.slice(0, 2).map((role) => (
+                                  <span
+                                    key={role}
+                                    title={role}
+                                    className="inline-block max-w-full truncate px-1.5 py-0.5 rounded text-[10px] bg-white dark:bg-[#141d27] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80"
+                                  >
+                                    {role}
+                                  </span>
+                                ))}
+                                {m.roleTitles.length > 2 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                    +{m.roleTitles.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {div.members.length > 4 && (
+                          <div className="text-[11px] text-center text-slate-500 dark:text-slate-400 pt-0.5">
+                            และบุคลากรอีก {div.members.length - 4} ท่าน
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {div.duties.slice(0, 3).map((duty, idx) => (
+                          <div
+                            key={idx}
+                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#101723] px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-start gap-2 transition-colors duration-150"
+                            title={duty}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${div.bulletColor}`} />
+                            <span className="truncate leading-relaxed">{duty}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -563,21 +801,59 @@ export const ViewOrgChart: React.FC = () => {
               </button>
             </div>
 
-            {/* Division Members (Auto-derived from Workload Category 2 + legacy fallback) */}
+            {/* Division Members (Live Sync from Workload Category 2, Clean Names without parenthetical positions) */}
             {activeModalDivision.members.length > 0 && (
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 space-y-2">
-                <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                  บุคลากรที่ปฏิบัติงานในกลุ่มงานนี้ ({activeModalDivision.members.length} ท่าน)
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {activeModalDivision.members.map((m) => (
-                    <span
-                      key={`${activeModalDivision.id}-${m.id}`}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 text-xs text-slate-800 dark:text-slate-200"
-                    >
-                      <span className="font-medium">{formatStaffName(m)}</span>
-                      <span className="text-[10px] text-slate-400">({formatOfficialPosition(m)})</span>
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#101723] border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  <span>
+                    บุคลากรที่ปฏิบัติงานในกลุ่มงานนี้ ({activeModalDivision.members.length} ท่าน ·{' '}
+                    {selectedAcademicYear === 'ALL'
+                      ? 'ทุกปีการศึกษา'
+                      : `ปีการศึกษา ${selectedAcademicYear}`}
+                    )
+                  </span>
+                  {activeModalDivision.totalObecSystems > 0 && (
+                    <span className="inline-flex items-center gap-1 font-mono text-indigo-600 dark:text-indigo-400">
+                      <Database className="w-3 h-3 shrink-0" />
+                      <span>{activeModalDivision.totalObecSystems} ระบบ สพฐ.</span>
                     </span>
+                  )}
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {activeModalDivision.members.map((m) => (
+                    <div
+                      key={`${activeModalDivision.id}-${m.teacher.id}`}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-[#141d27] border border-slate-200/90 dark:border-slate-700/80 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                          {m.name}
+                        </span>
+                        {m.isHead && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0">
+                            <Crown className="w-2.5 h-2.5 shrink-0" />
+                            <span>หัวหน้าฝ่าย</span>
+                          </span>
+                        )}
+                        {m.obecSystemCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 shrink-0">
+                            {m.obecSystemCount} ระบบ สพฐ.
+                          </span>
+                        )}
+                      </div>
+                      {m.roleTitles.length > 0 && (
+                        <div className="flex flex-wrap gap-1 sm:justify-end">
+                          {m.roleTitles.map((role) => (
+                            <span
+                              key={role}
+                              className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

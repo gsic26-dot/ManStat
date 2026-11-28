@@ -39,12 +39,23 @@ import {
   Copy,
   Sparkles,
   Info,
+  Download,
+  Printer,
+  ClipboardList,
+  Award,
 } from 'lucide-react';
 import {
   type TeacherRecord,
   type WorkloadItem,
   type WorkloadCategory,
 } from '@/lib/data/schoolData';
+import type {
+  KindergartenSchedule,
+  PeriodConfigItem,
+  TeachingSubstitution,
+  TimetableSemester,
+  TimetableSlot,
+} from '@/lib/data/timetableTypes';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { sortTeachersByBranch, getStaffBranch } from '@/lib/regulations/staff-sorting';
 import { formatStaffName } from '@/lib/regulations/staff-formatting';
@@ -63,6 +74,16 @@ import {
   ADMIN_TASK_ROLES,
   getCurrentThaiAcademicYear,
 } from '@/lib/regulations/obec-admin-roles';
+import {
+  buildObecSystemDirectory,
+  buildPaStaffSummary,
+  exportObecDirectoryCsv,
+  exportPaSummaryCsv,
+} from '@/lib/regulations/pa-summary-utils';
+import {
+  PaReportPrintView,
+  type PaReportPrintMode,
+} from '@/components/views/PaReportPrintView';
 
 const ADMIN_DIVISION_CATEGORY: WorkloadCategory = WORKLOAD_ADMIN_CATEGORY;
 const ADHOC_PROJECT_CATEGORY: WorkloadCategory = 'งานโครงการ กิจกรรม และงานที่ได้รับมอบหมายพิเศษ';
@@ -113,6 +134,20 @@ export const ViewWorkload: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<string>('teacher');
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Sub-tabs & Phase 10 OBEC Directory / PA Summary State
+  const [activeTab, setActiveTab] = useState<'list' | 'obec_directory' | 'pa_summary'>('list');
+  const [obecSearchTerm, setObecSearchTerm] = useState<string>('');
+  const [obecDivisionFilter, setObecDivisionFilter] = useState<string>('ALL');
+  const [obecStatusFilter, setObecStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
+
+  const [paSemester, setPaSemester] = useState<TimetableSemester>('1');
+  const [paSlots, setPaSlots] = useState<TimetableSlot[]>([]);
+  const [paKindergarten, setPaKindergarten] = useState<KindergartenSchedule[]>([]);
+  const [paSubstitutions, setPaSubstitutions] = useState<TeachingSubstitution[]>([]);
+  const [paPeriodsConfig, setPaPeriodsConfig] = useState<PeriodConfigItem[] | undefined>(undefined);
+  const [isLoadingPaData, setIsLoadingPaData] = useState<boolean>(false);
+  const [printMode, setPrintMode] = useState<PaReportPrintMode | null>(null);
 
   // Filters & Accordion
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -217,6 +252,151 @@ export const ViewWorkload: React.FC = () => {
     }
     return map;
   }, []);
+
+  // Effective year for PA Summary & quick assign
+  const effectivePaYear = academicYearFilter !== 'ALL' ? academicYearFilter : defaultAcademicYear;
+
+  // Phase 10: Fetch Timetable + Kindergarten + Substitutions when viewing PA Summary tab
+  useEffect(() => {
+    if (activeTab !== 'pa_summary') return;
+    let isMounted = true;
+    setIsLoadingPaData(true);
+
+    Promise.all([
+      fetch(
+        `/api/timetable?academicYear=${encodeURIComponent(effectivePaYear)}&semester=${encodeURIComponent(paSemester)}`,
+        { cache: 'no-store' }
+      )
+        .then((r) => r.json())
+        .then((res) => {
+          if (isMounted && res.success && res.data) {
+            setPaSlots(Array.isArray(res.data.slots) ? res.data.slots : []);
+            setPaKindergarten(
+              Array.isArray(res.data.kindergartenSchedules) ? res.data.kindergartenSchedules : []
+            );
+            if (Array.isArray(res.data.settings?.periodsConfig)) {
+              setPaPeriodsConfig(res.data.settings.periodsConfig);
+            }
+          }
+        })
+        .catch(() => {}),
+      fetch(
+        `/api/timetable/substitutions?academicYear=${encodeURIComponent(effectivePaYear)}&semester=${encodeURIComponent(paSemester)}`,
+        { cache: 'no-store' }
+      )
+        .then((r) => r.json())
+        .then((res) => {
+          if (isMounted && res.success && Array.isArray(res.data)) {
+            setPaSubstitutions(res.data);
+          }
+        })
+        .catch(() => {}),
+    ]).finally(() => {
+      if (isMounted) setIsLoadingPaData(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, effectivePaYear, paSemester]);
+
+  // Phase 10: OBEC 38-System Directory
+  const obecDirectory = useMemo(() => {
+    return buildObecSystemDirectory({
+      workloads,
+      teachers: sortedTeachers,
+      academicYear: academicYearFilter,
+    });
+  }, [workloads, sortedTeachers, academicYearFilter]);
+
+  const filteredObecDirectoryItems = useMemo(() => {
+    const q = obecSearchTerm.trim().toLowerCase();
+    return obecDirectory.items.filter((item) => {
+      if (obecDivisionFilter !== 'ALL' && item.division !== obecDivisionFilter) return false;
+      if (obecStatusFilter === 'ASSIGNED' && !item.isAssigned) return false;
+      if (obecStatusFilter === 'UNASSIGNED' && item.isAssigned) return false;
+      if (!q) return true;
+      return (
+        item.code.toLowerCase().includes(q) ||
+        item.name.toLowerCase().includes(q) ||
+        item.division.toLowerCase().includes(q) ||
+        item.primaryStaff.some((s) => s.name.toLowerCase().includes(q)) ||
+        item.coStaff.some((s) => s.name.toLowerCase().includes(q))
+      );
+    });
+  }, [obecDirectory.items, obecSearchTerm, obecDivisionFilter, obecStatusFilter]);
+
+  // Phase 10: Unified PA Assessment Summary
+  const paSummary = useMemo(() => {
+    return buildPaStaffSummary({
+      teachers: sortedTeachers,
+      workloads,
+      slots: paSlots,
+      kindergartenSchedules: paKindergarten,
+      substitutions: paSubstitutions,
+      periodsConfig: paPeriodsConfig,
+      academicYear: effectivePaYear,
+      semester: paSemester,
+    });
+  }, [
+    sortedTeachers,
+    workloads,
+    paSlots,
+    paKindergarten,
+    paSubstitutions,
+    paPeriodsConfig,
+    effectivePaYear,
+    paSemester,
+  ]);
+
+  const downloadCsvFile = (csvContent: string, filename: string) => {
+    if (typeof window === 'undefined') return;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportObecDirectoryCsv = () => {
+    const yearTag = academicYearFilter === 'ALL' ? 'ALL' : academicYearFilter;
+    const csv = exportObecDirectoryCsv(obecDirectory, yearTag);
+    downloadCsvFile(csv, `ManStat_OBEC_38_Systems_${yearTag}.csv`);
+  };
+
+  const handleExportPaSummaryCsv = () => {
+    const csv = exportPaSummaryCsv(paSummary, effectivePaYear, paSemester);
+    downloadCsvFile(csv, `ManStat_PA_Summary_${effectivePaYear}_${paSemester}.csv`);
+  };
+
+  // Phase 10: 1-Click Quick Assign from Unassigned OBEC System row
+  const handleQuickAssignObecSystem = (division: StandardDivisionName, systemCode: string) => {
+    if (!canManage) return;
+    setEditingWorkloadId(null);
+    setFormTeacherId(sortedTeachers[0]?.id || '');
+    setFormAcademicYear(effectivePaYear);
+    setFormCategory(ADMIN_DIVISION_CATEGORY);
+    setFormSubGroup(division);
+    setFormRoleDropdownValue('');
+    setFormTitle('');
+    setFormScopeDescription('');
+    setIsScopeAutoFilled(false);
+    setFormObecSystems([systemCode]);
+    setFormCustomSystem('');
+    setShowAllObecSystems(false);
+    setFormRole('ผู้รับผิดชอบหลัก / เจ้าหน้าที่');
+    setFormOrderRef('');
+    setFormStatus('กำลังดำเนินการ');
+    setFormHoursPerWeek(2);
+    setFormCoResponsibleIds([]);
+    setFormCoEmpLegacy('');
+    setCoSearchTerm('');
+    setIsModalOpen(true);
+  };
 
   // Years with existing admin or ad-hoc records (for rollover source dropdown)
   const yearsWithData = useMemo(() => {
@@ -953,6 +1133,69 @@ export const ViewWorkload: React.FC = () => {
         </div>
       )}
 
+      {/* Sub-Tabs Navigation (Phase 10: 3-in-1 Executive Workload Suite) */}
+      <div
+        role="tablist"
+        aria-label="มุมมองจัดการภาระงานและรายงาน"
+        className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-[#121822] p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'list'}
+          onClick={() => setActiveTab('list')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'list'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
+          }`}
+        >
+          <Briefcase className="w-4 h-4 shrink-0" />
+          <span>รายการภาระงาน</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'obec_directory'}
+          onClick={() => setActiveTab('obec_directory')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'obec_directory'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
+          }`}
+        >
+          <Database className="w-4 h-4 shrink-0" />
+          <span>ทำเนียบระบบ สพฐ. (38 ระบบ)</span>
+          <span
+            className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+              activeTab === 'obec_directory'
+                ? 'bg-white/20 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            {obecDirectory.assignedCount}/{obecDirectory.totalSystems}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'pa_summary'}
+          onClick={() => setActiveTab('pa_summary')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'pa_summary'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4 shrink-0" />
+          <span>สรุปภาระงานรวม (PA)</span>
+        </button>
+      </div>
+
+      {activeTab === 'list' && (
+        <>
       {/* 4 Standard Divisions Quick Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {divisionSummary.map((item) => {
@@ -1337,6 +1580,512 @@ export const ViewWorkload: React.FC = () => {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {/* ================================================================= */}
+      {/* TAB 2: ทำเนียบระบบ สพฐ. (38 ระบบ)                                 */}
+      {/* ================================================================= */}
+      {activeTab === 'obec_directory' && (
+        <div className="space-y-4">
+          {/* Top KPI & Export Bar */}
+          <div className="bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70 font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>
+                  มอบหมายแล้ว{' '}
+                  <span className="font-mono">
+                    {obecDirectory.assignedCount} / {obecDirectory.totalSystems}
+                  </span>{' '}
+                  ระบบ ({obecDirectory.coveragePercent}%)
+                </span>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70 font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  ยังไม่มีผู้รับผิดชอบ <span className="font-mono">{obecDirectory.unassignedCount}</span> ระบบ
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="เลือกปีการศึกษาทำเนียบระบบ สพฐ."
+                value={academicYearFilter}
+                onChange={(e) => setAcademicYearFilter(e.target.value)}
+                className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs font-mono text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="ALL">ปีการศึกษา: ทั้งหมด</option>
+                {academicYearOptions.map((yr) => (
+                  <option key={yr} value={yr}>
+                    ปีการศึกษา {yr}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={handleExportObecDirectoryCsv}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span>ส่งออก CSV (Excel)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPrintMode('obec_directory')}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 shrink-0" />
+                <span>พิมพ์ A4</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="relative md:col-span-6">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 shrink-0" />
+              <input
+                type="search"
+                value={obecSearchTerm}
+                onChange={(e) => setObecSearchTerm(e.target.value)}
+                placeholder="ค้นหารหัสระบบ, ชื่อระบบ สพฐ., ชื่อผู้รับผิดชอบ..."
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl pl-10 pr-3.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+              />
+            </div>
+
+            <div className="md:col-span-3">
+              <select
+                aria-label="กรองระบบ สพฐ. ตามฝ่ายงาน"
+                value={obecDivisionFilter}
+                onChange={(e) => setObecDivisionFilter(e.target.value)}
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="ALL">ฝ่ายที่เกี่ยวข้อง: ทั้งหมด</option>
+                {STANDARD_DIVISIONS.map((div) => (
+                  <option key={div} value={div}>
+                    {div}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-3">
+              <select
+                aria-label="กรองระบบ สพฐ. ตามสถานะการมอบหมาย"
+                value={obecStatusFilter}
+                onChange={(e) =>
+                  setObecStatusFilter(e.target.value as 'ALL' | 'ASSIGNED' | 'UNASSIGNED')
+                }
+                className="w-full h-10 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="ALL">สถานะ: ทั้งหมด</option>
+                <option value="ASSIGNED">มอบหมายแล้ว</option>
+                <option value="UNASSIGNED">ยังไม่มีผู้รับผิดชอบ</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 38-System Responsive Table */}
+          <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="ตารางทำเนียบระบบรายงาน สพฐ. 38 ระบบ"
+              className="overflow-x-auto w-full focus:outline-none focus:ring-2 focus:ring-sky-500/40 rounded-xl"
+            >
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800">
+                  <tr>
+                    <th scope="col" className="w-12 px-3 py-3 text-center font-mono">
+                      ลำดับ
+                    </th>
+                    <th scope="col" className="px-3 py-3 whitespace-nowrap">
+                      รหัสระบบ
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      ชื่อระบบรายงาน สพฐ.
+                    </th>
+                    <th scope="col" className="px-3 py-3 whitespace-nowrap">
+                      ฝ่ายที่เกี่ยวข้อง
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      ผู้รับผิดชอบหลัก
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      ผู้ร่วมรับผิดชอบ
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
+                      สถานะ / จัดการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {filteredObecDirectoryItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
+                        ไม่พบระบบรายงาน สพฐ. ที่ตรงกับเงื่อนไขการค้นหา
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredObecDirectoryItems.map((item, idx) => (
+                      <tr
+                        key={item.code}
+                        className="hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors"
+                      >
+                        <td className="px-3 py-3 text-center font-mono tabular-nums text-slate-400">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/80">
+                            {item.code}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="font-medium text-slate-900 dark:text-white">{item.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            รอบการรายงาน: {item.cycle}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${getDivisionBadgeStyle(
+                              item.division
+                            )}`}
+                          >
+                            {item.division.replace('ฝ่ายบริหาร', '')}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          {item.primaryStaff.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {item.primaryStaff.map((s) => (
+                                <span
+                                  key={s.id}
+                                  className="inline-block font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap"
+                                >
+                                  {s.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {item.coStaff.length > 0 ? (
+                            <span className="text-slate-600 dark:text-slate-300">
+                              {item.coStaff.map((s) => s.name).join(', ')}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center whitespace-nowrap">
+                          {item.isAssigned ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/70">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                              <span>มอบหมายแล้ว</span>
+                            </span>
+                          ) : canManage ? (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAssignObecSystem(item.division, item.code)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-sky-600 hover:bg-sky-500 text-white transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5 shrink-0" />
+                              <span>มอบหมายทันที</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>ยังไม่มีผู้รับผิดชอบ</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================= */}
+      {/* TAB 3: สรุปภาระงานรวมเพื่อประเมิน PA (Unified PA Summary)         */}
+      {/* ================================================================= */}
+      {activeTab === 'pa_summary' && (
+        <div className="space-y-4">
+          {/* Controls & Export Toolbar */}
+          <div className="bg-white dark:bg-[#121822] p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-sky-500 shrink-0" />
+                <select
+                  aria-label="เลือกปีการศึกษาสรุป PA"
+                  value={effectivePaYear}
+                  onChange={(e) => setAcademicYearFilter(e.target.value)}
+                  className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs font-mono text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+                >
+                  {academicYearOptions.map((yr) => (
+                    <option key={yr} value={yr}>
+                      ปีการศึกษา {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <select
+                aria-label="เลือกภาคเรียนสรุป PA"
+                value={paSemester}
+                onChange={(e) => setPaSemester(e.target.value as TimetableSemester)}
+                className="h-9 bg-slate-50 dark:bg-[#101822] border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value="1">ภาคเรียนที่ 1</option>
+                <option value="2">ภาคเรียนที่ 2</option>
+              </select>
+
+              {isLoadingPaData && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />
+                  <span>กำลังซิงก์ข้อมูลตารางสอนและสอนแทน...</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportPaSummaryCsv}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span>ส่งออก CSV (Excel)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPrintMode('pa_summary')}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 shrink-0" />
+                <span>พิมพ์สรุป PA (A4 แนวนอน)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4 KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-[#121822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>บุคลากรปฏิบัติงาน</span>
+                <Users className="w-4 h-4 text-sky-500 shrink-0" />
+              </div>
+              <div className="mt-2 text-xl font-bold font-mono text-slate-900 dark:text-white">
+                {paSummary.stats.totalActiveStaff} <span className="text-xs font-sans font-normal text-slate-500">คน</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#121822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>ครูผ่านเกณฑ์ ว 9/2564</span>
+                <Award className="w-4 h-4 text-emerald-500 shrink-0" />
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                  {paSummary.stats.teachersPassingW9}
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  คน (ต่ำกว่าเกณฑ์ {paSummary.stats.teachersBelowW9} คน)
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#121822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>ชั่วโมงสอนแทนสะสม</span>
+                <ClipboardList className="w-4 h-4 text-amber-500 shrink-0" />
+              </div>
+              <div className="mt-2 text-xl font-bold font-mono text-slate-900 dark:text-white">
+                {paSummary.stats.totalSubstituteHours}{' '}
+                <span className="text-xs font-sans font-normal text-slate-500">ชั่วโมง</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#121822] p-4 rounded-xl border border-slate-200/90 dark:border-slate-800/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>ความครอบคลุมระบบ สพฐ.</span>
+                <Database className="w-4 h-4 text-indigo-500 shrink-0" />
+              </div>
+              <div className="mt-2 text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                {paSummary.stats.totalObecAssigned}/{paSummary.stats.totalObecSystems}{' '}
+                <span className="text-xs font-sans font-normal text-slate-500">ระบบ</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Unified PA Table */}
+          <div className="bg-white dark:bg-[#121822] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-sm">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="ตารางสรุปภาระงานรวมเพื่อประเมิน PA"
+              className="overflow-x-auto w-full focus:outline-none focus:ring-2 focus:ring-sky-500/40 rounded-xl"
+            >
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-100/80 dark:bg-[#101822] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200/90 dark:border-slate-800">
+                  <tr>
+                    <th scope="col" className="w-12 px-3 py-3 text-center font-mono">
+                      ลำดับ
+                    </th>
+                    <th scope="col" className="px-3 py-3 whitespace-nowrap">
+                      ชื่อ-สกุล
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
+                      สถานะ ว 9/2564
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
+                      สอน/สัปดาห์ (ชม.)
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-center whitespace-nowrap">
+                      สอนแทนสะสม (ชม.)
+                    </th>
+                    <th scope="col" className="px-3 py-3 whitespace-nowrap">
+                      สังกัดฝ่ายงาน
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      งานบริหาร / โครงการ
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      ระบบ สพฐ.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {paSummary.rows.map((row, idx) => {
+                    const statusBadgeClass =
+                      row.w9StatusLabel === 'ผ่านเกณฑ์'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/70'
+                        : row.w9StatusLabel === 'ต่ำกว่าเกณฑ์'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70'
+                        : row.w9StatusLabel === 'ผู้บริหารสถานศึกษา'
+                        ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/70'
+                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+
+                    return (
+                      <tr
+                        key={row.teacherId}
+                        className="hover:bg-slate-50 dark:hover:bg-[#1a2636]/50 transition-colors"
+                      >
+                        <td className="px-3 py-3 text-center font-mono tabular-nums text-slate-400">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900 dark:text-white">
+                            {row.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {row.position}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${statusBadgeClass}`}
+                          >
+                            {row.w9StatusLabel}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-center font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {row.teachingHoursExclHomeroom > 0 ? row.teachingHoursExclHomeroom : '-'}
+                        </td>
+                        <td className="px-3 py-3 text-center font-mono text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                          {row.substituteHours > 0 ? (
+                            <span title={`สอนแทน ${row.substituteCount} ครั้ง`}>
+                              {row.substituteHours}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {row.divisions.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {row.divisions.map((div) => (
+                                <span
+                                  key={div}
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getDivisionBadgeStyle(
+                                    div
+                                  )}`}
+                                >
+                                  {div.replace('ฝ่ายบริหาร', '')}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 max-w-xs">
+                          {row.adminRoles.length + row.projects.length > 0 ? (
+                            <div className="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed">
+                              {[...row.adminRoles, ...row.projects].slice(0, 3).join(' · ')}
+                              {row.adminRoles.length + row.projects.length > 3 && (
+                                <span className="ml-1 font-mono text-slate-400">
+                                  +{row.adminRoles.length + row.projects.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {row.obecSystems.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {row.obecSystems.slice(0, 3).map((code) => (
+                                <span
+                                  key={code}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/80"
+                                >
+                                  {code}
+                                </span>
+                              ))}
+                              {row.obecSystems.length > 3 && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  +{row.obecSystems.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Landscape A4 Print Overlay */}
+      {printMode && (
+        <PaReportPrintView
+          mode={printMode}
+          academicYear={printMode === 'obec_directory' ? academicYearFilter : effectivePaYear}
+          semester={paSemester}
+          directory={obecDirectory}
+          paSummary={paSummary}
+          onClose={() => setPrintMode(null)}
+        />
+      )}
 
       {/* Add / Edit Modal (Locked against backdrop click & Escape key) */}
       {isModalOpen && (
